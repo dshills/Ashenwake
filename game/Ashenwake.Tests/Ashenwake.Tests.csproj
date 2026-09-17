@@ -10,5 +10,6 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
     <ProjectReference Include="../Ashenwake.Core/Ashenwake.Core.csproj" />
     <None Include="../../content/phase0.json" Link="phase0.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../content/combat.json" Link="combat.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

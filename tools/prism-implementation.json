@@ -1,0 +1,9 @@
+{
+  "focus": ["correctness", "data-loss", "determinism", "security", "performance", "integration"],
+  "required": [
+    {"id":"authority","text":"Godot is presentation only. Logical rules, item rolls and progression belong in the engine-free Core. Identify concrete violations with an execution path."},
+    {"id":"persistence","text":"Persist ownership, identity, resource and random state. Corrupt or incompatible data must not silently overwrite a good save. Look for duplication, unchecked transactions and lost progression."},
+    {"id":"reproducibility","text":"Commands and state must reproduce under the pinned runtime. Unbounded trigger chains, multiple death rewards, missing cleanup and iteration order dependent outcomes are bugs."},
+    {"id":"evidence","text":"Distinguish implemented behavior from stated future work and unperformed hardware or external playtest gates. Report actionable defects in changed code; do not assume missing files or invent API behavior."}
+  ]
+}

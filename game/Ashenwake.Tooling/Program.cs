@@ -11,6 +11,7 @@ static int Run(string[] args)
     try
     {
         if (args.Length < 2) return Usage();
+        if (args[0] == "sandbox") return Ashenwake.Tooling.SandboxCommands.Run(args);
         if (args[0] == "content" && args[1] is "validate" or "compile")
         {
             var source = args.Length > 2 ? args[2] : "content/phase0.json";
@@ -121,6 +122,6 @@ static void Write(string path, string contents)
 }
 static int Usage()
 {
-    Console.Error.WriteLine("aw content validate [source] | content compile [source] [output] | demo run [output-dir] | replay run <file> | benchmark run [output]");
+    Console.Error.WriteLine("aw content validate [source] | content compile [source] [output] | demo run [output-dir] | replay run <file> | benchmark run [output] | sandbox validate|compile|demo|replay|benchmark");
     return 2;
 }

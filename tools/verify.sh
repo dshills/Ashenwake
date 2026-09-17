@@ -13,9 +13,15 @@ aw content compile
 aw demo run
 aw replay run artifacts/phase0/demo.awr
 aw benchmark run
+aw sandbox validate
+aw sandbox compile
+aw sandbox demo
+aw sandbox builds
+aw sandbox replay artifacts/combat/session.awc
+aw sandbox benchmark
 mkdir -p artifacts/client
 "$GODOT" --headless --path game/Ashenwake.Client --editor --import --log-file "$AW_ROOT/artifacts/client/import.log"
-"$GODOT" --headless --path game/Ashenwake.Client --quit-after 600 --log-file "$AW_ROOT/artifacts/client/smoke.log" -- --smoke --output="$AW_ROOT/artifacts/client"
+"$GODOT" --headless --path game/Ashenwake.Client res://Main.tscn --quit-after 600 --log-file "$AW_ROOT/artifacts/client/smoke.log" -- --smoke --output="$AW_ROOT/artifacts/client"
 if rg -n 'ERROR:|SCRIPT ERROR:' artifacts/client/import.log artifacts/client/smoke.log; then
     echo 'Godot import or smoke emitted an error.' >&2
     exit 1
@@ -31,3 +37,8 @@ demo = json.loads((root/'phase0/demo.save.json').read_text())
 assert client['stateHash'] == demo['stateHash'], 'Client/headless state differs'
 print('Client and headless demo have identical state hashes.')
 PY
+mkdir -p artifacts/sandbox-client
+"$GODOT" --headless --path game/Ashenwake.Client --quit-after 600 --log-file "$AW_ROOT/artifacts/sandbox-client/smoke.log" -- --sandbox-smoke --output="$AW_ROOT/artifacts/sandbox-client"
+if rg -n 'ERROR:|SCRIPT ERROR:' artifacts/sandbox-client/smoke.log; then exit 1; fi
+rg -q 'SandboxSmokePassed' artifacts/sandbox-client/smoke.log
+aw sandbox replay artifacts/sandbox-client/session.awc

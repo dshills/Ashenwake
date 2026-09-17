@@ -1,8 +1,8 @@
 # Ashenwake
 
-An isometric action RPG about building power from the remains of dead gods. This repository currently implements **Phase 0: the architecture spike**, not the combat sandbox or campaign.
+An isometric action RPG about building power from the remains of dead gods. The current playable milestone is **Phase 1: the combat sandbox**.
 
-The spike contains an engine-independent C# simulation, a Godot C# room, structured content, a Go developer CLI, deterministic replay, logical saves with backup recovery, automated tests, and packaged-build checks.
+The sandbox has six Vanguard abilities, Momentum, dodge, potion, active enemy AI, loot, anatomy, contrasting mutations, and bounded fire/spirit/poison interactions. Godot renders an engine-independent C# simulation. Structured content, a Go developer CLI, deterministic replay, logical saves, tests, and packaged-build checks support development.
 
 ## Start here
 
@@ -19,21 +19,26 @@ The template download is approximately 1.2 GB and is required only for exporting
 
 Run `source tools/env.sh` in Bash; it configures the local tools without changing shell startup files. `bash tools/verify.sh` sources it automatically. The test host uses a local socket, and Godot initializes its ordinary application-data directories; a restrictive sandbox must allow those operations.
 
-## Play the architecture spike
+## Play the combat sandbox
 
 | Action | Control |
 |---|---|
 | Move on the world X/Z plane | W / A / S / D |
-| Strike the Ash Ghoul | Space or left click |
+| Six abilities | 1–6; left/right click for primary/secondary |
+| Dodge / potion | Space / Q |
 | Collect nearby loot | E |
 | Reset the seeded encounter | R |
 | Pause / advance one paused tick | P / period |
 | Save / load | F5 / F9 |
 | Save and verify recent replay | F6 |
+| Inventory/anatomy / settings | I / Escape |
+| Cycle target / camera zoom | Tab / mouse wheel |
 
-Strike once while in range. Ember of Vael applies Burning, the status finishes the enemy, and the enemy drops an Ash Iron weapon with a deterministic damage roll. Move closer and collect it. The overlay shows authoritative ticks, live populations, allocations, and simulation-plus-replay CPU time.
+Build Momentum with Cleave or Breaker Charge, then spend it on Shield Breaker, Seismic Wave, Iron Guard, or Cataclysm. Enemy windup circles show when to move or dodge. Inventory compares equipment, equips fragments, and switches Shield Breaker between Avalanche and No Ground Given. The arena selector includes dense melee, projectile, summon, and chain-reaction workloads. Settings include rebinding and reduced effects/shake; a controller has movement and combat bindings.
 
-F5/F9 use `user://phase0/character.json` and `.bak`; F6 writes `session.awr`. Pass `-- --output=/absolute/directory` to select another location. F6 verifies the current replay segment, which rolls over after 3,600 ticks (120 simulation seconds) to bound memory. Reset and load start new segments. Saves include pending abilities/statuses and all RNG streams, so continuation is exact within the supported build/content configuration.
+Pass `-- --output=/absolute/directory` to select the save/replay directory. F6 verifies the current replay segment, which rolls over after 3,600 ticks (120 simulation seconds) to bound memory. Reset and load start new segments. Saves include pending abilities/statuses, item instances, cooldowns, and all RNG streams. Corrupt primaries can recover from a valid backup; incompatible versions are preserved for their matching build.
+
+The original Phase 0 fixture remains available with `"$GODOT" --path game/Ashenwake.Client res://Main.tscn`. Its smoke, replay, and hash checks still run as regression coverage.
 
 ## Developer commands
 
@@ -45,6 +50,12 @@ aw content compile
 aw demo run
 aw replay run artifacts/phase0/demo.awr
 aw benchmark run
+aw sandbox validate
+aw sandbox compile
+aw sandbox demo
+aw sandbox builds
+aw sandbox replay artifacts/combat/session.awc
+aw sandbox benchmark
 bash tools/export.sh
 ```
 
@@ -60,7 +71,7 @@ Run `aw` within this checkout; source/output paths are relative to the repositor
 - `game/Ashenwake.Tests`: rule, interaction, persistence, collision, and boundary tests.
 - `content`: editable source data, JSON schema, and authoring notes.
 - `tools`: Go `aw`, pinned bootstrap, verification, and export scripts.
-- [Architecture decisions](docs/decisions/0001-phase0-foundation.md), [simulation contract](docs/simulation_contract.md), and [Phase 0 verification](docs/phase0_verification.md).
+- [Architecture decisions](docs/decisions/0001-phase0-foundation.md), [simulation contract](docs/simulation_contract.md), [combat rules](docs/combat_rules.md), and [Phase 0 verification](docs/phase0_verification.md).
 - [Implementation plan](specs/Ashenwake_Implementation_Plan.md), [game design](specs/Ashenwake_Game_Design.md), and [technical architecture](specs/Ashenwake_Technical_Architecture.md).
 
-Phase 1 adds actual combat feel work: dodge/potion, resources, a full six-ability starter kit, active enemy AI, broader effects, and richer fragment combinations. No backend, networking, campaign, or production assets are implemented yet.
+Phase status and measured evidence are recorded in `docs/phase1_verification.md`. Automated correctness and profiling do not replace the implementation plan's external playtest and production-art acceptance gates.

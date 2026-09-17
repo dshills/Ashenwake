@@ -10,3 +10,4 @@ artifacts/
 *.user
 *.tmp
 game/Ashenwake.Client/content.bundle.json
+game/Ashenwake.Client/combat.json

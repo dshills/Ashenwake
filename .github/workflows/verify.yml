@@ -1,4 +1,4 @@
-name: Verify Phase 0
+name: Verify Ashenwake
 on:
   push:
   pull_request:
@@ -19,7 +19,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .tools
-          key: phase0-linux-dotnet-8.0.425-godot-4.6.2-${{ hashFiles('**/packages.lock.json', 'tools/runtime-packs.json', 'tools/package-archives.json', 'tools/bootstrap.sh') }}
+          key: ashenwake-linux-dotnet-8.0.425-godot-4.6.2-${{ hashFiles('**/packages.lock.json', 'tools/runtime-packs.json', 'tools/package-archives.json', 'tools/bootstrap.sh') }}
       - name: Install verified local toolchain and templates
         run: bash tools/bootstrap.sh --templates
       - name: Compile, format, test, validate content, replay, benchmark, and import
@@ -29,5 +29,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: phase0-linux-verification
+          name: ashenwake-linux-verification
           path: artifacts/
