@@ -1,9 +1,10 @@
+using System.Text.Json.Serialization;
 using Ashenwake.Core.Combat;
 using Ashenwake.Core.Content;
 
 namespace Ashenwake.Core.Serialization;
 
-public sealed record CombatSave(int SchemaVersion, string StateHash, CombatSnapshot State);
+public sealed record CombatSave([property: JsonRequired] int SchemaVersion, [property: JsonRequired] string StateHash, [property: JsonRequired] CombatSnapshot State);
 public sealed record CombatLoadResult(CombatSnapshot State, bool RecoveredBackup);
 public sealed record CombatFrame(long Tick, CombatCommand[] Commands, string StateHash, string EventHash);
 public sealed record CombatReplay(int SchemaVersion, CombatSnapshot InitialState, CombatFrame[] Frames);
@@ -14,8 +15,11 @@ public static class CombatSaveStore
     public static CombatSnapshot Read(string json, string contentJson)
     {
         var save = JsonData.Read<CombatSave>(json);
-        if (save.SchemaVersion != 1 || save.State is null || save.State.SchemaVersion != 1 || save.State.RulesVersion != "combat.1")
+        if (save.SchemaVersion != 1)
             throw new SaveCompatibilityException("Unsupported combat save version. Keep this file for its matching build.");
+        if (save.State is null) throw new InvalidDataException("Combat save is missing its logical state.");
+        if (save.State.SchemaVersion != 1 || save.State.RulesVersion != "combat.1")
+            throw new SaveCompatibilityException("Unsupported combat state version. Keep this file for its matching build.");
         var expected = CombatSession.Create(contentJson).Capture().ContentHash;
         if (save.State.ContentHash != expected)
             throw new SaveCompatibilityException("Combat content changed; this save needs its matching content bundle.");

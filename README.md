@@ -1,8 +1,8 @@
 # Ashenwake
 
-An isometric action RPG about building power from the remains of dead gods. The current playable milestone is **Phase 1: the combat sandbox**.
+An isometric action RPG about building power from the remains of dead gods. The current playable milestone is **Phase 2: the Greyhaven vertical slice**.
 
-The sandbox has six Vanguard abilities, Momentum, dodge, potion, active enemy AI, loot, anatomy, contrasting mutations, and bounded fire/spirit/poison interactions. Godot renders an engine-independent C# simulation. Structured content, a Go developer CLI, deterministic replay, logical saves, tests, and packaged-build checks support development.
+The slice connects Greyhaven, an ossuary, a cloister checkpoint, and the three-phase Bell Saint encounter to persistent rewards, anatomy, Manifestations, crafting, and dungeon replay. It retains six Vanguard abilities, Momentum, dodge, potion, active enemy AI, loot, mutations, and bounded fire/spirit/poison interactions. Godot renders an engine-independent C# simulation.
 
 ## Start here
 
@@ -19,7 +19,9 @@ The template download is approximately 1.2 GB and is required only for exporting
 
 Run `source tools/env.sh` in Bash; it configures the local tools without changing shell startup files. `bash tools/verify.sh` sources it automatically. The test host uses a local socket, and Godot initializes its ordinary application-data directories; a restrictive sandbox must allow those operations.
 
-## Play the combat sandbox
+## Play the Greyhaven slice
+
+Speak with Mara near the starting point, then open the journey map to enter the ossuary. Clear each encounter to advance. In the Bell Saint's second phase, attack both ritual anchors to remove its protection. Return to Mara with the Heart of Serath, implant it, and start another expedition. The cloister is a death-recovery checkpoint; inventory and permanent rewards persist.
 
 | Action | Control |
 |---|---|
@@ -33,8 +35,11 @@ Run `source tools/env.sh` in Bash; it configures the local tools without changin
 | Save and verify recent replay | F6 |
 | Inventory/anatomy / settings | I / Escape |
 | Cycle target / camera zoom | Tab / mouse wheel |
+| Interact / journey map, journal and services | F / J |
 
-Build Momentum with Cleave or Breaker Charge, then spend it on Shield Breaker, Seismic Wave, Iron Guard, or Cataclysm. Enemy windup circles show when to move or dodge. Inventory compares equipment, equips fragments, and switches Shield Breaker between Avalanche and No Ground Given. The arena selector includes dense melee, projectile, summon, and chain-reaction workloads. Settings include rebinding and reduced effects/shake; a controller has movement and combat bindings.
+Build Momentum with Cleave or Breaker Charge, then spend it on Shield Breaker, Seismic Wave, Iron Guard, or Cataclysm. Enemy windup circles show when to move or dodge. Inventory compares equipment and selects mutations. Mara handles owned anatomy, Manifestations, and permanent divine grafts; Torren tempers Ashcleaver. Move within reach of their service markers. The slice includes an unawakened Ashcleaver for progression testing; its canonical awakening requirement remains 1,000 burning-enemy kills.
+
+Run `"$GODOT" --path game/Ashenwake.Client res://Sandbox.tscn` for the independent diagnostic arena, where all prototype fragments, equipment, and workload presets are unlocked. Settings include rebinding and reduced effects/shake; a controller has movement and combat bindings.
 
 Pass `-- --output=/absolute/directory` to select the save/replay directory. F6 verifies the current replay segment, which rolls over after 3,600 ticks (120 simulation seconds) to bound memory. Reset and load start new segments. Saves include pending abilities/statuses, item instances, cooldowns, and all RNG streams. Corrupt primaries can recover from a valid backup; incompatible versions are preserved for their matching build.
 
@@ -56,6 +61,13 @@ aw sandbox demo
 aw sandbox builds
 aw sandbox replay artifacts/combat/session.awc
 aw sandbox benchmark
+aw adventure validate
+aw adventure compile
+aw adventure demo
+aw adventure benchmark
+aw adventure replay artifacts/adventure/session.awe
+aw item show item.ashcleaver
+aw content refs fragment.heart_serath
 bash tools/export.sh
 ```
 
@@ -74,4 +86,4 @@ Run `aw` within this checkout; source/output paths are relative to the repositor
 - [Architecture decisions](docs/decisions/0001-phase0-foundation.md), [simulation contract](docs/simulation_contract.md), [combat rules](docs/combat_rules.md), and [Phase 0 verification](docs/phase0_verification.md).
 - [Implementation plan](specs/Ashenwake_Implementation_Plan.md), [game design](specs/Ashenwake_Game_Design.md), and [technical architecture](specs/Ashenwake_Technical_Architecture.md).
 
-Phase status and measured evidence are recorded in `docs/phase1_verification.md`. Automated correctness and profiling do not replace the implementation plan's external playtest and production-art acceptance gates.
+Phase status and evidence are recorded in [Phase 1 verification](docs/phase1_verification.md) and [Phase 2 verification](docs/phase2_verification.md). The scenes use authored procedural prototype geometry and audio. Automated correctness and profiling do not replace the implementation plan's external playtest and production-art acceptance gates.

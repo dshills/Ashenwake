@@ -9,13 +9,14 @@ public enum CombatFaction { Player, Enemy, Ally }
 public sealed record CombatCommand(CombatCommandKind Kind, int ActorId = 1, string SkillId = "", int TargetId = 0, int X = 0, int Z = 0, string ContentId = "", long ItemId = 0);
 public sealed record CombatEvent(long Tick, string Kind, int ActorId = 0, int TargetId = 0, int Amount = 0, string ContentId = "", long ActionId = 0, int Depth = 0);
 public sealed record CombatStatusView(string Id, int SourceId, long RemainingTicks, int Stacks);
-public sealed record CombatActorView(int Id, Position Position, int Health, int MaxHealth, CombatFaction Faction, string Role, int TelegraphTicks, string State, int Barrier, IReadOnlyList<CombatStatusView> Statuses);
+public sealed record CombatActorView(int Id, Position Position, int Health, int MaxHealth, CombatFaction Faction, string Role, int TelegraphTicks, string State, int Barrier, IReadOnlyList<CombatStatusView> Statuses, string DefinitionId = "", Position? TelegraphPosition = null, int TelegraphRadius = 0);
 public sealed record CombatProjectileView(long Id, Position Position, Position Target, string ContentId, int OwnerId);
 public sealed record CombatAreaView(long Id, Position Position, int Radius, string ContentId, long RemainingTicks, int OwnerId);
 public sealed record CombatItem(long Id, string DefinitionId, string Name, string Slot, string Rarity, int Damage, int Armor, int CriticalBasisPoints);
 public sealed record CombatLoot(long Id, Position Position, CombatItem Item);
 public sealed record CombatSkillView(string Id, string Name, string Shape, int Cost, int Generate, int CooldownTicks, int RemainingTicks, string Mutation);
 public sealed record CombatFragmentView(string Id, string Name, AnatomySlot Slot, string Lineage, int Resonance, string Description, bool Equipped);
+public sealed record CombatBuildModifiers(string Manifestation = "", int AshcleaverStacks = 0, bool AshcleaverAwakened = false, string AshcleaverEvolution = "", int TemperLevel = 0, bool AshcleaverEquipped = false);
 public sealed record CombatMutationView(string Id, string SkillId, string Name, string Description);
 public sealed record CombatView(long Tick, string Preset, IReadOnlyList<CombatActorView> Actors, IReadOnlyList<CombatProjectileView> Projectiles,
     IReadOnlyList<CombatAreaView> Areas, IReadOnlyList<CombatLoot> Loot, IReadOnlyList<CombatItem> Inventory,
@@ -58,6 +59,7 @@ public sealed record CombatActor
     public int Generation { get; init; }
     public string FragmentId { get; init; } = "";
     public bool Elite { get; init; }
+    public int SpecialCycle { get; set; }
     public bool DeathProcessed { get; set; }
     public CombatPending? Pending { get; set; }
     public List<CombatStatus> Statuses { get; init; } = [];
@@ -70,6 +72,9 @@ public sealed record CombatSnapshot
     public string RulesVersion { get; init; } = "combat.1";
     public string ContentHash { get; init; } = "";
     public string Preset { get; init; } = "standard";
+    public string EncounterId { get; init; } = "";
+    public CombatBuildModifiers Build { get; set; } = new();
+    public List<int> ResurrectedActorIds { get; init; } = [];
     public long Tick { get; set; }
     public ulong Seed { get; init; }
     public RngStates Rng { get; set; } = new(1, 2, 3, 4);
@@ -94,4 +99,7 @@ public sealed record CombatSnapshot
     public long NextActionId { get; set; } = 1;
     public int PeakEffects { get; set; }
     public int RejectedEffects { get; set; }
+    public string MemoryAttackId { get; set; } = "";
+    public int MemoryStacks { get; set; }
+    public long MemoryUntilTick { get; set; }
 }

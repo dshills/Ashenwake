@@ -40,6 +40,8 @@ public sealed class CombatArchiveTests
             var recovered = CombatSaveStore.Load(path, Content);
             Assert.True(recovered.RecoveredBackup);
             Assert.Equal(initial, CombatSession.Restore(Content, recovered.State).StateHash);
+            File.WriteAllText(path, "{\"schemaVersion\":1,\"stateHash\":\"invalid\",\"state\":null}");
+            Assert.True(CombatSaveStore.Load(path, Content).RecoveredBackup);
             CombatSaveStore.Write(path, Content, session.Capture());
             Assert.Equal(initial, CombatSession.Restore(Content, CombatSaveStore.Read(File.ReadAllText(path + ".bak"), Content)).StateHash);
             var newer = JsonData.Read<CombatSave>(File.ReadAllText(path)) with { SchemaVersion = 99 };

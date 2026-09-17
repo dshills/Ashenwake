@@ -24,6 +24,8 @@ public partial class Sandbox
     private Camera3D _camera = null!;
     private Vector3 _cameraHome;
     private MeshInstance3D _targetMarker = null!;
+    private MeshInstance3D _manifestationMarker = null!;
+    private IReadOnlyList<string> _manifestations = [];
     private double _shake;
     private bool _reduceEffects, _reduceShake;
     private int _voiceIndex;
@@ -70,8 +72,10 @@ public partial class Sandbox
         Box(new(.16f, .1f, depth), new(width / 2, .01f, 0), new("78816f"));
         _targetMarker = Disc(.7f, new Color(1, .85f, .4f, .22f));
         _targetMarker.Visible = false;
+        _manifestationMarker = Disc(.85f, new Color(.9f, .6f, .25f, .4f)); _manifestationMarker.Visible = false;
         BuildAudio();
     }
+    public void SetManifestationPresentation(IReadOnlyList<string> ids) => _manifestations = ids;
 
     private void AddObstacle(int minX, int minZ, int maxX, int maxZ)
     {
@@ -89,15 +93,26 @@ public partial class Sandbox
         if (!_actors.TryGetValue(id, out var actor))
         {
             Color color = id == 1 ? _mint : allied ? new("af9cff") : role switch
-            { "ranged" or "support" => new("dca3e6"), "armored" => new("dbbd83"), _ => new("ed8870") };
+            {
+                "ranged" or "support" => new("dca3e6"),
+                "armored" => new("dbbd83"),
+                "anchor" => new("dba2f1"),
+                "bellsaint" or "bell" => new("e4bd78"),
+                "beast" => new("c96879"),
+                _ => new("ed8870")
+            };
             var root = new Node3D { Position = target }; AddChild(root);
             Mesh bodyMesh = role == "armored" ? new BoxMesh { Size = new(.85f, 1.5f, .85f) }
+                : role == "bellsaint" ? new CylinderMesh { TopRadius = .35f, BottomRadius = .8f, Height = 2.8f }
+                : role == "anchor" ? new CylinderMesh { TopRadius = .25f, BottomRadius = .5f, Height = 1.1f }
+                : role == "bell" ? new SphereMesh { Radius = .45f, Height = .9f }
+                : role == "beast" ? new BoxMesh { Size = new(1.2f, 1.8f, 1f) }
                 : new CapsuleMesh { Radius = Math.Max(.22f, radius * .001f), Height = allied && id != 1 ? 1f : 1.4f };
-            var body = new MeshInstance3D { Mesh = bodyMesh, Position = Vector3.Up * .75f, MaterialOverride = Material(color) };
+            var body = new MeshInstance3D { Mesh = bodyMesh, Position = Vector3.Up * (role == "bellsaint" ? 1.4f : .75f), MaterialOverride = Material(color) };
             root.AddChild(body);
             var label = new Label3D
             {
-                Position = Vector3.Up * 2.05f,
+                Position = Vector3.Up * (role == "bellsaint" ? 3.3f : 2.05f),
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                 FontSize = 64,
                 PixelSize = .012f,
@@ -135,6 +150,13 @@ public partial class Sandbox
             (float)(Math.Cos(Time.GetTicksMsec() * .103) * _shake * .08), 0));
         if (_actors.TryGetValue(1, out var player))
         {
+            bool burning = _manifestations.Contains("manifestation.burning_blood"), stone = _manifestations.Contains("manifestation.stone_memory");
+            var playerMaterial = (StandardMaterial3D)player.Body.MaterialOverride;
+            playerMaterial.AlbedoColor = burning ? new Color("ffc072") : stone ? new Color("c6c6bc") : _mint;
+            _manifestationMarker.Visible = (burning || stone) && player.Root.Visible;
+            _manifestationMarker.Position = player.Root.Position + Vector3.Up * .06f;
+            _manifestationMarker.Rotation = new(0, (float)(Time.GetTicksMsec() * .001), burning ? .12f : 0);
+            ((StandardMaterial3D)_manifestationMarker.MaterialOverride).AlbedoColor = new Color(playerMaterial.AlbedoColor, .3f);
             Vector2 screen = _camera.UnprojectPosition(player.Root.Position + Vector3.Up);
             foreach (var occluder in _occluders)
             {

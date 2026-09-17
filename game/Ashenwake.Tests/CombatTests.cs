@@ -29,8 +29,8 @@ public sealed class CombatTests
         Assert.Equal(6, CombatSession.Create(Content()).View.Skills.Count);
         var invalid = content with { Skills = content.Skills.Select(s => s.Id == "skill.cleave" ? s with { Cost = -1 } : s).ToArray() };
         Assert.Throws<InvalidDataException>(() => CombatSession.Create(JsonData.Write(invalid)));
-        Assert.Throws<InvalidDataException>(() => CombatSession.Create(Content().Replace("\"shape\":\"Melee\"", "\"shape\":\"ArbitraryScript\"")));
-        Assert.Throws<InvalidDataException>(() => CombatSession.Create(Content().Replace("\"contentVersion\": \"0.2.0\",", "\"contentVersion\": \"0.2.0\", \"unexpected\":true,")));
+        Assert.Throws<InvalidDataException>(() => CombatSession.Create(Content().Replace("\"shape\": \"Melee\"", "\"shape\": \"ArbitraryScript\"")));
+        Assert.Throws<InvalidDataException>(() => CombatSession.Create(Content().Replace("\"contentVersion\": \"0.3.0\",", "\"contentVersion\": \"0.3.0\", \"unexpected\":true,")));
     }
     [Fact]
     public void DamagePipelineFloorsStagesAndMitigatesBeforeBarrier()

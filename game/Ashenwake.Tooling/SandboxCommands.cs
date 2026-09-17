@@ -34,8 +34,9 @@ internal static class SandboxCommands
                 foreach (var item in recorder.Step(session, Commands(session.View)))
                     counts[item.Kind] = counts.GetValueOrDefault(item.Kind) + 1;
             AtomicFile.Write(Path.Combine(output, "session.awc"), JsonData.Write(recorder.Capture()));
-            CombatSaveStore.Write(Path.Combine(output, "save.json"), content, session.Capture());
-            var restored = CombatSession.Restore(content, CombatSaveStore.Load(Path.Combine(output, "save.json"), content).State);
+            var savePath = Path.Combine(output, "save." + session.ContentHash[..12] + ".json");
+            CombatSaveStore.Write(savePath, content, session.Capture());
+            var restored = CombatSession.Restore(content, CombatSaveStore.Load(savePath, content).State);
             var replay = CombatReplayRunner.Run(content, recorder.Capture());
             if (!replay.Success || restored.StateHash != session.StateHash) throw new InvalidDataException("Combat save/replay mismatch.");
             var report = new { kind = "CombatDemoPassed", session.Tick, session.StateHash, counts, replay };

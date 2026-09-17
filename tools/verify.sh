@@ -19,6 +19,10 @@ aw sandbox demo
 aw sandbox builds
 aw sandbox replay artifacts/combat/session.awc
 aw sandbox benchmark
+aw adventure validate
+aw adventure compile
+aw adventure demo
+aw adventure benchmark
 mkdir -p artifacts/client
 "$GODOT" --headless --path game/Ashenwake.Client --editor --import --log-file "$AW_ROOT/artifacts/client/import.log"
 "$GODOT" --headless --path game/Ashenwake.Client res://Main.tscn --quit-after 600 --log-file "$AW_ROOT/artifacts/client/smoke.log" -- --smoke --output="$AW_ROOT/artifacts/client"
@@ -37,8 +41,16 @@ demo = json.loads((root/'phase0/demo.save.json').read_text())
 assert client['stateHash'] == demo['stateHash'], 'Client/headless state differs'
 print('Client and headless demo have identical state hashes.')
 PY
-mkdir -p artifacts/sandbox-client
-"$GODOT" --headless --path game/Ashenwake.Client --quit-after 600 --log-file "$AW_ROOT/artifacts/sandbox-client/smoke.log" -- --sandbox-smoke --output="$AW_ROOT/artifacts/sandbox-client"
-if rg -n 'ERROR:|SCRIPT ERROR:' artifacts/sandbox-client/smoke.log; then exit 1; fi
-rg -q 'SandboxSmokePassed' artifacts/sandbox-client/smoke.log
-aw sandbox replay artifacts/sandbox-client/session.awc
+content_key=$(python3 -c 'import hashlib; print(hashlib.sha256(b"".join(open(p, "rb").read() for p in ("content/combat.json", "content/adventure.json"))).hexdigest()[:12])')
+sandbox_output="$AW_ROOT/artifacts/sandbox-client/$content_key"
+mkdir -p "$sandbox_output"
+"$GODOT" --headless --path game/Ashenwake.Client res://Sandbox.tscn --quit-after 600 --log-file "$sandbox_output/smoke.log" -- --sandbox-smoke --output="$sandbox_output"
+if rg -n 'ERROR:|SCRIPT ERROR:' "$sandbox_output/smoke.log"; then exit 1; fi
+rg -q 'SandboxSmokePassed' "$sandbox_output/smoke.log"
+aw sandbox replay "$sandbox_output/session.awc"
+adventure_output="$AW_ROOT/artifacts/adventure-client/$content_key"
+mkdir -p "$adventure_output"
+"$GODOT" --headless --path game/Ashenwake.Client --quit-after 3000 --log-file "$adventure_output/smoke.log" -- --adventure-smoke --output="$adventure_output"
+if rg -n 'ERROR:|SCRIPT ERROR:' "$adventure_output/smoke.log"; then exit 1; fi
+rg -q 'AdventureClientSmokePassed' "$adventure_output/smoke.log"
+aw adventure replay "$adventure_output/expedition.awx"

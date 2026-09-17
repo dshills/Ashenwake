@@ -11,5 +11,6 @@
     <ProjectReference Include="../Ashenwake.Core/Ashenwake.Core.csproj" />
     <None Include="../../content/phase0.json" Link="phase0.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/combat.json" Link="combat.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../content/adventure.json" Link="adventure.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

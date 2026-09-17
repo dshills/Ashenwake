@@ -12,6 +12,9 @@ static int Run(string[] args)
     {
         if (args.Length < 2) return Usage();
         if (args[0] == "sandbox") return Ashenwake.Tooling.SandboxCommands.Run(args);
+        if (args[0] == "adventure") return Ashenwake.Tooling.AdventureCommands.Run(args);
+        if (args[0] == "item") return Ashenwake.Tooling.InspectionCommands.Item(args);
+        if (args[0] == "content" && args[1] == "refs") return Ashenwake.Tooling.InspectionCommands.References(args);
         if (args[0] == "content" && args[1] is "validate" or "compile")
         {
             var source = args.Length > 2 ? args[2] : "content/phase0.json";

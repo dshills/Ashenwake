@@ -15,6 +15,14 @@ public partial class Sandbox : Node3D
     public CombatSession Session => _session;
     public string CombatContentJson => _contentJson;
     public event Action<IReadOnlyList<CombatEvent>>? CombatAdvanced;
+    public Func<CombatCommand[], IReadOnlyList<CombatEvent>>? AdvanceOverride { get; set; }
+    public Func<CombatSession>? SessionOverride { get; set; }
+    public Action? SaveOverride { get; set; }
+    public Action? LoadOverride { get; set; }
+    public Action? ReplayOverride { get; set; }
+    public bool AutomaticStep { get; set; }
+    private bool _campaignMode;
+    private readonly List<Control> _sandboxControls = [];
     private CombatSession _session = null!;
     private CombatContent _content = null!;
     private CombatView _view = null!;
@@ -33,6 +41,7 @@ public partial class Sandbox : Node3D
     private readonly Dictionary<AnatomySlot, OptionButton> _fragmentChoices = [];
     private OptionButton _mutation = null!;
     private Label _healthText = null!, _momentumText = null!, _stateText = null!, _log = null!, _metrics = null!, _comparison = null!;
+    private Label _subtitleLabel = null!;
     private ProgressBar _health = null!, _momentum = null!;
     private readonly List<Button> _skillButtons = [];
     private int _target, _moveX, _moveZ, _frames, _initialInventoryCount;
@@ -66,6 +75,14 @@ public partial class Sandbox : Node3D
     }
 
     public void AddOverlay(Control overlay) => _hud.AddChild(overlay);
+    public void EnableCampaign()
+    {
+        _campaignMode = true;
+        foreach (var control in _sandboxControls) control.Visible = false;
+        _stateText.Visible = false; _log.Visible = false; _metrics.Visible = false;
+        _subtitleLabel.Text = "GREYHAVEN  /  BASILICA OF LAST MERCY";
+    }
+    public void Notify(string text) => Message(text);
 
     public void SetSession(CombatSession session)
     {
@@ -85,7 +102,7 @@ public partial class Sandbox : Node3D
         try
         {
             var watch = Stopwatch.GetTimestamp();
-            if (!_smoke && !_clock.Paused)
+            if (!_smoke && !AutomaticStep && !_clock.Paused)
             {
                 var direction = Input.GetVector("aw_left", "aw_right", "aw_up", "aw_down", .28f);
                 int x = Math.Abs(direction.X) < .28f ? 0 : Math.Sign(direction.X);
@@ -93,7 +110,7 @@ public partial class Sandbox : Node3D
                 if (x != _moveX || z != _moveZ)
                 { Enqueue(new(CombatCommandKind.Move, X: x, Z: z)); _moveX = x; _moveZ = z; }
             }
-            _clock.Advance(_smoke ? FixedStepClock.SecondsPerTick * 5 : delta, StepCombat);
+            _clock.Advance(_smoke || AutomaticStep ? FixedStepClock.SecondsPerTick * 5 : delta, StepCombat);
             AnimatePresentation(delta, _clock.Alpha, _target); RefreshHud();
             _frames++; Sample(_frameCosts, Stopwatch.GetElapsedTime(watch).TotalMilliseconds);
             if (_frames > 10) Sample(_frameIntervals, delta * 1000);
@@ -166,7 +183,12 @@ public partial class Sandbox : Node3D
         if (_smoke) ScriptSmoke();
         var commands = _pending.ToArray(); _pending.Clear();
         long before = GC.GetAllocatedBytesForCurrentThread(); var timer = Stopwatch.GetTimestamp();
-        var events = _recorder.Step(_session, commands);
+        var events = AdvanceOverride is null ? _recorder.Step(_session, commands) : AdvanceOverride(commands);
+        if (SessionOverride is not null && !ReferenceEquals(_session, SessionOverride()))
+        {
+            _session = SessionOverride(); _recorder = new(_session); ClearPresentation();
+            _moveX = _moveZ = int.MinValue;
+        }
         _lastTickCost = Stopwatch.GetElapsedTime(timer).TotalMilliseconds;
         _lastTickBytes = GC.GetAllocatedBytesForCurrentThread() - before; Sample(_tickCosts, _lastTickCost);
         _view = _session.View;
@@ -201,13 +223,26 @@ public partial class Sandbox : Node3D
         {
             string role = actor.Role.Replace(" Elite", "", StringComparison.Ordinal);
             string name = actor.Faction == CombatFaction.Ally ? "Serath spirit" : role switch
-            { "Melee" => "Ash Ghoul", "Ranged" => "Cinder Acolyte", "Armored" => "Iron Penitent", _ => actor.Role };
+            {
+                "Melee" => "Ash Ghoul",
+                "Ranged" => "Cinder Acolyte",
+                "Armored" => "Iron Penitent",
+                "Support" => "Ritual Cantor",
+                "Rusher" => "Chain Hound",
+                "BellSaint" => "Bell Saint",
+                "Anchor" => "Ritual Anchor",
+                "Bell" => "Ringing Fragment",
+                "Beast" => "Unbound Creature",
+                _ => actor.Role
+            };
             if (actor.Role.EndsWith(" Elite", StringComparison.Ordinal)) name += " Elite";
             SynchronizeActor(actor.Id, name, role.ToLowerInvariant(), actor.Position.X, actor.Position.Z,
                 actor.Health, actor.MaxHealth, string.Join(" / ", actor.Statuses.Select(s => s.Id)),
-                actor.TelegraphTicks > 0, actor.Faction != CombatFaction.Enemy);
+                actor.TelegraphTicks > 0 && actor.TelegraphRadius == 0, actor.Faction != CombatFaction.Enemy);
         }
         BeginEffects();
+        foreach (var actor in _view.Actors.Where(a => a.Health > 0 && a.TelegraphTicks > 0 && a.TelegraphRadius > 0 && a.TelegraphPosition is not null))
+            PresentEffect($"t{actor.Id}", actor.TelegraphPosition!.Value.X, actor.TelegraphPosition.Value.Z, actor.TelegraphRadius * .001f, new Color(1, .18f, .12f, .35f));
         foreach (var projectile in _view.Projectiles)
             PresentEffect($"p{projectile.Id}", projectile.Position.X, projectile.Position.Z, .15f, new("ffc178"), true);
         foreach (var area in _view.Areas)
@@ -258,7 +293,7 @@ public partial class Sandbox : Node3D
         _hud = new Control { MouseFilter = Control.MouseFilterEnum.Ignore }; layer.AddChild(_hud);
         _hud.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         LabelAt("A S H E N W A K E", new(30, 22), 27, new("f0dfc4"));
-        LabelAt("VANGUARD  /  THE PROVING GROUND", new(32, 62), 13, new("9eb1c0"));
+        _subtitleLabel = LabelAt("VANGUARD  /  THE PROVING GROUND", new(32, 62), 13, new("9eb1c0"));
         _stateText = LabelAt("", new(32, 94), 15, _ember);
         _log = LabelAt("", new(32, 143), 12, new("d7d9d6"));
         _metrics = LabelAt("", new(921, 24), 12, new("afc4d1"));
@@ -275,7 +310,7 @@ public partial class Sandbox : Node3D
             button.AddThemeFontSizeOverride("font_size", 13); _skillButtons.Add(button);
         }
         LabelAt("WASD / LEFT STICK  Move   ·   CLICK / 1–6  Attack   ·   SPACE / B  Dodge   ·   Q  Potion   ·   E  Collect   ·   TAB  Target", new(32, 765), 12, new("abc0cb"));
-        ButtonAt("Reset [R]", new(985, 697), new(122, 54), () => Reset(_view.Preset));
+        _sandboxControls.Add(ButtonAt("Reset [R]", new(985, 697), new(122, 54), () => Reset(_view.Preset)));
         ButtonAt("Pause [P]", new(1118, 697), new(129, 54), () => _clock.Paused = !_clock.Paused);
         BuildInventory(); BuildSettings();
     }
@@ -331,10 +366,11 @@ public partial class Sandbox : Node3D
         column.AddChild(TextLabel("EQUIPMENT · select a roll to compare", 14));
         _inventoryRows = new VBoxContainer(); column.AddChild(_inventoryRows);
         _comparison = TextLabel("", 12); column.AddChild(_comparison);
-        column.AddChild(new HSeparator()); column.AddChild(TextLabel("ANATOMY · six compatible implant slots", 14));
+        var anatomy = new VBoxContainer(); column.AddChild(anatomy); _sandboxControls.Add(anatomy);
+        anatomy.AddChild(new HSeparator()); anatomy.AddChild(TextLabel("ANATOMY · six compatible implant slots", 14));
         foreach (var slot in Enum.GetValues<AnatomySlot>())
         {
-            column.AddChild(TextLabel(slot.ToString(), 12));
+            anatomy.AddChild(TextLabel(slot.ToString(), 12));
             var choice = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             choice.ItemSelected += index =>
             {
@@ -347,7 +383,7 @@ public partial class Sandbox : Node3D
                 }
                 else ApplyWhilePaused(new(CombatCommandKind.EquipFragment, ContentId: id));
             };
-            _fragmentChoices[slot] = choice; column.AddChild(choice);
+            _fragmentChoices[slot] = choice; anatomy.AddChild(choice);
         }
         column.AddChild(new HSeparator()); column.AddChild(TextLabel("SHIELD BREAKER MUTATION", 14));
         _mutation = new OptionButton(); _mutation.ItemSelected += index =>
@@ -355,8 +391,8 @@ public partial class Sandbox : Node3D
             if (!_rebuildingUi) ApplyWhilePaused(new(CombatCommandKind.SetMutation, SkillId: "skill.shield_breaker", ContentId: _mutation.GetItemMetadata((int)index).AsString()));
         };
         column.AddChild(_mutation);
-        AddButton(column, "Build: Ember chorus · fire / spirits / poison", () => SetBuild(true));
-        AddButton(column, "Build: Iron resolve · no fragments / defense", () => SetBuild(false));
+        _sandboxControls.Add(AddButton(column, "Build: Ember chorus · fire / spirits / poison", () => SetBuild(true)));
+        _sandboxControls.Add(AddButton(column, "Build: Iron resolve · no fragments / defense", () => SetBuild(false)));
         AddButton(column, "Close inventory", () => TogglePanel(_inventoryPanel));
     }
 
@@ -370,8 +406,9 @@ public partial class Sandbox : Node3D
         effects.Toggled += value => { _reduceEffects = value; SavePreferences(); }; column.AddChild(effects);
         var shake = new CheckButton { Text = "Reduced camera shake", ButtonPressed = _reduceShake };
         shake.Toggled += value => { _reduceShake = value; SavePreferences(); }; column.AddChild(shake);
-        column.AddChild(TextLabel("Choose an arena (starts a fresh session)", 13));
-        foreach (var preset in Presets) AddButton(column, preset.ToUpperInvariant(), () => Reset(preset));
+        var arenas = new VBoxContainer(); column.AddChild(arenas); _sandboxControls.Add(arenas);
+        arenas.AddChild(TextLabel("Choose an arena (starts a fresh session)", 13));
+        foreach (var preset in Presets) AddButton(arenas, preset.ToUpperInvariant(), () => Reset(preset));
         AddButton(column, "Save character [F5]", Save); AddButton(column, "Load character [F9]", Load);
         AddButton(column, "Verify & save replay [F6]", VerifyReplay);
         column.AddChild(TextLabel("KEY BINDINGS · select, then press a key", 14));
@@ -403,7 +440,10 @@ public partial class Sandbox : Node3D
         Message(fragments ? "Ember chorus: critical ignition → death spirits → summon poison." : "Iron resolve: fragment-free defense with No Ground Given.");
     }
     private void Reset(string preset)
-    { SetSession(CombatSession.Create(_contentJson, 42, preset)); Message($"Arena reset · {preset} · seed 42."); }
+    {
+        if (_campaignMode) { Message("Return to Greyhaven to begin another expedition."); return; }
+        SetSession(CombatSession.Create(_contentJson, 42, preset)); Message($"Arena reset · {preset} · seed 42.");
+    }
 
     private void RefreshHud()
     {
@@ -424,7 +464,7 @@ public partial class Sandbox : Node3D
         {
             var skill = _view.Skills[i];
             string state = skill.RemainingTicks > 0 ? $"{skill.RemainingTicks / 30d:F1}s" : skill.Cost > 0 ? $"{skill.Cost} Momentum" : $"+{skill.Generate} Momentum";
-            _skillButtons[i].Text = $"{_keys[$"skill{i + 1}"]}  {skill.Name}\n{state}";
+            _skillButtons[i].Text = $"{_keys[$"skill{i + 1}"].ToString().Replace("Key", "", StringComparison.Ordinal)}  {skill.Name}\n{state}";
             _skillButtons[i].Modulate = skill.RemainingTicks > 0 || skill.Cost > _view.Momentum ? new Color(.65f, .7f, .75f) : Colors.White;
             _skillButtons[i].TooltipText = $"{skill.Shape} · {skill.Mutation}";
         }
@@ -495,6 +535,8 @@ public partial class Sandbox : Node3D
             ["stop"] = Key.X,
             ["inventory"] = Key.I,
             ["settings"] = Key.Escape,
+            ["journey"] = Key.J,
+            ["interact"] = Key.F,
             ["pause"] = Key.P,
             ["step"] = Key.Period,
             ["reset"] = Key.R,
@@ -533,18 +575,21 @@ public partial class Sandbox : Node3D
 
     private void Save()
     {
+        if (SaveOverride is not null) { SaveOverride(); return; }
         var snapshot = _session.Capture(); string path = Path.Combine(_output, "sandbox.save.json");
         CombatSaveStore.Write(path, _contentJson, snapshot);
         Message("Saved inventory, mutations, fragments, enemies, effects and independent RNG streams.");
     }
     private void Load()
     {
+        if (LoadOverride is not null) { LoadOverride(); return; }
         var restored = CombatSaveStore.Load(Path.Combine(_output, "sandbox.save.json"), _contentJson);
         SetSession(CombatSession.Restore(_contentJson, restored.State));
         Message(restored.RecoveredBackup ? "Recovered the backup sandbox save." : "Sandbox save restored.");
     }
     private void VerifyReplay()
     {
+        if (ReplayOverride is not null) { ReplayOverride(); return; }
         var replay = _recorder.Capture(); var result = CombatReplayRunner.Run(_contentJson, replay);
         if (!result.Success) throw new InvalidDataException($"Sandbox replay diverged at tick {result.DivergentTick}: {result.Detail}");
         AtomicWrite(Path.Combine(_output, "session.awc"), JsonData.Write(replay));
