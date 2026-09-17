@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "contentVersion": "0.1.0",
+  "strings": {
+    "skill.ember_strike.name": "Ember Strike",
+    "enemy.ash_ghoul.name": "Ash Ghoul",
+    "item.ash_iron.name": "Ash Iron",
+    "fragment.vael.ember.name": "Ember of Vael",
+    "effect.burning.name": "Burning"
+  },
+  "abilities": [
+    { "id": "skill.ember_strike", "nameKey": "skill.ember_strike.name", "damage": 8, "range": 2400, "windupTicks": 3, "cooldownTicks": 18 }
+  ],
+  "enemies": [
+    { "id": "enemy.ash_ghoul", "nameKey": "enemy.ash_ghoul.name", "health": 30, "lootTableId": "loot.phase0" }
+  ],
+  "items": [
+    { "id": "item.ash_iron", "nameKey": "item.ash_iron.name", "minDamage": 4, "maxDamage": 6 }
+  ],
+  "fragments": [
+    { "id": "fragment.vael.ember", "nameKey": "fragment.vael.ember.name", "slot": "Arms", "trigger": "OnHit", "statusId": "effect.burning" }
+  ],
+  "statuses": [
+    { "id": "effect.burning", "nameKey": "effect.burning.name", "effect": "ApplyDamage", "damage": 4, "durationTicks": 30, "intervalTicks": 6 }
+  ],
+  "lootTables": [
+    { "id": "loot.phase0", "entries": [{ "itemId": "item.ash_iron", "weight": 1 }] }
+  ],
+  "room": {
+    "halfWidth": 8000,
+    "halfDepth": 6000,
+    "playerSpawn": { "x": -2000, "z": 0 },
+    "enemySpawn": { "x": 0, "z": 0 },
+    "obstacles": [
+      { "minX": 2400, "minZ": 1400, "maxX": 3900, "maxZ": 3000 },
+      { "minX": -4600, "minZ": -3500, "maxX": -3000, "maxZ": -1800 }
+    ]
+  },
+  "startingAbility": "skill.ember_strike",
+  "startingEnemy": "enemy.ash_ghoul",
+  "startingItem": "item.ash_iron",
+  "startingFragment": "fragment.vael.ember"
+}

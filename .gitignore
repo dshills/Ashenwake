@@ -1,0 +1,12 @@
+.tools/
+artifacts/
+**/bin/
+**/obj/
+**/.godot/
+**/TestResults/
+.DS_Store
+.idea/
+.vscode/
+*.user
+*.tmp
+game/Ashenwake.Client/content.bundle.json

@@ -1,0 +1,17 @@
+{
+  "focus": ["correctness", "persistence and replay", "simulation authority", "build and export reproducibility"],
+  "required": [
+    {
+      "id": "phase0-scope",
+      "text": "Evaluate the Phase 0 architecture spike described in docs/decisions/0001-phase0-foundation.md and docs/simulation_contract.md. Constructors and snapshot validation restrict this milestone to two actors, one OnHit fragment, and one Burning status. The architecture requires profiling before optimization infrastructure; distinguish future crowd-scaling suggestions from actual defects in this scope. Still report real unbounded behavior, performance regressions, validation gaps, and deterministic/persistence errors with a concrete scenario. Verify file paths."
+    },
+    {
+      "id": "authority",
+      "text": "Core must remain independent of Godot. Client presentation, input mapping, and profiling must not independently decide damage, collision, loot, or authoritative time."
+    },
+    {
+      "id": "recovery",
+      "text": "Save/replay inputs must preserve valid logical state and reject incompatible content/rules without silently overwriting newer saves. A packaged smoke check must establish actual success rather than relying only on the engine process exit code."
+    }
+  ]
+}

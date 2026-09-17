@@ -1,0 +1,397 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ashenwake.local/schemas/phase0.json",
+  "title": "Ashenwake Phase 0 content",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "contentVersion",
+    "strings",
+    "abilities",
+    "enemies",
+    "items",
+    "fragments",
+    "statuses",
+    "lootTables",
+    "room",
+    "startingAbility",
+    "startingEnemy",
+    "startingItem",
+    "startingFragment"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "contentVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "strings": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "abilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "nameKey",
+          "damage",
+          "range",
+          "windupTicks",
+          "cooldownTicks"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$"
+          },
+          "nameKey": {
+            "type": "string",
+            "minLength": 1
+          },
+          "damage": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000
+          },
+          "range": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20000
+          },
+          "windupTicks": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 300
+          },
+          "cooldownTicks": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3000
+          }
+        }
+      }
+    },
+    "enemies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "nameKey",
+          "health",
+          "lootTableId"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$"
+          },
+          "nameKey": {
+            "type": "string",
+            "minLength": 1
+          },
+          "health": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000
+          },
+          "lootTableId": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "nameKey",
+          "minDamage",
+          "maxDamage"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$"
+          },
+          "nameKey": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minDamage": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "maxDamage": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          }
+        }
+      }
+    },
+    "fragments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "nameKey",
+          "slot",
+          "trigger",
+          "statusId"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$"
+          },
+          "nameKey": {
+            "type": "string",
+            "minLength": 1
+          },
+          "slot": {
+            "type": "string",
+            "minLength": 1,
+            "enum": [
+              "Arms"
+            ]
+          },
+          "trigger": {
+            "type": "string",
+            "minLength": 1,
+            "enum": [
+              "OnHit"
+            ]
+          },
+          "statusId": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "statuses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "nameKey",
+          "effect",
+          "damage",
+          "durationTicks",
+          "intervalTicks"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$"
+          },
+          "nameKey": {
+            "type": "string",
+            "minLength": 1
+          },
+          "effect": {
+            "type": "string",
+            "minLength": 1,
+            "enum": [
+              "ApplyDamage"
+            ]
+          },
+          "damage": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000
+          },
+          "durationTicks": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3000
+          },
+          "intervalTicks": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 300
+          }
+        }
+      }
+    },
+    "lootTables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "entries"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "itemId",
+                "weight"
+              ],
+              "properties": {
+                "itemId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "weight": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000000
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "room": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "halfWidth",
+        "halfDepth",
+        "playerSpawn",
+        "enemySpawn",
+        "obstacles"
+      ],
+      "properties": {
+        "halfWidth": {
+          "type": "integer",
+          "minimum": 3000,
+          "maximum": 100000
+        },
+        "halfDepth": {
+          "type": "integer",
+          "minimum": 3000,
+          "maximum": 100000
+        },
+        "playerSpawn": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "x",
+            "z"
+          ],
+          "properties": {
+            "x": {
+              "type": "integer",
+              "minimum": -100000,
+              "maximum": 100000
+            },
+            "z": {
+              "type": "integer",
+              "minimum": -100000,
+              "maximum": 100000
+            }
+          }
+        },
+        "enemySpawn": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "x",
+            "z"
+          ],
+          "properties": {
+            "x": {
+              "type": "integer",
+              "minimum": -100000,
+              "maximum": 100000
+            },
+            "z": {
+              "type": "integer",
+              "minimum": -100000,
+              "maximum": 100000
+            }
+          }
+        },
+        "obstacles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "minX",
+              "minZ",
+              "maxX",
+              "maxZ"
+            ],
+            "properties": {
+              "minX": {
+                "type": "integer",
+                "minimum": -100000,
+                "maximum": 100000
+              },
+              "minZ": {
+                "type": "integer",
+                "minimum": -100000,
+                "maximum": 100000
+              },
+              "maxX": {
+                "type": "integer",
+                "minimum": -100000,
+                "maximum": 100000
+              },
+              "maxZ": {
+                "type": "integer",
+                "minimum": -100000,
+                "maximum": 100000
+              }
+            }
+          }
+        }
+      }
+    },
+    "startingAbility": {
+      "type": "string",
+      "minLength": 1
+    },
+    "startingEnemy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "startingItem": {
+      "type": "string",
+      "minLength": 1
+    },
+    "startingFragment": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

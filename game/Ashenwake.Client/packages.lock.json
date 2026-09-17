@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0": {
+      "Godot.SourceGenerators": {
+        "type": "Direct",
+        "requested": "[4.6.2, )",
+        "resolved": "4.6.2",
+        "contentHash": "eCfjAN9NlmFesm1ra+6u0Bg59WnRrBpgmn0R+VXx8ORIkXhOcDnpFEEedUN0bLtIfLumPyryVDWGs3U9zUUE4g=="
+      },
+      "GodotSharp": {
+        "type": "Direct",
+        "requested": "[4.6.2, )",
+        "resolved": "4.6.2",
+        "contentHash": "f4imOkuE9lvZ5rQjvMSt5b0My26jsKpCzrcX7zpP6Bm4jLONKv85ZWwOtCscTMEcvQiZqeyPskOTNl+L6/VQ0Q=="
+      },
+      "GodotSharpEditor": {
+        "type": "Direct",
+        "requested": "[4.6.2, )",
+        "resolved": "4.6.2",
+        "contentHash": "vsTBo+Nooqb2i5XmeTIpCpAxSnxaYne7pO6ar9EW2W7RhHHhTINfZSGh8ed8VP8ZUKLtw1WYrobvp9/5tJLEDA==",
+        "dependencies": {
+          "GodotSharp": "4.6.2"
+        }
+      },
+      "ashenwake.core": {
+        "type": "Project"
+      }
+    }
+  }
+}

@@ -1,0 +1,47 @@
+[
+  {
+    "id": "microsoft.aspnetcore.app.runtime.linux-x64",
+    "version": "8.0.31",
+    "contentHash": "dJzphqP88n9+LwzDYLKU5x3JdzgPIu47g4WV5eGTd/H6Zfc9mlb1/58azGjUrTX33+SLFtCzGm0fmd+KnliP1g=="
+  },
+  {
+    "id": "microsoft.aspnetcore.app.runtime.osx-arm64",
+    "version": "8.0.31",
+    "contentHash": "ekZeYPRF4trWaZkh2RgJeu4UC1OcV+Y9qToL8vNi++dzuGKdM+QdkiKMt02AU9mmTtfKAKyDKJWQXyf7vHNSLA=="
+  },
+  {
+    "id": "microsoft.aspnetcore.app.runtime.osx-x64",
+    "version": "8.0.31",
+    "contentHash": "T+uwK5AsaYQjQiE22L01GGDQFFxYlfDh1XQjBRRWH71D51ysCv66f2FB/wtQfNXFd4H0eH3x3AmXSiuXh2PVjw=="
+  },
+  {
+    "id": "microsoft.netcore.app.host.linux-x64",
+    "version": "8.0.31",
+    "contentHash": "P9NgqkMqQCETcC7kUUgSWK41ikMTC6fzdn9W3H1QpO83hVP1S+yjoEsoKsZMl5+LmoDlZQV1iMTyAE4Frq9y6Q=="
+  },
+  {
+    "id": "microsoft.netcore.app.host.osx-arm64",
+    "version": "8.0.31",
+    "contentHash": "VhloWsGR8/m6FY8IxyD7cSnuWjrGijEGQNojZsJN0a3r1aipOmIvLf0ricFdo/Wo3pBTcQPu3f6NHur9fZcG9A=="
+  },
+  {
+    "id": "microsoft.netcore.app.host.osx-x64",
+    "version": "8.0.31",
+    "contentHash": "VAld7CRMZ3UZ0q5ujzUVaUR9c8lE7zRlriEkAeNlhZWzxSvL2hPDcBv4C1CzUxCqT8j9A9PljvfLuNu8jBW4Zw=="
+  },
+  {
+    "id": "microsoft.netcore.app.runtime.linux-x64",
+    "version": "8.0.31",
+    "contentHash": "x8+6KJjRkEDmhWeBzEA7wRLS0z4Bn4uvsTs8XZ6EcLWCbpHe2ezqc8yj28rLk3AbTaoAIaYeB356x6k9F3Si8g=="
+  },
+  {
+    "id": "microsoft.netcore.app.runtime.osx-arm64",
+    "version": "8.0.31",
+    "contentHash": "CgZTEIxVCMSSPkUaO2UGOPg+MOsFuMQKb4UGLLQ1tfOm8HTWUGAP5jLWMW6HfHaHbHnPJimH9b8q6fOHsVuLPw=="
+  },
+  {
+    "id": "microsoft.netcore.app.runtime.osx-x64",
+    "version": "8.0.31",
+    "contentHash": "KhnLtIs0PHDbkxz4WZZCaU8oIqDazGCwMGerZ4vyAXCnGVlbClVRGVFiXWEaeirtn2Zzqb67azRaOcchkkxkfA=="
+  }
+]
