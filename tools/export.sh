@@ -73,6 +73,12 @@ mkdir -p "$spine_output"
 python3 tools/check-godot-log.py "$spine_output/smoke.log"
 rg -q 'SpineClientSmokePassed' "$spine_output/smoke.log"
 
+hollow_output="$package_output/hollow-client"
+mkdir -p "$hollow_output"
+"$binary" --headless --quit-after 7200 --log-file "$hollow_output/smoke.log" -- --hollow-smoke --output="$hollow_output"
+python3 tools/check-godot-log.py "$hollow_output/smoke.log"
+rg -q 'HollowClientSmokePassed' "$hollow_output/smoke.log"
+
 service_output="$package_output/service-client"
 mkdir -p "$service_output"
 "$binary" --headless --quit-after 600 --log-file "$service_output/smoke.log" -- --service-interaction-smoke --output="$service_output"

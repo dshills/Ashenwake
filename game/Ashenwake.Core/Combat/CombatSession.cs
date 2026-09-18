@@ -97,7 +97,7 @@ public sealed partial class CombatSession
     public CombatView View => new(Tick, _state.Preset,
         _state.Actors.OrderBy(a => a.Id).Select(a => new CombatActorView(a.Id, a.Position, a.Health, a.MaxHealth, a.Faction, a.Elite ? a.Role + " Elite" : a.Role,
             a.Pending is null ? 0 : (int)Math.Max(0, a.Pending.ResolveTick - Tick), a.State, a.Barrier,
-            a.Statuses.Select(s => new CombatStatusView(s.Id, s.SourceId, Math.Max(0, s.ExpiresTick - Tick), s.Stacks)).ToArray(), a.DefinitionId, a.Pending?.Target, TelegraphRadius(a), ActorVisible(a), (_state.ConsumedCorpseIds.Contains(a.Id) || !LeavesCorpse(a)), _state.Campaign?.Actors.GetValueOrDefault(a.Id)?.Modifiers.ToArray() ?? [], a.Health > 0 && CampaignDefenseBonus(a) > 0)).ToArray(),
+            a.Statuses.Select(s => new CombatStatusView(s.Id, s.SourceId, Math.Max(0, s.ExpiresTick - Tick), s.Stacks)).ToArray(), a.DefinitionId, a.Pending?.Target, TelegraphRadius(a), ActorVisible(a), (_state.ConsumedCorpseIds.Contains(a.Id) || !LeavesCorpse(a)), _state.Campaign?.Actors.GetValueOrDefault(a.Id)?.Modifiers.ToArray() ?? [], a.Health > 0 && CampaignDefenseBonus(a) > 0, a.Health > 0 && CampaignShielded(a))).ToArray(),
         _state.Projectiles.Select(p => new CombatProjectileView(p.Id, p.Position, p.Target, p.SkillId, p.OwnerId)).ToArray(),
         _state.Areas.Select(a => new CombatAreaView(a.Id, a.Position, a.Radius, a.SkillId, Math.Max(0, a.ExpiresTick - Tick), a.OwnerId)).ToArray(),
         _state.Loot.ToArray(), _state.Inventory.ToArray(),

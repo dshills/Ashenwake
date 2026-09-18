@@ -182,6 +182,67 @@ public sealed class CampaignCombatTests
         Assert.False(session.View.Actors.Single(a => a.Id == 1).Guarded);
     }
     [Fact]
+    public void BreachShieldProjectionMatchesDamageAcrossChannelDeathAndExcludesMirrorbornCopies()
+    {
+        var content = Content(); var state = content.CreateEncounter("campaign.breach_heart").Capture();
+        var boss = state.Actors.Single(a => a.DefinitionId == "boss.breach_heart");
+        state.Actors[0].InvulnerableUntil = 1000;
+        state.Campaign!.Actors[boss.Id].NextEliteTick = 0;
+        foreach (var actor in state.Actors.Where(a => a.DefinitionId == "enemy.seal_channel")) actor.RecoveryUntil = 1000;
+        var session = CombatSession.Restore(content.CombatJson, state);
+        var copies = new List<int>();
+        for (int tick = 0; tick < 80 && copies.Count == 0; tick++)
+            copies.AddRange(session.Step().Where(e => e.Kind == "EliteCopyCreated").Select(e => e.TargetId));
+        Assert.NotEmpty(copies);
+        state = session.Capture();
+        foreach (var actor in state.Actors.Where(a => a.Faction == CombatFaction.Enemy))
+        { actor.RecoveryUntil = state.Tick + 100; actor.Pending = null; }
+        var channel = state.Actors.First(a => a.DefinitionId == "enemy.seal_channel");
+        channel.Health = 1;
+        // The same real damage pipeline hits a protected boss, an unprotected same-definition
+        // Mirrorborn copy, and a channel whose death must immediately break the boss's protection.
+        foreach (int id in new[] { boss.Id, copies[0], channel.Id })
+            state.Actors.Single(a => a.Id == id).Statuses.Add(new()
+            {
+                Id = "Burning",
+                OwnerId = 1,
+                SourceId = 1,
+                ActionId = state.NextActionId++,
+                NextTick = state.Tick,
+                ExpiresTick = state.Tick + 90
+            });
+        session = CombatSession.Restore(content.CombatJson, state);
+        string hash = session.StateHash;
+        Assert.Equal(3, session.View.Actors.Count(a => a.DefinitionId == "enemy.seal_channel" && a.Health > 0));
+        Assert.True(session.View.Actors.Single(a => a.Id == boss.Id).Shielded);
+        Assert.All(copies, id =>
+        {
+            var copy = session.View.Actors.Single(a => a.Id == id);
+            Assert.Equal(boss.DefinitionId, copy.DefinitionId); Assert.False(copy.Shielded);
+        });
+        Assert.Equal(hash, session.StateHash);
+        var restored = CombatSession.Restore(content.CombatJson, session.Capture());
+        Assert.Equal(hash, restored.StateHash);
+        Assert.True(restored.View.Actors.Single(a => a.Id == boss.Id).Shielded);
+        Assert.Equal(hash, restored.StateHash);
+        var first = session.Step();
+        Assert.Equal(JsonData.Hash(first), JsonData.Hash(restored.Step()));
+        Assert.Equal(0, first.Single(e => e.Kind == "DamageApplied" && e.TargetId == boss.Id && e.ContentId == "Burning").Amount);
+        Assert.True(first.Single(e => e.Kind == "DamageApplied" && e.TargetId == copies[0] && e.ContentId == "Burning").Amount > 0);
+        Assert.Equal(0, session.View.Actors.Single(a => a.Id == channel.Id).Health);
+        Assert.Equal(2, session.View.Actors.Count(a => a.DefinitionId == "enemy.seal_channel" && a.Health > 0));
+        Assert.False(session.View.Actors.Single(a => a.Id == boss.Id).Shielded);
+        restored = CombatSession.Restore(content.CombatJson, session.Capture());
+        var subsequent = new List<CombatEvent>();
+        for (int tick = 0; tick < 11; tick++)
+        {
+            var events = session.Step(); subsequent.AddRange(events);
+            Assert.Equal(JsonData.Hash(events), JsonData.Hash(restored.Step()));
+        }
+        Assert.Contains(subsequent, e => e.Kind == "DamageApplied" && e.TargetId == boss.Id && e.ContentId == "Burning" && e.Amount > 0);
+        Assert.Equal(session.StateHash, restored.StateHash);
+    }
+    [Fact]
     public void FurnaceCoreWindowChangesRealDamageAndStormOverchargeExpires()
     {
         var content = Content(); var state = content.CreateEncounter("campaign.furnace_spindle").Capture();

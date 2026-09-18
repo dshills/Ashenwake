@@ -19,7 +19,7 @@ Static geometry is merged by palette when entering a room. Tall scenery stays be
 
 Left-click ground to walk, left-click an enemy to attack, Shift-click to attack in place, right-click for the secondary skill, WASD/left stick to take over and X to stop. The mint destination ring remains above the new floors. Interact and loot remain F and E by default.
 
-Shattered Spine endgame arenas reuse the causeway setting, floor and ambience. The animated covenant appears only in its authored campaign boss encounter. This pass covers solo procedural presentation. Cooperative environments and Act V retain their earlier treatment; these assets do not establish final textured art or measured performance across hardware.
+Shattered Spine endgame arenas reuse the causeway setting, floor and ambience. The animated covenant appears only in its authored campaign boss encounter. This pass covers solo procedural presentation. [Act V’s Hollow Night](hollow_night.md) now completes the regional pass. Cooperative environments retain their earlier treatment; these assets do not establish final textured art or measured performance across hardware.
 
 ## Inspection run
 

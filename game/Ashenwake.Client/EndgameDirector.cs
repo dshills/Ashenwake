@@ -329,6 +329,7 @@ public partial class EndgameDirector : Node3D
                 "act.verdant_maw" => "verdant_ruins",
                 "act.cinder_reach" => "cinder_fields",
                 "act.shattered_spine" => "spine_causeway",
+                "act.hollow_night" => "hollow_rooms",
                 _ => "default"
             };
         _sandbox.PresentAuthoredRoom(_session.Room, context, style);

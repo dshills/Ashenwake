@@ -25,6 +25,10 @@ public static class EnvironmentGround
         "campaign.covenant_warden" => "spine_warden",
         "exploration.first_oath" => "spine_memory",
         "clear" when act == 4 => "spine_causeway",
+        "campaign.repeating_rooms" => "hollow_rooms",
+        "campaign.identity_memory" => "hollow_memory",
+        "campaign.breach_heart" => "hollow_breach",
+        "clear" when act == 5 => "hollow_rooms",
         _ => "default"
     };
 
@@ -37,6 +41,8 @@ public static class EnvironmentGround
         { CinderGround.Build(parent, room, style); return; }
         if (SpineAmbience.CueForStyle(style).Length != 0)
         { SpineGround.Build(parent, room, style); return; }
+        if (HollowAmbience.CueForStyle(style).Length != 0)
+        { HollowGround.Build(parent, room, style); return; }
         var b = new EnvironmentBuilder(parent, "AuthoredGround");
         float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
         bool hub = style == "greyhaven", road = style == "road", sanctum = style == "sanctum";

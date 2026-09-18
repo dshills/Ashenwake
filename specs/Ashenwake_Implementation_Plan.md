@@ -4,7 +4,7 @@
 
 **Planning baseline:** September 17, 2026
 
-**Current follow-through:** Opening-slice usability, articulated characters, combat feedback, visible equipment and solo/co-op mouse navigation are implemented. Regional procedural art now covers Greyhaven and Acts I–IV, including the [Shattered Spine](../docs/shattered_spine.md). Act V environment treatment and independent player acceptance remain ahead. See [opening playtest verification](../docs/opening_playtest_verification.md) and [mouse movement verification](../docs/mouse_movement_verification.md).
+**Current follow-through:** Opening-slice usability, articulated characters, combat feedback, visible equipment and solo/co-op mouse navigation are implemented. Regional procedural art now covers Greyhaven and all five campaign acts, including [The Hollow Night](../docs/hollow_night.md). Final textures, cooperative environment treatment and independent player acceptance remain ahead. See [opening playtest verification](../docs/opening_playtest_verification.md) and [mouse movement verification](../docs/mouse_movement_verification.md).
 
 **Sources:** [Game Design Foundation](Ashenwake_Game_Design.md) and [Technical Architecture](Ashenwake_Technical_Architecture.md)
 

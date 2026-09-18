@@ -45,6 +45,7 @@ public partial class Sandbox
         VerdantAmbience.Prewarm();
         CinderAmbience.Prewarm();
         SpineAmbience.Prewarm();
+        HollowAmbience.Prewarm();
         _worldEnvironment = new WorldEnvironment
         {
             Environment = new Godot.Environment
@@ -236,6 +237,39 @@ public partial class Sandbox
                 _effects[rimId] = rim; AddChild(rim);
             }
             rim.Position = PositionOf(x, z) + Vector3.Up * .075f;
+            string echo = contentId switch
+            {
+                "rule.causalechoes" or "campaign.causalecho" => "ECHO",
+                "campaign.breach_echo" => "FIRST",
+                "campaign.returning_echo" => "RETURN",
+                _ => ""
+            };
+            if (echo.Length != 0)
+            {
+                // The two boss echoes can share a center. Opposing labels distinguish their
+                // authoritative deadlines; their parent rim owns their cache and lifetime.
+                string echoLabelName = "EchoWarning_" + id;
+                var label = rim.GetNodeOrNull<Label3D>(echoLabelName);
+                if (label is null)
+                {
+                    label = new Label3D
+                    {
+                        Name = echoLabelName,
+                        FontSize = 44,
+                        PixelSize = .011f,
+                        OutlineSize = 10,
+                        Modulate = new("fff3d4"),
+                        OutlineModulate = new("141521"),
+                        Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                        NoDepthTest = true
+                    };
+                    rim.AddChild(label);
+                }
+                double seconds = Math.Ceiling(ticks * Ashenwake.Core.Simulation.FixedStepClock.SecondsPerTick * 10) / 10;
+                label.Text = echo + "\n" + seconds.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "s";
+                float side = echo == "FIRST" ? -1 : echo == "RETURN" ? 1 : 0;
+                label.Position = new(side * width * .65f, echo == "RETURN" ? .85f : .38f, 0);
+            }
             return;
         }
         PresentEffect($"warning{id}-end", endX, endZ, width, color);

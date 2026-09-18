@@ -9,7 +9,7 @@ public enum CombatFaction { Player, Enemy, Ally }
 public sealed record CombatCommand(CombatCommandKind Kind, int ActorId = 1, string SkillId = "", int TargetId = 0, int X = 0, int Z = 0, string ContentId = "", long ItemId = 0);
 public sealed record CombatEvent(long Tick, string Kind, int ActorId = 0, int TargetId = 0, int Amount = 0, string ContentId = "", long ActionId = 0, int Depth = 0);
 public sealed record CombatStatusView(string Id, int SourceId, long RemainingTicks, int Stacks);
-public sealed record CombatActorView(int Id, Position Position, int Health, int MaxHealth, CombatFaction Faction, string Role, int TelegraphTicks, string State, int Barrier, IReadOnlyList<CombatStatusView> Statuses, string DefinitionId = "", Position? TelegraphPosition = null, int TelegraphRadius = 0, bool Visible = true, bool CorpseConsumed = false, IReadOnlyList<string>? EliteModifiers = null, bool Guarded = false);
+public sealed record CombatActorView(int Id, Position Position, int Health, int MaxHealth, CombatFaction Faction, string Role, int TelegraphTicks, string State, int Barrier, IReadOnlyList<CombatStatusView> Statuses, string DefinitionId = "", Position? TelegraphPosition = null, int TelegraphRadius = 0, bool Visible = true, bool CorpseConsumed = false, IReadOnlyList<string>? EliteModifiers = null, bool Guarded = false, bool Shielded = false);
 public sealed record CombatProjectileView(long Id, Position Position, Position Target, string ContentId, int OwnerId);
 public sealed record CombatAreaView(long Id, Position Position, int Radius, string ContentId, long RemainingTicks, int OwnerId);
 public sealed record CombatItem(long Id, string DefinitionId, string Name, string Slot, string Rarity, int Damage, int Armor, int CriticalBasisPoints);
