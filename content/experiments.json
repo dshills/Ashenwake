@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "admission": "Available",
+  "rules": {
+    "schemaVersion": 1,
+    "version": "echoes.1",
+    "id": "experiment.borrowed_memory",
+    "name": "Echoes: Borrowed Memory",
+    "echoSkillId": "skill.echo_storm",
+    "bindRadius": 1400,
+    "echoLifetimeTicks": 450,
+    "warningTicks": 45,
+    "hazardTicks": 60,
+    "hazardRadius": 1600,
+    "hazardDamage": 18,
+    "cosmeticId": "cosmetic.borrowed_memory"
+  }
+}

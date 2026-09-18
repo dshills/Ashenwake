@@ -32,6 +32,7 @@ else
     aw production compile
     aw campaign compile
     aw endgame compile
+    aw experiment compile
     dotnet build game/Ashenwake.Client --no-restore --disable-build-servers -m:1
     if [[ "$(uname -s)" == Darwin ]]; then
     "$GODOT" --headless --path game/Ashenwake.Client --export-debug macOS "$coop_package_output/Ashenwake.zip" --log-file "$coop_package_output/export.log"

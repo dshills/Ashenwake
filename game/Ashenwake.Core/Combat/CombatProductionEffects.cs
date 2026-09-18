@@ -31,12 +31,14 @@ public sealed partial class CombatSession
         }
         if (command.Kind == CombatCommandKind.CastEcho)
         {
+            var borrowed = BorrowedEchoAvailable ? _content.Skills.Single(s => s.Id == _state.Experiment!.Rules.EchoSkillId) : null;
             var target = _state.Actors.FirstOrDefault(a => a.Id == command.TargetId && a.Faction == CombatFaction.Enemy && a.Health > 0);
-            if (_state.CapturedSkillId != "skill.echo_storm" || _state.CapturedUntil <= Tick || !ActiveFragments().Any(f => f.Effect == "CaptureEcho") || target is null || !ActorVisible(target) || Position.DistanceSquared(Player.Position, target.Position) > 10000L * 10000 || !_spatial.HasLineOfSight(Player.Position, target.Position) || Player.Pending is not null || Player.RecoveryUntil > Tick)
+            int range = borrowed?.Range ?? 10000;
+            if (_state.CapturedSkillId != "skill.echo_storm" || _state.CapturedUntil <= Tick || (!ActiveFragments().Any(f => f.Effect == "CaptureEcho") && borrowed is null) || target is null || !ActorVisible(target) || Position.DistanceSquared(Player.Position, target.Position) > (long)range * range || !_spatial.HasLineOfSight(Player.Position, target.Position) || Player.Pending is not null || Player.RecoveryUntil > Tick)
             { Reject(command, "captured_echo_unavailable"); return true; }
             long action = _state.NextActionId++; _state.CapturedSkillId = "";
-            foreach (var enemy in Hostiles(Player, target.Position, 2500)) Enqueue(new(1, 1, enemy.Id, 42, DamageFamily.Storm, "skill.echo_storm", action, 1, Status: "Shocked"));
-            Player.RecoveryUntil = Tick + 15; Emit("CapturedAbilityUsed", 1, target.Id, content: "skill.echo_storm", action: action); return true;
+            foreach (var enemy in Hostiles(Player, target.Position, borrowed?.Radius ?? 2500)) Enqueue(new(1, 1, enemy.Id, borrowed?.Damage ?? 42, borrowed?.Family ?? DamageFamily.Storm, "skill.echo_storm", action, 1, Status: borrowed?.Status ?? "Shocked"));
+            Player.RecoveryUntil = Tick + (borrowed is null ? 15 : borrowed.Windup + borrowed.Recovery); Emit("CapturedAbilityUsed", 1, target.Id, content: "skill.echo_storm", action: action); return true;
         }
         if (command.Kind == CombatCommandKind.ReleaseCharge)
         {
@@ -113,6 +115,7 @@ public sealed partial class CombatSession
     private void OnProductionKill(CombatActor target, Hit hit)
     {
         if (target.Faction != CombatFaction.Enemy || hit.OwnerId != 1) return;
+        OfferBorrowedMemory(target);
         if (Discipline == "Gravecaller") _state.Momentum = Math.Min(100, _state.Momentum + GenerationAmount(25));
         if (target.Elite && ActiveFragments().Any(f => f.Effect == "CaptureEcho"))
         {

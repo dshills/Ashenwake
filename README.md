@@ -1,6 +1,6 @@
 # Ashenwake
 
-An isometric action RPG about building power from the remains of dead gods. Phases 0–6 provide the offline five-act greybox campaign, permanent builds, Fractures, God Hunts, and release engineering. Phase 7 adds an optional authoritative two-player slice with a Godot client, a C# combat server, and a Go/PostgreSQL control service. Automated evidence and production acceptance boundaries are recorded in the phase verification documents.
+An isometric action RPG about building power from the remains of dead gods. The implementation includes an offline five-act greybox campaign, permanent builds, Fractures, God Hunts, release engineering, an optional authoritative two-player slice, and the permanent Borrowed Memory experiment. Phase verification documents record automated evidence, review status, and the remaining production acceptance gates.
 
 Choose Vanguard, Veilwalker, Arcanist, Gravecaller, or Warden, each with six skills and its own resource loop. Travel through five regions, rescue Greyhaven's specialists, choose consequential alliances, confront five bosses, and investigate three optional exploration encounters. Equipment, anatomy, mastery, Manifestations, crafting, and rewards persist. Godot renders an engine-independent C# simulation.
 
@@ -39,6 +39,7 @@ Act II contains an ordered tracking hunt, Act III a timed Resonance Storm, and A
 | Cycle target / camera zoom | Tab / mouse wheel |
 | Interact / journey map, journal and services | F / J |
 | Fractures, God Hunts, expedition progress | B |
+| Echoes board / bind an offered nearby memory | H |
 | Reveal all ground loot | Hold Alt |
 | Consume a corpse / use captured elite echo | V / G |
 
@@ -133,3 +134,9 @@ Focus loss or controller disconnect pauses and clears held inputs; reconnection 
 `bash tools/coop-verify.sh` verifies shared combat and private PostgreSQL persistence. `bash tools/coop-network-verify.sh` runs two authenticated peers with software input impairments, reconnect and dedicated-server restart, checking durable rewards and the replay chain. `bash tools/coop-package-verify.sh` exports the actual client and verifies its offline, release-check and two-player entry routes. The service scripts refuse occupied test ports and clean up only their own processes.
 
 Launch the exported application with `-- --coop` for the connection screen. The prototype uses one-time allocation tickets from the local control service; it does not accept offline characters. See [co-op setup](docs/coop_network.md), [online services](docs/online_services.md), [combat contract](docs/coop_combat.md), and [Phase 7 verification](docs/phase7_verification.md). No public service is deployed.
+
+## Echoes: Borrowed Memory
+
+After unlocking Fractures, press **H** at Greyhaven to open the optional Echoes board. Entering with an owned Sigil creates a separate Echoes character and preserves the original. Keep your Mind for an ordinary run, or suppress its effect to bind one defeated elite's memory and borrow Echo Storm. Its cast warns of a hostile Storm field at your feet. Complete the Fracture after using it to earn a cosmetic record. The board supports save, continue, and safe return to the original character.
+
+`bash tools/experiment-verify.sh` validates the content, completes the CLI and Godot routes, and checks completion, Keep Mind and Release replays. `aw experiment import-endgame <source> <new-destination>` explicitly imports a validated hub character without overwriting it. `tools/export.sh` includes the actual packaged Echoes smoke. See [experiment design](docs/permanent_experiment_design.md), [archive contract](docs/permanent_experiment_contract.md), and [Phase 8 verification](docs/phase8_verification.md).

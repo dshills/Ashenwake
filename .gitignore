@@ -26,3 +26,6 @@ game/Ashenwake.Client/adventure-phase4.json
 game/Ashenwake.Client/progression-phase4.json
 game/Ashenwake.Client/campaign-phase4.json
 game/Ashenwake.Client/phase4-migration-manifest.json
+game/Ashenwake.Client/experiments.json
+game/Ashenwake.Client/*.cs.uid
+game/Ashenwake.Client/*.gd.uid

@@ -4,6 +4,7 @@ using Ashenwake.Core.Campaign;
 using Ashenwake.Core.Combat;
 using Ashenwake.Core.Content;
 using Ashenwake.Core.Endgame;
+using Ashenwake.Core.Experiments;
 using Ashenwake.Core.Progression;
 using Ashenwake.Core.Serialization;
 
@@ -58,6 +59,8 @@ internal static class EndgameCommands
         {
             if (args.Length != 2) return 2;
             c.Create();
+            string experimentJson = File.ReadAllText("content/experiments.json");
+            var experiment = ExperimentContent.Parse(experimentJson);
             if (args[1] == "compile")
             {
                 CampaignCommands.Run(["campaign", "compile"]);
@@ -65,8 +68,9 @@ internal static class EndgameCommands
                     AtomicFile.Write("game/Ashenwake.Client/" + name + ".json", File.ReadAllText("content/" + name + ".json"));
                 foreach (string name in new[] { "phase4-campaign-complete", "combat-phase4", "campaign-combat-phase4", "adventure-phase4", "progression-phase4", "campaign-phase4", "phase4-migration-manifest" })
                     AtomicFile.Write("game/Ashenwake.Client/" + name + ".json", File.ReadAllText("fixtures/" + name + ".json"));
+                AtomicFile.Write("game/Ashenwake.Client/experiments.json", experimentJson);
             }
-            Console.WriteLine(JsonData.Write(new { kind = "EndgameContentValidated", key = c.Key, endgameHash = c.Endgame.Hash, combatHash = CombatContent.Parse(c.Combat).Identity })); return 0;
+            Console.WriteLine(JsonData.Write(new { kind = "EndgameContentValidated", key = c.Key, endgameHash = c.Endgame.Hash, combatHash = CombatContent.Parse(c.Combat).Identity, experimentHash = experiment.Hash })); return 0;
         }
         if (args[1] == "replay")
         {

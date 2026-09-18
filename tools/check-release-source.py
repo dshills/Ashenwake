@@ -23,7 +23,7 @@ CLIENT_OUTPUTS = {
     "text.en.json", "campaign.json", "campaign-combat.json", "endgame.json",
     "endgame-combat.json", "phase4-campaign-complete.json", "combat-phase4.json",
     "campaign-combat-phase4.json", "adventure-phase4.json", "progression-phase4.json",
-    "campaign-phase4.json", "phase4-migration-manifest.json",
+    "campaign-phase4.json", "phase4-migration-manifest.json", "experiments.json",
 }
 CACHE_DIRECTORIES = {".git", "bin", "obj", ".godot", "__pycache__", "TestResults"}
 ROOT_CACHE_DIRECTORIES = {".tools", "artifacts", ".idea", ".vscode"}

@@ -26,6 +26,11 @@ public static class EndgameRuntimeSaveStore
         void CombatHeader(JsonElement value)
         {
             ArchiveHeaders.Require(value, 1, "combat.1"); ArchiveHeaders.Identity(value, "contentHash", identity);
+            if (value.TryGetProperty("experiment", out var loan) && loan.ValueKind != JsonValueKind.Null)
+            {
+                ArchiveHeaders.Require(loan, 1, "borrowed-memory.1");
+                var rules = ArchiveHeaders.Object(loan, "rules"); ArchiveHeaders.Require(rules, 1); ArchiveHeaders.Identity(rules, "version", "echoes.1");
+            }
             if (value.TryGetProperty("endgame", out var runtime) && runtime.ValueKind != JsonValueKind.Null)
             {
                 ArchiveHeaders.Require(runtime, 1, "endgame-combat.1");

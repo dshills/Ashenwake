@@ -9,7 +9,8 @@ aw adventure compile
 aw production compile
 aw campaign compile
 aw endgame compile
-content_key=$(python3 -c 'import hashlib; print(hashlib.sha256(b"".join(open(p, "rb").read() for p in ("content/combat.json", "content/adventure.json", "content/progression.json", "content/text.en.json", "content/campaign.json", "content/campaign-combat.json", "content/endgame.json", "content/endgame-combat.json"))).hexdigest()[:12])')
+aw experiment compile
+content_key=$(python3 -c 'import hashlib; print(hashlib.sha256(b"".join(open(p, "rb").read() for p in ("content/combat.json", "content/adventure.json", "content/progression.json", "content/text.en.json", "content/campaign.json", "content/campaign-combat.json", "content/endgame.json", "content/endgame-combat.json", "content/experiments.json"))).hexdigest()[:12])')
 mkdir -p "$AW_ROOT/artifacts/package"
 package_output="$(mktemp -d "$AW_ROOT/artifacts/package/$content_key.XXXXXX")"
 if [[ "$(uname -s)" == Darwin ]]; then
@@ -35,3 +36,10 @@ mkdir -p "$release_output"
 "$binary" --headless --quit-after 600 --log-file "$release_output/smoke.log" -- --release-smoke --output="$release_output"
 python3 tools/check-godot-log.py "$release_output/smoke.log"
 rg -q 'ReleaseClientSmokePassed' "$release_output/smoke.log"
+
+experiment_output="$package_output/experiment-client"
+mkdir -p "$experiment_output"
+"$binary" --headless --quit-after 12000 --log-file "$experiment_output/smoke.log" -- --echoes-smoke --output="$experiment_output"
+python3 tools/check-godot-log.py "$experiment_output/smoke.log"
+rg -q 'ExperimentClientSmokePassed' "$experiment_output/smoke.log"
+aw experiment replay "$experiment_output/echoes.awexperiment"

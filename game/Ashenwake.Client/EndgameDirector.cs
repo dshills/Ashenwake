@@ -81,15 +81,16 @@ public partial class EndgameDirector : Node3D
             _campaignHud.SetFragmentDescriptions(_combat.Fragments.ToDictionary(f => f.Id, f => f.Description));
             _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = _character.Toggle;
             _board = new EndgameHud(); _sandbox.AddOverlay(_board);
-            WireCampaign(); WireCharacter(); WireBoard(); BuildClassSelection(); BuildImportDialog(); BindBoardInput(); Refresh();
+            WireCampaign(); WireCharacter(); WireBoard(); BuildClassSelection(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); Refresh();
             if (_smoke) VerifyMigrationFixture();
             if (OS.GetCmdlineUserArgs().Contains("--show-character")) _character.Toggle();
             string? import = Argument("--import-campaign=");
             if (import is not null) Import(import);
             else if (OS.GetCmdlineUserArgs().Contains("--continue")) Load();
-            else if (!_smoke && Argument("--discipline=") is null)
+            else if (!_smoke && !_echoesSmoke && Argument("--discipline=") is null)
             { _classSelection.Visible = true; _classBackdrop.Visible = true; _sandbox.SetPaused(true); _classSelection.GetChild<VBoxContainer>(0).GetChildren().OfType<Button>().First().GrabFocus(); }
             Notice("F: interact · J: campaign/map · B: expeditions · C or I: character");
+            ConfigureExperimentStart();
         }
         catch (Exception ex) { Fail(ex); }
     }
@@ -147,11 +148,13 @@ public partial class EndgameDirector : Node3D
     }
     public override void _Input(InputEvent input)
     {
+        if (BlockExperimentPanelInput(input)) return;
         if (_importDialog is { Visible: true } || _classSelection is not { Visible: true } || input is not (InputEventKey or InputEventJoypadButton)) return;
         if (!new[] { "ui_up", "ui_down", "ui_left", "ui_right", "ui_accept", "ui_focus_next", "ui_focus_prev" }.Any(action => input.IsAction(action))) GetViewport().SetInputAsHandled();
     }
     public override void _UnhandledInput(InputEvent input)
     {
+        if (HandleExperimentInput(input)) return;
         if (_smoke || _finished || _session is null || _classSelection.Visible) return;
         if (input.IsActionPressed("aw_character")) { _character.Toggle(); GetViewport().SetInputAsHandled(); }
         if (input.IsActionPressed("aw_endgame")) { _board.Toggle(); GetViewport().SetInputAsHandled(); }
@@ -185,7 +188,7 @@ public partial class EndgameDirector : Node3D
     {
         Safely(() =>
         {
-            var result = _session.Execute(command); if (!result.Success) { Notice(result.Reason); return; }
+            var result = ExecuteActive(command); if (!result.Success) { Notice(result.Reason); return; }
             _revision++; Observe(result);
             if (!ReferenceEquals(_sandbox.Session, _session.Combat)) _sandbox.AdoptSession(_session.Combat);
             Refresh();
@@ -196,9 +199,10 @@ public partial class EndgameDirector : Node3D
         if (_finished || _capturing) return [];
         try
         {
+            if (_echoesSmoke) return AdvanceExperimentSmoke();
             if (_smoke && ++_steps > EndgameRuntimeSmoke.MaximumCommands + 10000L) throw new InvalidDataException("Endgame client smoke exceeded its bounded public-action route.");
             var command = _smoke ? SmokeNext() : new EndgameRuntimeCommand(EndgameRuntimeAction.Tick, Commands: commands);
-            var result = _session.Execute(command);
+            var result = ExecuteActive(command);
             if (_smoke && !result.Success) throw new InvalidDataException("Endgame smoke action rejected: " + result.Reason);
             Observe(result); Refresh();
             if (_smoke && _steps % 3000 == 0)
@@ -315,6 +319,7 @@ public partial class EndgameDirector : Node3D
         _sandbox.SetManifestationPresentation(manifestations);
         _sandbox.SetWorldSubtitle(combat.Endgame is null ? $"CAMPAIGN / {_session.Campaign.View.Region.ToUpperInvariant()}" : $"{view.Run?.Kind.ToUpperInvariant()} / {view.Run?.Name.ToUpperInvariant()}");
         UpdatePanelVisibility();
+        RefreshExperiment();
         if (_capture && DisplayServer.GetName() != "headless")
         {
             string? key = combat.Endgame?.Hazards.Length > 0 ? combat.Endgame.HuntId.Length > 0 ? $"hunt-{combat.Endgame.HuntId}-{combat.Endgame.PhaseIndex}" : $"fracture-tier-{combat.Endgame.Tier}" :
@@ -409,15 +414,17 @@ public partial class EndgameDirector : Node3D
         };
     }
     private void Save()
-    { EndgameRuntimeSaveStore.Write(SavePath, _combatJson, _adventure, _progression, _campaign, _endgame, _session.Capture()); AtomicFile.Write(Path.Combine(_output, "current-save.txt"), _saveName); Notice("Campaign, expedition, character and profile saved together."); }
+    { if (SaveExperiment()) return; EndgameRuntimeSaveStore.Write(SavePath, _combatJson, _adventure, _progression, _campaign, _endgame, _session.Capture()); AtomicFile.Write(Path.Combine(_output, "current-save.txt"), _saveName); Notice("Campaign, expedition, character and profile saved together."); }
     private void Load()
     {
+        if (_experiment is not null) { LoadExperiment(); return; }
         var result = EndgameRuntimeSaveStore.Load(SavePath, _combatJson, _adventure, _progression, _campaign, _endgame);
         Adopt(result.Session); _loaded = true;
         Notice(result.RecoveredBackup ? "Recovered the previous valid endgame save." : "Campaign and expedition loaded.");
     }
-    private void Adopt(EndgameRuntimeSession session)
+    private void Adopt(EndgameRuntimeSession session, bool retainExperiment = false)
     {
+        if (!retainExperiment) _experiment = null;
         _session = session; CacheDefinitions(); _classSelection.Visible = false; _classBackdrop.Visible = false;
         _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(false); _revision++; Refresh();
     }
@@ -432,7 +439,7 @@ public partial class EndgameDirector : Node3D
         Adopt(EndgameRuntimeSaveStore.Load(destination, _combatJson, _adventure, _progression, _campaign, _endgame).Session);
         Notice("Campaign imported into a separate endgame save. Existing characters and the source archive are preserved.");
     }
-    private void VerifyReplay() { VerifyAndWrite(_output); Notice("Endgame replay, attempts, permanent rewards and save round trip verified."); }
+    private void VerifyReplay() { if (_experiment is not null) { VerifyExperiment(_output); Notice("Echoes choices, memories, combat and rewards verified."); return; } VerifyAndWrite(_output); Notice("Endgame replay, attempts, permanent rewards and save round trip verified."); }
     private void VerifyAndWrite(string directory, EndgameRuntimeSession? session = null)
     {
         session ??= _session;
@@ -504,11 +511,15 @@ public partial class EndgameDirector : Node3D
             {
                 _board.SetOpen(false);
                 _effects.Show(view, _session.Combat.View.Actors.Single(a => a.Id == 1).Position, false);
+                RefreshExperiment();
             }
             Directory.CreateDirectory(_output);
             AtomicFile.Write(Path.Combine(_output, Path.GetFileNameWithoutExtension(filename) + ".frame.json"), JsonData.Write(_session.Combat.View));
+            if (_experiment is not null) AtomicFile.Write(Path.Combine(_output, Path.GetFileNameWithoutExtension(filename) + ".experiment-frame.json"), JsonData.Write(new { _experiment.Tick, _experiment.StateHash, _experiment.View }));
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+            if (_experiment is not null)
+            { if (!await WaitForExperimentDraw()) { GD.PushWarning("Echoes screenshot skipped: renderer did not produce a frame within three seconds."); return; } }
+            else await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
             GetViewport().GetTexture().GetImage().SavePng(Path.Combine(_output, filename));
         }
         finally { _board.SetOpen(wasOpen); _capturing = false; }

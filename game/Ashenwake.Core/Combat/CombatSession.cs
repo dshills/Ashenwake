@@ -110,7 +110,7 @@ public sealed partial class CombatSession
     private int Remaining(long until) => (int)Math.Clamp(until - Tick, 0, int.MaxValue);
     private CombatMutation? Mutation(string skill) => _content.Mutations.FirstOrDefault(m => m.Id == _state.Mutations.GetValueOrDefault(skill));
     private void Emit(string kind, int actor = 0, int target = 0, int amount = 0, string content = "", long action = 0, int depth = 0)
-    { var ev = new CombatEvent(Tick, kind, actor, target, amount, content, action, depth); _events.Add(ev); ObserveEndgameEvent(ev); }
+    { var ev = new CombatEvent(Tick, kind, actor, target, amount, content, action, depth); _events.Add(ev); ObserveEndgameEvent(ev); ObserveBorrowedMemory(ev); }
     private void Reject(CombatCommand command, string reason) => Emit("CommandRejected", command.ActorId, command.TargetId, content: reason);
     public IReadOnlyList<CombatEvent> Step(IEnumerable<CombatCommand>? commands = null)
     {
@@ -120,6 +120,7 @@ public sealed partial class CombatSession
         TickCampaign();
         TickEndgame();
         TickProductionState();
+        UpdateBorrowedMemory();
         foreach (var actor in _state.Actors)
         {
             actor.Statuses.RemoveAll(s => s.ExpiresTick <= Tick);
@@ -418,7 +419,7 @@ public sealed partial class CombatSession
         ProductionHitEffects(hit, source, target, healthDamage, critical);
         if (target.Health <= 0 && !target.DeathProcessed) Kill(target, hit);
     }
-    private IEnumerable<CombatFragment> ActiveFragments() => _content.Fragments.Where(f => _state.Fragments.Values.Contains(f.Id) && !FragmentSuppressed(f.Id));
+    private IEnumerable<CombatFragment> ActiveFragments() => _content.Fragments.Where(f => _state.Fragments.Values.Contains(f.Id) && !FragmentSuppressed(f.Id) && !(BorrowedMindSuppressed && f.Slot == AnatomySlot.Mind));
     private void ApplyStatus(CombatActor target, string id, Hit hit, string fragmentId)
     {
         if (hit.Depth > MaxChainDepth) { Budget(hit.ActionId); return; }
@@ -516,7 +517,7 @@ public sealed partial class CombatSession
         foreach (var equipped in _state.Equipment!) Require(_state.Inventory.Any(i => i.Id == equipped.Value && CanEquip(i, equipped.Key)), "equipped item");
         foreach (var fragment in _state.Fragments!) Require(_content.Fragments.Any(f => f.Id == fragment.Value && f.Slot.ToString() == fragment.Key), "fragment slot");
         Require(_content.Fragments.Any(f => f.Effect == "Heat" && _state.Fragments.Values.Contains(f.Id)) || _state.FragmentHeat == 0 && _state.OverheatedActionId == 0, "heat requires its equipped fragment");
-        Require(_content.Fragments.Any(f => f.Effect == "CaptureEcho" && _state.Fragments.Values.Contains(f.Id)) || _state.CapturedSkillId == "", "captured echo requires its equipped fragment");
+        Require(_content.Fragments.Any(f => f.Effect == "CaptureEcho" && _state.Fragments.Values.Contains(f.Id)) || _state.Experiment?.Status == "Bound" || _state.CapturedSkillId == "", "captured echo requires its equipped fragment or scoped loan");
         Require(_content.Fragments.Any(f => f.Effect == "SeismicCharge" && _state.Fragments.Values.Contains(f.Id)) || _state.SeismicCharge == 0, "seismic charge requires its equipped fragment");
         foreach (var mutation in _state.Mutations!) Require(_content.Mutations.Any(m => m.Id == mutation.Value && m.SkillId == mutation.Key), "mutation");
         foreach (var cooldown in _state.Cooldowns!) Require((_content.Skills.Any(s => s.Id == cooldown.Key) || _content.Fragments.Any(f => f.Id == cooldown.Key) || cooldown.Key == "effect.ashcleaver_wave") && cooldown.Value >= 0 && cooldown.Value <= Tick + 3000, "cooldown");
@@ -531,5 +532,6 @@ public sealed partial class CombatSession
         if (_state.BufferedCommand is { } command) Require(command.Kind == CombatCommandKind.Cast && command.ActorId == 1 && _content.Skills.Any(s => s.Id == command.SkillId), "buffered input");
         ValidateCampaignSnapshot();
         ValidateEndgameSnapshot();
+        ValidateBorrowedMemory();
     }
 }

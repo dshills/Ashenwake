@@ -16,6 +16,7 @@
     <None Include="../../content/text.en.json" Link="text.en.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/campaign.json" Link="campaign.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/campaign-combat.json" Link="campaign-combat.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../content/experiments.json" Link="experiments.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/endgame.json" Link="endgame.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/endgame-combat.json" Link="endgame-combat.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/phase2-expedition-hub.json" Link="fixtures/phase2-expedition-hub.json" CopyToOutputDirectory="PreserveNewest" />

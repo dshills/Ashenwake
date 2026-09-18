@@ -1,6 +1,6 @@
 # Ashenwake — Phased Implementation Plan
 
-**Status:** Phases 0–6 have playable engineering implementations and phase-specific Prism review/verification records. Phase 7 implements the optional local two-player prototype, including authoritative shared combat, transactional PostgreSQL persistence, reconnect/restart recovery, the actual exported Godot client and local container builds. Phase 8 is in development. These are greybox engineering milestones; production art, independent playtests, target hardware certification and public release acceptance remain open. See [Phase 5](../docs/phase5_verification.md), [Phase 6](../docs/phase6_verification.md), and [Phase 7](../docs/phase7_verification.md).
+**Status:** Phases 0–8 have individual implementation commits and phase-specific Prism review/verification records. Phase 8 implements the permanent opt-in Borrowed Memory experiment, its save/replay/retirement contract, client and build pipeline; its automated validation, actual package checks and Prism review are complete. The game remains a greybox engineering implementation. Production art/audio, independent playtests, target-hardware certification and public single-player/online/expansion release acceptance remain open. See [Phase 5](../docs/phase5_verification.md), [Phase 6](../docs/phase6_verification.md), [Phase 7](../docs/phase7_verification.md), and [Phase 8](../docs/phase8_verification.md).
 
 **Planning baseline:** September 17, 2026
 

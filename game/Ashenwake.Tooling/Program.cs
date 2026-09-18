@@ -18,6 +18,7 @@ static int Run(string[] args)
         if (args[0] == "production") return Ashenwake.Tooling.ProductionCommands.Run(args);
         if (args[0] == "campaign") return Ashenwake.Tooling.CampaignCommands.Run(args);
         if (args[0] == "endgame") return Ashenwake.Tooling.EndgameCommands.Run(args);
+        if (args[0] == "experiment") return Ashenwake.Tooling.ExperimentCommands.Run(args);
         if (args[0] == "coop") return Ashenwake.Tooling.CoopCommands.Run(args);
         if (args[0] == "release") return Ashenwake.Tooling.ReleaseCommands.Run(args);
         if (args[0] == "item") return Ashenwake.Tooling.InspectionCommands.Item(args);
@@ -132,6 +133,6 @@ static void Write(string path, string contents)
 }
 static int Usage()
 {
-    Console.Error.WriteLine("aw content validate|compile|refs | item show <id> | demo run | replay run <file> | benchmark run | sandbox validate|compile|demo|builds|replay|benchmark | adventure validate|compile|demo|replay|benchmark | production validate|compile|demo|replay|benchmark|migrate-phase2 | campaign validate|compile|demo|benchmark|replay|migrate-phase3 | release manifest|verify|audit|fixtures|soak|endgame-soak | endgame validate|compile|demo|benchmark|builds|exhaustive|replay|migrate-phase4 | authoring validate|templates|pseudo | balance run|loot");
+    Console.Error.WriteLine("aw content validate|compile|refs | item show <id> | demo run | replay run <file> | benchmark run | sandbox validate|compile|demo|builds|replay|benchmark | adventure validate|compile|demo|replay|benchmark | production validate|compile|demo|replay|benchmark|migrate-phase2 | campaign validate|compile|demo|benchmark|replay|migrate-phase3 | release manifest|verify|audit|fixtures|soak|endgame-soak | endgame validate|compile|demo|benchmark|builds|exhaustive|replay|migrate-phase4 | experiment validate|compile|demo|replay|import-endgame | authoring validate|templates|pseudo | balance run|loot");
     return 2;
 }
