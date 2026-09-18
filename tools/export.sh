@@ -37,6 +37,12 @@ mkdir -p "$release_output"
 python3 tools/check-godot-log.py "$release_output/smoke.log"
 rg -q 'ReleaseClientSmokePassed' "$release_output/smoke.log"
 
+interaction_output="$package_output/interaction-client"
+mkdir -p "$interaction_output"
+"$binary" --headless --quit-after 600 --log-file "$interaction_output/smoke.log" -- --interaction-smoke --output="$interaction_output"
+python3 tools/check-godot-log.py "$interaction_output/smoke.log"
+rg -q 'InteractionClientSmokePassed' "$interaction_output/smoke.log"
+
 experiment_output="$package_output/experiment-client"
 mkdir -p "$experiment_output"
 "$binary" --headless --quit-after 12000 --log-file "$experiment_output/smoke.log" -- --echoes-smoke --output="$experiment_output"

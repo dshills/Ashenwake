@@ -47,7 +47,7 @@ public partial class EndgameHud : Control
         _notice = Text("", 12); _notice.MaxLinesVisible = 1; heading.AddChild(_notice);
         var toggle = new Button { Text = "Fractures & God Hunts [B]", Position = new(921, 61), Size = new(326, 32) };
         toggle.AddThemeFontSizeOverride("font_size", 13); toggle.Pressed += Toggle; AddChild(toggle);
-        _panel = Panel(new(810, 101), new(437, 521));
+        _panel = Panel(new(810, 140), new(437, 482));
         var column = new VBoxContainer(); _panel.AddChild(column);
         var tabs = new HBoxContainer(); column.AddChild(tabs);
         var tabGroup = new ButtonGroup();
@@ -57,7 +57,7 @@ public partial class EndgameHud : Control
             button.AddThemeFontSizeOverride("font_size", 12); button.Pressed += () => { _tab = tab; Rebuild(true); }; tabs.AddChild(button);
             _tabs.Add(tab, button);
         }
-        var scroll = new ScrollContainer { CustomMinimumSize = new(405, 421), SizeFlagsVertical = SizeFlags.ExpandFill };
+        var scroll = new ScrollContainer { CustomMinimumSize = new(405, 382), SizeFlagsVertical = SizeFlags.ExpandFill };
         column.AddChild(scroll); _rows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; scroll.AddChild(_rows);
         var footer = new HBoxContainer(); column.AddChild(footer);
         foreach (var (name, action) in new[] { ("Save", (Action)(() => SaveRequested?.Invoke())), ("Load", (Action)(() => LoadRequested?.Invoke())), ("Close", (Action)(() => SetOpen(false))) })

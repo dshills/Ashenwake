@@ -174,6 +174,7 @@ public partial class EndgameDirector : Node3D
             {
                 var nearest = _session.Interactions.OrderBy(i => CorePosition.DistanceSquared(i.Position, player.Position)).FirstOrDefault();
                 if (nearest is not null) Interact(nearest.ActionId);
+                else Notice("Open the Journey map [J] to continue once this encounter is clear.");
             }
             GetViewport().SetInputAsHandled();
         }
@@ -287,6 +288,7 @@ public partial class EndgameDirector : Node3D
         foreach (string message in result.WorldEvents)
         {
             _worldEvents.Add(message); if (_worldEvents.Count > 8192) _worldEvents.RemoveAt(0);
+            if (_campaignHud.PresentInteraction(message)) _board.SetOpen(false);
             string? notice = PlayerNotice(message); if (notice is not null) Notice(notice);
         }
     }

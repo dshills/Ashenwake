@@ -40,8 +40,8 @@ public sealed partial class ProductionSession
     public IReadOnlyList<string> WorldEvents { get; private set; } = [];
     public string StateHash => JsonData.Hash(Capture());
     public IReadOnlyList<ExpeditionInteraction> Interactions => View.RoomId == "room.greyhaven"
-        ? [new("npc.mara", "Mara · anatomy and research", new(-4500, -1800), 2600),
-           new("service.mara", "Mara · Divine Anatomy", new(-4500, -1800), 2600),
+        ? [new("npc.mara", "Mara · anatomy and research", new(-4500, -1800), 2400),
+           new("service.mara", "Mara · Divine Anatomy", new(-4500, -1800), 2400),
            new("npc.torren", "Torren · tempering", new(2000, -2000), 2600),
            new("service.torren", "Torren · equipment", new(2000, -2000), 2600),
            new("npc.cael", "Sister Cael · purification", new(-4500, 1800), 2600),
@@ -226,7 +226,10 @@ public sealed partial class ProductionSession
     private bool Near(string id)
     {
         var interaction = Interactions.FirstOrDefault(i => i.ActionId == id);
-        return interaction is not null && Position.DistanceSquared(Combat.View.Actors.Single(a => a.Id == 1).Position, interaction.Position) <= (long)interaction.Range * interaction.Range;
+        // Preserve the established permanent-service command reach for save/replay compatibility.
+        // Mara's visible dialogue/service interaction has the narrower expedition boundary.
+        const int permanentServiceRange = 2600;
+        return interaction is not null && Position.DistanceSquared(Combat.View.Actors.Single(a => a.Id == 1).Position, interaction.Position) <= (long)permanentServiceRange * permanentServiceRange;
     }
     private static void Require(ProgressionResult result) { if (!result.Success) throw new InvalidDataException("Authoritative progression transaction rejected: " + result.Reason); }
 

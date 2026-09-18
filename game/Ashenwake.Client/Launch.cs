@@ -9,7 +9,8 @@ public partial class Launch : Node
     {
         var arguments = OS.GetCmdlineUserArgs();
         string scene = arguments.Contains("--coop") || arguments.Contains("--coop-smoke") ? "res://Coop.tscn" :
-            arguments.Contains("--release-smoke") ? "res://ReleaseSmoke.tscn" : "res://Endgame.tscn";
+            arguments.Contains("--release-smoke") ? "res://ReleaseSmoke.tscn" :
+            arguments.Contains("--interaction-smoke") ? "res://InteractionSmoke.tscn" : "res://Endgame.tscn";
         Callable.From(() =>
         {
             if (GetTree().ChangeSceneToFile(scene) != Error.Ok)

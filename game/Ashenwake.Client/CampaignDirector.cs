@@ -167,6 +167,7 @@ public partial class CampaignDirector : Node3D
         foreach (string message in events)
         {
             _worldEvents.Add(message); if (_worldEvents.Count > 4096) _worldEvents.RemoveAt(0);
+            _campaign.PresentInteraction(message);
             string? notice = PlayerNotice(message); if (notice is not null) Notice(notice);
         }
     }

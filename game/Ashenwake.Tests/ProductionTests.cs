@@ -66,6 +66,43 @@ public sealed class ProductionTests
         Assert.Equal(0, session.Capture().Expedition.Adventure.Deaths);
     }
 
+    [Theory]
+    [InlineData("npc.mara", 2400, true)]
+    [InlineData("npc.mara", 2401, false)]
+    [InlineData("npc.mara", 2600, false)]
+    [InlineData("service.mara", 2400, true)]
+    [InlineData("service.mara", 2401, false)]
+    [InlineData("service.mara", 2600, false)]
+    public void MaraInteractionPromptMatchesTheAuthoritativeBoundary(string action, int distance, bool allowed)
+    {
+        var session = Fresh(); var interaction = session.Interactions.Single(i => i.ActionId == action);
+        var snapshot = session.Capture();
+        snapshot.Expedition.Combat.Actors.Single(a => a.Id == 1).Position = new(interaction.Position.X + distance, interaction.Position.Z);
+        session = Restore(snapshot);
+        Assert.Equal(allowed, distance <= session.Interactions.Single(i => i.ActionId == action).Range);
+        string before = session.StateHash; var result = session.Interact(action);
+        Assert.Equal(allowed, result.Success);
+        if (allowed) Assert.Contains(action == "npc.mara" ? "Dialogue:mara.false_history" : "ServiceOpened:service.mara", result.WorldEvents);
+        else Assert.Equal(before, session.StateHash);
+        Assert.True(ProductionReplayRunner.Run(CombatJson, Adventure, Policy, session.CaptureReplay()).Success);
+    }
+
+    [Theory]
+    [InlineData(2600, true)]
+    [InlineData(2601, false)]
+    public void MaraPermanentCommandsKeepTheirExistingReachForReplayCompatibility(int distance, bool allowed)
+    {
+        var snapshot = Fresh().Capture(); snapshot.Progression.Character.Experience = 4500;
+        snapshot.Expedition.Combat.ProgressionBuild = snapshot.Expedition.Combat.ProgressionBuild with { Level = 10, UltimateUnlocked = true };
+        snapshot.Expedition.Combat.Actors.Single(a => a.Id == 1).Position = new(-4500 + distance, -1800);
+        var session = Restore(snapshot);
+        string before = session.StateHash; var result = session.AllocatePassive("Offense");
+        Assert.Equal(allowed, result.Success);
+        if (allowed) Assert.Equal(1, session.Combat.ProgressionBuild.Offense);
+        else Assert.Equal(before, session.StateHash);
+        Assert.True(ProductionReplayRunner.Run(CombatJson, Adventure, Policy, session.CaptureReplay()).Success);
+    }
+
     [Fact]
     public void SpecialistServicesApplyToTheLiveBuildAndCraftRetriesCannotDoubleSpend()
     {

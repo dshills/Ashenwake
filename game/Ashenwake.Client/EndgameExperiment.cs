@@ -34,7 +34,7 @@ public partial class EndgameDirector
         _experimentContent = ExperimentContent.Parse(FileAccess.GetFileAsString("res://experiments.json"));
         _sandbox.AutomaticStep |= _echoesSmoke;
         _memoryPresentation = new ExperimentPresentation(); AddChild(_memoryPresentation);
-        var open = new Button { Text = "Echoes: Borrowed Memory [H]", Position = new(921, 22), Size = new(326, 32) };
+        var open = new Button { Text = "Echoes: Borrowed Memory [H]", Position = new(921, 100), Size = new(326, 32) };
         open.AddThemeFontSizeOverride("font_size", 13); open.Pressed += ShowExperimentPanel; _sandbox.AddOverlay(open);
         _memoryStatus = new Label { Position = new(32, 304), Size = new(295, 180), AutowrapMode = TextServer.AutowrapMode.WordSmart, MouseFilter = Control.MouseFilterEnum.Ignore };
         _memoryStatus.AddThemeFontSizeOverride("font_size", 14); _memoryStatus.AddThemeColorOverride("font_color", new Color("c1dcff")); _sandbox.AddOverlay(_memoryStatus);
