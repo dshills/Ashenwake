@@ -94,6 +94,7 @@ public partial class Sandbox
 
     private void ChangePause(bool paused)
     {
+        CancelMouseMovement(false);
         _clock.Paused = paused || _manualPause || _interruptionPause || HasModalPause;
         _pending.Clear(); _pending.Add(new(CombatCommandKind.Stop));
         _moveX = _moveZ = int.MinValue;

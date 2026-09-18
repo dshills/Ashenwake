@@ -13,7 +13,7 @@ public partial class CoopClientPresentation : Node3D
     private readonly Dictionary<long, Node3D> warnings = [], projectiles = [];
     private Node3D arena = null!;
     private Camera3D camera = null!;
-    private MeshInstance3D targetRing = null!;
+    private MeshInstance3D targetRing = null!, destinationRing = null!;
     private string context = "";
     public double CorrectionMeters { get; private set; }
     public override void _Ready()
@@ -25,11 +25,50 @@ public partial class CoopClientPresentation : Node3D
         AddChild(camera); camera.LookAt(Vector3.Zero);
         arena = new Node3D(); AddChild(arena);
         targetRing = Mesh(new TorusMesh { InnerRadius = .55f, OuterRadius = .65f }, Vector3.Zero, new("fbd88a"), this); targetRing.Visible = false;
+        destinationRing = Mesh(new TorusMesh { InnerRadius = .24f, OuterRadius = .32f }, Vector3.Zero, new("8fe4d0"), this);
+        destinationRing.Name = "MouseDestination"; destinationRing.Visible = false;
     }
     public void Zoom(float step) => camera.Size = Math.Clamp(camera.Size + step, 20, 52);
     public int TargetAt(Vector2 point, CoopView view)
-        => view.Actors.Where(a => a.PlayerId == 0 && a.Health > 0).OrderBy(a => camera.UnprojectPosition(Point(a.Position)).DistanceSquaredTo(point))
-            .FirstOrDefault(a => camera.UnprojectPosition(Point(a.Position)).DistanceTo(point) < 75)?.Id ?? 0;
+    {
+        int selected = 0;
+        float closest = float.MaxValue;
+        foreach (var actor in view.Actors.Where(a => a.PlayerId == 0 && a.Health > 0))
+        {
+            bool presented = actors.TryGetValue(actor.Id, out var mesh);
+            var foot = presented ? mesh!.Root.Position : Point(actor.Position);
+            float height = presented ? mesh!.Body.Height : 1.5f;
+            if (camera.IsPositionBehind(foot)) continue;
+            var bottom = camera.UnprojectPosition(foot + Vector3.Up * .2f);
+            var top = camera.UnprojectPosition(foot + Vector3.Up * Math.Max(.25f, height * .85f));
+            var segment = top - bottom;
+            float along = segment.LengthSquared() > .01f ? Math.Clamp((point - bottom).Dot(segment) / segment.LengthSquared(), 0, 1) : 0;
+            float distance = point.DistanceSquaredTo(bottom + segment * along);
+            // Follow the visible body instead of treating a large circle around its feet as an attack.
+            float radius = Math.Clamp(bottom.DistanceTo(camera.UnprojectPosition(foot + Vector3.Up * .2f + camera.GlobalBasis.X * .45f)), 9, 24);
+            if (distance <= radius * radius && distance < closest) { selected = actor.Id; closest = distance; }
+        }
+        return selected;
+    }
+    public CorePosition? GroundAt(Vector2 point, RoomDefinition room)
+    {
+        if (!GetViewport().GetVisibleRect().HasPoint(point)) return null;
+        var origin = camera.ProjectRayOrigin(point);
+        var ray = camera.ProjectRayNormal(point);
+        if (Math.Abs(ray.Y) < .0001f) return null;
+        float distance = -origin.Y / ray.Y;
+        if (!float.IsFinite(distance) || distance < 0) return null;
+        var ground = origin + ray * distance;
+        if (!float.IsFinite(ground.X) || !float.IsFinite(ground.Z)) return null;
+        return new((int)MathF.Round(Math.Clamp(ground.X * 1000, -room.HalfWidth, room.HalfWidth)),
+            (int)MathF.Round(Math.Clamp(ground.Z * 1000, -room.HalfDepth, room.HalfDepth)));
+    }
+    public void SetDestination(CorePosition? destination)
+    {
+        if (destinationRing is null) return;
+        destinationRing.Visible = destination is not null;
+        if (destination is { } position) destinationRing.Position = Point(position) + Vector3.Up * .06f;
+    }
     public void Render(CoopView view, CoopView? previous, int localPlayer, int target, Vector2 movement, double age, double delta)
     {
         bool changed = context != view.ContextKey;

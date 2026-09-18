@@ -22,8 +22,8 @@ public partial class CoopClient
         resources = Text("", new(31, 636), new(875, 50), 17);
         for (int i = 0; i < 6; i++) { int index = i; skills[i] = Button("Ability " + (i + 1), new(31 + i * 155, 696), new(148, 55), () => Cast(index)); skills[i].AddThemeFontSizeOverride("font_size", 12); }
         ready = Button("Ready [E]", new(969, 650), new(279, 44), () => Queue(Ashenwake.Core.Coop.CoopInputAction.Ready));
-        Button("Session [Esc]", new(969, 705), new(279, 44), () => { connection.Visible = !connection.Visible; actions.Clear(); });
-        Text("WASD / LEFT STICK  Move  ·  CLICK / 1–6  Attack  ·  SPACE / B  Dodge  ·  Q  Potion  ·  TAB  Target  ·  E  Ready", new(31, 765), new(1215, 25), 12);
+        Button("Session [Esc]", new(969, 705), new(279, 44), ToggleConnection);
+        Text("LEFT CLICK  Move / attack enemy  ·  SHIFT+CLICK  Primary  ·  RIGHT CLICK  Secondary  ·  WASD / STICK  Move  ·  X  Stop  ·  1–6  Skills  ·  SPACE / B  Dodge  ·  Q  Potion  ·  E  Ready", new(31, 762), new(1215, 34), 11);
         connection = Panel(new(290, 184), new(700, 439));
         var column = new VBoxContainer(); connection.AddChild(column);
         var title = new Label { Text = "JOIN YOUR PARTY" }; title.AddThemeFontSizeOverride("font_size", 24); column.AddChild(title);
@@ -34,7 +34,7 @@ public partial class CoopClient
         var row = new HBoxContainer(); column.AddChild(row);
         var join = new Button { Text = "Join session", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; join.Pressed += Connect; row.AddChild(join);
         var disconnect = new Button { Text = "Disconnect", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        disconnect.Pressed += () => { local?.Transport.Dispose(); actions.Clear(); connectionStatus.Text = "Disconnected. Your server-owned character can rejoin with a fresh ticket."; }; row.AddChild(disconnect);
+        disconnect.Pressed += () => { local?.Transport.Dispose(); actions.Clear(); CancelMouseMovement(); connectionStatus.Text = "Disconnected. Your server-owned character can rejoin with a fresh ticket."; }; row.AddChild(disconnect);
         var close = new Button { Text = "Back to battle", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; close.Pressed += () => connection.Visible = false; row.AddChild(close);
         connectionStatus = new Label { Text = "", CustomMinimumSize = new(640, 45), AutowrapMode = TextServer.AutowrapMode.WordSmart }; column.AddChild(connectionStatus);
         column.AddChild(new Label { Text = "The shared battle continues while this panel is open. Closing the application does not reset the party's progress.", AutowrapMode = TextServer.AutowrapMode.WordSmart });
@@ -80,7 +80,7 @@ public partial class CoopClient
     }
     private static void BindInputs()
     {
-        var keys = new Dictionary<string, Key> { ["left"] = Key.A, ["right"] = Key.D, ["up"] = Key.W, ["down"] = Key.S, ["dodge"] = Key.Space, ["potion"] = Key.Q, ["ready"] = Key.E, ["target"] = Key.Tab, ["menu"] = Key.Escape };
+        var keys = new Dictionary<string, Key> { ["left"] = Key.A, ["right"] = Key.D, ["up"] = Key.W, ["down"] = Key.S, ["dodge"] = Key.Space, ["potion"] = Key.Q, ["ready"] = Key.E, ["target"] = Key.Tab, ["menu"] = Key.Escape, ["stop"] = Key.X };
         for (int i = 0; i < 6; i++) keys["skill" + (i + 1)] = Key.Key1 + i;
         foreach (var pair in keys)
         { string action = "coop_" + pair.Key; if (!InputMap.HasAction(action)) InputMap.AddAction(action); InputMap.ActionEraseEvents(action); InputMap.ActionAddEvent(action, new InputEventKey { PhysicalKeycode = pair.Value }); }

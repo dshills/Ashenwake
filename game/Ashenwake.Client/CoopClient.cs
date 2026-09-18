@@ -30,7 +30,7 @@ public partial class CoopClient : Node3D
     private Label connectionStatus = null!, header = null!, party = null!, network = null!, resources = null!, rewards = null!, targetDetails = null!;
     private Button ready = null!;
     private readonly Button[] skills = new Button[6];
-    private readonly Queue<(CoopInputAction Action, string Skill, int Target)> actions = [];
+    private readonly Queue<(CoopInputAction Action, string Skill, int Target, Vector2? Direction)> actions = [];
     private readonly Dictionary<long, (string? Local, string? Companion)> hashes = [];
     private readonly HashSet<int> capturedEncounters = [];
     private readonly HashSet<int> capturedMechanics = [];
@@ -67,7 +67,7 @@ public partial class CoopClient : Node3D
             var uri = SessionUri(address.Text.Trim(), allocation.Text.Trim());
             string credential = ticket.Text.Trim();
             if (credential.Length is < 16 or > 8192) { connectionStatus.Text = "Paste a fresh join ticket for your character."; return; }
-            local?.Transport.Dispose(); companion?.Transport.Dispose(); companion = null; actions.Clear(); hashes.Clear();
+            local?.Transport.Dispose(); companion?.Transport.Dispose(); companion = null; actions.Clear(); hashes.Clear(); CancelMouseMovement();
             local = new(); _ = local.Transport.Connect(uri, contentHash, credential); ticket.Text = "";
             if (smoke)
             {
@@ -93,9 +93,12 @@ public partial class CoopClient : Node3D
         if (finished) return;
         if (local is not null) Receive(local, true);
         if (companion is not null) Receive(companion, false);
-        movement = foreground && !connection.Visible && !smoke ? Input.GetVector("coop_left", "coop_right", "coop_up", "coop_down", .28f) : Vector2.Zero;
+        bool inputEnabled = foreground && !connection.Visible && !smoke && local?.Transport.Connected == true;
+        var manualMovement = inputEnabled ? Input.GetVector("coop_left", "coop_right", "coop_up", "coop_down", .28f) : Vector2.Zero;
         if (local?.View is { } view)
         {
+            movement = mouseMovement.Resolve(view, local.Id, manualMovement, inputEnabled);
+            stage.SetDestination(mouseMovement.Destination);
             if (!view.Actors.Any(a => a.Id == target && a.PlayerId == 0 && a.Health > 0)) target = Nearest(view);
             stage.Render(view, local.Previous, local.Id, target, movement, Math.Max(0, Now - local.ReceivedAt), delta);
             RefreshHud(view);
@@ -105,7 +108,7 @@ public partial class CoopClient : Node3D
             if (OS.GetCmdlineUserArgs().Contains("--capture-coop") && DisplayServer.GetName() != "headless" && view.Actors.Any(a => a.Shielded) && capturedMechanics.Add(view.EncounterIndex))
                 CaptureEncounter(view.EncounterIndex, "-shield");
         }
-        else connectionStatus.Text = local?.Transport.Status ?? "Create a party with the local online services, then paste its session details here.";
+        else { CancelMouseMovement(); connectionStatus.Text = local?.Transport.Status ?? "Create a party with the local online services, then paste its session details here."; }
         if (companion is not null) Send(companion, false);
         if (smoke)
         {
@@ -119,12 +122,13 @@ public partial class CoopClient : Node3D
         {
             if (frame.View is not { } view || view.ContentHash != contentHash || frame.PlayerId is < 1 or > 2) { Fail("The session uses incompatible content."); return; }
             peer.Id = frame.PlayerId; peer.Revision = frame.Revision; peer.Hash = frame.StateHash;
-            if (frame.Kind == "joined" && isLocal) connection.Visible = false;
+            if (frame.Kind == "joined" && isLocal) { connection.Visible = false; CancelMouseMovement(); actions.Clear(); }
             if (peer.View is null || view.Tick > peer.View.Tick || frame.Kind == "joined")
             { peer.Previous = peer.View; peer.View = view; peer.ReceivedAt = Now; }
             else if (frame.Kind == "snapshot") peer.ReceivedAt = Now;
             if (frame.InputResult is { } receipt)
             {
+                if (isLocal) mouseMovement.ObserveReceipt(receipt);
                 if (receipt.Accepted) peer.Accepted++; else peer.Rejected++;
                 if (peer.SentAt.Remove(receipt.Sequence, out double sent)) peer.RoundTripMs = (Now - sent) * 1000;
             }
@@ -151,17 +155,30 @@ public partial class CoopClient : Node3D
         else if (smoke) command = CoopSmoke.Input(view, peer.Id, sequence);
         else
         {
-            var action = actions.Count > 0 && isLocal ? actions.Dequeue() : (CoopInputAction.None, "", 0);
-            command = new(sequence, view.Tick, Math.Abs(movement.X) < .28f ? 0 : Math.Sign(movement.X), Math.Abs(movement.Y) < .28f ? 0 : Math.Sign(movement.Y), action.Item1, action.Item2, action.Item3);
+            var action = actions.Count > 0 && isLocal ? actions.Dequeue() : (CoopInputAction.None, "", 0, (Vector2?)null);
+            var intent = action.Item4 ?? movement;
+            command = new(sequence, view.Tick, Math.Abs(intent.X) < .28f ? 0 : Math.Sign(intent.X), Math.Abs(intent.Y) < .28f ? 0 : Math.Sign(intent.Y), action.Item1, action.Item2, action.Item3);
         }
         peer.Sequence = sequence; peer.LastSentTick = view.Tick; peer.LastSendAt = Now;
+        if (isLocal && !smoke) mouseMovement.ObserveSent(command);
         if (peer.SentAt.Count >= 128) peer.SentAt.Remove(peer.SentAt.Keys.Min()); peer.SentAt[sequence] = Now;
         peer.Sending = true; _ = SendAsync(peer, command);
     }
     private static async Task SendAsync(Peer peer, CoopInput command)
     { try { await peer.Transport.Send(command); } finally { peer.Sending = false; } }
     private void Queue(CoopInputAction action, string skill = "", int targetId = 0)
-    { if (actions.Count < 8 && local?.Transport.Connected == true) actions.Enqueue((action, skill, targetId)); }
+    {
+        Vector2? direction = null;
+        if (action is CoopInputAction.Cast or CoopInputAction.Dodge or CoopInputAction.Ready)
+        {
+            // A dodge uses the current route direction once, then leaves the route cancelled.
+            // Casts stand in place even when Shift-clicking while a movement key is held.
+            var manual = action == CoopInputAction.Dodge ? Input.GetVector("coop_left", "coop_right", "coop_up", "coop_down", .28f) : Vector2.Zero;
+            direction = action == CoopInputAction.Dodge ? (manual != Vector2.Zero ? manual : movement) : Vector2.Zero;
+            CancelMouseMovement();
+        }
+        if (actions.Count < 8 && local?.Transport.Connected == true) actions.Enqueue((action, skill, targetId, direction));
+    }
     private void Cast(int index)
     {
         if (local?.View is not { } view) return;
@@ -177,12 +194,13 @@ public partial class CoopClient : Node3D
     public override void _UnhandledInput(InputEvent input)
     {
         if (smoke || finished) return;
-        if (input.IsActionPressed("coop_menu")) { connection.Visible = !connection.Visible; actions.Clear(); GetViewport().SetInputAsHandled(); return; }
-        if (connection.Visible || local?.View is not { } view) return;
+        if (input.IsActionPressed("coop_menu")) { ToggleConnection(); GetViewport().SetInputAsHandled(); return; }
+        if (!foreground || connection.Visible || local?.Transport.Connected != true || local.View is not { } view) return;
         for (int i = 0; i < 6; i++) if (input.IsActionPressed("coop_skill" + (i + 1))) Cast(i);
         if (input.IsActionPressed("coop_dodge")) Queue(CoopInputAction.Dodge);
         if (input.IsActionPressed("coop_potion")) Queue(CoopInputAction.Potion);
         if (input.IsActionPressed("coop_ready")) Queue(CoopInputAction.Ready);
+        if (input.IsActionPressed("coop_stop")) { actions.Clear(); CancelMouseMovement(); GetViewport().SetInputAsHandled(); return; }
         if (input.IsActionPressed("coop_target"))
         {
             var ids = view.Actors.Where(a => a.PlayerId == 0 && a.Health > 0).Select(a => a.Id).ToArray();
@@ -191,16 +209,28 @@ public partial class CoopClient : Node3D
         if (input is InputEventMouseButton { Pressed: true } mouse)
         {
             if (mouse.ButtonIndex is MouseButton.WheelDown or MouseButton.WheelUp) stage.Zoom(mouse.ButtonIndex == MouseButton.WheelUp ? -2 : 2);
-            else if (mouse.ButtonIndex is MouseButton.Left or MouseButton.Right) { int selected = stage.TargetAt(mouse.Position, view); if (selected > 0) target = selected; Cast(mouse.ButtonIndex == MouseButton.Left ? 0 : 1); }
+            else if (mouse.ButtonIndex is MouseButton.Left or MouseButton.Right)
+            {
+                int selected = stage.TargetAt(mouse.Position, view);
+                if (selected > 0) target = selected;
+                if (mouse.ButtonIndex == MouseButton.Right || mouse.ShiftPressed || selected > 0) Cast(mouse.ButtonIndex == MouseButton.Left ? 0 : 1);
+                else if (stage.GroundAt(mouse.Position, view.Room) is { } destination)
+                {
+                    mouseMovement.SetDestination(view, local.Id, destination);
+                    stage.SetDestination(mouseMovement.Destination);
+                }
+                else CancelMouseMovement();
+                GetViewport().SetInputAsHandled();
+            }
         }
     }
     public override void _Notification(int what)
     {
-        if (what == NotificationApplicationFocusOut) { foreground = false; actions.Clear(); movement = Vector2.Zero; }
+        if (what == NotificationApplicationFocusOut) { foreground = false; actions.Clear(); CancelMouseMovement(); }
         else if (what == NotificationApplicationFocusIn) foreground = true;
     }
     private void ControllerChanged(long device, bool connected)
-    { if (!connected) { actions.Clear(); movement = Vector2.Zero; connectionStatus.Text = "Controller disconnected. The shared battle continues; use the keyboard or reconnect."; } }
+    { if (!connected) { actions.Clear(); CancelMouseMovement(); connectionStatus.Text = "Controller disconnected. The shared battle continues; use the keyboard or reconnect."; } }
     public override void _ExitTree()
     { Input.JoyConnectionChanged -= ControllerChanged; local?.Transport.Dispose(); companion?.Transport.Dispose(); }
     private async void CompleteSmoke()
@@ -240,6 +270,6 @@ public partial class CoopClient : Node3D
         AtomicFile.Write(Path.Combine(output, $"coop-encounter-{encounter + 1}{suffix}.frame.json"), JsonData.Write(view));
     }
     private void Fail(string reason)
-    { if (smoke) { finished = true; GD.PushError(reason); GetTree().Quit(1); } else if (connectionStatus is not null) { connectionStatus.Text = reason; connection.Visible = true; } }
+    { CancelMouseMovement(); if (smoke) { finished = true; GD.PushError(reason); GetTree().Quit(1); } else if (connectionStatus is not null) { connectionStatus.Text = reason; connection.Visible = true; } }
     private static string? Argument(string prefix) => OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith(prefix, StringComparison.Ordinal))?[prefix.Length..];
 }

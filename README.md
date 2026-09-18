@@ -33,8 +33,9 @@ Act II contains an ordered tracking hunt, Act III a timed Resonance Storm, and A
 
 | Action | Control |
 |---|---|
-| Move on the world X/Z plane | W / A / S / D |
-| Six abilities | 1–6; left/right click for primary/secondary |
+| Move on the world X/Z plane | Left-click ground; W / A / S / D or left stick overrides |
+| Primary / secondary attack | Left-click enemy; Shift + left-click to stand and attack / right-click |
+| Six abilities / stop movement | 1–6 / X |
 | Dodge / potion | Space / Q |
 | Collect nearby loot | E |
 | Reset the diagnostic arena | R in Sandbox |
@@ -52,6 +53,8 @@ Act II contains an ordered tracking hunt, Act III a timed Resonance Storm, and A
 After a fight, the objective explains any remaining ground loot and a **next step** button opens the relevant Map or Story tab. **Continue onward** appears at the top of the map. Settle the region's story choice before the boss; after victory, the map offers the next unlocked act. The Bell Saint's shield phase shows how many ritual anchors remain, with persistent labels on both anchors. Rescued specialists open their matching Gear or Craft screen when you interact.
 
 Press **P** for a visible pause menu with Resume and Settings. Closing settings, loot inspection, or Echoes preserves a manual pause or a pause caused by focus loss; choose Resume when ready. Opening a modal cannot be used to bypass its pause with P.
+
+Click-to-move routes around obstacles and living actors in solo and co-op. A mint ring marks the destination; menus, attacks, scene changes and interruptions cancel the route. Click once to travel, then use **F** near people or mechanisms and **E** near loot. See [mouse movement](docs/mouse_movement.md) for controls and verification.
 
 Build Momentum, Exposure, Instability, Remains, or Adaptation through your discipline's actions; the skill bar shows costs and heat generation. Ultimates unlock at level 10; retraining unlocks at level 5 and costs five materials. Master skills to select mutations, and spend level-earned passive points near Mara. Equipment has twelve slots, with affixes and hand/discipline restrictions. Rescue the specialists through dungeon objectives and restore their workshops to unlock all six crafting services. Destructive extraction and permanent grafts require confirmation. The prototype grants an unawakened Ashcleaver; its canonical awakening requirement remains 1,000 burning-enemy kills.
 

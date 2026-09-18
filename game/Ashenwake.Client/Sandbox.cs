@@ -123,19 +123,11 @@ public partial class Sandbox : Node3D
         try
         {
             var watch = Stopwatch.GetTimestamp();
-            if (!_smoke && !AutomaticStep && !_clock.Paused)
-            {
-                var direction = ReadReleaseMovement();
-                int x = Math.Abs(direction.X) < .28f ? 0 : Math.Sign(direction.X);
-                int z = Math.Abs(direction.Y) < .28f ? 0 : Math.Sign(direction.Y);
-                if (x != _moveX || z != _moveZ)
-                { Enqueue(new(CombatCommandKind.Move, X: x, Z: z)); _moveX = x; _moveZ = z; }
-            }
             _clock.Advance(_smoke || AutomaticStep ? FixedStepClock.SecondsPerTick * 5 : delta, StepCombat);
             bool showAllLootHeld = Input.IsActionPressed("aw_showloot");
             if (showAllLootHeld != _showAllLootHeld)
             { _showAllLootHeld = showAllLootHeld; SynchronizeLootVisuals(); _lootSignature = ""; }
-            AnimatePresentation(delta, _clock.Alpha, _target); UpdateEnvironmentAtmosphere(delta); RefreshHud(); RefreshLootInspector();
+            AnimatePresentation(delta, _clock.Alpha, _target); UpdateEnvironmentAtmosphere(delta); UpdateNavigationNotice(delta); RefreshHud(); RefreshLootInspector();
             _frames++; Sample(_frameCosts, Stopwatch.GetElapsedTime(watch).TotalMilliseconds);
             if (_frames > 10) Sample(_frameIntervals, delta * 1000);
             if (_capturePath is not null && _frames == 30 && DisplayServer.GetName() != "headless")
@@ -150,6 +142,9 @@ public partial class Sandbox : Node3D
 
     public override void _Input(InputEvent input)
     {
+        if (!_smoke && _clickMove?.Destination is not null && (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left or MouseButton.Right } ||
+            NavigationInterruptActions.Any(a => input.IsActionPressed(a))))
+            CancelMouseMovement(true);
         if (_smoke || _awaitingKey is null || input is not InputEventKey { Pressed: true, Echo: false } key) return;
         GetViewport().SetInputAsHandled();
         try
@@ -191,12 +186,20 @@ public partial class Sandbox : Node3D
                 { _camera.Size = Math.Clamp(_camera.Size + (mouse.ButtonIndex == MouseButton.WheelUp ? -2 : 2), 18, 55); return; }
                 if (!_clock.Paused && mouse.ButtonIndex is MouseButton.Left or MouseButton.Right)
                 {
-                    SelectAt(mouse.Position); Cast(mouse.ButtonIndex == MouseButton.Left ? 0 : 1); return;
+                    bool enemy = SelectAt(mouse.Position);
+                    if (mouse.ButtonIndex == MouseButton.Left && !mouse.ShiftPressed && !enemy) BeginMouseMovement(mouse.Position);
+                    else Cast(mouse.ButtonIndex == MouseButton.Left ? 0 : 1);
+                    GetViewport().SetInputAsHandled(); return;
                 }
             }
             if (_clock.Paused) return;
             for (int i = 0; i < 6; i++) if (input.IsActionPressed($"aw_skill{i + 1}")) { Cast(i); return; }
-            if (input.IsActionPressed("aw_dodge")) Enqueue(new(CombatCommandKind.Dodge, X: _moveX == 0 && _moveZ == 0 ? 1 : _moveX, Z: _moveZ));
+            if (input.IsActionPressed("aw_dodge"))
+            {
+                int x = _moveX is >= -1 and <= 1 ? _moveX : 0, z = _moveZ is >= -1 and <= 1 ? _moveZ : 0;
+                CancelMouseMovement(true);
+                Enqueue(new(CombatCommandKind.Dodge, X: x == 0 && z == 0 ? 1 : x, Z: z));
+            }
             if (input.IsActionPressed("aw_potion")) Enqueue(new(CombatCommandKind.Potion));
             if (input.IsActionPressed("aw_pickup")) PickupNearest();
             if (input.IsActionPressed("aw_corpse"))
@@ -207,7 +210,7 @@ public partial class Sandbox : Node3D
                 if (corpse is not null) Enqueue(new(CombatCommandKind.ConsumeCorpse, TargetId: corpse.Id));
             }
             if (input.IsActionPressed("aw_echo")) Enqueue(new(CombatCommandKind.CastEcho, TargetId: _target));
-            if (input.IsActionPressed("aw_stop")) { Enqueue(new(CombatCommandKind.Stop)); _moveX = _moveZ = 0; }
+            if (input.IsActionPressed("aw_stop")) { CancelMouseMovement(false); Enqueue(new(CombatCommandKind.Stop)); _moveX = _moveZ = 0; }
         }
         catch (Exception ex) { Message(ex.Message); GD.PushWarning(ex.Message); }
     }
@@ -216,6 +219,7 @@ public partial class Sandbox : Node3D
     {
         if (_recorder.FrameCount >= ReplayLimit) _recorder = new(_session);
         if (_smoke) ScriptSmoke();
+        else if (!AutomaticStep && !_clock.Paused) UpdateMovementInput();
         var commands = _pending.ToArray(); _pending.Clear();
         var advancedSession = _session;
         long before = GC.GetAllocatedBytesForCurrentThread(); var timer = Stopwatch.GetTimestamp();
@@ -309,6 +313,7 @@ public partial class Sandbox : Node3D
     }
     private void Cast(int index)
     {
+        CancelMouseMovement(true);
         if (index < _view.Skills.Count)
         { if (_target == 0) _target = NearestEnemy()?.Id ?? 0; Enqueue(new(CombatCommandKind.Cast, SkillId: _view.Skills[index].Id, TargetId: _target)); }
     }
@@ -319,12 +324,14 @@ public partial class Sandbox : Node3D
         var ids = _view.Actors.Where(a => a.Faction == CombatFaction.Enemy && a.Health > 0 && a.Visible).Select(a => a.Id).Order().ToArray();
         if (ids.Length > 0) _target = ids[(Array.IndexOf(ids, _target) + 1) % ids.Length];
     }
-    private void SelectAt(Vector2 mouse)
+    private bool SelectAt(Vector2 mouse)
     {
         var target = _view.Actors.Where(a => a.Faction == CombatFaction.Enemy && a.Health > 0 && a.Visible)
+            .Where(a => _actors.TryGetValue(a.Id, out var visual) && MouseHitsBody(visual, mouse))
             .Select(a => (Actor: a, Distance: _camera.UnprojectPosition(PositionOf(a.Position.X, a.Position.Z) + Vector3.Up).DistanceTo(mouse)))
-            .Where(p => p.Distance < 90).OrderBy(p => p.Distance).ThenBy(p => p.Actor.Id).FirstOrDefault();
+            .OrderBy(p => p.Distance).ThenBy(p => p.Actor.Id).FirstOrDefault();
         if (target.Actor is not null) _target = target.Actor.Id;
+        return target.Actor is not null;
     }
     private static long DistanceSquared(Position a, Position b) => (long)(a.X - b.X) * (a.X - b.X) + (long)(a.Z - b.Z) * (a.Z - b.Z);
     private static string Readable(string id) => id.Replace("fragment.", "").Replace("skill.", "").Replace("item.", "").Replace('_', ' ').Replace('.', ' ');
@@ -354,7 +361,8 @@ public partial class Sandbox : Node3D
             var button = ButtonAt($"{i + 1}", new(32 + i * 156, 697), new(148, 54), () => { if (!_clock.Paused) Cast(index); });
             button.AddThemeFontSizeOverride("font_size", 13); _skillButtons.Add(button);
         }
-        LabelAt("WASD / LEFT STICK  Move   ·   CLICK / 1–6  Attack   ·   SPACE / B  Dodge   ·   Q  Potion   ·   E  Collect   ·   TAB  Target", new(32, 765), 12, new("abc0cb"));
+        _navigationNotice = LabelAt("", new(32, 615), 13, new("ecd4ac"));
+        LabelAt("CLICK ground / WASD  Move · CLICK foe  Attack · SHIFT+CLICK  Stand & attack · RIGHT CLICK  Secondary · X Stop · 1–6 Skills · SPACE Dodge · Q Potion · E Loot", new(32, 765), 11, new("abc0cb"));
         _sandboxControls.Add(ButtonAt("Reset [R]", new(985, 697), new(122, 54), () => Reset(_view.Preset)));
         ButtonAt("Pause [P]", new(1118, 697), new(129, 54), ToggleManualPause);
         BuildInventory(); BuildSettings();
@@ -451,6 +459,8 @@ public partial class Sandbox : Node3D
         effects.Toggled += value => { _reduceEffects = value; SavePreferences(); }; column.AddChild(effects);
         var shake = new CheckButton { Text = "Reduced camera shake", ButtonPressed = _reduceShake };
         shake.Toggled += value => { _reduceShake = value; SavePreferences(); }; column.AddChild(shake);
+        column.AddChild(TextLabel("MOUSE MOVEMENT", 14));
+        column.AddChild(TextLabel("Left-click ground to walk around obstacles. Click an enemy to attack; Shift-click attacks while standing. Right-click uses your secondary skill. WASD / left stick takes over; X stops. Menus and pause cancel the destination.", 12));
         BuildLootSettings(column);
         var arenas = new VBoxContainer(); column.AddChild(arenas); _sandboxControls.Add(arenas);
         arenas.AddChild(TextLabel("Choose an arena (starts a fresh session)", 13));

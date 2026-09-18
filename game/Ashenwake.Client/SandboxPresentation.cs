@@ -294,6 +294,7 @@ public partial class Sandbox
     }
     private void ClearPresentation()
     {
+        ResetMouseMovement();
         ClearLootVisuals();
         foreach (var actor in _actors.Values) { RemoveChild(actor.Root); actor.Root.QueueFree(); }
         _actors.Clear();
