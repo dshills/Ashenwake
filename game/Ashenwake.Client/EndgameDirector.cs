@@ -324,7 +324,12 @@ public partial class EndgameDirector : Node3D
         }
         string context = combat.Endgame?.ContextKey ?? $"campaign:{_session.Campaign.ActiveEncounterId}:{campaign.Campaign.Deaths}";
         string style = combat.Endgame is null ? EnvironmentGround.Style(_session.InHub, _session.Campaign.ActiveEncounterId, campaign.Campaign.Exploration?.Id, campaign.Campaign.CurrentAct)
-            : snapshot.Manifest?.Region == "act.verdant_maw" ? "verdant_ruins" : "default";
+            : snapshot.Manifest?.Region switch
+            {
+                "act.verdant_maw" => "verdant_ruins",
+                "act.cinder_reach" => "cinder_fields",
+                _ => "default"
+            };
         _sandbox.PresentAuthoredRoom(_session.Room, context, style);
         _effects.Show(combat.Endgame, player.Position, _board.IsOpen);
         _sandbox.SetManifestationPresentation(manifestations);

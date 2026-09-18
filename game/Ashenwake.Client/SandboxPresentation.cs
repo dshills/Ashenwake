@@ -43,6 +43,7 @@ public partial class Sandbox
     private void BuildArena(int halfWidth, int halfDepth)
     {
         VerdantAmbience.Prewarm();
+        CinderAmbience.Prewarm();
         _worldEnvironment = new WorldEnvironment
         {
             Environment = new Godot.Environment

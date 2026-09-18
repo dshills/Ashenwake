@@ -4,7 +4,7 @@
 
 **Planning baseline:** September 17, 2026
 
-**Current follow-through:** Opening-slice playtest usability adds clearer encounter exits, Bell Saint mechanic feedback, specialist service routing, and coherent pause/resume behavior. See [verification and remaining player-acceptance work](../docs/opening_playtest_verification.md).
+**Current follow-through:** Opening-slice usability, articulated characters, combat feedback, visible equipment and solo/co-op mouse navigation are implemented. Regional procedural art now covers Greyhaven and Acts I–III, including the [Cinder Reach](../docs/cinder_reach.md). Acts IV–V environment treatment and independent player acceptance remain ahead. See [opening playtest verification](../docs/opening_playtest_verification.md) and [mouse movement verification](../docs/mouse_movement_verification.md).
 
 **Sources:** [Game Design Foundation](Ashenwake_Game_Design.md) and [Technical Architecture](Ashenwake_Technical_Architecture.md)
 

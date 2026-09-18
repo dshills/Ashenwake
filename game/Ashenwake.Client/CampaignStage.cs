@@ -17,6 +17,7 @@ public partial class CampaignStage : Node3D
     private string _markerSignature = "";
     private BellSanctuaryVisual? _bell;
     private VerdantHeartVisual? _heart;
+    private FurnaceSpindleVisual? _furnace;
     private readonly Dictionary<string, VerdantTrailVisual> _trails = [];
     private Vector3? _lastTrailPoint;
     public string PresentedEncounter { get; private set; } = "";
@@ -33,6 +34,7 @@ public partial class CampaignStage : Node3D
         bool paused = _sandbox?.IsPaused == true, reduced = _sandbox?.ReducedEffects == true;
         _bell?.Animate(delta, paused, reduced);
         _heart?.Animate(delta, paused, reduced);
+        _furnace?.Animate(delta, paused, reduced);
         foreach (var trail in _trails.Values) trail.Animate(delta, paused, reduced);
     }
     public void Show(CampaignState state, CampaignView view, RoomDefinition room, IReadOnlyList<ExpeditionInteraction> interactions,
@@ -48,7 +50,12 @@ public partial class CampaignStage : Node3D
         }
         // StoryView points to the next objective as soon as a fight is won. Scenery belongs
         // to the actual occupied arena, including its loot and finite victory sequence.
-        string encounter = state.Exploration?.Id == "event.wake_hunt" ? "exploration.antler_hunt" : activeEncounterId ?? view.EncounterId ?? "";
+        string encounter = state.Exploration?.Id switch
+        {
+            "event.wake_hunt" => "exploration.antler_hunt",
+            "event.resonance_storm" => "exploration.burning_rain",
+            _ => activeEncounterId ?? view.EncounterId ?? ""
+        };
         PresentedEncounter = encounter;
         int roots = combat?.Actors.Count(a => a.DefinitionId == "enemy.feeding_root" && a.Health > 0) ?? 3;
         bool heartDefeated = state.CompletedEncounters.Contains("campaign.rootheart") || combat?.Actors.Any(a => a.DefinitionId == "boss.rootheart" && a.Health <= 0) == true;
@@ -57,13 +64,20 @@ public partial class CampaignStage : Node3D
         {
             _signature = signature;
             foreach (var child in _region.GetChildren()) { _region.RemoveChild(child); child.QueueFree(); }
-            _markers.Clear(); _trails.Clear(); _lastTrailPoint = null; _markerSignature = ""; _bell = null; _heart = null;
+            _markers.Clear(); _trails.Clear(); _lastTrailPoint = null; _markerSignature = ""; _bell = null; _heart = null; _furnace = null;
             BuildRegion(state.CurrentAct, room.HalfWidth * .001f, room.HalfDepth * .001f, encounter, bellPhase, bossDefeated);
             if (state.CurrentAct == 2 && encounter == "campaign.rootheart")
             { _heart = VerdantHeartVisual.Create(room.HalfWidth * .001f, room.HalfDepth * .001f, roots, heartDefeated); _region.AddChild(_heart); }
+            if (state.CurrentAct == 3 && encounter == "campaign.furnace_spindle" && combat is not null)
+            {
+                _furnace = FurnaceSpindleVisual.Create(room.HalfWidth * .001f, room.HalfDepth * .001f, combat,
+                    state.CompletedEncounters.Contains("campaign.furnace_spindle"));
+                _region.AddChild(_furnace);
+            }
         }
         _bell?.SetPhase(bellPhase, bossDefeated);
         _heart?.SetState(roots, heartDefeated);
+        if (combat is not null) _furnace?.SetState(combat, state.CompletedEncounters.Contains("campaign.furnace_spindle"));
         string markerSignature = string.Join('|', interactions.Select(i => $"{i.ActionId}:{i.Position.X}:{i.Position.Z}:{i.Name}"));
         if (_markerSignature != markerSignature)
         {
@@ -106,6 +120,7 @@ public partial class CampaignStage : Node3D
     {
         if (act == 1) { _bell = GreyMarchArt.Build(_region, x, z, encounterId, bellPhase, bossDefeated); return; }
         if (act == 2) { VerdantMawArt.Build(_region, x, z, encounterId); return; }
+        if (act == 3) { CinderReachArt.Build(_region, x, z, encounterId); return; }
         Color stone = new(new[] { "727b83", "416956", "66544a", "b1aa91", "514c72" }[act - 1]);
         Color accent = new(new[] { "c0be9a", "9bb662", "e69a55", "dfcea1", "a38acc" }[act - 1]);
         // These perimeter bands visually separate regions without adding navigational obstacles.
@@ -117,16 +132,6 @@ public partial class CampaignStage : Node3D
             float px = i * 4.6f;
             switch (act)
             {
-                case 1:
-                    Box(new(1.1f, 4.1f, 1.2f), new(px, 2, -z - 1.7f), stone);
-                    Box(new(1.7f, .45f, 1.7f), new(px, 4.2f, -z - 1.7f), accent);
-                    if (i < 2) Box(new(3.5f, .5f, .65f), new(px + 2.3f, 3.3f, -z - 1.7f), stone);
-                    break;
-                case 3:
-                    Box(new(2.5f, 2.7f, 2), new(px, 1.35f, -z - 1.7f), stone);
-                    Mesh(new CylinderMesh { TopRadius = .35f, BottomRadius = .35f, Height = 3.8f }, new(px + .55f, 3.1f, -z - 1.7f), new("414f58"));
-                    Box(new(1.3f, .6f, .08f), new(px, 1.2f, -z - .66f), accent);
-                    break;
                 case 4:
                     var bone = Box(new(.65f, 5.5f, .85f), new(px, 2.65f, -z - 1.7f), stone); bone.RotationDegrees = new(0, 0, i * 6);
                     Mesh(new SphereMesh { Radius = .65f, Height = 1 }, new(px, 5.5f, -z - 1.7f), accent);

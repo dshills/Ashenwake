@@ -9,14 +9,14 @@ public partial class Sandbox
     private MultiMeshInstance3D? _ambientMotes;
     private string _environmentStyle = "";
     private double _atmosphereTime;
-    private AudioStreamPlayer? _verdantAmbience;
+    private AudioStreamPlayer? _regionalAmbience;
     private string _ambienceCue = "", _motePlacementStyle = "";
     private (float Width, float Depth) _motePlacementBounds;
 
     public string EnvironmentStyle => _environmentStyle;
     public string AmbienceCue => _ambienceCue;
-    public bool AmbiencePlaying => _verdantAmbience?.Playing ?? false;
-    public bool AmbiencePaused => _verdantAmbience?.StreamPaused ?? false;
+    public bool AmbiencePlaying => _regionalAmbience?.Playing ?? false;
+    public bool AmbiencePaused => _regionalAmbience?.StreamPaused ?? false;
     public int AmbientMoteCount => _ambientMotes?.Multimesh.InstanceCount ?? 0;
 
     public void SetEnvironmentStyle(string style)
@@ -39,6 +39,7 @@ public partial class Sandbox
         _sun.LightEnergy = hub ? .85f : .78f;
         _sun.RotationDegrees = new(-58, -35, 0);
         bool verdant = VerdantAmbience.CueForStyle(style).Length != 0;
+        bool cinder = CinderAmbience.CueForStyle(style).Length != 0;
         if (verdant)
         {
             bool village = style == "verdant_village", heart = style == "verdant_heart";
@@ -54,6 +55,21 @@ public partial class Sandbox
             _sun.LightColor = new Color(village ? "efdfae" : heart ? "bfd0a0" : "dde8be");
             _sun.LightEnergy = village ? .86f : heart ? .74f : .8f;
             _sun.RotationDegrees = new(-62, -25, 0);
+        }
+        if (cinder)
+        {
+            bool storm = style == "cinder_storm", furnace = style == "cinder_furnace";
+            environment.BackgroundColor = new Color(storm ? "25272e" : "2b2524");
+            environment.AmbientLightColor = new Color(storm ? "b4bcca" : "c6b7a8");
+            environment.AmbientLightEnergy = storm ? .47f : .43f;
+            environment.FogLightColor = new Color(storm ? "646675" : "70594c");
+            environment.FogLightEnergy = .2f;
+            environment.FogDensity = storm ? .20f : .14f;
+            environment.FogDepthBegin = 35;
+            environment.FogDepthEnd = 65;
+            _sun.LightColor = new Color(storm ? "dfdef0" : furnace ? "ffe2c1" : "f4d7bb");
+            _sun.LightEnergy = storm ? .78f : .84f;
+            _sun.RotationDegrees = new(-58, -30, 0);
         }
         if (_ambientMotes is null)
         {
@@ -73,22 +89,23 @@ public partial class Sandbox
         }
         ((StandardMaterial3D)_ambientMotes.MaterialOverride).AlbedoColor = new Color(verdant
             ? style == "verdant_heart" ? "90b68a" : "b9ca86"
-            : hub ? "ffbe76" : "8aafb5");
-        SetVerdantAmbience(style);
+            : cinder ? style == "cinder_storm" ? "aeb3c2" : "bc9172" : hub ? "ffbe76" : "8aafb5");
+        SetRegionalAmbience(style);
         UpdateEnvironmentAtmosphere(0);
     }
 
     private void UpdateEnvironmentAtmosphere(double delta)
     {
-        if (_verdantAmbience is not null && _ambienceCue.Length != 0)
-            _verdantAmbience.StreamPaused = _clock.Paused;
+        if (_regionalAmbience is not null && _ambienceCue.Length != 0)
+            _regionalAmbience.StreamPaused = _clock.Paused;
         if (_ambientMotes is null) return;
         _ambientMotes.Visible = !_reduceEffects && _environmentStyle != "default";
         _worldEnvironment.Environment.FogEnabled = _ambientMotes.Visible;
         if (!_ambientMotes.Visible) return;
         bool verdant = VerdantAmbience.CueForStyle(_environmentStyle).Length != 0;
+        bool cinder = CinderAmbience.CueForStyle(_environmentStyle).Length != 0, storm = _environmentStyle == "cinder_storm";
         float x = _content.Room.HalfWidth * .001f, z = _content.Room.HalfDepth * .001f;
-        if (verdant && _authoredBounds.Width > 0 && _authoredBounds.Depth > 0)
+        if ((verdant || cinder) && _authoredBounds.Width > 0 && _authoredBounds.Depth > 0)
         { x = _authoredBounds.Width * .001f; z = _authoredBounds.Depth * .001f; }
         // A newly shown room still receives its initial layout when entered through a paused menu.
         bool layoutChanged = _motePlacementStyle != _environmentStyle || _motePlacementBounds != (x, z);
@@ -102,7 +119,7 @@ public partial class Sandbox
             // Only the distant perimeter receives ambient motes; the combat floor stays clear.
             var position = new Vector3(-x + i * (x * 2 / 23) + Mathf.Sin((float)_atmosphereTime + i) * .2f,
                 .35f + cycle * 2.8f, -z - 1.1f - i % 3 * .55f);
-            if (verdant)
+            if (verdant || cinder)
             {
                 float drift = Mathf.Sin((float)(_atmosphereTime * Math.Tau / 10) + i) * .18f;
                 float spread = (i % 8 + .5f) / 8;
@@ -113,31 +130,39 @@ public partial class Sandbox
                     _ => new(x + 1.3f, .5f + cycle * 3, -z + spread * z * 2 + drift)
                 };
             }
+            if (cinder)
+            {
+                // Ash falls along the perimeter. It never sweeps across floor warnings or actors.
+                position.Y = .4f + (1 - cycle) * (storm ? 4f : 3f);
+                if (i / 8 == 0) position.X += (cycle - .5f) * (storm ? 1.6f : .6f);
+                else position.Z += (cycle - .5f) * (storm ? 1.6f : .6f);
+            }
             float scale = Mathf.Sin(cycle * Mathf.Pi);
             _ambientMotes.Multimesh.SetInstanceTransform(i, new Transform3D(Basis.Identity.Scaled(Vector3.One * scale), position));
         }
     }
 
-    private void SetVerdantAmbience(string style)
+    private void SetRegionalAmbience(string style)
     {
-        string cue = VerdantAmbience.CueForStyle(style);
+        bool cinder = CinderAmbience.CueForStyle(style).Length != 0;
+        string cue = cinder ? CinderAmbience.CueForStyle(style) : VerdantAmbience.CueForStyle(style);
         if (cue == _ambienceCue) return;
         _ambienceCue = cue;
-        if (_verdantAmbience is not null)
-        { _verdantAmbience.Stop(); _verdantAmbience.StreamPaused = false; }
+        if (_regionalAmbience is not null)
+        { _regionalAmbience.Stop(); _regionalAmbience.StreamPaused = false; }
         if (cue.Length == 0)
         {
-            if (_verdantAmbience is not null) _verdantAmbience.Stream = null;
+            if (_regionalAmbience is not null) _regionalAmbience.Stream = null;
             return;
         }
-        if (_verdantAmbience is null)
+        if (_regionalAmbience is null)
         {
             // Master bus volume/muting remains authoritative for both combat and ambient audio.
-            _verdantAmbience = new AudioStreamPlayer { Name = "VerdantAmbience", VolumeDb = -25, Bus = "Master" };
-            AddChild(_verdantAmbience);
+            _regionalAmbience = new AudioStreamPlayer { Name = "RegionalAmbience", VolumeDb = -25, Bus = "Master" };
+            AddChild(_regionalAmbience);
         }
-        _verdantAmbience.Stream = VerdantAmbience.GetStream(cue);
-        _verdantAmbience.Play();
-        _verdantAmbience.StreamPaused = _clock.Paused;
+        _regionalAmbience.Stream = cinder ? CinderAmbience.GetStream(cue) : VerdantAmbience.GetStream(cue);
+        _regionalAmbience.Play();
+        _regionalAmbience.StreamPaused = _clock.Paused;
     }
 }

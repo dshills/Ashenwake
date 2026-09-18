@@ -5,7 +5,7 @@ namespace Ashenwake.Client;
 
 public static class EnvironmentGround
 {
-    public static string Style(bool inHub, string encounterId, string? explorationId = null, int act = 0) => inHub ? "greyhaven" : explorationId == "event.wake_hunt" ? "verdant_hunt" : encounterId switch
+    public static string Style(bool inHub, string encounterId, string? explorationId = null, int act = 0) => inHub ? "greyhaven" : explorationId == "event.wake_hunt" ? "verdant_hunt" : explorationId == "event.resonance_storm" ? "cinder_storm" : encounterId switch
     {
         "campaign.road" or "room.ossuary" => "road",
         "campaign.monastery" or "room.cloister" => "monastery",
@@ -15,6 +15,11 @@ public static class EnvironmentGround
         "campaign.rootheart" => "verdant_heart",
         "exploration.antler_hunt" => "verdant_hunt",
         "clear" when act == 2 => "verdant_ruins",
+        "campaign.cinder_pack" => "cinder_fields",
+        "campaign.extraction_floor" => "cinder_extraction",
+        "campaign.furnace_spindle" => "cinder_furnace",
+        "exploration.burning_rain" => "cinder_storm",
+        "clear" when act == 3 => "cinder_fields",
         _ => "default"
     };
 
@@ -23,6 +28,8 @@ public static class EnvironmentGround
     {
         if (style is "verdant_ruins" or "verdant_village" or "verdant_heart" or "verdant_hunt")
         { VerdantGround.Build(parent, room, style); return; }
+        if (CinderAmbience.CueForStyle(style).Length != 0)
+        { CinderGround.Build(parent, room, style); return; }
         var b = new EnvironmentBuilder(parent, "AuthoredGround");
         float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
         bool hub = style == "greyhaven", road = style == "road", sanctum = style == "sanctum";

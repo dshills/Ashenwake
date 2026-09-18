@@ -27,7 +27,7 @@ Pause freezes decorative motion and pauses ambient playback. **Reduced visual ef
 
 Tall architecture remains outside the authoritative room rectangle; camera-facing decoration stays low. All authored floor surfaces lie below Y=0, beneath warning geometry. Organic coverings reuse existing obstacle footprints and their player-occlusion fade. Clues add small cosmetic props at existing interaction anchors. None of these meshes adds collision, navigation, interaction range, damage, timing or encounter rules.
 
-This is repository-authored procedural art. It does not add a new level layout, new campaign content, final textured assets or network environment synchronization. Cooperative arenas retain their earlier presentation, and Acts III–V retain prototype regional landmarks.
+This is repository-authored procedural art. It does not add a new level layout, new campaign content, final textured assets or network environment synchronization. Cooperative arenas retain their earlier presentation, and Acts IV–V retain prototype regional landmarks. [Act III's Cinder Reach](cinder_reach.md) now has its own volcanic industrial treatment.
 
 ## Reproduce an inspection run
 

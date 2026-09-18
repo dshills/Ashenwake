@@ -161,6 +161,27 @@ public sealed class CampaignCombatTests
         Assert.DoesNotContain(session.Step(), e => e.Kind == "EliteEmpowered");
     }
     [Fact]
+    public void FurnaceGuardPresentationUsesExactDefenseBoundaryWithoutChangingState()
+    {
+        var content = Content(); var state = content.CreateEncounter("campaign.furnace_spindle").Capture();
+        var boss = state.Actors.Single(a => a.DefinitionId == "boss.furnace_spindle");
+        // Animation state can lag the defense timer and warning budgets can leave no slag warning.
+        boss.State = "Guarded"; boss.RecoveryUntil = 1000;
+        state.Campaign!.Actors[boss.Id].GuardedUntil = 1;
+        var session = CombatSession.Restore(content.CombatJson, state);
+        string hash = session.StateHash;
+        Assert.True(session.View.Actors.Single(a => a.Id == boss.Id).Guarded);
+        Assert.Equal(hash, session.StateHash);
+        session.Step();
+        Assert.Equal(1, session.Tick);
+        Assert.False(session.View.Actors.Single(a => a.Id == boss.Id).Guarded);
+        state = session.Capture(); state.Campaign!.Actors[boss.Id].GuardedUntil = 20;
+        state.Actors.Single(a => a.Id == boss.Id).State = "Windup";
+        session = CombatSession.Restore(content.CombatJson, state);
+        Assert.True(session.View.Actors.Single(a => a.Id == boss.Id).Guarded);
+        Assert.False(session.View.Actors.Single(a => a.Id == 1).Guarded);
+    }
+    [Fact]
     public void FurnaceCoreWindowChangesRealDamageAndStormOverchargeExpires()
     {
         var content = Content(); var state = content.CreateEncounter("campaign.furnace_spindle").Capture();

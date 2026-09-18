@@ -61,6 +61,12 @@ mkdir -p "$verdant_output"
 python3 tools/check-godot-log.py "$verdant_output/smoke.log"
 rg -q 'VerdantClientSmokePassed' "$verdant_output/smoke.log"
 
+cinder_output="$package_output/cinder-client"
+mkdir -p "$cinder_output"
+"$binary" --headless --quit-after 3600 --log-file "$cinder_output/smoke.log" -- --cinder-smoke --output="$cinder_output"
+python3 tools/check-godot-log.py "$cinder_output/smoke.log"
+rg -q 'CinderClientSmokePassed' "$cinder_output/smoke.log"
+
 service_output="$package_output/service-client"
 mkdir -p "$service_output"
 "$binary" --headless --quit-after 600 --log-file "$service_output/smoke.log" -- --service-interaction-smoke --output="$service_output"
