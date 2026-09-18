@@ -1,6 +1,6 @@
 # Ashenwake
 
-An isometric action RPG about building power from the remains of dead gods. The current working milestone is **Phase 6: release hardening**, continuing the five-act greybox campaign and five-discipline progression foundation. Phase verification documents record tests, Prism reviews, and remaining production acceptance gates. Recovery, local diagnostics, maintained upgrade fixtures, soak tools and integrity-checked local release candidates are implemented. Public-release and external acceptance gates remain open.
+An isometric action RPG about building power from the remains of dead gods. Phases 0–6 provide the offline five-act greybox campaign, permanent builds, Fractures, God Hunts, and release engineering. Phase 7 adds an optional authoritative two-player slice with a Godot client, a C# combat server, and a Go/PostgreSQL control service. Automated evidence and production acceptance boundaries are recorded in the phase verification documents.
 
 Choose Vanguard, Veilwalker, Arcanist, Gravecaller, or Warden, each with six skills and its own resource loop. Travel through five regions, rescue Greyhaven's specialists, choose consequential alliances, confront five bosses, and investigate three optional exploration encounters. Equipment, anatomy, mastery, Manifestations, crafting, and rewards persist. Godot renders an engine-independent C# simulation.
 
@@ -127,3 +127,9 @@ Phase status and evidence are recorded in [Phase 1 verification](docs/phase1_ver
 `bash tools/release-verify.sh` runs fixture/asset audits, repeated combat and continuing endgame soaks, and the actual release-settings smoke. `bash tools/release-package.sh <reviewed-commit-or-tree-hash>` exports and runs the application, collects pinned runtime notices, and creates a new local candidate with an immutable integrity manifest. It does not publish or sign a release. See [Phase 6 evidence](docs/phase6_verification.md), [release readiness](docs/release_readiness.md), and [third-party notices](docs/third_party_notices.md).
 
 Focus loss or controller disconnect pauses and clears held inputs; reconnection requires explicit resume. Settings recover from a validated backup. The settings panel can export bounded local diagnostics with the exact loaded Core build/content identity. Replay is excluded by default and nothing uploads automatically.
+
+## Optional local co-op
+
+`bash tools/coop-verify.sh` verifies shared combat and private PostgreSQL persistence. `bash tools/coop-network-verify.sh` runs two authenticated peers with software input impairments, reconnect and dedicated-server restart, checking durable rewards and the replay chain. `bash tools/coop-package-verify.sh` exports the actual client and verifies its offline, release-check and two-player entry routes. The service scripts refuse occupied test ports and clean up only their own processes.
+
+Launch the exported application with `-- --coop` for the connection screen. The prototype uses one-time allocation tickets from the local control service; it does not accept offline characters. See [co-op setup](docs/coop_network.md), [online services](docs/online_services.md), [combat contract](docs/coop_combat.md), and [Phase 7 verification](docs/phase7_verification.md). No public service is deployed.

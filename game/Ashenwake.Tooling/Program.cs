@@ -18,6 +18,7 @@ static int Run(string[] args)
         if (args[0] == "production") return Ashenwake.Tooling.ProductionCommands.Run(args);
         if (args[0] == "campaign") return Ashenwake.Tooling.CampaignCommands.Run(args);
         if (args[0] == "endgame") return Ashenwake.Tooling.EndgameCommands.Run(args);
+        if (args[0] == "coop") return Ashenwake.Tooling.CoopCommands.Run(args);
         if (args[0] == "release") return Ashenwake.Tooling.ReleaseCommands.Run(args);
         if (args[0] == "item") return Ashenwake.Tooling.InspectionCommands.Item(args);
         if (args[0] == "content" && args[1] == "refs") return Ashenwake.Tooling.InspectionCommands.References(args);

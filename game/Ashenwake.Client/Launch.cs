@@ -7,7 +7,9 @@ public partial class Launch : Node
 {
     public override void _Ready()
     {
-        string scene = OS.GetCmdlineUserArgs().Contains("--release-smoke") ? "res://ReleaseSmoke.tscn" : "res://Endgame.tscn";
+        var arguments = OS.GetCmdlineUserArgs();
+        string scene = arguments.Contains("--coop") || arguments.Contains("--coop-smoke") ? "res://Coop.tscn" :
+            arguments.Contains("--release-smoke") ? "res://ReleaseSmoke.tscn" : "res://Endgame.tscn";
         Callable.From(() =>
         {
             if (GetTree().ChangeSceneToFile(scene) != Error.Ok)

@@ -22,10 +22,16 @@ jobs:
           key: ashenwake-linux-dotnet-8.0.425-godot-4.6.2-${{ hashFiles('**/packages.lock.json', 'tools/runtime-packs.json', 'tools/package-archives.json', 'tools/bootstrap.sh') }}
       - name: Install verified local toolchain and templates
         run: bash tools/bootstrap.sh --templates
+      - name: Install local PostgreSQL test binaries
+        run: sudo apt-get update && sudo apt-get install -y postgresql postgresql-client
       - name: Compile, format, test, validate content, replay, benchmark, and import
         run: bash tools/verify.sh
+      - name: Verify local cooperative authority and persistence
+        run: bash tools/coop-verify.sh && bash tools/coop-network-verify.sh
       - name: Export and run packaged client
         run: bash tools/export.sh
+      - name: Verify packaged cooperative client
+        run: bash tools/coop-package-verify.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:

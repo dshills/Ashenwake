@@ -1,0 +1,8 @@
+.git
+.tools
+artifacts
+**/bin
+**/obj
+**/.godot
+**/TestResults
+.env*
