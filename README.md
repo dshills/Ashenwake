@@ -43,6 +43,10 @@ Act II contains an ordered tracking hunt, Act III a timed Resonance Storm, and A
 | Reveal all ground loot | Hold Alt |
 | Consume a corpse / use captured elite echo | V / G |
 
+After a fight, the objective explains any remaining ground loot and a **next step** button opens the relevant Map or Story tab. **Continue onward** appears at the top of the map. Settle the region's story choice before the boss; after victory, the map offers the next unlocked act. The Bell Saint's shield phase shows how many ritual anchors remain, with persistent labels on both anchors. Rescued specialists open their matching Gear or Craft screen when you interact.
+
+Press **P** for a visible pause menu with Resume and Settings. Closing settings, loot inspection, or Echoes preserves a manual pause or a pause caused by focus loss; choose Resume when ready. Opening a modal cannot be used to bypass its pause with P.
+
 Build Momentum, Exposure, Instability, Remains, or Adaptation through your discipline's actions; the skill bar shows costs and heat generation. Ultimates unlock at level 10; retraining unlocks at level 5 and costs five materials. Master skills to select mutations, and spend level-earned passive points near Mara. Equipment has twelve slots, with affixes and hand/discipline restrictions. Rescue the specialists through dungeon objectives and restore their workshops to unlock all six crafting services. Destructive extraction and permanent grafts require confirmation. The prototype grants an unawakened Ashcleaver; its canonical awakening requirement remains 1,000 burning-enemy kills.
 
 Run `"$GODOT" --path game/Ashenwake.Client res://Sandbox.tscn` for the independent diagnostic arena, where all prototype fragments, equipment, and workload presets are unlocked. Settings include rebinding and reduced effects/shake; a controller has movement and combat bindings.

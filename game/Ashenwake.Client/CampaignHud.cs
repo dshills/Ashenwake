@@ -57,9 +57,15 @@ public partial class CampaignHud : Control
         { var button = new Button { Text = text, SizeFlagsHorizontal = SizeFlags.ExpandFill }; button.Pressed += action; footer.AddChild(button); }
         _choiceDialog = new ConfirmationDialog { Title = "Commit this decision", OkButtonText = "Choose this future", CancelButtonText = "Consider the options" };
         _choiceDialog.Confirmed += () => ChoiceRequested?.Invoke(_pendingChoice, _pendingOutcome); AddChild(_choiceDialog);
+        BuildNextStep();
         _panel.Visible = false;
     }
-    public void Toggle() { _panel.Visible = !_panel.Visible; if (_panel.Visible) { Rebuild(true); _firstTab.GrabFocus(); } }
+    public void Toggle()
+    {
+        _panel.Visible = !_panel.Visible;
+        if (_panel.Visible)
+        { if (!_state.InHub && !_engaged) _tab = _nextTab; Rebuild(true); _firstTab.GrabFocus(); }
+    }
     public bool PresentInteraction(string message)
     {
         if (message is "Dialogue:mara.false_history" or "Dialogue:mara.reward_reaction")
@@ -79,6 +85,7 @@ public partial class CampaignHud : Control
     public void SetView(CampaignView view, CampaignState state, CampaignDefinition content, AdventureView anatomyView,
         AdventureState anatomy, AdventureDefinition anatomyContent, CombatView combat, IReadOnlyList<InteractionDisplay> interactions, long revision)
     {
+        bool enteredCombat = combat.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0) && !_engaged;
         bool changed = _view is null || _view.Region != view.Region || _view.Ending is null && view.Ending is not null;
         bool endingArrived = _view?.Ending is null && view.Ending is not null;
         _view = view; _state = state; _content = content; _anatomyView = anatomyView; _anatomy = anatomy; _anatomyContent = anatomyContent;
@@ -86,9 +93,10 @@ public partial class CampaignHud : Control
         _engaged = combat.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0);
         bool activeBoss = combat.Actors.Any(a => a.Health > 0 && a.DefinitionId.StartsWith("boss.", StringComparison.Ordinal));
         _headline.Text = $"{view.Region.ToUpperInvariant()} · ACT {view.Act}" + (activeBoss && combat.BossPhase > 0 ? $" · PHASE {combat.BossPhase}" : "");
-        _objective.Text = state.InHub ? "Choose an unlocked act on the Journey map [J] to leave Greyhaven." : view.Objective;
+        RefreshNextStep();
         if (!state.InHub) _maraDialogue = "";
         if (changed) _panel.Visible = state.InHub || endingArrived;
+        else if (enteredCombat) _panel.Visible = false;
         if (endingArrived) _tab = "Story";
         string ready = !_state.InHub && !_engaged && _state.Exploration is null
             ? _content.Choices.FirstOrDefault(c => c.Act == state.CurrentAct && state.CompletedEncounters.Contains(c.RequiredEncounter) && !state.Choices.ContainsKey(c.Id))?.Id ?? "" : "";
@@ -118,6 +126,7 @@ public partial class CampaignHud : Control
             _rows.AddChild(Label("Leave Greyhaven: choose an unlocked act below.", 13));
         }
         _rows.AddChild(Label($"Anchor: {Readable(_view.Anchor)} · deaths {_state.Deaths}", 12));
+        if (!_state.InHub) MapNextStep();
         foreach (var act in _content.Acts)
         {
             bool unlocked = _view.AvailableActs.Contains(act.Number);
@@ -128,11 +137,7 @@ public partial class CampaignHud : Control
         }
         if (!_state.InHub)
         {
-            bool choicePending = _content.Choices.Any(c => c.Act == _state.CurrentAct && _state.CompletedEncounters.Contains(c.RequiredEncounter) && !_state.Choices.ContainsKey(c.Id));
             string droppedLoot = _combat.Loot.Count > 0 ? $" · leave {_combat.Loot.Count} uncollected drops" : "";
-            Button("Continue onward" + droppedLoot, () => ContinueRequested?.Invoke()).Disabled = _engaged || _state.Exploration is not null || _view.EncounterId is null || choicePending;
-            Button("Return to Greyhaven", () => HubRequested?.Invoke());
-            _rows.AddChild(Label(_engaged ? "Resolve the encounter to reopen travel. Death returns you to this region's anchor and preserves earned progress." : "Take time to collect your rewards and settle any pending decision before continuing.", 12));
             _rows.AddChild(new HSeparator()); _rows.AddChild(Label("EXPLORATION", 14));
             foreach (var exploration in _content.Exploration.Where(e => e.Act == _view.Act))
                 Button((_state.CompletedExploration.Contains(exploration.Id) ? "✓ " : "") + exploration.Name + " · " + exploration.Kind + droppedLoot,

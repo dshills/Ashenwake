@@ -27,6 +27,7 @@ public partial class ProductionHud : Control
     private VBoxContainer _rows = null!;
     private Label _summary = null!, _notice = null!;
     private Button _firstTab = null!;
+    private readonly Dictionary<string, Button> _tabs = new(StringComparer.Ordinal);
     private string _tab = "Character";
     private long _revision, _renderedRevision = -1;
     private int _rangeMask, _renderedRangeMask = -1;
@@ -68,6 +69,7 @@ public partial class ProductionHud : Control
         foreach (string tab in new[] { "Character", "Gear", "Craft", "Town", "Profile" })
         {
             var button = new Button { Text = tab, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            _tabs.Add(tab, button);
             if (tab == "Character") _firstTab = button;
             button.AddThemeFontSizeOverride("font_size", 12); button.Pressed += () => { _tab = tab; Rebuild(true); }; tabs.AddChild(button);
         }
@@ -81,6 +83,27 @@ public partial class ProductionHud : Control
     }
 
     public void Toggle() { _panel.Visible = !_panel.Visible; if (_panel.Visible) { Rebuild(true); _firstTab.GrabFocus(); } }
+    public bool PresentInteraction(string message)
+    {
+        string specialist;
+        switch (message)
+        {
+            case "ServiceOpened:service.torren":
+                _tab = "Gear"; specialist = "Torren · compare and equip your items."; break;
+            case "ServiceOpened:npc.torren":
+                _tab = "Craft"; _service = CraftingService.Tempering; specialist = "Torren · improve equipment through tempering."; break;
+            case "ServiceOpened:npc.cael":
+                _tab = "Craft"; _service = CraftingService.Purification; specialist = "Sister Cael · purify a divine fragment."; break;
+            case "ServiceOpened:npc.oris":
+                _tab = "Craft"; _service = CraftingService.Rebinding; specialist = "Oris · rebind an unwanted affix."; break;
+            case "ServiceOpened:npc.kesh":
+                _tab = "Craft"; _service = CraftingService.Extraction; specialist = "Kesh · extract a Legendary item's property."; break;
+            case "ServiceOpened:hub.workshops":
+                _tab = "Craft"; _service = CraftingService.Engraving; specialist = "Greyhaven workshops · engrave a learned property."; break;
+            default: return false;
+        }
+        Visible = true; _panel.Visible = true; Notice(specialist); Rebuild(true); _tabs[_tab].GrabFocus(); return true;
+    }
     public void Notice(string message) => _notice.Text = message;
     public void SetView(ProgressionView view, ProgressionSnapshot state, ProgressionDefinition content, CombatView combat,
         IReadOnlyList<InteractionDisplay> interactions, bool inTown, long revision, IReadOnlyList<string>? unlockedMutations)

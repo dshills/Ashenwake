@@ -36,11 +36,13 @@ func settle():
 
 func key(code):
     var event = InputEventKey.new()
+    event.keycode = code
     event.physical_keycode = code
     event.pressed = true
     get_viewport().push_input(event, true)
     await settle()
     event = InputEventKey.new()
+    event.keycode = code
     event.physical_keycode = code
     event.pressed = false
     get_viewport().push_input(event, true)
@@ -56,6 +58,10 @@ func click(button):
         event.pressed = pressed
         get_viewport().push_input(event, true)
         await settle()
+
+func saved_tick():
+    await key(KEY_F5)
+    return JSON.parse_string(FileAccess.get_file_as_string(output.path_join("endgame.save.json"))).state.tick
 
 func run():
     add_child(load("res://Endgame.tscn").instantiate())
@@ -92,7 +98,28 @@ func run():
         var saved = JSON.parse_string(FileAccess.get_file_as_string(path))
         var campaign = saved.state.campaign.campaign
         checks["map_enters_act_one"] = not campaign.inHub and campaign.currentAct == 1
-    var passed = checks.size() == 9
+    await key(KEY_P)
+    var paused_tick = await saved_tick()
+    await key(KEY_H)
+    checks["echoes_hides_manual_pause_card"] = visible_label("ECHOES: BORROWED MEMORY") and button_containing("Resume playing") == null
+    await key(KEY_ESCAPE)
+    checks["echoes_escape_closes_panel"] = not visible_label("ECHOES: BORROWED MEMORY")
+    checks["echoes_preserves_manual_pause"] = button_containing("Resume playing") != null and await saved_tick() == paused_tick
+    await click(button_containing("Resume playing"))
+    await key(KEY_H)
+    for node in nodes(self):
+        if node.get_script() != null and node.get_script().resource_path.ends_with("/Sandbox.cs"):
+            node.notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+            break
+    await key(KEY_ESCAPE)
+    checks["echoes_escape_closes_after_focus_loss"] = not visible_label("ECHOES: BORROWED MEMORY")
+    paused_tick = await saved_tick()
+    for i in range(12): await get_tree().process_frame
+    checks["echoes_preserves_focus_pause"] = button_containing("Resume playing") != null and await saved_tick() == paused_tick
+    await click(button_containing("Resume playing"))
+    for i in range(12): await get_tree().process_frame
+    checks["echoes_requires_explicit_resume"] = await saved_tick() > paused_tick
+    var passed = checks.size() == 15
     for value in checks.values(): passed = passed and value
     var report = {"kind": "InteractionClientSmokePassed" if passed else "InteractionClientSmokeFailed", "passed": passed, "checks": checks}
     var file = FileAccess.open(output.path_join("interaction-review.json"), FileAccess.WRITE)

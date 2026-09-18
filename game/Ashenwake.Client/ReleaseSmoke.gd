@@ -38,6 +38,12 @@ func button(prefix):
 func saved():
     button("Save character").pressed.emit()
     return JSON.parse_string(FileAccess.get_file_as_string(output.path_join("sandbox.save.json"))).state
+func key(code):
+    for pressed in [true, false]:
+        var event = InputEventKey.new()
+        event.physical_keycode = code
+        event.pressed = pressed
+        get_viewport().push_input(event, true)
 func _process(_delta):
     if _finished: return
     frames += 1
@@ -86,7 +92,62 @@ func _process(_delta):
                 checks["diagnostic_has_identity"] = report.buildId.length() == 32 and report.contentHash.length() == 64
                 checks["diagnostic_event_ring_bounded"] = report.recentEvents.size() <= 256
                 checks["diagnostic_events_exist"] = report.recentEvents.size() > 0
-            var ok = checks.size() == 17
+            key(KEY_P)
+        175:
+            checks["pause_key_cannot_resume_settings"] = saved().tick == paused_tick
+            button("Close settings").pressed.emit()
+        190:
+            key(KEY_P)
+            paused_tick = saved().tick
+        205:
+            if "--capture-release" in OS.get_cmdline_user_args() and DisplayServer.get_name() != "headless": capture_pause.call_deferred()
+        210:
+            checks["manual_pause_stops_ticks"] = saved().tick == paused_tick
+            checks["manual_pause_shows_resume"] = button("Resume playing").is_visible_in_tree()
+            checks["manual_pause_focuses_resume"] = get_viewport().gui_get_focus_owner() == button("Resume playing")
+            button("Settings").pressed.emit()
+        230:
+            checks["settings_hides_manual_resume"] = not button("Resume playing").is_visible_in_tree()
+            checks["manual_pause_settings_stops_ticks"] = saved().tick == paused_tick
+            button("Close settings").pressed.emit()
+        250:
+            checks["settings_close_preserves_manual_pause"] = saved().tick == paused_tick and button("Resume playing").is_visible_in_tree()
+            checks["settings_close_focuses_resume"] = get_viewport().gui_get_focus_owner() == button("Resume playing")
+            key(KEY_P)
+        270:
+            checks["pause_key_resumes_manual_pause"] = saved().tick > paused_tick and not button("Resume playing").is_visible_in_tree()
+            button("Settings").pressed.emit()
+            sandbox.notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+            paused_tick = saved().tick
+        290:
+            checks["focus_interruption_keeps_settings_active"] = not button("Resume playing").is_visible_in_tree() and saved().tick == paused_tick
+            button("Close settings").pressed.emit()
+        310:
+            checks["settings_close_preserves_interruption_pause"] = saved().tick == paused_tick and button("Resume playing").is_visible_in_tree()
+            button("Resume playing").pressed.emit()
+            button("Settings").pressed.emit()
+            button("Inspect ground loot").pressed.emit()
+            sandbox.notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+            paused_tick = saved().tick
+        330:
+            checks["interruption_keeps_loot_inspector_active"] = not button("Resume playing").is_visible_in_tree() and saved().tick == paused_tick
+            button("Close inspection").pressed.emit()
+        350:
+            checks["loot_close_preserves_interruption_pause"] = saved().tick == paused_tick and button("Resume playing").is_visible_in_tree()
+            checks["loot_close_focuses_resume"] = get_viewport().gui_get_focus_owner() == button("Resume playing")
+            button("Resume playing").pressed.emit()
+            sandbox.SetModalPaused("smoke-a", true)
+            sandbox.SetModalPaused("smoke-b", true)
+            sandbox.SetModalPaused("smoke-a", false)
+            key(KEY_P)
+            paused_tick = saved().tick
+        370:
+            checks["overlapping_modal_owners_keep_pause"] = saved().tick == paused_tick and not button("Resume playing").is_visible_in_tree()
+            sandbox.SetModalPaused("smoke-b", false)
+        390:
+            checks["last_modal_owner_releases_pause"] = saved().tick > paused_tick
+            button("Settings").pressed.emit()
+            var ok = checks.size() == 33
             for value in checks.values(): ok = ok and value
             var report = {"kind":"ReleaseClientSmokePassed" if ok else "ReleaseClientSmokeFailed", "passed":ok,"frames":frames,"checks":checks,"note":"Godot engine notifications and connection signals exercised in software. No physical-controller certification."}
             var file = FileAccess.open(output.path_join("release-ui-review.json"),FileAccess.WRITE)
@@ -95,6 +156,10 @@ func _process(_delta):
             _finished = true
             finish.call_deferred(ok)
     return
+
+func capture_pause():
+    await RenderingServer.frame_post_draw
+    get_viewport().get_texture().get_image().save_png(output.path_join("manual-pause.png"))
 
 func finish(ok):
     if "--capture-release" in OS.get_cmdline_user_args() and DisplayServer.get_name() != "headless":

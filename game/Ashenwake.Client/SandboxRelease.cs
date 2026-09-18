@@ -9,6 +9,9 @@ public partial class Sandbox
 {
     private readonly DiagnosticBuffer _diagnostics = new();
     private bool _releaseEnabled, _neutralMovementRequired;
+    private bool _manualPause, _interruptionPause;
+    private readonly HashSet<string> _modalPauses = new(StringComparer.Ordinal);
+    private ColorRect? _resumeBackdrop;
     private PanelContainer? _resumePanel;
     private Label? _resumeReason, _releaseSettingsStatus;
 
@@ -17,11 +20,14 @@ public partial class Sandbox
         _releaseEnabled = true;
         CombatAdvanced += RecordDiagnostics;
         Input.JoyConnectionChanged += ControllerConnectionChanged;
-        _resumePanel = Panel(new(413, 280), new(454, 157));
+        _resumeBackdrop = new ColorRect { Color = new Color(0, 0, 0, .4f), MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
+        _resumeBackdrop.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect); _hud.AddChild(_resumeBackdrop);
+        _resumePanel = Panel(new(413, 260), new(454, 200));
         var column = new VBoxContainer(); _resumePanel.AddChild(column);
         column.AddChild(TextLabel("PAUSED", 23));
         _resumeReason = TextLabel("", 14); column.AddChild(_resumeReason);
-        AddButton(column, "Resume playing", () => ChangePause(false));
+        AddButton(column, "Resume playing", ResumePlaying);
+        AddButton(column, "Settings", () => TogglePanel(_settingsPanel));
         if (_settingsRecoveryNotice.Length > 0) ReleaseStatus(_settingsRecoveryNotice);
     }
 
@@ -49,21 +55,68 @@ public partial class Sandbox
 
     private void PauseForInterruption(string reason)
     {
-        ChangePause(true);
-        if (_resumePanel is null || _resumeReason is null) return;
-        _resumeReason.Text = reason; _resumePanel.Visible = true;
-        _resumePanel.GetChild<VBoxContainer>(0).GetChildren().OfType<Button>().First().GrabFocus();
+        _interruptionPause = true;
+        if (_resumeReason is not null) _resumeReason.Text = reason;
+        ChangePause(false);
+    }
+
+    /// <summary>Each modal releases only its own pause; manual and interruption pauses require explicit resume.</summary>
+    public void SetModalPaused(string source, bool paused)
+    {
+        if (paused) _modalPauses.Add(source); else _modalPauses.Remove(source);
+        ChangePause(false);
+    }
+
+    private bool HasModalPause => _modalPauses.Count > 0 || _settingsPanel is { Visible: true } ||
+        _inventoryPanel is { Visible: true } || _lootPanel is { Visible: true };
+
+    private void ToggleManualPause()
+    {
+        if (HasModalPause) return;
+        if (_manualPause || _interruptionPause) { ResumePlaying(); return; }
+        _manualPause = true;
+        if (_resumeReason is not null) _resumeReason.Text = $"The world is paused. Press {_keys["pause"]} or choose Resume playing when ready.";
+        ChangePause(false);
+    }
+
+    private void ResumePlaying()
+    {
+        if (HasModalPause) return;
+        _manualPause = _interruptionPause = false;
+        ChangePause(false);
+    }
+
+    private void ResetPause()
+    {
+        _manualPause = _interruptionPause = false; _modalPauses.Clear();
+        ChangePause(false);
     }
 
     private void ChangePause(bool paused)
     {
-        _clock.Paused = paused;
+        _clock.Paused = paused || _manualPause || _interruptionPause || HasModalPause;
         _pending.Clear(); _pending.Add(new(CombatCommandKind.Stop));
         _moveX = _moveZ = int.MinValue;
         _awaitingKey = null;
         _neutralMovementRequired = true;
         foreach (string action in _keys.Keys) Input.ActionRelease("aw_" + action);
-        if (!paused && _resumePanel is not null) _resumePanel.Visible = false;
+        if (_resumePanel is null || _resumeBackdrop is null) return;
+        bool showResume = (_manualPause || _interruptionPause) && !HasModalPause;
+        bool wasVisible = _resumePanel.Visible;
+        _resumePanel.Visible = _resumeBackdrop.Visible = showResume;
+        if (showResume)
+        {
+            _hud.MoveChild(_resumeBackdrop, _hud.GetChildCount() - 1);
+            _hud.MoveChild(_resumePanel, _hud.GetChildCount() - 1);
+            FocusFirstAction(_resumePanel);
+        }
+        else if (wasVisible) GetViewport().GuiGetFocusOwner()?.ReleaseFocus();
+    }
+
+    private void FocusResumeOrRelease()
+    {
+        if (_resumePanel is { Visible: true }) FocusFirstAction(_resumePanel);
+        else GetViewport().GuiGetFocusOwner()?.ReleaseFocus();
     }
 
     private Vector2 ReadReleaseMovement()

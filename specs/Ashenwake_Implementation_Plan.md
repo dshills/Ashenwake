@@ -4,6 +4,8 @@
 
 **Planning baseline:** September 17, 2026
 
+**Current follow-through:** Opening-slice playtest usability adds clearer encounter exits, Bell Saint mechanic feedback, specialist service routing, and coherent pause/resume behavior. See [verification and remaining player-acceptance work](../docs/opening_playtest_verification.md).
+
 **Sources:** [Game Design Foundation](Ashenwake_Game_Design.md) and [Technical Architecture](Ashenwake_Technical_Architecture.md)
 
 Build a small, satisfying, replayable single-player game loop first. Prove that Divine Anatomy creates surprising build interactions, then establish a repeatable content pipeline, produce the campaign and endgame, and release a reliable single-player game. Cooperative play follows as a separately gated expansion.

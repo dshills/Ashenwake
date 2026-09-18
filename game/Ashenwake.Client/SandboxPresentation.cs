@@ -129,6 +129,7 @@ public partial class Sandbox
         }
         actor.Previous = actor.Current; actor.Current = target;
         actor.Root.Visible = health > 0;
+        if (role == "bellsaint") actor.Label.Position = Vector3.Up * (_view.BossPhase == 2 ? 4.8f : 3.3f);
         actor.Label.Text = id == 1 ? $"UNBOUND  {health}/{maxHealth}" : $"{name.ToUpperInvariant()}\n{health}/{maxHealth}{(status.Length > 0 ? "\n" + status : "")}";
         actor.Tell.Visible = telegraph && health > 0;
         if (telegraph) actor.Label.Text += "\n⚠ ATTACK INCOMING";

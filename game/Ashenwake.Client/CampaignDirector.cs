@@ -168,6 +168,7 @@ public partial class CampaignDirector : Node3D
         {
             _worldEvents.Add(message); if (_worldEvents.Count > 4096) _worldEvents.RemoveAt(0);
             _campaign.PresentInteraction(message);
+            _character.PresentInteraction(message);
             string? notice = PlayerNotice(message); if (notice is not null) Notice(notice);
         }
     }

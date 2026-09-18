@@ -87,7 +87,7 @@ public partial class Sandbox : Node3D
     }
     public void Notify(string text) => Message(text);
     public void SetWorldSubtitle(string text) => _subtitleLabel.Text = text;
-    public void SetPaused(bool paused) => ChangePause(paused);
+    public void SetPaused(bool paused) => SetModalPaused("session", paused);
     private void ShowInventory()
     { if (InventoryOverride is not null) InventoryOverride(); else TogglePanel(_inventoryPanel); }
 
@@ -101,7 +101,7 @@ public partial class Sandbox : Node3D
         ClearPresentation(); SynchronizeWorld();
         if (_inventoryPanel is not null)
         { _inventoryPanel.Visible = false; _settingsPanel.Visible = false; if (_lootPanel is not null) _lootPanel.Visible = false; _lootSignature = ""; _inspectedLoot = 0; RefreshHud(); }
-        if (_releaseEnabled) ChangePause(false);
+        if (_releaseEnabled) ResetPause();
     }
 
     /// <summary>Adopts authoritative projections without restarting input or visual feedback in the same arena.</summary>
@@ -173,7 +173,7 @@ public partial class Sandbox : Node3D
         {
             if (input.IsActionPressed("aw_inventory")) { ShowInventory(); return; }
             if (input.IsActionPressed("aw_settings")) { TogglePanel(_settingsPanel); return; }
-            if (input.IsActionPressed("aw_pause")) { ChangePause(!_clock.Paused); return; }
+            if (input.IsActionPressed("aw_pause")) { ToggleManualPause(); GetViewport().SetInputAsHandled(); return; }
             if (input.IsActionPressed("aw_step")) { _clock.SingleStep(StepCombat); return; }
             if (input.IsActionPressed("aw_save")) { Save(); return; }
             if (input.IsActionPressed("aw_load")) { Load(); return; }
@@ -272,10 +272,10 @@ public partial class Sandbox : Node3D
             if (actor.Faction == CombatFaction.Enemy && actor.DefinitionId.Length > 0)
                 name = Readable(actor.DefinitionId[(actor.DefinitionId.IndexOf('.') + 1)..]) + (actor.Role.EndsWith(" Elite", StringComparison.Ordinal) ? " Elite" : "");
             var conditions = actor.Statuses.Select(s => s.Id).Concat(actor.EliteModifiers ?? []);
-            string? mechanic = EndgameActorLabel(actor.State);
+            string? mechanic = CampaignActorLabel(actor) ?? EndgameActorLabel(actor.State);
             if (mechanic is not null) _mechanicLabels.Add(actor.Id);
             if (mechanic is not null) conditions = conditions.Append(mechanic);
-            if (actor.State is "Guarded" or "Recover") conditions = conditions.Append(actor.State == "Guarded" ? "GUARDED" : "RECOVERY WINDOW");
+            if (mechanic is null && (actor.State is "Guarded" or "Recover")) conditions = conditions.Append(actor.State == "Guarded" ? "GUARDED" : "RECOVERY WINDOW");
             SynchronizeActor(actor.Id, name, role.ToLowerInvariant(), actor.Position.X, actor.Position.Z,
                 actor.Health, actor.MaxHealth, string.Join(" / ", conditions),
                 actor.TelegraphTicks > 0 && actor.TelegraphRadius == 0, actor.Faction != CombatFaction.Enemy);
@@ -364,7 +364,7 @@ public partial class Sandbox : Node3D
         }
         LabelAt("WASD / LEFT STICK  Move   ·   CLICK / 1–6  Attack   ·   SPACE / B  Dodge   ·   Q  Potion   ·   E  Collect   ·   TAB  Target", new(32, 765), 12, new("abc0cb"));
         _sandboxControls.Add(ButtonAt("Reset [R]", new(985, 697), new(122, 54), () => Reset(_view.Preset)));
-        ButtonAt("Pause [P]", new(1118, 697), new(129, 54), () => ChangePause(!_clock.Paused));
+        ButtonAt("Pause [P]", new(1118, 697), new(129, 54), ToggleManualPause);
         BuildInventory(); BuildSettings();
     }
     private Label LabelAt(string text, Vector2 position, int size, Color color, Node? parent = null)
@@ -481,7 +481,7 @@ public partial class Sandbox : Node3D
         bool open = !panel.Visible; _inventoryPanel.Visible = false; _settingsPanel.Visible = false;
         if (_lootPanel is not null) _lootPanel.Visible = false;
         panel.Visible = open; ChangePause(open);
-        if (open) FocusFirstAction(panel); else GetViewport().GuiGetFocusOwner()?.ReleaseFocus();
+        if (open) FocusFirstAction(panel); else FocusResumeOrRelease();
         RefreshHud();
     }
     private void ApplyWhilePaused(CombatCommand command)

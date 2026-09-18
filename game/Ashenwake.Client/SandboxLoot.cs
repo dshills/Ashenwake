@@ -48,7 +48,7 @@ public partial class Sandbox
         if (_lootPanel is null) return;
         bool open = !_lootPanel.Visible; _settingsPanel.Visible = false; _inventoryPanel.Visible = false; _lootPanel.Visible = open;
         ChangePause(open);
-        if (open) FocusFirstAction(_lootPanel); else GetViewport().GuiGetFocusOwner()?.ReleaseFocus();
+        if (open) FocusFirstAction(_lootPanel); else FocusResumeOrRelease();
         _lootSignature = ""; RefreshLootInspector();
     }
     private void RefreshLootInspector()

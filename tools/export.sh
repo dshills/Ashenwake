@@ -43,6 +43,18 @@ mkdir -p "$interaction_output"
 python3 tools/check-godot-log.py "$interaction_output/smoke.log"
 rg -q 'InteractionClientSmokePassed' "$interaction_output/smoke.log"
 
+journey_output="$package_output/journey-client"
+mkdir -p "$journey_output"
+"$binary" --headless --quit-after 2400 --log-file "$journey_output/smoke.log" -- --journey-smoke --output="$journey_output"
+python3 tools/check-godot-log.py "$journey_output/smoke.log"
+rg -q 'JourneyClientSmokePassed' "$journey_output/smoke.log"
+
+service_output="$package_output/service-client"
+mkdir -p "$service_output"
+"$binary" --headless --quit-after 600 --log-file "$service_output/smoke.log" -- --service-interaction-smoke --output="$service_output"
+python3 tools/check-godot-log.py "$service_output/smoke.log"
+rg -q 'ServiceInteractionClientSmokePassed' "$service_output/smoke.log"
+
 experiment_output="$package_output/experiment-client"
 mkdir -p "$experiment_output"
 "$binary" --headless --quit-after 12000 --log-file "$experiment_output/smoke.log" -- --echoes-smoke --output="$experiment_output"

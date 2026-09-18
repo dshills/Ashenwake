@@ -39,7 +39,7 @@ public partial class EndgameDirector : Node3D
     private FileDialog _importDialog = null!;
     private string _combatJson = "", _previousCombatJson = "", _output = "", _saveName = "endgame.save.json", _selectionNotice = "";
     private long _revision, _steps, _drillRun, _drillTick;
-    private bool _smoke, _finished, _capture, _capturing, _retried, _abandoned, _recovered, _attuned, _deathSaved, _loaded, _migrationVerified, _pausedBeforeModal;
+    private bool _smoke, _finished, _capture, _capturing, _retried, _abandoned, _recovered, _attuned, _deathSaved, _loaded, _migrationVerified;
     private readonly Dictionary<string, int> _events = new(StringComparer.Ordinal);
     private readonly List<string> _worldEvents = [];
     private readonly HashSet<string> _captures = [];
@@ -139,7 +139,7 @@ public partial class EndgameDirector : Node3D
         _board.SaveRequested += () => Safely(Save); _board.LoadRequested += () => Safely(Load);
         _board.ReplayRequested += () => Safely(VerifyReplay); _board.ImportRequested += () => _importDialog.PopupCentered(new(860, 560));
         _board.VisibilityChangedByPlayer += _ => UpdatePanelVisibility();
-        _board.ModalChanged += open => { if (open) { _pausedBeforeModal = _sandbox.IsPaused; _sandbox.SetPaused(true); } else _sandbox.SetPaused(_pausedBeforeModal); };
+        _board.ModalChanged += open => _sandbox.SetModalPaused("endgame-confirmation", open);
     }
     private void BindBoardInput()
     {
@@ -289,6 +289,7 @@ public partial class EndgameDirector : Node3D
         {
             _worldEvents.Add(message); if (_worldEvents.Count > 8192) _worldEvents.RemoveAt(0);
             if (_campaignHud.PresentInteraction(message)) _board.SetOpen(false);
+            if (_character.PresentInteraction(message)) _board.SetOpen(false);
             string? notice = PlayerNotice(message); if (notice is not null) Notice(notice);
         }
     }

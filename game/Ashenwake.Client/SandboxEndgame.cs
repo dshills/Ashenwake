@@ -1,3 +1,4 @@
+using Ashenwake.Core.Combat;
 using Ashenwake.Core.Content;
 using Godot;
 
@@ -5,6 +6,14 @@ namespace Ashenwake.Client;
 
 public partial class Sandbox
 {
+    private string? CampaignActorLabel(CombatActorView actor)
+    {
+        if (actor.DefinitionId == "enemy.ritual_anchor") return "DESTROY";
+        if (actor.DefinitionId != "boss.bell_saint" || _view.BossPhase != 2) return null;
+        return _view.Actors.Any(a => a.DefinitionId == "enemy.ritual_anchor" && a.Health > 0)
+            ? "PROTECTED" : "RITUAL BROKEN · ATTACK NOW";
+    }
+
     public bool IsPaused => _clock.Paused;
     private readonly HashSet<int> _mechanicLabels = [];
     private static string? EndgameActorLabel(string state) => state switch

@@ -21,7 +21,7 @@ public partial class EndgameDirector
     private VBoxContainer _echoesRows = null!;
     private Label _memoryStatus = null!;
     private Button _bindMemory = null!, _releaseMemory = null!, _castMemory = null!;
-    private bool _echoesSmoke, _echoesPaused, _echoesSavedBound, _echoesSavedWarning, _echoesReleasedCheck, _echoesMindPrepared, _echoesSuppressionChecked, _echoesCompletionScheduled;
+    private bool _echoesSmoke, _echoesSavedBound, _echoesSavedWarning, _echoesReleasedCheck, _echoesMindPrepared, _echoesSuppressionChecked, _echoesCompletionScheduled;
     private int _echoesSteps;
     private int _echoesFrames;
     private string _echoesSaveName = "", _echoesOriginal = "";
@@ -65,8 +65,6 @@ public partial class EndgameDirector
         if (_echoesSmoke) { BeginExperimentSmoke(); return; }
         if (OS.GetCmdlineUserArgs().Contains("--echoes")) ShowExperimentPanel();
     }
-    public override void _Notification(int what)
-    { if (what == NotificationApplicationFocusOut && _echoesPanel is { Visible: true }) _echoesPaused = true; }
     public override void _Process(double delta)
     {
         if (!_echoesSmoke || _finished) return;
@@ -90,7 +88,7 @@ public partial class EndgameDirector
     private void ShowExperimentPanel()
     {
         if (_classSelection.Visible) return;
-        if (!_echoesPanel.Visible) { _echoesPaused = _sandbox.IsPaused; _sandbox.SetPaused(true); }
+        _sandbox.SetModalPaused("echoes", true);
         _echoesPanel.Visible = _echoesBackdrop.Visible = true;
         foreach (var child in _echoesRows.GetChildren()) { _echoesRows.RemoveChild(child); child.QueueFree(); }
         EchoesText("ECHOES: BORROWED MEMORY", 23);
@@ -129,7 +127,7 @@ public partial class EndgameDirector
     { var label = new Label { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new(675, 0) }; label.AddThemeFontSizeOverride("font_size", size); _echoesRows.AddChild(label); }
     private Button EchoesAction(string text, Action action)
     { var button = new Button { Text = text, CustomMinimumSize = new(0, 35) }; button.Pressed += () => Safely(action); _echoesRows.AddChild(button); return button; }
-    private void CloseExperimentPanel() { _echoesPanel.Visible = _echoesBackdrop.Visible = false; _sandbox.SetPaused(_echoesPaused); RefreshExperiment(); }
+    private void CloseExperimentPanel() { _echoesPanel.Visible = _echoesBackdrop.Visible = false; _sandbox.SetModalPaused("echoes", false); RefreshExperiment(); }
     private void BeginExperiment(long sigil, ExperimentChoice choice)
     {
         if (_experiment is null)
