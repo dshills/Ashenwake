@@ -6,7 +6,11 @@ namespace Ashenwake.Core.Combat;
 /// <summary>Validated projection of permanent progression; numbers are affix/passive additions, not item base values.</summary>
 public sealed record CombatProgressionBuild(string Discipline = "Vanguard", int Level = 1, int Offense = 0, int Defense = 0,
     int ResourceBonus = 0, int FlatDamage = 0, int Armor = 0, int CriticalBasisPoints = 0, int ForkCount = 0, int ChainCount = 0,
-    bool BarrierOnDodge = false, bool SummonBurst = false, bool UltimateUnlocked = true, string[]? UnlockedMutations = null, string[]? PurifiedFragments = null);
+    bool BarrierOnDodge = false, bool SummonBurst = false, bool UltimateUnlocked = true, string[]? UnlockedMutations = null, string[]? PurifiedFragments = null)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public SortedDictionary<DamageFamily, int>? Resistances { get; init; }
+}
 
 public sealed partial class CombatSession
 {
@@ -33,7 +37,7 @@ public sealed partial class CombatSession
     }
     private void ValidateProgressionBuild(CombatProgressionBuild build)
     {
-        if (build is null || build.PurifiedFragments is not null && (build.PurifiedFragments.Length > 100 || build.PurifiedFragments.Any(id => !_content.Fragments.Any(f => f.Id == id)) || build.PurifiedFragments.Distinct().Count() != build.PurifiedFragments.Length) || !Disciplines.Contains(build.Discipline) || build.Level is < 1 or > 100 || build.Offense is < 0 or > 100 || build.Defense is < 0 or > 100 || build.ResourceBonus is < 0 or > 1000 || build.FlatDamage is < 0 or > 2000 || build.Armor is < 0 or > 10000 || build.CriticalBasisPoints is < 0 or > 7500 || build.ForkCount is < 0 or > 2 || build.ChainCount is < 0 or > 3 || build.ForkCount > 0 && build.ChainCount > 0 || build.UnlockedMutations is { Length: > 100 } || build.UnlockedMutations is not null && (build.UnlockedMutations.Any(id => !_content.Mutations.Any(m => m.Id == id)) || build.UnlockedMutations.Distinct().Count() != build.UnlockedMutations.Length))
+        if (build is null || build.Resistances is not null && (build.Resistances.Count > 9 || build.Resistances.Any(p => !Enum.IsDefined(p.Key) || p.Value is < 0 or > 7500)) || build.PurifiedFragments is not null && (build.PurifiedFragments.Length > 100 || build.PurifiedFragments.Any(id => !_content.Fragments.Any(f => f.Id == id)) || build.PurifiedFragments.Distinct().Count() != build.PurifiedFragments.Length) || !Disciplines.Contains(build.Discipline) || build.Level is < 1 or > 100 || build.Offense is < 0 or > 100 || build.Defense is < 0 or > 100 || build.ResourceBonus is < 0 or > 1000 || build.FlatDamage is < 0 or > 2000 || build.Armor is < 0 or > 10000 || build.CriticalBasisPoints is < 0 or > 7500 || build.ForkCount is < 0 or > 2 || build.ChainCount is < 0 or > 3 || build.ForkCount > 0 && build.ChainCount > 0 || build.UnlockedMutations is { Length: > 100 } || build.UnlockedMutations is not null && (build.UnlockedMutations.Any(id => !_content.Mutations.Any(m => m.Id == id)) || build.UnlockedMutations.Distinct().Count() != build.UnlockedMutations.Length))
             throw new InvalidDataException("Invalid permanent progression combat projection.");
     }
     private bool Purified(string id) => _state.ProgressionBuild.PurifiedFragments?.Contains(id) == true;

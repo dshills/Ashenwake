@@ -11,7 +11,7 @@ namespace Ashenwake.Client;
 /// <summary>Input and presentation adapter. Every gameplay change goes through CombatSession commands.</summary>
 public partial class Sandbox : Node3D
 {
-    private sealed record Preferences(bool ReducedEffects, bool ReducedShake, Dictionary<string, long> Keys);
+    private sealed record Preferences(bool ReducedEffects, bool ReducedShake, Dictionary<string, long> Keys, int MinimumLootRarity = 0, bool CompatibleLootOnly = false);
     public CombatSession Session => _session;
     public string CombatContentJson => _contentJson;
     public string? ContentJsonOverride { get; set; }
@@ -99,7 +99,7 @@ public partial class Sandbox : Node3D
         _initialInventoryCount = _view.Inventory.Count; _inventorySignature = "";
         ClearPresentation(); SynchronizeWorld();
         if (_inventoryPanel is not null)
-        { _inventoryPanel.Visible = false; _settingsPanel.Visible = false; RefreshHud(); }
+        { _inventoryPanel.Visible = false; _settingsPanel.Visible = false; if (_lootPanel is not null) _lootPanel.Visible = false; _lootSignature = ""; _inspectedLoot = 0; RefreshHud(); }
     }
 
     /// <summary>Adopts authoritative projections without restarting input or visual feedback in the same arena.</summary>
@@ -131,7 +131,7 @@ public partial class Sandbox : Node3D
                 { Enqueue(new(CombatCommandKind.Move, X: x, Z: z)); _moveX = x; _moveZ = z; }
             }
             _clock.Advance(_smoke || AutomaticStep ? FixedStepClock.SecondsPerTick * 5 : delta, StepCombat);
-            AnimatePresentation(delta, _clock.Alpha, _target); RefreshHud();
+            AnimatePresentation(delta, _clock.Alpha, _target); RefreshHud(); RefreshLootInspector();
             _frames++; Sample(_frameCosts, Stopwatch.GetElapsedTime(watch).TotalMilliseconds);
             if (_frames > 10) Sample(_frameIntervals, delta * 1000);
             if (_capturePath is not null && _frames == 30 && DisplayServer.GetName() != "headless")
@@ -246,6 +246,7 @@ public partial class Sandbox : Node3D
 
     private void SynchronizeWorld()
     {
+        _mechanicLabels.Clear();
         var actorIds = _view.Actors.Select(a => a.Id).ToHashSet();
         foreach (var id in _actors.Keys.Where(id => !actorIds.Contains(id)).ToArray())
         { _actors[id].Root.QueueFree(); _actors.Remove(id); }
@@ -269,13 +270,19 @@ public partial class Sandbox : Node3D
             if (actor.Faction == CombatFaction.Enemy && actor.DefinitionId.Length > 0)
                 name = Readable(actor.DefinitionId[(actor.DefinitionId.IndexOf('.') + 1)..]) + (actor.Role.EndsWith(" Elite", StringComparison.Ordinal) ? " Elite" : "");
             var conditions = actor.Statuses.Select(s => s.Id).Concat(actor.EliteModifiers ?? []);
+            string? mechanic = EndgameActorLabel(actor.State);
+            if (mechanic is not null) _mechanicLabels.Add(actor.Id);
+            if (mechanic is not null) conditions = conditions.Append(mechanic);
             if (actor.State is "Guarded" or "Recover") conditions = conditions.Append(actor.State == "Guarded" ? "GUARDED" : "RECOVERY WINDOW");
             SynchronizeActor(actor.Id, name, role.ToLowerInvariant(), actor.Position.X, actor.Position.Z,
                 actor.Health, actor.MaxHealth, string.Join(" / ", conditions),
                 actor.TelegraphTicks > 0 && actor.TelegraphRadius == 0, actor.Faction != CombatFaction.Enemy);
             _actors[actor.Id].Root.Visible &= actor.Visible;
+            if (actor.State is "MarkedEcho" or "FalseEcho") ((StandardMaterial3D)_actors[actor.Id].Body.MaterialOverride).AlbedoColor = actor.State == "MarkedEcho" ? new Color("ffe297") : new Color("69818f");
         }
         BeginEffects();
+        foreach (var actor in _view.Actors.Where(a => a.Health > 0 && a.Visible && a.State is "MarkedEcho" or "FalseEcho"))
+            PresentEffect($"identity{actor.Id}", actor.Position.X, actor.Position.Z, .75f, actor.State == "MarkedEcho" ? new Color(1, .85f, .3f, .4f) : new Color(.4f, .6f, .7f, .15f));
         if (_view.Discipline == "Gravecaller" || _manifestations.Contains("manifestation.voracious_renewal"))
             foreach (var corpse in _view.Actors.Where(a => a.Health == 0 && a.Faction == CombatFaction.Enemy && !a.CorpseConsumed))
                 PresentEffect($"corpse{corpse.Id}", corpse.Position.X, corpse.Position.Z, .45f, new Color(.6f, .4f, .8f, .6f));
@@ -291,7 +298,7 @@ public partial class Sandbox : Node3D
             PresentEffect($"p{projectile.Id}", projectile.Position.X, projectile.Position.Z, .15f, new("ffc178"), true);
         foreach (var area in _view.Areas)
             PresentEffect($"a{area.Id}", area.Position.X, area.Position.Z, area.Radius * .001f, new Color(1, .38f, .13f, .24f));
-        foreach (var loot in _view.Loot)
+        foreach (var loot in _view.Loot.Where(IsLootVisible))
             PresentEffect($"l{loot.Id}", loot.Position.X, loot.Position.Z, .4f,
                 loot.Item.Rarity == "Rare" ? new Color(.64f, .4f, 1, .9f) : new Color(1, .8f, .3f, .9f));
         EndEffects();
@@ -302,9 +309,9 @@ public partial class Sandbox : Node3D
     private void PickupNearest()
     {
         var player = _view.Actors.Single(a => a.Id == 1);
-        var loot = _view.Loot.OrderBy(l => DistanceSquared(l.Position, player.Position)).ThenBy(l => l.Id).FirstOrDefault();
+        var loot = _view.Loot.Where(IsLootVisible).OrderBy(l => DistanceSquared(l.Position, player.Position)).ThenBy(l => l.Id).FirstOrDefault();
         if (loot is not null) Enqueue(new(CombatCommandKind.Pickup, ItemId: loot.Id));
-        else Message("No loot nearby.");
+        else Message(_view.Loot.Count > 0 ? "Loot is hidden by your filter. Hold the Show loot key or inspect ground loot in Settings." : "No loot nearby.");
     }
     private void Cast(int index)
     {
@@ -450,6 +457,7 @@ public partial class Sandbox : Node3D
         effects.Toggled += value => { _reduceEffects = value; SavePreferences(); }; column.AddChild(effects);
         var shake = new CheckButton { Text = "Reduced camera shake", ButtonPressed = _reduceShake };
         shake.Toggled += value => { _reduceShake = value; SavePreferences(); }; column.AddChild(shake);
+        BuildLootSettings(column);
         var arenas = new VBoxContainer(); column.AddChild(arenas); _sandboxControls.Add(arenas);
         arenas.AddChild(TextLabel("Choose an arena (starts a fresh session)", 13));
         foreach (var preset in Presets) AddButton(arenas, preset.ToUpperInvariant(), () => Reset(preset));
@@ -468,6 +476,7 @@ public partial class Sandbox : Node3D
     private void TogglePanel(PanelContainer panel)
     {
         bool open = !panel.Visible; _inventoryPanel.Visible = false; _settingsPanel.Visible = false;
+        if (_lootPanel is not null) _lootPanel.Visible = false;
         panel.Visible = open; _clock.Paused = open; _awaitingKey = null;
         if (open) { _pending.Clear(); _pending.Add(new(CombatCommandKind.Stop)); _clock.SingleStep(StepCombat); _moveX = _moveZ = 0; }
         RefreshHud();
@@ -583,6 +592,8 @@ public partial class Sandbox : Node3D
             ["inventory"] = Key.I,
             ["settings"] = Key.Escape,
             ["journey"] = Key.J,
+            ["endgame"] = Key.B,
+            ["showloot"] = Key.Alt,
             ["interact"] = Key.F,
             ["character"] = Key.C,
             ["corpse"] = Key.V,
@@ -617,12 +628,13 @@ public partial class Sandbox : Node3D
         {
             var preferences = JsonData.Read<Preferences>(File.ReadAllText(_preferencesPath));
             _reduceEffects = preferences.ReducedEffects; _reduceShake = preferences.ReducedShake;
+            _minimumLootRarity = Math.Clamp(preferences.MinimumLootRarity, 0, 5); _compatibleLootOnly = preferences.CompatibleLootOnly;
             foreach (var pair in preferences.Keys) if (_keys.ContainsKey(pair.Key) && Enum.IsDefined((Key)pair.Value)) SetKey(pair.Key, (Key)pair.Value);
         }
         catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException or InvalidDataException)
         { GD.PushWarning("Settings reset: " + ex.Message); }
     }
-    private void SavePreferences() => AtomicWrite(_preferencesPath, JsonData.Write(new Preferences(_reduceEffects, _reduceShake, _keys.ToDictionary(p => p.Key, p => (long)p.Value))));
+    private void SavePreferences() => AtomicWrite(_preferencesPath, JsonData.Write(new Preferences(_reduceEffects, _reduceShake, _keys.ToDictionary(p => p.Key, p => (long)p.Value), _minimumLootRarity, _compatibleLootOnly)));
 
     private void Save()
     {

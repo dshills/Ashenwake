@@ -17,3 +17,12 @@ game/Ashenwake.Client/progression.json
 game/Ashenwake.Client/text.en.json
 game/Ashenwake.Client/campaign.json
 game/Ashenwake.Client/campaign-combat.json
+game/Ashenwake.Client/endgame.json
+game/Ashenwake.Client/endgame-combat.json
+game/Ashenwake.Client/phase4-campaign-complete.json
+game/Ashenwake.Client/combat-phase4.json
+game/Ashenwake.Client/campaign-combat-phase4.json
+game/Ashenwake.Client/adventure-phase4.json
+game/Ashenwake.Client/progression-phase4.json
+game/Ashenwake.Client/campaign-phase4.json
+game/Ashenwake.Client/phase4-migration-manifest.json

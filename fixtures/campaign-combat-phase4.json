@@ -1,0 +1,895 @@
+{
+  "schemaVersion": 1,
+  "version": "campaign.combat.1",
+  "enemies": [
+    {
+      "id": "enemy.funeral_guard",
+      "role": "Armored",
+      "health": 140,
+      "damage": 18,
+      "armor": 1800,
+      "speed": 90,
+      "windup": 30,
+      "recovery": 30,
+      "range": 2500
+    },
+    {
+      "id": "enemy.memory_archer",
+      "role": "Ranged",
+      "health": 95,
+      "damage": 16,
+      "armor": 200,
+      "speed": 95,
+      "windup": 30,
+      "recovery": 30,
+      "range": 8500
+    },
+    {
+      "id": "enemy.carnivorous_vine",
+      "role": "Ranged",
+      "health": 120,
+      "damage": 14,
+      "armor": 600,
+      "speed": 60,
+      "windup": 33,
+      "recovery": 40,
+      "range": 8500
+    },
+    {
+      "id": "enemy.needle_swarm",
+      "role": "Melee",
+      "health": 65,
+      "damage": 10,
+      "armor": 0,
+      "speed": 155,
+      "windup": 21,
+      "recovery": 24,
+      "range": 2200
+    },
+    {
+      "id": "enemy.bloom_carrier",
+      "role": "Rusher",
+      "health": 100,
+      "damage": 16,
+      "armor": 300,
+      "speed": 110,
+      "windup": 30,
+      "recovery": 32,
+      "range": 2600
+    },
+    {
+      "id": "enemy.forge_sentinel",
+      "role": "Armored",
+      "health": 175,
+      "damage": 20,
+      "armor": 2400,
+      "speed": 85,
+      "windup": 36,
+      "recovery": 36,
+      "range": 3000
+    },
+    {
+      "id": "enemy.heat_tender",
+      "role": "Ranged",
+      "health": 115,
+      "damage": 17,
+      "armor": 700,
+      "speed": 80,
+      "windup": 33,
+      "recovery": 35,
+      "range": 8500
+    },
+    {
+      "id": "enemy.oath_giant",
+      "role": "Armored",
+      "health": 210,
+      "damage": 22,
+      "armor": 2200,
+      "speed": 85,
+      "windup": 39,
+      "recovery": 42,
+      "range": 3000
+    },
+    {
+      "id": "enemy.contract_keeper",
+      "role": "Ranged",
+      "health": 130,
+      "damage": 16,
+      "armor": 800,
+      "speed": 90,
+      "windup": 36,
+      "recovery": 36,
+      "range": 8000
+    },
+    {
+      "id": "enemy.bone_sentinel",
+      "role": "Armored",
+      "health": 165,
+      "damage": 18,
+      "armor": 2500,
+      "speed": 90,
+      "windup": 33,
+      "recovery": 33,
+      "range": 2600
+    },
+    {
+      "id": "enemy.doubled_shadow",
+      "role": "Melee",
+      "health": 120,
+      "damage": 16,
+      "armor": 300,
+      "speed": 150,
+      "windup": 27,
+      "recovery": 30,
+      "range": 2500
+    },
+    {
+      "id": "enemy.breach_echo",
+      "role": "Ranged",
+      "health": 100,
+      "damage": 18,
+      "armor": 200,
+      "speed": 90,
+      "windup": 36,
+      "recovery": 42,
+      "range": 8500
+    },
+    {
+      "id": "enemy.feeding_root",
+      "role": "Anchor",
+      "health": 95,
+      "damage": 10,
+      "armor": 1000,
+      "speed": 1,
+      "windup": 36,
+      "recovery": 45,
+      "range": 1800
+    },
+    {
+      "id": "enemy.seal_channel",
+      "role": "Anchor",
+      "health": 85,
+      "damage": 10,
+      "armor": 1200,
+      "speed": 1,
+      "windup": 36,
+      "recovery": 45,
+      "range": 1800
+    },
+    {
+      "id": "boss.bell_saint",
+      "role": "BellSaint",
+      "health": 210,
+      "damage": 19,
+      "armor": 1200,
+      "speed": 135,
+      "windup": 36,
+      "recovery": 54,
+      "range": 8000
+    },
+    {
+      "id": "boss.rootheart",
+      "role": "BellSaint",
+      "health": 310,
+      "damage": 21,
+      "armor": 1200,
+      "speed": 135,
+      "windup": 36,
+      "recovery": 54,
+      "range": 8000
+    },
+    {
+      "id": "boss.furnace_spindle",
+      "role": "BellSaint",
+      "health": 360,
+      "damage": 22,
+      "armor": 1200,
+      "speed": 135,
+      "windup": 36,
+      "recovery": 54,
+      "range": 8000
+    },
+    {
+      "id": "boss.covenant_warden",
+      "role": "BellSaint",
+      "health": 410,
+      "damage": 24,
+      "armor": 1200,
+      "speed": 135,
+      "windup": 36,
+      "recovery": 54,
+      "range": 8000
+    },
+    {
+      "id": "boss.breach_heart",
+      "role": "BellSaint",
+      "health": 330,
+      "damage": 22,
+      "armor": 1200,
+      "speed": 135,
+      "windup": 36,
+      "recovery": 54,
+      "range": 8000
+    },
+    {
+      "id": "boss.antler",
+      "role": "Beast",
+      "health": 380,
+      "damage": 24,
+      "armor": 1200,
+      "speed": 135,
+      "windup": 36,
+      "recovery": 54,
+      "range": 8000
+    }
+  ],
+  "behaviors": [
+    {
+      "enemyId": "enemy.funeral_guard",
+      "pattern": "SonicLane"
+    },
+    {
+      "enemyId": "enemy.memory_archer",
+      "pattern": "MemoryArrow"
+    },
+    {
+      "enemyId": "enemy.carnivorous_vine",
+      "pattern": "VenomPod"
+    },
+    {
+      "enemyId": "enemy.needle_swarm",
+      "pattern": "Swarm"
+    },
+    {
+      "enemyId": "enemy.bloom_carrier",
+      "pattern": "PoisonBurst"
+    },
+    {
+      "enemyId": "enemy.forge_sentinel",
+      "pattern": "ForgeSweep"
+    },
+    {
+      "enemyId": "enemy.heat_tender",
+      "pattern": "HeatVent"
+    },
+    {
+      "enemyId": "enemy.oath_giant",
+      "pattern": "Fault"
+    },
+    {
+      "enemyId": "enemy.contract_keeper",
+      "pattern": "OathMark"
+    },
+    {
+      "enemyId": "enemy.bone_sentinel",
+      "pattern": "ForgeSweep"
+    },
+    {
+      "enemyId": "enemy.doubled_shadow",
+      "pattern": "ShadowDouble"
+    },
+    {
+      "enemyId": "enemy.breach_echo",
+      "pattern": "CausalEcho"
+    },
+    {
+      "enemyId": "enemy.feeding_root",
+      "pattern": "Root"
+    },
+    {
+      "enemyId": "enemy.seal_channel",
+      "pattern": "Root"
+    },
+    {
+      "enemyId": "boss.bell_saint",
+      "pattern": "Bell"
+    },
+    {
+      "enemyId": "boss.rootheart",
+      "pattern": "Rootheart"
+    },
+    {
+      "enemyId": "boss.furnace_spindle",
+      "pattern": "Furnace"
+    },
+    {
+      "enemyId": "boss.covenant_warden",
+      "pattern": "Covenant"
+    },
+    {
+      "enemyId": "boss.breach_heart",
+      "pattern": "Breach"
+    },
+    {
+      "enemyId": "boss.antler",
+      "pattern": "Antler"
+    },
+    {
+      "enemyId": "enemy.cinder_priest",
+      "pattern": "SupportFire"
+    }
+  ],
+  "encounters": [
+    {
+      "id": "campaign.road",
+      "name": "Road",
+      "rule": "Ambush",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "enemy.ash_ghoul",
+          "position": {
+            "x": -1200,
+            "z": 0
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.cinder_priest",
+          "position": {
+            "x": 2500,
+            "z": -3500
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.ash_ghoul",
+          "position": {
+            "x": 4200,
+            "z": 2500
+          },
+          "modifiers": [],
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "id": "campaign.monastery",
+      "name": "Monastery",
+      "rule": "SonicLanes",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "enemy.funeral_guard",
+          "position": {
+            "x": -1200,
+            "z": 0
+          },
+          "modifiers": [
+            "Mirrorborn"
+          ],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.memory_archer",
+          "position": {
+            "x": 2500,
+            "z": -3500
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.funeral_guard",
+          "position": {
+            "x": 4200,
+            "z": 2500
+          },
+          "modifiers": [],
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "id": "campaign.bell_saint",
+      "name": "Bell Saint",
+      "rule": "Bell",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "boss.bell_saint",
+          "position": {
+            "x": 3200,
+            "z": 0
+          },
+          "modifiers": [],
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "id": "campaign.living_ruins",
+      "name": "Living Ruins",
+      "rule": "PoisonLanes",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "enemy.carnivorous_vine",
+          "position": {
+            "x": -1200,
+            "z": 0
+          },
+          "modifiers": [
+            "Devourer"
+          ],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.needle_swarm",
+          "position": {
+            "x": 2500,
+            "z": -3500
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.carnivorous_vine",
+          "position": {
+            "x": 4200,
+            "z": 2500
+          },
+          "modifiers": [],
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "id": "campaign.plague_village",
+      "name": "Plague Village",
+      "rule": "Quarantine",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "enemy.bloom_carrier",
+          "position": {
+            "x": -1200,
+            "z": 0
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.needle_swarm",
+          "position": {
+            "x": 2500,
+            "z": -3500
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.bloom_carrier",
+          "position": {
+            "x": 4200,
+            "z": 2500
+          },
+          "modifiers": [],
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "id": "campaign.rootheart",
+      "name": "Rootheart",
+      "rule": "Rootheart",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "boss.rootheart",
+          "position": {
+            "x": 3200,
+            "z": 0
+          },
+          "modifiers": [
+            "Gravewake"
+          ],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.needle_swarm",
+          "position": {
+            "x": 5000,
+            "z": 5000
+          },
+          "modifiers": []
+        }
+      ]
+    },
+    {
+      "id": "campaign.cinder_pack",
+      "name": "Cinder Pack",
+      "rule": "Cinder",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "enemy.ash_ghoul",
+          "position": {
+            "x": -1200,
+            "z": 0
+          },
+          "modifiers": [
+            "Stormbound"
+          ],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.cinder_priest",
+          "position": {
+            "x": 2500,
+            "z": -3500
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.furnace_brute",
+          "position": {
+            "x": 4200,
+            "z": 2500
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.emberling",
+          "position": {
+            "x": 5500,
+            "z": -5000
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.ash_ghoul",
+          "position": {
+            "x": 7000,
+            "z": 4300
+          },
+          "modifiers": [],
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "id": "campaign.extraction_floor",
+      "name": "Extraction Floor",
+      "rule": "Conveyor",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "enemy.forge_sentinel",
+          "position": {
+            "x": -1200,
+            "z": 0
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.heat_tender",
+          "position": {
+            "x": 2500,
+            "z": -3500
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.forge_sentinel",
+          "position": {
+            "x": 4200,
+            "z": 2500
+          },
+          "modifiers": [],
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "id": "campaign.furnace_spindle",
+      "name": "Furnace Spindle",
+      "rule": "Furnace",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "boss.furnace_spindle",
+          "position": {
+            "x": 3200,
+            "z": 0
+          },
+          "modifiers": [
+            "Martyr"
+          ],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.heat_tender",
+          "position": {
+            "x": 6000,
+            "z": -4000
+          },
+          "modifiers": []
+        }
+      ]
+    },
+    {
+      "id": "campaign.bone_causeway",
+      "name": "Bone Causeway",
+      "rule": "Faults",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "enemy.oath_giant",
+          "position": {
+            "x": -1200,
+            "z": 0
+          },
+          "modifiers": [
+            "Hunter"
+          ],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.contract_keeper",
+          "position": {
+            "x": 2500,
+            "z": -3500
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.oath_giant",
+          "position": {
+            "x": 4200,
+            "z": 2500
+          },
+          "modifiers": [],
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "id": "campaign.contract_hall",
+      "name": "Contract Hall",
+      "rule": "OathZones",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "enemy.contract_keeper",
+          "position": {
+            "x": -1200,
+            "z": 0
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.bone_sentinel",
+          "position": {
+            "x": 2500,
+            "z": -3500
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.contract_keeper",
+          "position": {
+            "x": 4200,
+            "z": 2500
+          },
+          "modifiers": [],
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "id": "campaign.covenant_warden",
+      "name": "Covenant Warden",
+      "rule": "Covenant",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "boss.covenant_warden",
+          "position": {
+            "x": 3200,
+            "z": 0
+          },
+          "modifiers": [
+            "Null"
+          ],
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "id": "campaign.repeating_rooms",
+      "name": "Repeating Rooms",
+      "rule": "Shadows",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "enemy.doubled_shadow",
+          "position": {
+            "x": -1200,
+            "z": 0
+          },
+          "modifiers": [
+            "Riftborn"
+          ],
+          "hidden": true
+        },
+        {
+          "enemyId": "enemy.memory_archer",
+          "position": {
+            "x": 2500,
+            "z": -3500
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.doubled_shadow",
+          "position": {
+            "x": 4200,
+            "z": 2500
+          },
+          "modifiers": [],
+          "hidden": true
+        }
+      ]
+    },
+    {
+      "id": "campaign.identity_memory",
+      "name": "Identity Memory",
+      "rule": "CausalEchoes",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "enemy.breach_echo",
+          "position": {
+            "x": -1200,
+            "z": 0
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.doubled_shadow",
+          "position": {
+            "x": 2500,
+            "z": -3500
+          },
+          "modifiers": [],
+          "hidden": true
+        },
+        {
+          "enemyId": "enemy.breach_echo",
+          "position": {
+            "x": 4200,
+            "z": 2500
+          },
+          "modifiers": [],
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "id": "campaign.breach_heart",
+      "name": "Breach Heart",
+      "rule": "Breach",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "boss.breach_heart",
+          "position": {
+            "x": 3200,
+            "z": 0
+          },
+          "modifiers": [
+            "Mirrorborn"
+          ],
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "id": "exploration.burning_rain",
+      "name": "The Burning Rain",
+      "rule": "Storm",
+      "durationTicks": 900,
+      "spawns": [
+        {
+          "enemyId": "enemy.cinder_priest",
+          "position": {
+            "x": -1000,
+            "z": 0
+          },
+          "modifiers": [
+            "Stormbound"
+          ]
+        },
+        {
+          "enemyId": "enemy.furnace_brute",
+          "position": {
+            "x": 4000,
+            "z": 2500
+          },
+          "modifiers": []
+        },
+        {
+          "enemyId": "enemy.emberling",
+          "position": {
+            "x": 5500,
+            "z": -2500
+          },
+          "modifiers": []
+        }
+      ]
+    },
+    {
+      "id": "exploration.first_oath",
+      "name": "The Promise Before Stone",
+      "rule": "Memory",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "enemy.oath_giant",
+          "position": {
+            "x": -1000,
+            "z": 0
+          },
+          "modifiers": [
+            "Gravewake"
+          ]
+        },
+        {
+          "enemyId": "enemy.contract_keeper",
+          "position": {
+            "x": 4500,
+            "z": -2500
+          },
+          "modifiers": []
+        },
+        {
+          "enemyId": "enemy.bone_sentinel",
+          "position": {
+            "x": 5000,
+            "z": 4000
+          },
+          "modifiers": []
+        }
+      ]
+    },
+    {
+      "id": "exploration.antler_hunt",
+      "name": "The Antler That Walks",
+      "rule": "Hunt",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "boss.antler",
+          "position": {
+            "x": 3000,
+            "z": 0
+          },
+          "modifiers": [
+            "Hunter"
+          ]
+        },
+        {
+          "enemyId": "enemy.carnivorous_vine",
+          "position": {
+            "x": 5500,
+            "z": -2500
+          },
+          "modifiers": []
+        }
+      ]
+    }
+  ]
+}

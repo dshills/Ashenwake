@@ -1,0 +1,13 @@
+{
+  "sourceCommit": "20e1534",
+  "source": "Actual Phase4 exported macOS campaign smoke: all5 opening encounters, Vanguard15+3 completed, five choices, ending and hub return; 8120 actions, level10, zero deaths.",
+  "stateHash": "B01A4EF3D5B18CE7CB9600C1A3A7988BFF85E46A350BD604122DB7C2111EB80F",
+  "files": {
+    "phase4-campaign-complete.json": "cd346f511bfc7b317b80eba332c69a22b07dab260785cb433eb606db58871f1c",
+    "combat-phase4.json": "410c7adb851aeea8614aec7c1235ba0192e3c9b50c44174510c9527f69b8de58",
+    "campaign-combat-phase4.json": "22d855b8b703015f8df56ecd6d0a423a42ab4f40a44336c059d45c4db5af78ed",
+    "adventure-phase4.json": "5209578aeb626b320f73a36b82b7ee64bcafd66ac2827dfa4ac885575a651dc1",
+    "progression-phase4.json": "21ef420c769539e99c4d37457964a656561ac0380fdec2204e8db833ff2c6710",
+    "campaign-phase4.json": "a8c5e95a465bebadf484eea2f4991af9b8520c9a6b242678577a1a09c576012f"
+  }
+}

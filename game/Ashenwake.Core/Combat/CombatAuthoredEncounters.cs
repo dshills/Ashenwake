@@ -7,7 +7,7 @@ public sealed record CombatEncounterDefinition(string Id, string Name, CombatSpa
 
 public sealed partial class CombatSession
 {
-    private bool KnownEncounter(string id) => EncounterIds.Contains(id) || _content.Encounters.Any(e => e.Id == id) || _content.Campaign?.Encounters.Any(e => e.Id == id) == true;
+    private bool KnownEncounter(string id) => (_state.Endgame is { } e && e.Manifest.Rooms.Any(r => r.EncounterId == id)) || EncounterIds.Contains(id) || _content.Encounters.Any(e => e.Id == id) || _content.Campaign?.Encounters.Any(e => e.Id == id) == true;
     internal static void ValidateAuthoredEncounters(CombatContent content)
     {
         if (content.Encounters is null || content.Encounters.Length > 256) throw new InvalidDataException("Authored encounter registry is missing or too large.");

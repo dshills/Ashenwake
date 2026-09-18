@@ -12,7 +12,7 @@ public sealed partial class CombatSession
     {
         var original = previous is null ? Create(contentJson, seed) : Restore(contentJson, previous);
         if (encounterId == "" || !original.KnownEncounter(encounterId)) throw new ArgumentException("Unknown combat encounter.", nameof(encounterId));
-        var state = original.Capture() with { EncounterId = encounterId, Preset = "standard" };
+        var state = original.Capture() with { EncounterId = encounterId, Preset = "standard", Endgame = null };
         var player = state.Actors.Single(a => a.Id == 1);
         if (player.Health <= 0 && encounterId != "hub" && !restoreAtAnchor) throw new InvalidOperationException("A dead character must return to an anchor.");
         if (previous is null)
@@ -95,7 +95,7 @@ public sealed partial class CombatSession
     }
     private bool AshcleaverActive => _state.Build.AshcleaverEquipped && Equipped.Any(i => i.Slot == "MainHand" && i.DefinitionId == "item.ashcleaver");
     private int AttackDuration(int ticks) => AshcleaverActive ? Math.Max(1, (ticks * 100 + 99 + _state.Build.AshcleaverStacks * 5) / (100 + _state.Build.AshcleaverStacks * 5)) : ticks;
-    private bool IsRituallyShielded(CombatActor actor) => CampaignShielded(actor) || _state.EncounterId == "bell_saint.2" && actor.Role == "BellSaint" && _state.Actors.Any(a => a.Role == "Anchor" && a.Health > 0);
+    private bool IsRituallyShielded(CombatActor actor) => EndgameShielded(actor) || CampaignShielded(actor) || _state.EncounterId == "bell_saint.2" && actor.Role == "BellSaint" && _state.Actors.Any(a => a.Role == "Anchor" && a.Health > 0);
     private static int TelegraphRadius(CombatActor actor) => actor.Pending?.SkillId switch { "boss.chain" => 1500, "boss.sonic" => 2300, "boss.resurrect" => 0, "boss.beast_rush" => 2200, "boss.bell_ring" => 2000, "enemy.detonate" => 2200, _ => 0 };
     private static bool IsEncounterSkill(string id) => id is "enemy.mend" or "enemy.detonate" or "boss.chain" or "boss.sonic" or "boss.resurrect" or "boss.beast_rush" or "boss.bell_ring";
     private bool ThinkEncounterActor(CombatActor actor)
@@ -180,8 +180,8 @@ public sealed partial class CombatSession
             }
             foreach (var fragment in ActiveFragments().Where(f => f.Trigger == "DamageTaken" && _state.Cooldowns.GetValueOrDefault(f.Id) <= Tick))
             {
-                target.Barrier = Math.Min(200, target.Barrier + 12); _state.Cooldowns[fragment.Id] = Tick + 45;
-                Emit("FragmentTriggered", 1, 1, 12, fragment.Id, hit.ActionId, hit.Depth + 1);
+                target.Barrier = Math.Min(200, target.Barrier + FragmentAmount(12)); _state.Cooldowns[fragment.Id] = Tick + 45;
+                Emit("FragmentTriggered", 1, 1, FragmentAmount(12), fragment.Id, hit.ActionId, hit.Depth + 1);
             }
         }
         if (target.Id == 1 && healthDamage > 0 && physical && !hit.Reflected && HasManifestation("manifestation.burning_blood") && _triggers.Add($"{hit.ActionId}:burning_blood"))

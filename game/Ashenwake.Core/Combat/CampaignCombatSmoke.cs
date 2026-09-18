@@ -18,10 +18,12 @@ public static class CampaignCombatSmoke
             .OrderBy(p => threats.Count(h => CombatSession.HazardContains(h with { Radius = h.Radius + 350 }, p.Position)))
             .ThenBy(p => Position.DistanceSquared(p.Position, target.Position))
             .ThenByDescending(p => Position.DistanceSquared(player.Position, p.Position)).First().Direction;
+        var escape = space.Move(player.Position, new(player.Position.X + direction.X * 3000, player.Position.Z + direction.Z * 3000), CombatSession.ActorRadius);
+        var movement = CombatProductionSmoke.MovementDirection(player.Position, escape, room, view.Actors.Where(a => a.Id != 1 && a.Health > 0).Select(a => a.Position).ToArray());
         var commands = new List<CombatCommand>();
         if (player.Health < player.MaxHealth / 2 && view.PotionCharges > 0 && view.PotionCooldownTicks == 0) commands.Add(new(CombatCommandKind.Potion));
-        commands.Add(new(CombatCommandKind.Move, X: direction.X, Z: direction.Z));
-        if (view.DodgeCooldownTicks == 0 && (player.State == "Windup" || threats.Any(h => h.RemainingTicks <= 12))) commands.Add(new(CombatCommandKind.Dodge, X: direction.X, Z: direction.Z));
+        commands.Add(new(CombatCommandKind.Move, X: movement.X, Z: movement.Z));
+        if (view.DodgeCooldownTicks == 0 && threats.Any(h => h.RemainingTicks <= 12 || player.TelegraphTicks > 0 && player.TelegraphTicks + 7 >= h.RemainingTicks)) commands.Add(new(CombatCommandKind.Dodge, X: direction.X, Z: direction.Z));
         return commands.ToArray();
     }
     private static CombatCommand[] OrdinaryCommands(CombatView view, RoomDefinition room)
@@ -34,7 +36,7 @@ public static class CampaignCombatSmoke
         long distance = Position.DistanceSquared(player.Position, target.Position);
         if (distance > 3000L * 3000)
         {
-            var direction = CombatProductionSmoke.MovementDirection(player.Position, target.Position, room);
+            var direction = CombatProductionSmoke.MovementDirection(player.Position, target.Position, room, view.Actors.Where(a => a.Id != 1 && a.Id != target.Id && a.Health > 0).Select(a => a.Position).ToArray());
             commands.RemoveAll(c => c.Kind is CombatCommandKind.Move or CombatCommandKind.Stop);
             commands.Insert(0, new(CombatCommandKind.Move, X: direction.X, Z: direction.Z));
         }

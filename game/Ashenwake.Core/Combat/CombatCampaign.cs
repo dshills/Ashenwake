@@ -4,14 +4,14 @@ namespace Ashenwake.Core.Combat;
 
 public sealed partial class CombatSession
 {
-    private CampaignCombatEncounter? CampaignEncounter => _content.Campaign?.Encounters.FirstOrDefault(e => e.Id == _state.EncounterId);
+    private CampaignCombatEncounter? CampaignEncounter => _content.Campaign?.Encounters.FirstOrDefault(e => e.Id == _state.EncounterId) ?? EndgameCampaignEncounter;
     private string CampaignRule => CampaignEncounter?.Rule ?? "";
     private string CampaignPattern(CombatActor actor) => _content.Campaign?.Behaviors.FirstOrDefault(b => b.EnemyId == actor.DefinitionId)?.Pattern ?? "";
     private bool HasElite(CombatActor actor, string id) => _state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.Modifiers.Contains(id) == true;
     private bool IsCampaignBoss(CombatActor actor) => _state.Campaign is not null && actor.DefinitionId.StartsWith("boss.", StringComparison.Ordinal) && _state.Campaign.Actors.GetValueOrDefault(actor.Id)?.IsEcho != true;
     private bool StormOvercharged => CampaignRule == "Storm" && _state.Campaign is { } campaign && Tick >= campaign.StartedTick + 45 && Tick < campaign.RuleUntil && (Tick - campaign.StartedTick - 45) % 150 < 45;
     private bool FragmentSuppressed(string id) => _state.Campaign is { } campaign && campaign.SuppressedUntil > Tick && campaign.SuppressedFragmentId == id;
-    private bool CampaignRewardEligible(CombatActor actor) => _state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.IsEcho != true && !_state.ConsumedCorpseIds.Contains(actor.Id);
+    private bool CampaignRewardEligible(CombatActor actor) => !EndgameMechanicNoRewards(actor) && _state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.IsEcho != true && !_state.ConsumedCorpseIds.Contains(actor.Id);
     private IEnumerable<CombatHazardView> CampaignHazards() => _state.Campaign?.Hazards.Select(h => new CombatHazardView(h.Id, h.Kind, h.Position, h.End, h.Radius, Math.Max(0, h.ResolveTick - Tick), h.ContentId, h.SourceId)) ?? [];
     private void PopulateCampaignEncounter()
     {

@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "version": "slice.1",
+  "hub": "room.greyhaven",
+  "bossRoom": "room.bell_sanctum",
+  "rewardFragment": "fragment.heart_serath",
+  "awakeningKills": 1000,
+  "relicChancePercent": 20,
+  "rooms": [
+    {
+      "id": "room.greyhaven",
+      "name": "Greyhaven",
+      "exits": [
+        "room.ossuary"
+      ],
+      "encounters": [],
+      "anchor": true,
+      "discovery": "discovery.greyhaven"
+    },
+    {
+      "id": "room.ossuary",
+      "name": "The Ossuary",
+      "exits": [
+        "room.greyhaven",
+        "room.cloister"
+      ],
+      "encounters": [
+        "encounter.ossuary"
+      ],
+      "anchor": false,
+      "discovery": "discovery.false_history"
+    },
+    {
+      "id": "room.cloister",
+      "name": "Funeral Cloister",
+      "exits": [
+        "room.ossuary",
+        "room.bell_sanctum",
+        "room.greyhaven"
+      ],
+      "encounters": [
+        "encounter.cloister"
+      ],
+      "anchor": true,
+      "discovery": "discovery.ritual"
+    },
+    {
+      "id": "room.bell_sanctum",
+      "name": "Sanctum of the Bell Saint",
+      "exits": [
+        "room.cloister",
+        "room.greyhaven"
+      ],
+      "encounters": [
+        "bell_saint.1",
+        "bell_saint.2",
+        "bell_saint.3"
+      ],
+      "anchor": false,
+      "discovery": "discovery.bell_saint"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "fragment.eye_vael",
+      "slot": "Eyes",
+      "tags": [
+        "Flame"
+      ],
+      "resonance": 12
+    },
+    {
+      "id": "fragment.heart_serath",
+      "slot": "Heart",
+      "tags": [
+        "Death",
+        "Memory"
+      ],
+      "resonance": 18
+    },
+    {
+      "id": "fragment.nerve_ilyra",
+      "slot": "Spine",
+      "tags": [
+        "Beast",
+        "Hunger"
+      ],
+      "resonance": 14
+    },
+    {
+      "id": "fragment.orrun_bone",
+      "slot": "Arms",
+      "tags": [
+        "Oath"
+      ],
+      "resonance": 20
+    }
+  ],
+  "manifestations": [
+    {
+      "id": "manifestation.burning_blood",
+      "threshold": 40,
+      "benefit": "Taking physical damage releases nearby fire.",
+      "complication": "Healing potions restore 25% less health."
+    },
+    {
+      "id": "manifestation.stone_memory",
+      "threshold": 40,
+      "benefit": "Repeated identical attacks grant resistance up to 30%.",
+      "complication": "Active resistance slows dodge recovery by 25%."
+    },
+    {
+      "id": "manifestation.whispering_shadow",
+      "threshold": 60,
+      "benefit": "Hidden enemies are revealed.",
+      "complication": "Harmless false silhouettes appear away from real telegraphs."
+    },
+    {
+      "id": "manifestation.voracious_renewal",
+      "threshold": 60,
+      "benefit": "Consuming a corpse heals and grants temporary maximum life.",
+      "complication": "Ordinary healing is 25% less effective near corpses."
+    }
+  ],
+  "concordances": [
+    {
+      "id": "concordance.funeral_flame",
+      "tags": [
+        "Flame",
+        "Death"
+      ]
+    }
+  ]
+}

@@ -38,7 +38,7 @@ public sealed partial class CombatSession
                 int radius = projectile.ImpactRadius > 0 ? projectile.ImpactRadius : skill?.Radius ?? (projectile.SkillId == "effect.ashcleaver_wave" ? 1600 : 0);
                 var targets = radius > 0 ? Hostiles(source, target.Position, radius).Where(a => !hitIds.Contains(a.Id)).ToArray() : [target];
                 string status = skill?.Status ?? (projectile.SkillId == "effect.ashcleaver_wave" || source.DefinitionId is "summon.fire_spirit" or "summon.flaming_revenant" ? "Burning" : "");
-                foreach (var victim in targets) Enqueue(new(projectile.SourceId, projectile.OwnerId, victim.Id, projectile.Damage, projectile.Family, projectile.SkillId, projectile.ActionId, projectile.Depth, Status: status));
+                foreach (var victim in targets) Enqueue(new(projectile.SourceId, projectile.OwnerId, victim.Id, projectile.Damage, projectile.Family, projectile.SkillId, projectile.ActionId, projectile.Depth, Status: status, FragmentId: projectile.FragmentId));
                 var visited = hitIds.Concat(targets.Select(a => a.Id)).Distinct().ToArray();
                 var continuations = Hostiles(source, target.Position, 5000).Where(a => !visited.Contains(a.Id)).OrderBy(a => Position.DistanceSquared(a.Position, target.Position)).ThenBy(a => a.Id).ToArray();
                 if (projectile.Fork > 0 && projectile.Depth < MaxChainDepth)
@@ -75,10 +75,64 @@ public sealed partial class CombatSession
 /// <summary>A deterministic baseline policy for headless comparisons; it is not a combat-balance acceptance oracle.</summary>
 public static class CombatProductionSmoke
 {
-    public static Position MovementDirection(Position from, Position target, Ashenwake.Core.Content.RoomDefinition room)
+    public static Position MovementDirection(Position from, Position target, Ashenwake.Core.Content.RoomDefinition room, IReadOnlyList<Position>? occupied = null)
     {
-        var destination = Waypoint(room, from, target);
-        return new(Math.Sign(destination.X - from.X), Math.Sign(destination.Z - from.Z));
+        var spatial = new SpatialWorld(room);
+        occupied ??= [];
+        bool Occupied(Position point) => occupied.Any(p => Position.DistanceSquared(p, point) < 4L * CombatSession.ActorRadius * CombatSession.ActorRadius);
+        // A clear continuous route need not survive rounding to digital input. Score the
+        // actual swept/sliding result of each legal input by its remaining route length.
+        Position[] directions = [new(1, 0), new(0, 1), new(-1, 0), new(0, -1), new(1, 1), new(-1, 1), new(-1, -1), new(1, -1)];
+        var points = new List<Position> { target, from };
+        foreach (var direction in directions)
+        {
+            int step = direction.X != 0 && direction.Z != 0 ? 106 : 150;
+            var moved = spatial.Move(from, new(from.X + direction.X * step, from.Z + direction.Z * step), CombatSession.ActorRadius);
+            points.Add(Occupied(moved) ? from : moved);
+        }
+        const int clearance = CombatSession.ActorRadius + 200;
+        foreach (var obstacle in room.Obstacles)
+            foreach (var point in new[] { new Position(obstacle.MinX - clearance, obstacle.MinZ - clearance), new Position(obstacle.MinX - clearance, obstacle.MaxZ + clearance), new Position(obstacle.MaxX + clearance, obstacle.MinZ - clearance), new Position(obstacle.MaxX + clearance, obstacle.MaxZ + clearance) })
+                if (spatial.CanOccupy(point, CombatSession.ActorRadius)) points.Add(point);
+        foreach (var body in occupied)
+            foreach (var direction in directions)
+            {
+                int offset = direction.X != 0 && direction.Z != 0 ? 538 : 760;
+                var point = new Position(body.X + direction.X * offset, body.Z + direction.Z * offset);
+                if (spatial.CanOccupy(point, CombatSession.ActorRadius) && !Occupied(point)) points.Add(point);
+            }
+        bool BodyClear(Position a, Position b)
+        {
+            long dx = (long)b.X - a.X, dz = (long)b.Z - a.Z, length = dx * dx + dz * dz;
+            foreach (var body in occupied)
+            {
+                long px = (long)body.X - a.X, pz = (long)body.Z - a.Z;
+                decimal t = length == 0 ? 0 : Math.Clamp((decimal)(px * dx + pz * dz) / length, 0, 1);
+                decimal x = px - t * dx, z = pz - t * dz;
+                if (x * x + z * z < 4L * CombatSession.ActorRadius * CombatSession.ActorRadius) return false;
+            }
+            return true;
+        }
+        var padded = new SpatialWorld(room with { Obstacles = room.Obstacles.Select(b => new Bounds(b.MinX - CombatSession.ActorRadius, b.MinZ - CombatSession.ActorRadius, b.MaxX + CombatSession.ActorRadius, b.MaxZ + CombatSession.ActorRadius)).ToArray() });
+        var costs = Enumerable.Repeat(long.MaxValue, points.Count).ToArray();
+        var visited = new bool[points.Count]; costs[0] = 0;
+        for (int count = 0; count < points.Count; count++)
+        {
+            int current = -1;
+            for (int i = 0; i < points.Count; i++) if (!visited[i] && costs[i] < (current < 0 ? long.MaxValue : costs[current])) current = i;
+            if (current < 0) break;
+            visited[current] = true;
+            for (int next = 0; next < points.Count; next++)
+            {
+                if (visited[next] || next == current || !padded.HasLineOfSight(points[current], points[next]) || !BodyClear(points[current], points[next])) continue;
+                long cost = costs[current] + (long)Math.Ceiling(Math.Sqrt(Position.DistanceSquared(points[current], points[next])));
+                if (cost < costs[next]) costs[next] = cost;
+            }
+        }
+        int best = -1; long bestCost = costs[1];
+        for (int i = 0; i < directions.Length; i++)
+            if (points[i + 2] != from && costs[i + 2] < bestCost) { best = i; bestCost = costs[i + 2]; }
+        return best < 0 ? new(0, 0) : directions[best];
     }
     public static CombatCommand[] Commands(CombatView view, Ashenwake.Core.Content.RoomDefinition? room = null)
     {
@@ -103,7 +157,7 @@ public static class CombatProductionSmoke
         var skills = view.Skills.Where(s => s.Available && s.RemainingTicks == 0 && (s.ResourceMode == "Heat" ? view.Resource + s.Cost <= 100 : s.Cost <= view.Resource)).ToArray();
         CombatSkillView? skill;
         if (view.Discipline == "Arcanist" && view.Resource >= 65) skill = skills.FirstOrDefault(s => s.Id == "skill.starfall") ?? skills.FirstOrDefault(s => s.Id == "skill.vent");
-        else skill = skills.FirstOrDefault(s => s.Cost >= 10 && s.Shape is not ("Summon" or "Command")) ?? skills.FirstOrDefault(s => s.Shape is "Melee" or "Projectile");
+        else skill = skills.FirstOrDefault(s => s.Cost >= 10 && s.Shape is not ("Summon" or "Command")) ?? skills.FirstOrDefault(s => s.Generate > 0 && s.Shape is "Melee" or "Projectile" or "Area" or "Dash") ?? skills.FirstOrDefault(s => s.Shape is "Melee" or "Projectile");
         if (skill is not null) commands.Add(new(CombatCommandKind.Cast, SkillId: skill.Id, TargetId: target.Id));
         return commands.ToArray();
     }

@@ -2,7 +2,7 @@ using Ashenwake.Core.Simulation;
 
 namespace Ashenwake.Core.Combat;
 
-public enum CombatCommandKind { Move, Stop, Cast, Dodge, Potion, Pickup, Equip, EquipFragment, UnequipFragment, SetMutation, ConsumeCorpse, CastEcho, ReleaseCharge }
+public enum CombatCommandKind { Move, Stop, Cast, Dodge, Potion, Pickup, Equip, EquipFragment, UnequipFragment, SetMutation, ConsumeCorpse, CastEcho, ReleaseCharge, InteractMechanism }
 public enum DamageFamily { PhysicalSlash, PhysicalPierce, PhysicalCrush, Fire, Frost, Storm, Decay, Venom, Void }
 public enum AnatomySlot { Mind, Eyes, Heart, Spine, Arms, Legs }
 public enum CombatFaction { Player, Enemy, Ally }
@@ -22,7 +22,7 @@ public sealed record CombatView(long Tick, string Preset, IReadOnlyList<CombatAc
     IReadOnlyList<CombatAreaView> Areas, IReadOnlyList<CombatLoot> Loot, IReadOnlyList<CombatItem> Inventory,
     IReadOnlyList<CombatSkillView> Skills, IReadOnlyList<CombatFragmentView> Fragments, IReadOnlyList<CombatMutationView> Mutations,
     IReadOnlyDictionary<string, long> Equipment, int Momentum, int MaxMomentum, int Barrier, int PotionCharges, int PotionCooldownTicks,
-    int DodgeCooldownTicks, int Resonance, int PendingEffects, int PeakEffects, int RejectedEffects, string ContentVersion, string Discipline = "Vanguard", string ResourceName = "Momentum", string CapturedSkillId = "", int EchoTicks = 0, IReadOnlyList<Position>? Illusions = null, int FragmentHeat = 0, int SeismicCharge = 0, IReadOnlyList<CombatHazardView>? CampaignHazards = null, string CampaignRule = "", int BossPhase = 0, string SuppressedFragmentId = "")
+    int DodgeCooldownTicks, int Resonance, int PendingEffects, int PeakEffects, int RejectedEffects, string ContentVersion, string Discipline = "Vanguard", string ResourceName = "Momentum", string CapturedSkillId = "", int EchoTicks = 0, IReadOnlyList<Position>? Illusions = null, int FragmentHeat = 0, int SeismicCharge = 0, IReadOnlyList<CombatHazardView>? CampaignHazards = null, string CampaignRule = "", int BossPhase = 0, string SuppressedFragmentId = "", CombatEndgameView? Endgame = null)
 {
     public int Resource => Momentum;
     public int MaxResource => MaxMomentum;
@@ -77,6 +77,7 @@ public sealed record CombatProjectile(long Id, int OwnerId, int SourceId, Positi
 public sealed record CombatArea(long Id, int OwnerId, int SourceId, Position Position, int Radius, string SkillId, int Damage, DamageFamily Family, long NextTick, long ExpiresTick, long ActionId, int Depth);
 public sealed record CombatSnapshot
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public EndgameCombatState? Endgame { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public CampaignCombatState? Campaign { get; set; }
     public int SchemaVersion { get; init; } = 1;
     public string RulesVersion { get; init; } = "combat.1";

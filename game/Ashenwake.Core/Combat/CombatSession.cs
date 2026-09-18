@@ -20,8 +20,8 @@ public sealed partial class CombatSession
     private readonly List<CombatEvent> _events = [];
     private readonly HashSet<string> _triggers = new(StringComparer.Ordinal);
     private int _processed;
-    private sealed record Hit(int SourceId, int OwnerId, int TargetId, int Damage, DamageFamily Family, string ContentId, long ActionId, int Depth, bool Dot = false, bool Reflected = false, string Status = "", string OriginSkill = "", int SourceGeneration = 0);
-    private CombatSession(CombatContent content, CombatSnapshot state) { _content = content; _spatial = new(content.Room); _state = state; }
+    private sealed record Hit(int SourceId, int OwnerId, int TargetId, int Damage, DamageFamily Family, string ContentId, long ActionId, int Depth, bool Dot = false, bool Reflected = false, string Status = "", string OriginSkill = "", int SourceGeneration = 0, string FragmentId = "");
+    private CombatSession(CombatContent content, CombatSnapshot state) { _content = content; _spatial = new(ResolveRoom(content, state)); _state = state; }
     public long Tick => _state.Tick;
     public string ContentHash => _state.ContentHash;
     public string StateHash => JsonData.Hash(_state);
@@ -106,10 +106,11 @@ public sealed partial class CombatSession
         _content.Fragments.Select(f => new CombatFragmentView(f.Id, f.Name, f.Slot, f.Lineage, f.Resonance, f.Description, _state.Fragments.Values.Contains(f.Id))).ToArray(),
         _content.Mutations.Select(m => new CombatMutationView(m.Id, m.SkillId, m.Name, m.Description)).ToArray(), new SortedDictionary<string, long>(_state.Equipment, StringComparer.Ordinal),
         _state.Momentum, 100, Player.Barrier, _state.PotionCharges, Remaining(_state.PotionReadyTick), Remaining(_state.DodgeReadyTick),
-        _content.Fragments.Where(f => _state.Fragments.Values.Contains(f.Id)).Sum(f => f.Resonance), _effects.Count, _state.PeakEffects, _state.RejectedEffects, _content.ContentVersion, Discipline, ResourceName, _state.CapturedSkillId, Remaining(_state.CapturedUntil), FalseSilhouettes().ToArray(), _state.FragmentHeat, _state.SeismicCharge, CampaignHazards().ToArray(), CampaignRule, _state.Campaign?.BossPhase ?? 0, _state.Campaign?.SuppressedFragmentId ?? "");
+        _content.Fragments.Where(f => _state.Fragments.Values.Contains(f.Id)).Sum(f => f.Resonance), _effects.Count, _state.PeakEffects, _state.RejectedEffects, _content.ContentVersion, Discipline, ResourceName, _state.CapturedSkillId, Remaining(_state.CapturedUntil), FalseSilhouettes().ToArray(), _state.FragmentHeat, _state.SeismicCharge, CampaignHazards().ToArray(), CampaignRule, _state.Campaign?.BossPhase ?? 0, _state.Campaign?.SuppressedFragmentId ?? "", EndgameView);
     private int Remaining(long until) => (int)Math.Clamp(until - Tick, 0, int.MaxValue);
     private CombatMutation? Mutation(string skill) => _content.Mutations.FirstOrDefault(m => m.Id == _state.Mutations.GetValueOrDefault(skill));
-    private void Emit(string kind, int actor = 0, int target = 0, int amount = 0, string content = "", long action = 0, int depth = 0) => _events.Add(new(Tick, kind, actor, target, amount, content, action, depth));
+    private void Emit(string kind, int actor = 0, int target = 0, int amount = 0, string content = "", long action = 0, int depth = 0)
+    { var ev = new CombatEvent(Tick, kind, actor, target, amount, content, action, depth); _events.Add(ev); ObserveEndgameEvent(ev); }
     private void Reject(CombatCommand command, string reason) => Emit("CommandRejected", command.ActorId, command.TargetId, content: reason);
     public IReadOnlyList<CombatEvent> Step(IEnumerable<CombatCommand>? commands = null)
     {
@@ -117,6 +118,7 @@ public sealed partial class CombatSession
         if (inputs.Length > 64 || inputs.Any(c => c is null)) throw new InvalidDataException("At most 64 nonnull combat commands per tick.");
         _events.Clear(); _triggers.Clear(); _processed = 0;
         TickCampaign();
+        TickEndgame();
         TickProductionState();
         foreach (var actor in _state.Actors)
         {
@@ -145,7 +147,7 @@ public sealed partial class CombatSession
                 if (status.NextTick > Tick || status.Id is not ("Burning" or "Poisoned" or "Bleeding")) continue;
                 status.NextTick += status.Id == "Burning" ? 10 : 15;
                 Enqueue(new(status.SourceId, status.OwnerId, actor.Id, (status.Id == "Burning" ? 6 : 4) * status.Stacks,
-                    status.Id == "Burning" ? DamageFamily.Fire : status.Id == "Bleeding" ? DamageFamily.PhysicalSlash : DamageFamily.Venom, status.Id, status.ActionId, status.Depth, Dot: true, OriginSkill: status.OriginSkill, SourceGeneration: status.SourceGeneration));
+                    status.Id == "Burning" ? DamageFamily.Fire : status.Id == "Bleeding" ? DamageFamily.PhysicalSlash : DamageFamily.Venom, status.Id, status.ActionId, status.Depth, Dot: true, OriginSkill: status.OriginSkill, SourceGeneration: status.SourceGeneration, FragmentId: status.FragmentId));
             }
         }
         UpdateProjectiles(); UpdateAreas(); Drain();
@@ -164,13 +166,14 @@ public sealed partial class CombatSession
         if (HandleProductionCommand(command)) return;
         switch (command.Kind)
         {
+            case CombatCommandKind.InteractMechanism: InteractEndgameMechanism(command); break;
             case CombatCommandKind.Cast: Cast(command, allowBuffer); break;
             case CombatCommandKind.Dodge:
                 if (_state.DodgeReadyTick > Tick || (command.X == 0 && command.Z == 0)) { Reject(command, "dodge_unavailable"); break; }
                 Player.Pending = null; _state.BufferedCommand = null; Player.InvulnerableUntil = Tick + 7; Player.RecoveryUntil = Tick + 5; _state.DodgeReadyTick = Tick + (HasManifestation("manifestation.stone_memory") && _state.MemoryUntilTick > Tick && _state.MemoryStacks > 0 ? (Purified("fragment.orrun_bone") ? 36 : 40) : 32);
                 MoveActor(Player, new(Player.Position.X + command.X * (command.Z == 0 ? 1700 : 1202), Player.Position.Z + command.Z * (command.X == 0 ? 1700 : 1202)));
                 if (_state.ProgressionBuild.BarrierOnDodge) { Player.Barrier = Math.Min(200, Player.Barrier + 15); Emit("BarrierGranted", 1, 1, 15, "rune.guard"); }
-                foreach (var dodgeFragment in ActiveFragments().Where(f => f.Trigger == "Dodge")) { Player.Barrier = Math.Min(200, Player.Barrier + 10); Emit("FragmentTriggered", 1, 1, 10, dodgeFragment.Id); }
+                foreach (var dodgeFragment in ActiveFragments().Where(f => f.Trigger == "Dodge")) { Player.Barrier = Math.Min(200, Player.Barrier + FragmentAmount(10)); Emit("FragmentTriggered", 1, 1, FragmentAmount(10), dodgeFragment.Id); }
                 Emit("Dodged", 1); break;
             case CombatCommandKind.Potion:
                 if (_state.PotionReadyTick > Tick || _state.PotionCharges <= 0 || Player.Health == Player.MaxHealth) { Reject(command, "potion_unavailable"); break; }
@@ -248,7 +251,7 @@ public sealed partial class CombatSession
     private void MoveActor(CombatActor actor, Position desired)
     {
         if (actor.Statuses.Any(s => s.Id is "Frozen" or "Rooted" && s.ExpiresTick > Tick)) return;
-        var moved = _spatial.Move(actor.Position, desired, ActorRadius);
+        var moved = _spatial.Move(actor.Position, EndgameHastedMove(actor, desired), ActorRadius);
         if (!_state.Actors.Any(other => other.Id != actor.Id && other.Health > 0 && Position.DistanceSquared(moved, other.Position) < 4L * ActorRadius * ActorRadius)) actor.Position = moved;
     }
     private static Position Toward(Position from, Position target, int step)
@@ -261,7 +264,7 @@ public sealed partial class CombatSession
     private void Think(CombatActor actor)
     {
         if (actor.Statuses.Any(s => s.Id == "Terrified" && s.ExpiresTick > Tick)) { actor.Pending = null; actor.State = "Flee"; MoveActor(actor, new(actor.Position.X + Math.Sign(actor.Position.X - Player.Position.X) * 100, actor.Position.Z + Math.Sign(actor.Position.Z - Player.Position.Z) * 100)); return; }
-        if (ThinkCampaignActor(actor)) return;
+        if (ThinkEndgameActor(actor) || ThinkCampaignActor(actor)) return;
         if (ThinkEncounterActor(actor)) return;
         if (Stunned(actor)) { actor.State = "Staggered"; actor.Pending = null; return; }
         if (actor.Pending is not null || actor.RecoveryUntil > Tick) { actor.State = actor.Pending is null ? "Recover" : "Windup"; return; }
@@ -292,7 +295,7 @@ public sealed partial class CombatSession
     }
     private void Resolve(CombatActor actor, CombatPending pending)
     {
-        if (ResolveCampaignAbility(actor, pending) || ResolveProductionAbility(actor, pending) || ResolveEncounterAbility(actor, pending)) return;
+        if (ResolveEndgameAbility(actor, pending) || ResolveCampaignAbility(actor, pending) || ResolveProductionAbility(actor, pending) || ResolveEncounterAbility(actor, pending)) return;
         var target = _state.Actors.FirstOrDefault(a => a.Id == pending.TargetId && a.Health > 0);
         var skill = _content.Skills.FirstOrDefault(s => s.Id == pending.SkillId);
         var mutation = actor.Id == 1 ? Mutation(pending.SkillId) : null;
@@ -365,19 +368,19 @@ public sealed partial class CombatSession
         }
         bool physical = hit.Family is DamageFamily.PhysicalSlash or DamageFamily.PhysicalPierce or DamageFamily.PhysicalCrush;
         int defense = physical ? target.Armor + (target.Id == 1 ? Equipped.Sum(i => i.Armor) + _state.ProgressionBuild.Armor + _state.ProgressionBuild.Defense * 100 + _state.SeismicCharge * 10 : 0) : target.Resistance;
-        defense += CampaignDefenseBonus(target);
+        defense += CampaignDefenseBonus(target) + EndgameResistanceAdjustment(target, hit.Family);
         if (target.Id == 1 && HasManifestation("manifestation.stone_memory") && _state.MemoryUntilTick > Tick && _state.MemoryAttackId == hit.ContentId) defense += _state.MemoryStacks * 1000;
         if (target.Id == 1 && AshcleaverActive && _state.Build.AshcleaverEvolution == "Orrun") defense += 500;
         if (target.Id == 1 && Discipline == "Warden" && _state.ThreatFamily == hit.Family && _state.ThreatUntil > Tick) defense += _state.ThreatStacks * 500;
         if (target.Id == 1 && Player.Pending?.SkillId == "skill.shield_breaker" && Mutation("skill.shield_breaker")?.Id == "mutation.orruns_patience") defense += 1500;
         int bonus = hit.OwnerId == 1 && source?.Id == 1 && !hit.Dot && !hit.Reflected ? Equipped.Sum(i => i.Damage) + _state.ProgressionBuild.FlatDamage + (AshcleaverActive ? _state.Build.TemperLevel * 2 : 0) : 0;
         int increased = hit.OwnerId == 1 ? _state.ProgressionBuild.Offense * 200 + (Discipline == "Arcanist" ? _state.Momentum * 40 : 0) : 0;
-        increased += CampaignDamageBonus(source);
+        increased += CampaignDamageBonus(source) + EndgameDamageBonus(hit);
         if (StormOvercharged && hit.OwnerId == 1 && hit.Depth > 0) increased += 2500;
         if (source?.Statuses.Any(s => s.Id == "Cursed") == true) increased -= 2000;
         if (target.Statuses.Any(s => s.Id == "Marked") && _content.Skills.FirstOrDefault(s => s.Id == hit.ContentId)?.Behavior == "ConsumeMarked") increased += 10000;
         var result = DamageRules.Resolve(new(hit.Damage, bonus, IncreasedBasisPoints: increased, Critical: critical, Family: hit.Family, DefenseBasisPoints: defense,
-            VulnerabilityBasisPoints: target.Statuses.Any(s => s.Id == "Vulnerable") ? 2500 : 0, Barrier: target.Barrier, Immune: target.InvulnerableUntil > Tick || IsRituallyShielded(target), DamageOverTime: hit.Dot));
+            VulnerabilityBasisPoints: target.Statuses.Any(s => s.Id == "Vulnerable") ? 2500 : 0, Barrier: target.Barrier, MoreBasisPoints: EndgameFragmentPower(hit, source), MinimumDefenseBasisPoints: EndgameRule("resistance_inversion") ? -1500 : 0, Immune: target.InvulnerableUntil > Tick || IsRituallyShielded(target), DamageOverTime: hit.Dot));
         target.Barrier -= result.Absorbed;
         if (result.Absorbed > 0) Emit("BarrierAbsorbed", target.Id, target.Id, result.Absorbed, hit.ContentId, hit.ActionId, hit.Depth);
         int healthDamage = Math.Min(target.Health, result.HealthDamage); target.Health -= healthDamage;
@@ -437,9 +440,9 @@ public sealed partial class CombatSession
     }
     private void Kill(CombatActor target, Hit hit)
     {
-        if (TryCampaignPhaseTransition(target)) return;
+        if (TryEndgameReform(target) || TryCampaignPhaseTransition(target)) return;
         target.DeathProcessed = true; target.Pending = null; target.State = "Dead"; target.MoveX = 0; target.MoveZ = 0;
-        Emit(_state.Campaign?.Actors.GetValueOrDefault(target.Id)?.IsEcho == true ? "EliteCopyKilled" : "EntityKilled", hit.OwnerId, target.Id, content: hit.ContentId, action: hit.ActionId, depth: hit.Depth);
+        Emit(EndgameMechanicNoRewards(target) ? "MechanismDestroyed" : _state.Campaign?.Actors.GetValueOrDefault(target.Id)?.IsEcho == true ? "EliteCopyKilled" : "EntityKilled", hit.OwnerId, target.Id, content: hit.ContentId, action: hit.ActionId, depth: hit.Depth);
         if (target.Id == 1) _state.BufferedCommand = null;
         if (target.Role == "Rusher" && hit.ContentId != "enemy.detonate")
         {
@@ -448,6 +451,7 @@ public sealed partial class CombatSession
         }
         if (target.Faction != CombatFaction.Enemy) return;
         CampaignDeath(target);
+        EndgameDeath(target);
         if (_state.Loot.Count < 512 && !_state.ResurrectedActorIds.Contains(target.Id) && CampaignRewardEligible(target))
         {
             var rng = _state.Rng.Loot;
@@ -502,7 +506,7 @@ public sealed partial class CombatSession
             Require((actor.Health == 0) == actor.DeathProcessed, "death flag");
             Require(actor.RecoveryUntil >= 0 && actor.RecoveryUntil <= Tick + 3000 && actor.InvulnerableUntil >= 0 && actor.InvulnerableUntil <= Tick + 3000 && actor.ExpiresTick >= 0 && actor.ExpiresTick <= Tick + 3000, "actor timers");
             Require(actor.Statuses is not null && actor.Statuses.Count <= 32 && actor.Statuses.All(s => s is not null && StatusIds.Contains(s.Id) && s.Stacks is >= 1 and <= 3 && s.SourceGeneration is >= 0 and <= 2 && s.Depth is >= 0 and <= MaxChainDepth && s.SourceId > 0 && s.OwnerId > 0 && s.ActionId > 0 && s.NextTick >= 0 && s.NextTick <= Tick + 3000 && s.ExpiresTick >= 0 && s.ExpiresTick <= Tick + 3000 && s.ActionId < _state.NextActionId && s.SourceId < _state.NextActorId && (s.FragmentId == "" || _content.Fragments.Any(f => f.Id == s.FragmentId))), "statuses");
-            if (actor.Pending is { } p) Require(p.ResolveTick >= Tick && p.ResolveTick <= Tick + 3000 && p.StartTick >= 0 && p.StartTick <= Tick && p.ChargeTicks is >= 0 and <= 60 && p.ActionId > 0 && p.ActionId < _state.NextActionId && p.Depth is >= 0 and <= MaxChainDepth && _spatial.CanOccupy(p.Target, 0) && (p.TargetId == 0 || _state.Actors.Any(a => a.Id == p.TargetId)) && (actor.Id == 1 ? _content.Skills.Any(s => s.Id == p.SkillId) : actor.Faction == CombatFaction.Ally ? p.SkillId is "summon.spirit_bolt" or "summon.companion_bite" : (p.SkillId is "enemy.projectile" or "enemy.strike" or "enemy.stormbound" || IsEncounterSkill(p.SkillId) || CampaignSkill(p.SkillId))), "pending ability");
+            if (actor.Pending is { } p) Require(p.ResolveTick >= Tick && p.ResolveTick <= Tick + 3000 && p.StartTick >= 0 && p.StartTick <= Tick && p.ChargeTicks is >= 0 and <= 60 && p.ActionId > 0 && p.ActionId < _state.NextActionId && p.Depth is >= 0 and <= MaxChainDepth && _spatial.CanOccupy(p.Target, 0) && (p.TargetId == 0 || _state.Actors.Any(a => a.Id == p.TargetId)) && (actor.Id == 1 ? _content.Skills.Any(s => s.Id == p.SkillId) : actor.Faction == CombatFaction.Ally ? p.SkillId is "summon.spirit_bolt" or "summon.companion_bite" : (p.SkillId is "enemy.projectile" or "enemy.strike" or "enemy.stormbound" || IsEncounterSkill(p.SkillId) || CampaignSkill(p.SkillId) || _state.Endgame is not null && p.SkillId == "endgame.boss_tell")), "pending ability");
         }
         Require(_state.Projectiles!.Count <= MaxProjectiles && _state.Areas!.Count <= MaxAreas && _state.Loot!.Count <= 512 && _state.Inventory!.Count <= 512, "object budgets");
         Require(_state.Loot.All(l => l is not null && l.Item is not null && l.Id == l.Item.Id && _spatial.CanOccupy(l.Position, 0)), "loot");
@@ -526,5 +530,6 @@ public sealed partial class CombatSession
         Require(_state.ConsumedCorpseIds is not null && _state.ConsumedCorpseIds.Count <= MaxActors && _state.ConsumedCorpseIds.All(id => _state.Actors.Any(a => a.Id == id && a.Faction == CombatFaction.Enemy)) && _state.TemporaryLife is >= 0 and <= 60 && _state.TemporaryLifeUntil >= 0 && _state.TemporaryLifeUntil <= Tick + 3000 && _state.CapturedSkillId is "" or "skill.echo_storm" && _state.CapturedUntil >= 0 && _state.CapturedUntil <= Tick + 3000 && _state.FragmentHeat is >= 0 and <= 100 && _state.SeismicCharge is >= 0 and <= 90 && _state.ThreatStacks is >= 0 and <= 4 && _state.ThreatUntil >= 0 && _state.ThreatUntil <= Tick + 3000 && _state.OverheatedActionId >= 0 && _state.OverheatedActionId < _state.NextActionId && (_state.MinionTargetId == 0 || _state.Actors.Any(a => a.Id == _state.MinionTargetId && a.Faction == CombatFaction.Enemy)) && (_state.ThreatFamily is null || Enum.IsDefined(_state.ThreatFamily.Value)), "production runtime state");
         if (_state.BufferedCommand is { } command) Require(command.Kind == CombatCommandKind.Cast && command.ActorId == 1 && _content.Skills.Any(s => s.Id == command.SkillId), "buffered input");
         ValidateCampaignSnapshot();
+        ValidateEndgameSnapshot();
     }
 }

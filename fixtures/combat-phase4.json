@@ -1,0 +1,1545 @@
+{
+  "schemaVersion": 1,
+  "contentVersion": "0.4.0",
+  "room": {
+    "halfWidth": 12000,
+    "halfDepth": 10000,
+    "playerSpawn": {
+      "x": -4500,
+      "z": 0
+    },
+    "enemySpawn": {
+      "x": 1500,
+      "z": 0
+    },
+    "obstacles": [
+      {
+        "minX": -800,
+        "minZ": -4200,
+        "maxX": 800,
+        "maxZ": -3200
+      },
+      {
+        "minX": -800,
+        "minZ": 3200,
+        "maxX": 800,
+        "maxZ": 4200
+      }
+    ]
+  },
+  "skills": [
+    {
+      "id": "skill.cleave",
+      "name": "Cleave",
+      "shape": "Melee",
+      "family": "PhysicalSlash",
+      "damage": 22,
+      "range": 2400,
+      "windup": 4,
+      "recovery": 5,
+      "cooldown": 12,
+      "cost": 0,
+      "generate": 14,
+      "radius": 0,
+      "status": "",
+      "discipline": "Vanguard",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.shield_breaker",
+      "name": "Shield Breaker",
+      "shape": "Melee",
+      "family": "PhysicalCrush",
+      "damage": 50,
+      "range": 2600,
+      "windup": 10,
+      "recovery": 9,
+      "cooldown": 45,
+      "cost": 20,
+      "generate": 0,
+      "radius": 0,
+      "status": "Staggered",
+      "discipline": "Vanguard",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.seismic_wave",
+      "name": "Seismic Wave",
+      "shape": "Projectile",
+      "family": "PhysicalCrush",
+      "damage": 30,
+      "range": 11000,
+      "windup": 7,
+      "recovery": 7,
+      "cooldown": 35,
+      "cost": 10,
+      "generate": 0,
+      "radius": 1600,
+      "status": "Vulnerable",
+      "discipline": "Vanguard",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.charge",
+      "name": "Breaker Charge",
+      "shape": "Dash",
+      "family": "PhysicalCrush",
+      "damage": 20,
+      "range": 6500,
+      "windup": 2,
+      "recovery": 6,
+      "cooldown": 70,
+      "cost": 0,
+      "generate": 10,
+      "radius": 1800,
+      "status": "Staggered",
+      "discipline": "Vanguard",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.iron_guard",
+      "name": "Iron Guard",
+      "shape": "Guard",
+      "family": "PhysicalCrush",
+      "damage": 65,
+      "range": 0,
+      "windup": 1,
+      "recovery": 3,
+      "cooldown": 120,
+      "cost": 15,
+      "generate": 0,
+      "radius": 0,
+      "status": "",
+      "discipline": "Vanguard",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.cataclysm",
+      "name": "Cataclysm",
+      "shape": "Area",
+      "family": "Fire",
+      "damage": 30,
+      "range": 0,
+      "windup": 16,
+      "recovery": 12,
+      "cooldown": 210,
+      "cost": 65,
+      "generate": 0,
+      "radius": 4200,
+      "status": "Burning",
+      "discipline": "Vanguard",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.venom_knife",
+      "name": "Venom Knife",
+      "shape": "Melee",
+      "family": "PhysicalPierce",
+      "damage": 19,
+      "range": 2600,
+      "windup": 3,
+      "recovery": 4,
+      "cooldown": 10,
+      "cost": 0,
+      "generate": 12,
+      "radius": 0,
+      "status": "Poisoned",
+      "discipline": "Veilwalker",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.shadow_step",
+      "name": "Shadow Step",
+      "shape": "Dash",
+      "family": "Void",
+      "damage": 25,
+      "range": 7500,
+      "windup": 2,
+      "recovery": 5,
+      "cooldown": 45,
+      "cost": 10,
+      "generate": 0,
+      "radius": 1600,
+      "status": "Marked",
+      "discipline": "Veilwalker",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.dusk_fan",
+      "name": "Dusk Fan",
+      "shape": "Projectile",
+      "family": "PhysicalPierce",
+      "damage": 28,
+      "range": 10500,
+      "windup": 5,
+      "recovery": 6,
+      "cooldown": 25,
+      "cost": 15,
+      "generate": 0,
+      "radius": 1200,
+      "status": "Bleeding",
+      "discipline": "Veilwalker",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.shroud",
+      "name": "Shroud",
+      "shape": "Guard",
+      "family": "Void",
+      "damage": 35,
+      "range": 0,
+      "windup": 1,
+      "recovery": 3,
+      "cooldown": 100,
+      "cost": 15,
+      "generate": 0,
+      "radius": 0,
+      "status": "",
+      "discipline": "Veilwalker",
+      "behavior": "Vanish",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.terror",
+      "name": "Terror",
+      "shape": "Area",
+      "family": "Void",
+      "damage": 12,
+      "range": 0,
+      "windup": 6,
+      "recovery": 6,
+      "cooldown": 65,
+      "cost": 20,
+      "generate": 0,
+      "radius": 3500,
+      "status": "Terrified",
+      "discipline": "Veilwalker",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.shadow_execution",
+      "name": "Shadow Execution",
+      "shape": "Melee",
+      "family": "Void",
+      "damage": 95,
+      "range": 3000,
+      "windup": 9,
+      "recovery": 10,
+      "cooldown": 150,
+      "cost": 60,
+      "generate": 0,
+      "radius": 0,
+      "status": "",
+      "discipline": "Veilwalker",
+      "behavior": "ConsumeMarked",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.fire_lance",
+      "name": "Fire Lance",
+      "shape": "Projectile",
+      "family": "Fire",
+      "damage": 24,
+      "range": 12000,
+      "windup": 5,
+      "recovery": 5,
+      "cooldown": 14,
+      "cost": 8,
+      "generate": 0,
+      "radius": 0,
+      "status": "Burning",
+      "discipline": "Arcanist",
+      "behavior": "",
+      "resourceMode": "Heat"
+    },
+    {
+      "id": "skill.frost_nova",
+      "name": "Frost Nova",
+      "shape": "Area",
+      "family": "Frost",
+      "damage": 17,
+      "range": 0,
+      "windup": 8,
+      "recovery": 8,
+      "cooldown": 50,
+      "cost": 20,
+      "generate": 0,
+      "radius": 3800,
+      "status": "Chilled",
+      "discipline": "Arcanist",
+      "behavior": "",
+      "resourceMode": "Heat"
+    },
+    {
+      "id": "skill.storm_arc",
+      "name": "Storm Arc",
+      "shape": "Projectile",
+      "family": "Storm",
+      "damage": 32,
+      "range": 10000,
+      "windup": 7,
+      "recovery": 7,
+      "cooldown": 35,
+      "cost": 18,
+      "generate": 0,
+      "radius": 1000,
+      "status": "Shocked",
+      "discipline": "Arcanist",
+      "behavior": "",
+      "resourceMode": "Heat"
+    },
+    {
+      "id": "skill.vent",
+      "name": "Vent",
+      "shape": "Guard",
+      "family": "Frost",
+      "damage": 35,
+      "range": 0,
+      "windup": 2,
+      "recovery": 4,
+      "cooldown": 35,
+      "cost": 0,
+      "generate": 0,
+      "radius": 0,
+      "status": "",
+      "discipline": "Arcanist",
+      "behavior": "Vent",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.ember_stride",
+      "name": "Ember Stride",
+      "shape": "Dash",
+      "family": "Fire",
+      "damage": 25,
+      "range": 6500,
+      "windup": 3,
+      "recovery": 6,
+      "cooldown": 55,
+      "cost": 10,
+      "generate": 0,
+      "radius": 1900,
+      "status": "Burning",
+      "discipline": "Arcanist",
+      "behavior": "",
+      "resourceMode": "Heat"
+    },
+    {
+      "id": "skill.starfall",
+      "name": "Starfall",
+      "shape": "Area",
+      "family": "Void",
+      "damage": 45,
+      "range": 0,
+      "windup": 14,
+      "recovery": 12,
+      "cooldown": 150,
+      "cost": 65,
+      "generate": 0,
+      "radius": 4600,
+      "status": "Vulnerable",
+      "discipline": "Arcanist",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.grave_bolt",
+      "name": "Grave Bolt",
+      "shape": "Projectile",
+      "family": "Decay",
+      "damage": 24,
+      "range": 11000,
+      "windup": 5,
+      "recovery": 5,
+      "cooldown": 14,
+      "cost": 0,
+      "generate": 0,
+      "radius": 0,
+      "status": "Cursed",
+      "discipline": "Gravecaller",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.bone_lance",
+      "name": "Bone Lance",
+      "shape": "Projectile",
+      "family": "PhysicalPierce",
+      "damage": 32,
+      "range": 10000,
+      "windup": 8,
+      "recovery": 8,
+      "cooldown": 40,
+      "cost": 0,
+      "generate": 0,
+      "radius": 0,
+      "status": "Bleeding",
+      "discipline": "Gravecaller",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.raise_ancestor",
+      "name": "Raise Ancestor",
+      "shape": "Summon",
+      "family": "Decay",
+      "damage": 0,
+      "range": 0,
+      "windup": 10,
+      "recovery": 8,
+      "cooldown": 50,
+      "cost": 20,
+      "generate": 0,
+      "radius": 0,
+      "status": "",
+      "discipline": "Gravecaller",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.soul_siphon",
+      "name": "Soul Siphon",
+      "shape": "Melee",
+      "family": "Decay",
+      "damage": 40,
+      "range": 3500,
+      "windup": 8,
+      "recovery": 8,
+      "cooldown": 45,
+      "cost": 0,
+      "generate": 0,
+      "radius": 0,
+      "status": "",
+      "discipline": "Gravecaller",
+      "behavior": "Leech",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.grave_command",
+      "name": "Grave Command",
+      "shape": "Command",
+      "family": "Decay",
+      "damage": 0,
+      "range": 12000,
+      "windup": 1,
+      "recovery": 2,
+      "cooldown": 20,
+      "cost": 0,
+      "generate": 0,
+      "radius": 0,
+      "status": "Marked",
+      "discipline": "Gravecaller",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.procession",
+      "name": "Procession",
+      "shape": "Summon",
+      "family": "Decay",
+      "damage": 0,
+      "range": 0,
+      "windup": 14,
+      "recovery": 12,
+      "cooldown": 180,
+      "cost": 60,
+      "generate": 0,
+      "radius": 0,
+      "status": "",
+      "discipline": "Gravecaller",
+      "behavior": "Procession",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.thorn_shot",
+      "name": "Thorn Shot",
+      "shape": "Projectile",
+      "family": "Venom",
+      "damage": 22,
+      "range": 11000,
+      "windup": 5,
+      "recovery": 5,
+      "cooldown": 14,
+      "cost": 0,
+      "generate": 8,
+      "radius": 0,
+      "status": "Poisoned",
+      "discipline": "Warden",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.entangle",
+      "name": "Entangle",
+      "shape": "Area",
+      "family": "Venom",
+      "damage": 14,
+      "range": 0,
+      "windup": 7,
+      "recovery": 7,
+      "cooldown": 55,
+      "cost": 15,
+      "generate": 0,
+      "radius": 3500,
+      "status": "Rooted",
+      "discipline": "Warden",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.feral_companion",
+      "name": "Feral Companion",
+      "shape": "Summon",
+      "family": "PhysicalSlash",
+      "damage": 0,
+      "range": 0,
+      "windup": 8,
+      "recovery": 6,
+      "cooldown": 90,
+      "cost": 25,
+      "generate": 0,
+      "radius": 0,
+      "status": "",
+      "discipline": "Warden",
+      "behavior": "Companion",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.barkskin",
+      "name": "Barkskin",
+      "shape": "Guard",
+      "family": "PhysicalCrush",
+      "damage": 70,
+      "range": 0,
+      "windup": 2,
+      "recovery": 4,
+      "cooldown": 90,
+      "cost": 20,
+      "generate": 0,
+      "radius": 0,
+      "status": "",
+      "discipline": "Warden",
+      "behavior": "Regenerate",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.adaptive_strike",
+      "name": "Adaptive Strike",
+      "shape": "Melee",
+      "family": "PhysicalCrush",
+      "damage": 32,
+      "range": 2600,
+      "windup": 7,
+      "recovery": 6,
+      "cooldown": 30,
+      "cost": 10,
+      "generate": 5,
+      "radius": 0,
+      "status": "Marked",
+      "discipline": "Warden",
+      "behavior": "",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.primal_awakening",
+      "name": "Primal Awakening",
+      "shape": "Area",
+      "family": "Venom",
+      "damage": 28,
+      "range": 0,
+      "windup": 12,
+      "recovery": 12,
+      "cooldown": 180,
+      "cost": 60,
+      "generate": 0,
+      "radius": 4000,
+      "status": "",
+      "discipline": "Warden",
+      "behavior": "DetonatePoison",
+      "resourceMode": "Spend"
+    },
+    {
+      "id": "skill.echo_storm",
+      "name": "Echo Storm",
+      "shape": "Area",
+      "family": "Storm",
+      "damage": 42,
+      "range": 10000,
+      "windup": 1,
+      "recovery": 14,
+      "cooldown": 15,
+      "cost": 0,
+      "generate": 0,
+      "radius": 2500,
+      "status": "Shocked",
+      "discipline": "Echo",
+      "behavior": "",
+      "resourceMode": "Spend"
+    }
+  ],
+  "enemies": [
+    {
+      "id": "enemy.ash_ghoul",
+      "role": "Melee",
+      "health": 110,
+      "damage": 13,
+      "armor": 300,
+      "speed": 90,
+      "windup": 15,
+      "recovery": 21,
+      "range": 1500
+    },
+    {
+      "id": "enemy.cinder_acolyte",
+      "role": "Ranged",
+      "health": 80,
+      "damage": 10,
+      "armor": 0,
+      "speed": 65,
+      "windup": 24,
+      "recovery": 30,
+      "range": 8500
+    },
+    {
+      "id": "enemy.furnace_brute",
+      "role": "Armored",
+      "health": 250,
+      "damage": 24,
+      "armor": 3500,
+      "speed": 45,
+      "windup": 36,
+      "recovery": 45,
+      "range": 2100
+    },
+    {
+      "id": "enemy.cinder_priest",
+      "role": "Support",
+      "health": 100,
+      "damage": 9,
+      "armor": 500,
+      "speed": 60,
+      "windup": 30,
+      "recovery": 45,
+      "range": 9000
+    },
+    {
+      "id": "enemy.emberling",
+      "role": "Rusher",
+      "health": 45,
+      "damage": 24,
+      "armor": 0,
+      "speed": 150,
+      "windup": 21,
+      "recovery": 45,
+      "range": 1400
+    },
+    {
+      "id": "enemy.bell_saint",
+      "role": "BellSaint",
+      "health": 420,
+      "damage": 25,
+      "armor": 1200,
+      "speed": 40,
+      "windup": 36,
+      "recovery": 40,
+      "range": 9500
+    },
+    {
+      "id": "enemy.ritual_anchor",
+      "role": "Anchor",
+      "health": 100,
+      "damage": 1,
+      "armor": 0,
+      "speed": 1,
+      "windup": 180,
+      "recovery": 180,
+      "range": 1000
+    },
+    {
+      "id": "enemy.bell_beast",
+      "role": "Beast",
+      "health": 550,
+      "damage": 29,
+      "armor": 800,
+      "speed": 105,
+      "windup": 33,
+      "recovery": 42,
+      "range": 9500
+    },
+    {
+      "id": "enemy.broken_bell",
+      "role": "Bell",
+      "health": 90,
+      "damage": 13,
+      "armor": 1000,
+      "speed": 1,
+      "windup": 45,
+      "recovery": 65,
+      "range": 14000
+    }
+  ],
+  "fragments": [
+    {
+      "id": "fragment.eye_vael",
+      "name": "Eye of Vael",
+      "slot": "Eyes",
+      "lineage": "Vael",
+      "resonance": 12,
+      "trigger": "CritHit",
+      "effect": "Burning",
+      "description": "Critical direct hits ignite enemies. Burning deals 6 Fire damage every 10 ticks for 90 ticks."
+    },
+    {
+      "id": "fragment.heart_serath",
+      "name": "Heart of Serath",
+      "slot": "Heart",
+      "lineage": "Serath",
+      "resonance": 18,
+      "trigger": "DotDeath",
+      "effect": "Spirit",
+      "description": "Your damage-over-time kills raise a spirit for 180 ticks. At most 8 spirits; descendant generation is limited to 2."
+    },
+    {
+      "id": "fragment.nerve_ilyra",
+      "name": "Nerve of Ilyra",
+      "slot": "Spine",
+      "lineage": "Ilyra",
+      "resonance": 14,
+      "trigger": "SummonHit",
+      "effect": "Poisoned",
+      "description": "Your spirits poison on hit. Poison stacks up to 3 and deals 4 Venom damage per stack every 15 ticks."
+    },
+    {
+      "id": "fragment.orrun_bone",
+      "name": "Orrun's Bone",
+      "slot": "Arms",
+      "lineage": "Orrun",
+      "resonance": 20,
+      "trigger": "DamageTaken",
+      "effect": "Barrier",
+      "description": "Taking health damage grants 12 barrier, at most once every 45 ticks. Mitigation remains useful without critical hits or spirits."
+    },
+    {
+      "id": "fragment.heart_vael",
+      "name": "Heart of Vael",
+      "slot": "Heart",
+      "lineage": "Vael",
+      "resonance": 25,
+      "trigger": "CritHit",
+      "effect": "Heat",
+      "description": "Critical hits build 25 Heat. At 100 Heat, the next heavy skill releases an Overheated ignition burst."
+    },
+    {
+      "id": "fragment.last_memory",
+      "name": "Serath's Last Memory",
+      "slot": "Mind",
+      "lineage": "Serath",
+      "resonance": 22,
+      "trigger": "EliteDeath",
+      "effect": "CaptureEcho",
+      "description": "Elite kills capture one curated Storm Echo, usable once for 450 ticks."
+    },
+    {
+      "id": "fragment.orrun_knuckle",
+      "name": "Orrun's Knuckle",
+      "slot": "Arms",
+      "lineage": "Orrun",
+      "resonance": 20,
+      "trigger": "Stationary",
+      "effect": "SeismicCharge",
+      "description": "Standing still stores defensive/seismic power up to 90 ticks. Moving releases a nearby stagger wave."
+    },
+    {
+      "id": "fragment.nhal_stride",
+      "name": "Nhal's Shadowed Tendon",
+      "slot": "Legs",
+      "lineage": "Nhal",
+      "resonance": 15,
+      "trigger": "Dodge",
+      "effect": "Barrier",
+      "description": "Dodging leaves a protective afterimage, granting 10 barrier."
+    }
+  ],
+  "mutations": [
+    {
+      "id": "mutation.avalanche",
+      "skillId": "skill.shield_breaker",
+      "name": "Avalanche",
+      "shape": "Area",
+      "damagePercent": 80,
+      "radius": 3400,
+      "extraCost": 10,
+      "description": "Shield Breaker becomes a lingering area of stagger pulses, costing 10 more Momentum."
+    },
+    {
+      "id": "mutation.no_ground_given",
+      "skillId": "skill.shield_breaker",
+      "name": "No Ground Given",
+      "shape": "Guard",
+      "damagePercent": 100,
+      "radius": 0,
+      "extraCost": 0,
+      "description": "Shield Breaker instead creates a barrier and retaliates against close enemies when struck."
+    },
+    {
+      "id": "mutation.furnace",
+      "skillId": "skill.cataclysm",
+      "name": "Furnace",
+      "shape": "Area",
+      "damagePercent": 150,
+      "radius": 3000,
+      "extraCost": 10,
+      "description": "Concentrate Cataclysm into a smaller, stronger field for 10 more Momentum."
+    },
+    {
+      "id": "mutation.reaping_arc",
+      "skillId": "skill.cleave",
+      "name": "Reaping Arc",
+      "shape": "Area",
+      "damagePercent": 55,
+      "radius": 2400,
+      "extraCost": 5,
+      "description": "Cleave becomes three close sweeping pulses. Spend 5 Momentum, regain its normal Momentum only once per cast."
+    },
+    {
+      "id": "mutation.iron_rain",
+      "skillId": "skill.seismic_wave",
+      "name": "Iron Rain",
+      "shape": "Area",
+      "damagePercent": 75,
+      "radius": 4400,
+      "extraCost": 10,
+      "description": "Replace the aimed wave with a broad persistent field of Vulnerability around you, costing 10 additional Momentum."
+    },
+    {
+      "id": "mutation.forking_flame",
+      "skillId": "skill.fire_lance",
+      "name": "Forking Flame",
+      "shape": "Projectile",
+      "damagePercent": 85,
+      "radius": 0,
+      "extraCost": 2,
+      "description": "Fire Lance splits toward two other enemies after its first impact."
+    },
+    {
+      "id": "mutation.fire_furnace",
+      "skillId": "skill.fire_lance",
+      "name": "Furnace",
+      "shape": "Projectile",
+      "damagePercent": 135,
+      "radius": 2400,
+      "extraCost": 5,
+      "description": "Fire Lance loses piercing and explodes on its first impact."
+    },
+    {
+      "id": "mutation.cauterize",
+      "skillId": "skill.fire_lance",
+      "name": "Cauterize",
+      "shape": "Projectile",
+      "damagePercent": 65,
+      "radius": 0,
+      "extraCost": 0,
+      "description": "Fire Lance deals less direct damage; its Burning damage heals you."
+    },
+    {
+      "id": "mutation.living_flame",
+      "skillId": "skill.fire_lance",
+      "name": "Living Flame",
+      "shape": "Projectile",
+      "damagePercent": 90,
+      "radius": 0,
+      "extraCost": 3,
+      "description": "Half of Fire Lance direct kills consume the corpse to raise a temporary fire spirit."
+    },
+    {
+      "id": "mutation.executioners_pace",
+      "skillId": "skill.shield_breaker",
+      "name": "Executioner's Pace",
+      "shape": "Melee",
+      "damagePercent": 100,
+      "radius": 0,
+      "extraCost": 0,
+      "description": "Killing a staggered target resets Shield Breaker."
+    },
+    {
+      "id": "mutation.orruns_patience",
+      "skillId": "skill.shield_breaker",
+      "name": "Orrun's Patience",
+      "shape": "Melee",
+      "damagePercent": 100,
+      "radius": 0,
+      "extraCost": 0,
+      "description": "Hold Shield Breaker for up to 60 ticks. Gain temporary armor; release for increased damage."
+    }
+  ],
+  "items": [
+    {
+      "id": "item.ash_axe",
+      "name": "Ash-Iron Axe",
+      "slot": "MainHand",
+      "damage": 6,
+      "armor": 0,
+      "criticalBasisPoints": 1200,
+      "compatibleSlots": [
+        "MainHand"
+      ],
+      "hands": 1,
+      "disciplines": []
+    },
+    {
+      "id": "item.march_plate",
+      "name": "March Plate",
+      "slot": "Chest",
+      "damage": 0,
+      "armor": 1800,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Chest"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.ember_lens",
+      "name": "Ember Lens",
+      "slot": "Amulet",
+      "damage": 2,
+      "armor": 0,
+      "criticalBasisPoints": 2200,
+      "compatibleSlots": [
+        "Amulet"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.ashcleaver",
+      "name": "Ashcleaver",
+      "slot": "MainHand",
+      "damage": 9,
+      "armor": 0,
+      "criticalBasisPoints": 1000,
+      "compatibleSlots": [
+        "MainHand"
+      ],
+      "hands": 1,
+      "disciplines": []
+    },
+    {
+      "id": "item.cinder_edge",
+      "name": "Cinder Edge",
+      "slot": "MainHand",
+      "damage": 2,
+      "armor": 0,
+      "criticalBasisPoints": 3000,
+      "compatibleSlots": [
+        "MainHand"
+      ],
+      "hands": 1,
+      "disciplines": []
+    },
+    {
+      "id": "item.oath_hammer",
+      "name": "Oath Hammer",
+      "slot": "MainHand",
+      "damage": 11,
+      "armor": 650,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "MainHand"
+      ],
+      "hands": 1,
+      "disciplines": []
+    },
+    {
+      "id": "item.pilgrim_pike",
+      "name": "Pilgrim Pike",
+      "slot": "MainHand",
+      "damage": 7,
+      "armor": 250,
+      "criticalBasisPoints": 500,
+      "compatibleSlots": [
+        "MainHand"
+      ],
+      "hands": 1,
+      "disciplines": []
+    },
+    {
+      "id": "item.ash_weave",
+      "name": "Ash Weave",
+      "slot": "Chest",
+      "damage": 5,
+      "armor": 700,
+      "criticalBasisPoints": 500,
+      "compatibleSlots": [
+        "Chest"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.oath_plate",
+      "name": "Oath Plate",
+      "slot": "Chest",
+      "damage": 0,
+      "armor": 2600,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Chest"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.serath_shroud",
+      "name": "Serath Shroud",
+      "slot": "Chest",
+      "damage": 1,
+      "armor": 1100,
+      "criticalBasisPoints": 1500,
+      "compatibleSlots": [
+        "Chest"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.stone_seal",
+      "name": "Stone Seal",
+      "slot": "Amulet",
+      "damage": 0,
+      "armor": 1000,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Amulet"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.war_token",
+      "name": "War Token",
+      "slot": "Amulet",
+      "damage": 7,
+      "armor": 0,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Amulet"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.starter_head",
+      "name": "Traveler Head",
+      "slot": "Head",
+      "damage": 0,
+      "armor": 0,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Head"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.starter_shoulders",
+      "name": "Traveler Shoulders",
+      "slot": "Shoulders",
+      "damage": 0,
+      "armor": 0,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Shoulders"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.starter_chest",
+      "name": "Traveler Chest",
+      "slot": "Chest",
+      "damage": 0,
+      "armor": 0,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Chest"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.starter_gloves",
+      "name": "Traveler Gloves",
+      "slot": "Gloves",
+      "damage": 0,
+      "armor": 0,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Gloves"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.starter_belt",
+      "name": "Traveler Belt",
+      "slot": "Belt",
+      "damage": 0,
+      "armor": 0,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Belt"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.starter_legs",
+      "name": "Traveler Legs",
+      "slot": "Legs",
+      "damage": 0,
+      "armor": 0,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Legs"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.starter_boots",
+      "name": "Traveler Boots",
+      "slot": "Boots",
+      "damage": 0,
+      "armor": 0,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Boots"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.starter_amulet",
+      "name": "Traveler Amulet",
+      "slot": "Amulet",
+      "damage": 0,
+      "armor": 0,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Amulet"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.starter_ring1",
+      "name": "Traveler Ring1",
+      "slot": "Ring1",
+      "damage": 0,
+      "armor": 0,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Ring1"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.starter_ring2",
+      "name": "Traveler Ring2",
+      "slot": "Ring2",
+      "damage": 0,
+      "armor": 0,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Ring2"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.starter_mainhand",
+      "name": "Traveler MainHand",
+      "slot": "MainHand",
+      "damage": 0,
+      "armor": 0,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "MainHand"
+      ],
+      "hands": 1,
+      "disciplines": []
+    },
+    {
+      "id": "item.starter_offhand",
+      "name": "Traveler OffHand",
+      "slot": "OffHand",
+      "damage": 0,
+      "armor": 0,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "OffHand"
+      ],
+      "hands": 1,
+      "disciplines": []
+    },
+    {
+      "id": "item.echo_ring",
+      "name": "Echo Ring",
+      "slot": "Ring1",
+      "damage": 0,
+      "armor": 0,
+      "criticalBasisPoints": 800,
+      "compatibleSlots": [
+        "Ring1",
+        "Ring2"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.greatstaff",
+      "name": "Ritual Greatstaff",
+      "slot": "MainHand",
+      "damage": 12,
+      "armor": 0,
+      "criticalBasisPoints": 500,
+      "compatibleSlots": [
+        "MainHand"
+      ],
+      "hands": 2,
+      "disciplines": [
+        "Arcanist",
+        "Gravecaller",
+        "Warden"
+      ]
+    }
+  ],
+  "loadouts": [
+    {
+      "id": "loadout.bare_iron",
+      "name": "Bare Iron",
+      "itemIds": [
+        "item.ash_axe",
+        "item.march_plate",
+        "item.war_token"
+      ],
+      "fragmentIds": [],
+      "mutationIds": [],
+      "purpose": "Low-Resonance physical starter, basic generation into Shield Breaker."
+    },
+    {
+      "id": "loadout.march_guard",
+      "name": "March Guard",
+      "itemIds": [
+        "item.oath_hammer",
+        "item.march_plate",
+        "item.stone_seal"
+      ],
+      "fragmentIds": [
+        "fragment.orrun_bone"
+      ],
+      "mutationIds": [
+        "mutation.no_ground_given"
+      ],
+      "purpose": "Barrier retaliation with conservative armor."
+    },
+    {
+      "id": "loadout.ember_duelist",
+      "name": "Ember Duelist",
+      "itemIds": [
+        "item.cinder_edge",
+        "item.ash_weave",
+        "item.ember_lens"
+      ],
+      "fragmentIds": [
+        "fragment.eye_vael"
+      ],
+      "mutationIds": [],
+      "purpose": "High critical ignition with low mitigation."
+    },
+    {
+      "id": "loadout.ash_reaper",
+      "name": "Ash Reaper",
+      "itemIds": [
+        "item.ashcleaver",
+        "item.ash_weave",
+        "item.war_token"
+      ],
+      "fragmentIds": [
+        "fragment.eye_vael"
+      ],
+      "mutationIds": [
+        "mutation.reaping_arc"
+      ],
+      "purpose": "Close multi-hit pressure and burning-kill Godwrought progression."
+    },
+    {
+      "id": "loadout.ancestral_fire",
+      "name": "Ancestral Fire",
+      "itemIds": [
+        "item.cinder_edge",
+        "item.serath_shroud",
+        "item.ember_lens"
+      ],
+      "fragmentIds": [
+        "fragment.eye_vael",
+        "fragment.heart_serath"
+      ],
+      "mutationIds": [],
+      "purpose": "Reliable ignition creates spirits from damage-over-time deaths."
+    },
+    {
+      "id": "loadout.venom_procession",
+      "name": "Venom Procession",
+      "itemIds": [
+        "item.ash_axe",
+        "item.serath_shroud",
+        "item.ember_lens"
+      ],
+      "fragmentIds": [
+        "fragment.eye_vael",
+        "fragment.heart_serath",
+        "fragment.nerve_ilyra"
+      ],
+      "mutationIds": [],
+      "purpose": "Complete bounded burning, spirit, and poison interaction."
+    },
+    {
+      "id": "loadout.stone_avalanche",
+      "name": "Stone Avalanche",
+      "itemIds": [
+        "item.oath_hammer",
+        "item.oath_plate",
+        "item.stone_seal"
+      ],
+      "fragmentIds": [
+        "fragment.orrun_bone"
+      ],
+      "mutationIds": [
+        "mutation.avalanche"
+      ],
+      "purpose": "High armor and stagger fields, limited critical pressure."
+    },
+    {
+      "id": "loadout.storm_march",
+      "name": "Storm March",
+      "itemIds": [
+        "item.pilgrim_pike",
+        "item.march_plate",
+        "item.war_token"
+      ],
+      "fragmentIds": [],
+      "mutationIds": [
+        "mutation.iron_rain"
+      ],
+      "purpose": "Low-Resonance Vulnerability fields feed heavy melee follow-ups."
+    },
+    {
+      "id": "loadout.furnace_guard",
+      "name": "Furnace Guard",
+      "itemIds": [
+        "item.ashcleaver",
+        "item.oath_plate",
+        "item.ember_lens"
+      ],
+      "fragmentIds": [
+        "fragment.eye_vael",
+        "fragment.orrun_bone"
+      ],
+      "mutationIds": [
+        "mutation.furnace"
+      ],
+      "purpose": "Defensive armor supports close concentrated fire."
+    },
+    {
+      "id": "loadout.memory_wall",
+      "name": "Memory Wall",
+      "itemIds": [
+        "item.oath_hammer",
+        "item.serath_shroud",
+        "item.stone_seal"
+      ],
+      "fragmentIds": [
+        "fragment.heart_serath",
+        "fragment.orrun_bone"
+      ],
+      "mutationIds": [
+        "mutation.no_ground_given"
+      ],
+      "purpose": "Barrier counter and spirit support without critical ignition; Cataclysm starts burns."
+    },
+    {
+      "id": "loadout.pilgrim_ember",
+      "name": "Pilgrim Ember",
+      "itemIds": [
+        "item.pilgrim_pike",
+        "item.ash_weave",
+        "item.ember_lens"
+      ],
+      "fragmentIds": [
+        "fragment.eye_vael"
+      ],
+      "mutationIds": [],
+      "purpose": "Balanced weapon with aggressive armor to seed ignition."
+    },
+    {
+      "id": "loadout.oath_reaper",
+      "name": "Oath Reaper",
+      "itemIds": [
+        "item.oath_hammer",
+        "item.ash_weave",
+        "item.war_token"
+      ],
+      "fragmentIds": [
+        "fragment.orrun_bone"
+      ],
+      "mutationIds": [
+        "mutation.reaping_arc"
+      ],
+      "purpose": "Flat damage feeds sweeping arcs while the knuckle covers some incoming hits."
+    },
+    {
+      "id": "loadout.quiet_pilgrim",
+      "name": "Quiet Pilgrim",
+      "itemIds": [
+        "item.pilgrim_pike",
+        "item.oath_plate",
+        "item.war_token"
+      ],
+      "fragmentIds": [],
+      "mutationIds": [],
+      "purpose": "Low-Resonance, low-critical heavy defense with basic skill timing."
+    },
+    {
+      "id": "loadout.cinder_rain",
+      "name": "Cinder Rain",
+      "itemIds": [
+        "item.cinder_edge",
+        "item.march_plate",
+        "item.ember_lens"
+      ],
+      "fragmentIds": [
+        "fragment.eye_vael"
+      ],
+      "mutationIds": [
+        "mutation.iron_rain"
+      ],
+      "purpose": "Large crit-capable field applies ignition and Vulnerability together."
+    },
+    {
+      "id": "loadout.serath_avalanche",
+      "name": "Serath Avalanche",
+      "itemIds": [
+        "item.ash_axe",
+        "item.serath_shroud",
+        "item.war_token"
+      ],
+      "fragmentIds": [
+        "fragment.heart_serath",
+        "fragment.nerve_ilyra"
+      ],
+      "mutationIds": [
+        "mutation.avalanche"
+      ],
+      "purpose": "Stagger control protects poison spirits; fire ultimate starts the summon cycle."
+    },
+    {
+      "id": "loadout.tempered_sun",
+      "name": "Tempered Sun",
+      "itemIds": [
+        "item.ashcleaver",
+        "item.march_plate",
+        "item.war_token"
+      ],
+      "fragmentIds": [
+        "fragment.eye_vael"
+      ],
+      "mutationIds": [],
+      "purpose": "Direct Ashcleaver damage and moderate armor for early awakening progression."
+    },
+    {
+      "id": "loadout.hollow_bulwark",
+      "name": "Hollow Bulwark",
+      "itemIds": [
+        "item.pilgrim_pike",
+        "item.serath_shroud",
+        "item.stone_seal"
+      ],
+      "fragmentIds": [
+        "fragment.heart_serath",
+        "fragment.orrun_bone"
+      ],
+      "mutationIds": [
+        "mutation.no_ground_given"
+      ],
+      "purpose": "Hybrid critical armor supports spirit kills and reactive barrier."
+    },
+    {
+      "id": "loadout.wild_furnace",
+      "name": "Wild Furnace",
+      "itemIds": [
+        "item.cinder_edge",
+        "item.ash_weave",
+        "item.war_token"
+      ],
+      "fragmentIds": [
+        "fragment.eye_vael",
+        "fragment.heart_serath",
+        "fragment.nerve_ilyra"
+      ],
+      "mutationIds": [
+        "mutation.furnace"
+      ],
+      "purpose": "Fragile fire-and-poison chain specialist."
+    },
+    {
+      "id": "loadout.iron_witness",
+      "name": "Iron Witness",
+      "itemIds": [
+        "item.ash_axe",
+        "item.oath_plate",
+        "item.ember_lens"
+      ],
+      "fragmentIds": [
+        "fragment.eye_vael",
+        "fragment.orrun_bone"
+      ],
+      "mutationIds": [
+        "mutation.iron_rain"
+      ],
+      "purpose": "Heavy defense with field ignition and after-hit barrier."
+    },
+    {
+      "id": "loadout.last_mercy",
+      "name": "Last Mercy",
+      "itemIds": [
+        "item.ashcleaver",
+        "item.serath_shroud",
+        "item.stone_seal"
+      ],
+      "fragmentIds": [
+        "fragment.eye_vael",
+        "fragment.heart_serath",
+        "fragment.nerve_ilyra",
+        "fragment.orrun_bone"
+      ],
+      "mutationIds": [
+        "mutation.avalanche"
+      ],
+      "purpose": "High-Resonance full anatomy interaction with defensive jewelry and area stagger."
+    }
+  ]
+}

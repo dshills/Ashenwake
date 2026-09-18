@@ -141,7 +141,7 @@ public partial class Sandbox
         {
             pair.Value.Root.Position = pair.Value.Previous.Lerp(pair.Value.Current, (float)alpha);
             // Keep the selected role/status readable even when several melee actors overlap.
-            pair.Value.Label.Visible = pair.Key == selected;
+            pair.Value.Label.Visible = pair.Key == selected || _mechanicLabels.Contains(pair.Key);
         }
         _targetMarker.Visible = selected > 0 && _actors.TryGetValue(selected, out var target) && target.Root.Visible;
         if (_targetMarker.Visible) _targetMarker.Position = _actors[selected].Root.Position + Vector3.Up * .04f;

@@ -1,0 +1,1073 @@
+{
+  "schemaVersion": 1,
+  "version": "endgame.combat.1",
+  "enemies": [
+    {
+      "id": "boss.fracture_vael",
+      "role": "Beast",
+      "health": 260,
+      "damage": 16,
+      "armor": 500,
+      "speed": 130,
+      "windup": 42,
+      "recovery": 48,
+      "range": 2600
+    },
+    {
+      "id": "boss.hunt_vael",
+      "role": "Beast",
+      "health": 430,
+      "damage": 20,
+      "armor": 500,
+      "speed": 130,
+      "windup": 42,
+      "recovery": 48,
+      "range": 2600
+    },
+    {
+      "id": "boss.fracture_serath",
+      "role": "Beast",
+      "health": 260,
+      "damage": 16,
+      "armor": 500,
+      "speed": 130,
+      "windup": 42,
+      "recovery": 48,
+      "range": 2600
+    },
+    {
+      "id": "boss.hunt_serath",
+      "role": "Beast",
+      "health": 430,
+      "damage": 20,
+      "armor": 500,
+      "speed": 130,
+      "windup": 42,
+      "recovery": 48,
+      "range": 2600
+    },
+    {
+      "id": "boss.fracture_orrun",
+      "role": "Beast",
+      "health": 260,
+      "damage": 16,
+      "armor": 500,
+      "speed": 130,
+      "windup": 42,
+      "recovery": 48,
+      "range": 2600
+    },
+    {
+      "id": "boss.hunt_orrun",
+      "role": "Beast",
+      "health": 430,
+      "damage": 20,
+      "armor": 500,
+      "speed": 130,
+      "windup": 42,
+      "recovery": 48,
+      "range": 2600
+    },
+    {
+      "id": "boss.fracture_ilyra",
+      "role": "Beast",
+      "health": 260,
+      "damage": 16,
+      "armor": 500,
+      "speed": 130,
+      "windup": 42,
+      "recovery": 48,
+      "range": 2600
+    },
+    {
+      "id": "boss.hunt_ilyra",
+      "role": "Beast",
+      "health": 430,
+      "damage": 20,
+      "armor": 500,
+      "speed": 130,
+      "windup": 42,
+      "recovery": 48,
+      "range": 2600
+    },
+    {
+      "id": "boss.fracture_nhal",
+      "role": "Beast",
+      "health": 260,
+      "damage": 16,
+      "armor": 500,
+      "speed": 130,
+      "windup": 42,
+      "recovery": 48,
+      "range": 2600
+    },
+    {
+      "id": "boss.hunt_nhal",
+      "role": "Beast",
+      "health": 430,
+      "damage": 20,
+      "armor": 500,
+      "speed": 130,
+      "windup": 42,
+      "recovery": 48,
+      "range": 2600
+    },
+    {
+      "id": "enemy.hunt_limb",
+      "role": "Anchor",
+      "health": 55,
+      "damage": 1,
+      "armor": 0,
+      "speed": 1,
+      "windup": 120,
+      "recovery": 120,
+      "range": 1200
+    },
+    {
+      "id": "enemy.brood_root",
+      "role": "Anchor",
+      "health": 55,
+      "damage": 1,
+      "armor": 0,
+      "speed": 1,
+      "windup": 120,
+      "recovery": 120,
+      "range": 1200
+    },
+    {
+      "id": "enemy.memory_copy",
+      "role": "Anchor",
+      "health": 55,
+      "damage": 1,
+      "armor": 0,
+      "speed": 1,
+      "windup": 120,
+      "recovery": 120,
+      "range": 1200
+    },
+    {
+      "id": "enemy.contract_seal",
+      "role": "Anchor",
+      "health": 55,
+      "damage": 1,
+      "armor": 0,
+      "speed": 1,
+      "windup": 120,
+      "recovery": 120,
+      "range": 1200
+    },
+    {
+      "id": "enemy.absence_anchor",
+      "role": "Anchor",
+      "health": 55,
+      "damage": 1,
+      "armor": 0,
+      "speed": 1,
+      "windup": 120,
+      "recovery": 120,
+      "range": 1200
+    }
+  ],
+  "arenas": [
+    {
+      "id": "arena.fracture_0",
+      "name": "Twin Pillar Hall",
+      "room": {
+        "halfWidth": 12000,
+        "halfDepth": 10000,
+        "playerSpawn": {
+          "x": -5500,
+          "z": 0
+        },
+        "enemySpawn": {
+          "x": 1500,
+          "z": 0
+        },
+        "obstacles": [
+          {
+            "minX": -800,
+            "minZ": -4200,
+            "maxX": 800,
+            "maxZ": -3200
+          },
+          {
+            "minX": -800,
+            "minZ": 3200,
+            "maxX": 800,
+            "maxZ": 4200
+          }
+        ]
+      }
+    },
+    {
+      "id": "arena.fracture_1",
+      "name": "Broken Causeway",
+      "room": {
+        "halfWidth": 12000,
+        "halfDepth": 10000,
+        "playerSpawn": {
+          "x": -5500,
+          "z": 0
+        },
+        "enemySpawn": {
+          "x": 1500,
+          "z": 0
+        },
+        "obstacles": [
+          {
+            "minX": -500,
+            "minZ": -1200,
+            "maxX": 500,
+            "maxZ": 1200
+          }
+        ]
+      }
+    },
+    {
+      "id": "arena.fracture_2",
+      "name": "Folded Shrine",
+      "room": {
+        "halfWidth": 12000,
+        "halfDepth": 10000,
+        "playerSpawn": {
+          "x": -5500,
+          "z": 0
+        },
+        "enemySpawn": {
+          "x": 1500,
+          "z": 0
+        },
+        "obstacles": [
+          {
+            "minX": -7000,
+            "minZ": -4500,
+            "maxX": -3500,
+            "maxZ": -3600
+          },
+          {
+            "minX": 3500,
+            "minZ": 5600,
+            "maxX": 6500,
+            "maxZ": 6000
+          }
+        ]
+      }
+    },
+    {
+      "id": "arena.hunt",
+      "name": "Divine Reconstruction",
+      "room": {
+        "halfWidth": 12000,
+        "halfDepth": 10000,
+        "playerSpawn": {
+          "x": -4500,
+          "z": 0
+        },
+        "enemySpawn": {
+          "x": 1500,
+          "z": 0
+        },
+        "obstacles": []
+      }
+    }
+  ],
+  "packs": [
+    {
+      "id": "grey_march_0",
+      "region": "act.grey_march",
+      "arenaId": "arena.fracture_0",
+      "enemyIds": [
+        "enemy.funeral_guard",
+        "enemy.memory_archer",
+        "enemy.ash_ghoul"
+      ],
+      "positions": [
+        {
+          "x": 1200,
+          "z": -2300
+        },
+        {
+          "x": 2500,
+          "z": 2400
+        },
+        {
+          "x": 5200,
+          "z": -4000
+        },
+        {
+          "x": 5200,
+          "z": 4000
+        },
+        {
+          "x": 7600,
+          "z": 0
+        },
+        {
+          "x": 8200,
+          "z": 6500
+        },
+        {
+          "x": -2500,
+          "z": 6500
+        },
+        {
+          "x": -2200,
+          "z": -6500
+        }
+      ]
+    },
+    {
+      "id": "grey_march_1",
+      "region": "act.grey_march",
+      "arenaId": "arena.fracture_1",
+      "enemyIds": [
+        "enemy.memory_archer",
+        "enemy.ash_ghoul",
+        "enemy.funeral_guard"
+      ],
+      "positions": [
+        {
+          "x": 1200,
+          "z": -2300
+        },
+        {
+          "x": 2500,
+          "z": 2400
+        },
+        {
+          "x": 5200,
+          "z": -4000
+        },
+        {
+          "x": 5200,
+          "z": 4000
+        },
+        {
+          "x": 7600,
+          "z": 0
+        },
+        {
+          "x": 8200,
+          "z": 6500
+        },
+        {
+          "x": -2500,
+          "z": 6500
+        },
+        {
+          "x": -2200,
+          "z": -6500
+        }
+      ]
+    },
+    {
+      "id": "grey_march_2",
+      "region": "act.grey_march",
+      "arenaId": "arena.fracture_2",
+      "enemyIds": [
+        "enemy.ash_ghoul",
+        "enemy.funeral_guard",
+        "enemy.memory_archer"
+      ],
+      "positions": [
+        {
+          "x": 1200,
+          "z": -2300
+        },
+        {
+          "x": 2500,
+          "z": 2400
+        },
+        {
+          "x": 5200,
+          "z": -4000
+        },
+        {
+          "x": 5200,
+          "z": 4000
+        },
+        {
+          "x": 7600,
+          "z": 0
+        },
+        {
+          "x": 8200,
+          "z": 6500
+        },
+        {
+          "x": -2500,
+          "z": 6500
+        },
+        {
+          "x": -2200,
+          "z": -6500
+        }
+      ]
+    },
+    {
+      "id": "verdant_maw_0",
+      "region": "act.verdant_maw",
+      "arenaId": "arena.fracture_0",
+      "enemyIds": [
+        "enemy.carnivorous_vine",
+        "enemy.needle_swarm",
+        "enemy.bloom_carrier"
+      ],
+      "positions": [
+        {
+          "x": 1200,
+          "z": -2300
+        },
+        {
+          "x": 2500,
+          "z": 2400
+        },
+        {
+          "x": 5200,
+          "z": -4000
+        },
+        {
+          "x": 5200,
+          "z": 4000
+        },
+        {
+          "x": 7600,
+          "z": 0
+        },
+        {
+          "x": 8200,
+          "z": 6500
+        },
+        {
+          "x": -2500,
+          "z": 6500
+        },
+        {
+          "x": -2200,
+          "z": -6500
+        }
+      ]
+    },
+    {
+      "id": "verdant_maw_1",
+      "region": "act.verdant_maw",
+      "arenaId": "arena.fracture_1",
+      "enemyIds": [
+        "enemy.needle_swarm",
+        "enemy.bloom_carrier",
+        "enemy.carnivorous_vine"
+      ],
+      "positions": [
+        {
+          "x": 1200,
+          "z": -2300
+        },
+        {
+          "x": 2500,
+          "z": 2400
+        },
+        {
+          "x": 5200,
+          "z": -4000
+        },
+        {
+          "x": 5200,
+          "z": 4000
+        },
+        {
+          "x": 7600,
+          "z": 0
+        },
+        {
+          "x": 8200,
+          "z": 6500
+        },
+        {
+          "x": -2500,
+          "z": 6500
+        },
+        {
+          "x": -2200,
+          "z": -6500
+        }
+      ]
+    },
+    {
+      "id": "verdant_maw_2",
+      "region": "act.verdant_maw",
+      "arenaId": "arena.fracture_2",
+      "enemyIds": [
+        "enemy.bloom_carrier",
+        "enemy.carnivorous_vine",
+        "enemy.needle_swarm"
+      ],
+      "positions": [
+        {
+          "x": 1200,
+          "z": -2300
+        },
+        {
+          "x": 2500,
+          "z": 2400
+        },
+        {
+          "x": 5200,
+          "z": -4000
+        },
+        {
+          "x": 5200,
+          "z": 4000
+        },
+        {
+          "x": 7600,
+          "z": 0
+        },
+        {
+          "x": 8200,
+          "z": 6500
+        },
+        {
+          "x": -2500,
+          "z": 6500
+        },
+        {
+          "x": -2200,
+          "z": -6500
+        }
+      ]
+    },
+    {
+      "id": "cinder_reach_0",
+      "region": "act.cinder_reach",
+      "arenaId": "arena.fracture_0",
+      "enemyIds": [
+        "enemy.forge_sentinel",
+        "enemy.heat_tender",
+        "enemy.cinder_priest"
+      ],
+      "positions": [
+        {
+          "x": 1200,
+          "z": -2300
+        },
+        {
+          "x": 2500,
+          "z": 2400
+        },
+        {
+          "x": 5200,
+          "z": -4000
+        },
+        {
+          "x": 5200,
+          "z": 4000
+        },
+        {
+          "x": 7600,
+          "z": 0
+        },
+        {
+          "x": 8200,
+          "z": 6500
+        },
+        {
+          "x": -2500,
+          "z": 6500
+        },
+        {
+          "x": -2200,
+          "z": -6500
+        }
+      ]
+    },
+    {
+      "id": "cinder_reach_1",
+      "region": "act.cinder_reach",
+      "arenaId": "arena.fracture_1",
+      "enemyIds": [
+        "enemy.heat_tender",
+        "enemy.cinder_priest",
+        "enemy.forge_sentinel"
+      ],
+      "positions": [
+        {
+          "x": 1200,
+          "z": -2300
+        },
+        {
+          "x": 2500,
+          "z": 2400
+        },
+        {
+          "x": 5200,
+          "z": -4000
+        },
+        {
+          "x": 5200,
+          "z": 4000
+        },
+        {
+          "x": 7600,
+          "z": 0
+        },
+        {
+          "x": 8200,
+          "z": 6500
+        },
+        {
+          "x": -2500,
+          "z": 6500
+        },
+        {
+          "x": -2200,
+          "z": -6500
+        }
+      ]
+    },
+    {
+      "id": "cinder_reach_2",
+      "region": "act.cinder_reach",
+      "arenaId": "arena.fracture_2",
+      "enemyIds": [
+        "enemy.cinder_priest",
+        "enemy.forge_sentinel",
+        "enemy.heat_tender"
+      ],
+      "positions": [
+        {
+          "x": 1200,
+          "z": -2300
+        },
+        {
+          "x": 2500,
+          "z": 2400
+        },
+        {
+          "x": 5200,
+          "z": -4000
+        },
+        {
+          "x": 5200,
+          "z": 4000
+        },
+        {
+          "x": 7600,
+          "z": 0
+        },
+        {
+          "x": 8200,
+          "z": 6500
+        },
+        {
+          "x": -2500,
+          "z": 6500
+        },
+        {
+          "x": -2200,
+          "z": -6500
+        }
+      ]
+    },
+    {
+      "id": "shattered_spine_0",
+      "region": "act.shattered_spine",
+      "arenaId": "arena.fracture_0",
+      "enemyIds": [
+        "enemy.oath_giant",
+        "enemy.contract_keeper",
+        "enemy.bone_sentinel"
+      ],
+      "positions": [
+        {
+          "x": 1200,
+          "z": -2300
+        },
+        {
+          "x": 2500,
+          "z": 2400
+        },
+        {
+          "x": 5200,
+          "z": -4000
+        },
+        {
+          "x": 5200,
+          "z": 4000
+        },
+        {
+          "x": 7600,
+          "z": 0
+        },
+        {
+          "x": 8200,
+          "z": 6500
+        },
+        {
+          "x": -2500,
+          "z": 6500
+        },
+        {
+          "x": -2200,
+          "z": -6500
+        }
+      ]
+    },
+    {
+      "id": "shattered_spine_1",
+      "region": "act.shattered_spine",
+      "arenaId": "arena.fracture_1",
+      "enemyIds": [
+        "enemy.contract_keeper",
+        "enemy.bone_sentinel",
+        "enemy.oath_giant"
+      ],
+      "positions": [
+        {
+          "x": 1200,
+          "z": -2300
+        },
+        {
+          "x": 2500,
+          "z": 2400
+        },
+        {
+          "x": 5200,
+          "z": -4000
+        },
+        {
+          "x": 5200,
+          "z": 4000
+        },
+        {
+          "x": 7600,
+          "z": 0
+        },
+        {
+          "x": 8200,
+          "z": 6500
+        },
+        {
+          "x": -2500,
+          "z": 6500
+        },
+        {
+          "x": -2200,
+          "z": -6500
+        }
+      ]
+    },
+    {
+      "id": "shattered_spine_2",
+      "region": "act.shattered_spine",
+      "arenaId": "arena.fracture_2",
+      "enemyIds": [
+        "enemy.bone_sentinel",
+        "enemy.oath_giant",
+        "enemy.contract_keeper"
+      ],
+      "positions": [
+        {
+          "x": 1200,
+          "z": -2300
+        },
+        {
+          "x": 2500,
+          "z": 2400
+        },
+        {
+          "x": 5200,
+          "z": -4000
+        },
+        {
+          "x": 5200,
+          "z": 4000
+        },
+        {
+          "x": 7600,
+          "z": 0
+        },
+        {
+          "x": 8200,
+          "z": 6500
+        },
+        {
+          "x": -2500,
+          "z": 6500
+        },
+        {
+          "x": -2200,
+          "z": -6500
+        }
+      ]
+    },
+    {
+      "id": "hollow_night_0",
+      "region": "act.hollow_night",
+      "arenaId": "arena.fracture_0",
+      "enemyIds": [
+        "enemy.doubled_shadow",
+        "enemy.breach_echo",
+        "enemy.memory_archer"
+      ],
+      "positions": [
+        {
+          "x": 1200,
+          "z": -2300
+        },
+        {
+          "x": 2500,
+          "z": 2400
+        },
+        {
+          "x": 5200,
+          "z": -4000
+        },
+        {
+          "x": 5200,
+          "z": 4000
+        },
+        {
+          "x": 7600,
+          "z": 0
+        },
+        {
+          "x": 8200,
+          "z": 6500
+        },
+        {
+          "x": -2500,
+          "z": 6500
+        },
+        {
+          "x": -2200,
+          "z": -6500
+        }
+      ]
+    },
+    {
+      "id": "hollow_night_1",
+      "region": "act.hollow_night",
+      "arenaId": "arena.fracture_1",
+      "enemyIds": [
+        "enemy.breach_echo",
+        "enemy.memory_archer",
+        "enemy.doubled_shadow"
+      ],
+      "positions": [
+        {
+          "x": 1200,
+          "z": -2300
+        },
+        {
+          "x": 2500,
+          "z": 2400
+        },
+        {
+          "x": 5200,
+          "z": -4000
+        },
+        {
+          "x": 5200,
+          "z": 4000
+        },
+        {
+          "x": 7600,
+          "z": 0
+        },
+        {
+          "x": 8200,
+          "z": 6500
+        },
+        {
+          "x": -2500,
+          "z": 6500
+        },
+        {
+          "x": -2200,
+          "z": -6500
+        }
+      ]
+    },
+    {
+      "id": "hollow_night_2",
+      "region": "act.hollow_night",
+      "arenaId": "arena.fracture_2",
+      "enemyIds": [
+        "enemy.memory_archer",
+        "enemy.doubled_shadow",
+        "enemy.breach_echo"
+      ],
+      "positions": [
+        {
+          "x": 1200,
+          "z": -2300
+        },
+        {
+          "x": 2500,
+          "z": 2400
+        },
+        {
+          "x": 5200,
+          "z": -4000
+        },
+        {
+          "x": 5200,
+          "z": 4000
+        },
+        {
+          "x": 7600,
+          "z": 0
+        },
+        {
+          "x": 8200,
+          "z": 6500
+        },
+        {
+          "x": -2500,
+          "z": 6500
+        },
+        {
+          "x": -2200,
+          "z": -6500
+        }
+      ]
+    }
+  ],
+  "huntPhases": [
+    {
+      "huntId": "hunt.false_vael",
+      "index": 0,
+      "name": "Forge Heart Vents",
+      "pattern": "Vael1",
+      "bossId": "boss.hunt_vael",
+      "arenaId": "arena.hunt",
+      "counterplay": "Stand in inactive vents; each cycle retains a melee approach."
+    },
+    {
+      "huntId": "hunt.false_vael",
+      "index": 1,
+      "name": "Sever Rebuilding Limbs",
+      "pattern": "Vael2",
+      "bossId": "boss.hunt_vael",
+      "arenaId": "arena.hunt",
+      "counterplay": "Interrupt one rebuilding limb while the other visibly charges."
+    },
+    {
+      "huntId": "hunt.false_vael",
+      "index": 2,
+      "name": "Cool The Solar Core",
+      "pattern": "Vael3",
+      "bossId": "boss.hunt_vael",
+      "arenaId": "arena.hunt",
+      "counterplay": "Carry cooling gaps between marked solar waves."
+    },
+    {
+      "huntId": "hunt.ilyra_teeth",
+      "index": 0,
+      "name": "Moving Jaw Roots",
+      "pattern": "Ilyra1",
+      "bossId": "boss.hunt_ilyra",
+      "arenaId": "arena.hunt",
+      "counterplay": "Read the root trail before each jaw surfaces."
+    },
+    {
+      "huntId": "hunt.ilyra_teeth",
+      "index": 1,
+      "name": "Split Brood Channels",
+      "pattern": "Ilyra2",
+      "bossId": "boss.hunt_ilyra",
+      "arenaId": "arena.hunt",
+      "counterplay": "Close one brood channel to preserve a safe flank."
+    },
+    {
+      "huntId": "hunt.ilyra_teeth",
+      "index": 2,
+      "name": "Expose The Seed",
+      "pattern": "Ilyra3",
+      "bossId": "boss.hunt_ilyra",
+      "arenaId": "arena.hunt",
+      "counterplay": "Break seed guards during the announced feeding pause."
+    },
+    {
+      "huntId": "hunt.thousand_memories",
+      "index": 0,
+      "name": "Three Memory Processions",
+      "pattern": "Serath1",
+      "bossId": "boss.hunt_serath",
+      "arenaId": "arena.hunt",
+      "counterplay": "Use procession gaps; the real body always carries a solid sigil."
+    },
+    {
+      "huntId": "hunt.thousand_memories",
+      "index": 1,
+      "name": "Break Repeating Echoes",
+      "pattern": "Serath2",
+      "bossId": "boss.hunt_serath",
+      "arenaId": "arena.hunt",
+      "counterplay": "Interrupt only the marked repeating echo to avoid replenishing it."
+    },
+    {
+      "huntId": "hunt.thousand_memories",
+      "index": 2,
+      "name": "Ring The Silent Bell",
+      "pattern": "Serath3",
+      "bossId": "boss.hunt_serath",
+      "arenaId": "arena.hunt",
+      "counterplay": "Cross the silent lane after each visible bell pulse."
+    },
+    {
+      "huntId": "hunt.orrun_without_oath",
+      "index": 0,
+      "name": "Unbound Faults",
+      "pattern": "Orrun1",
+      "bossId": "boss.hunt_orrun",
+      "arenaId": "arena.hunt",
+      "counterplay": "Move along numbered faults as stone settles behind each strike."
+    },
+    {
+      "huntId": "hunt.orrun_without_oath",
+      "index": 1,
+      "name": "Carry The Broken Terms",
+      "pattern": "Orrun2",
+      "bossId": "boss.hunt_orrun",
+      "arenaId": "arena.hunt",
+      "counterplay": "Deposit marked terms on separate safe plinths."
+    },
+    {
+      "huntId": "hunt.orrun_without_oath",
+      "index": 2,
+      "name": "Shatter The Empty Contract",
+      "pattern": "Orrun3",
+      "bossId": "boss.hunt_orrun",
+      "arenaId": "arena.hunt",
+      "counterplay": "Exploit the recovery after the final oathless slam."
+    },
+    {
+      "huntId": "hunt.nhal_reconstruction",
+      "index": 0,
+      "name": "Observe The Absent Form",
+      "pattern": "Nhal1",
+      "bossId": "boss.hunt_nhal",
+      "arenaId": "arena.hunt",
+      "counterplay": "Anchor glyphs distinguish real safe space from decorative absence."
+    },
+    {
+      "huntId": "hunt.nhal_reconstruction",
+      "index": 1,
+      "name": "Deny The Perfect Copy",
+      "pattern": "Nhal2",
+      "bossId": "boss.hunt_nhal",
+      "arenaId": "arena.hunt",
+      "counterplay": "Interrupt a marked copy channel while preserving another exit."
+    },
+    {
+      "huntId": "hunt.nhal_reconstruction",
+      "index": 2,
+      "name": "Close The Unremembered Door",
+      "pattern": "Nhal3",
+      "bossId": "boss.hunt_nhal",
+      "arenaId": "arena.hunt",
+      "counterplay": "Follow the stable rhythm beneath the reversed sound cues."
+    }
+  ]
+}

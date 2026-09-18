@@ -342,7 +342,8 @@ public sealed partial class ProductionSession
             Math.Min(1000, view.Stats.GetValueOrDefault("affix.resource") + state.Passives.GetValueOrDefault("Resource")), Math.Min(2000, view.Stats.GetValueOrDefault("affix.damage")),
             Math.Min(10000, view.Stats.GetValueOrDefault("affix.armor")), Math.Min(7500, view.Stats.GetValueOrDefault("affix.critical")),
             Math.Min(2, view.Stats.GetValueOrDefault("affix.fork")), Math.Min(3, view.Stats.GetValueOrDefault("affix.chain")),
-            properties.Contains("rune.guard"), properties.Contains("property.summon_burst"), view.UltimateSkills.Contains(Content.Data.Disciplines.Single(d => d.Id == view.Discipline).UltimateSkill), unlocked, state.PurifiedFragments.ToArray());
+            properties.Contains("rune.guard"), properties.Contains("property.summon_burst"), view.UltimateSkills.Contains(Content.Data.Disciplines.Single(d => d.Id == view.Discipline).UltimateSkill), unlocked, state.PurifiedFragments.ToArray())
+        { Resistances = state.Endgame is null ? null : EndgameProgression.Resistances(view.Stats) };
     }
     private void SynchronizeItemSequence()
     {

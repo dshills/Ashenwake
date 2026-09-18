@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "version": "endgame.1",
+  "regions": [
+    "act.grey_march",
+    "act.verdant_maw",
+    "act.cinder_reach",
+    "act.shattered_spine",
+    "act.hollow_night"
+  ],
+  "bossFamilies": [
+    "Vael",
+    "Serath",
+    "Orrun",
+    "Ilyra",
+    "Nhal"
+  ],
+  "rewardTendencies": [
+    "Materials",
+    "Mastery",
+    "Godwrought"
+  ],
+  "modifiers": [
+    {
+      "id": "fracture.burning_haste",
+      "name": "Fevered Cinders",
+      "rule": "burning_enemies_move_25_percent_faster",
+      "counterplay": "Burning remains useful; the haste is announced by a visible step pulse.",
+      "excludes": [],
+      "minimumTier": 1
+    },
+    {
+      "id": "fracture.healing_echoes",
+      "name": "Borrowed Relief",
+      "rule": "healing_spawns_delayed_hostile_echoes",
+      "counterplay": "Move out of the announced echo ring after healing; echoes cannot trigger further echoes.",
+      "excludes": [
+        "fracture.elite_hazards"
+      ],
+      "minimumTier": 2
+    },
+    {
+      "id": "fracture.elite_hazards",
+      "name": "Scars of the Mighty",
+      "rule": "dead_elites_leave_bounded_persistent_hazards",
+      "counterplay": "Kill elites near arena edges and leave a safe approach to each exit.",
+      "excludes": [
+        "fracture.healing_echoes"
+      ],
+      "minimumTier": 2
+    },
+    {
+      "id": "fracture.resistance_inversion",
+      "name": "Unequal Shelter",
+      "rule": "highest_resistance_adds_damage_lowest_loses_15_percent",
+      "counterplay": "Inspect the displayed extremes and use positioning against the newly exposed family.",
+      "excludes": [],
+      "minimumTier": 3
+    },
+    {
+      "id": "fracture.fragment_overcharge",
+      "name": "Divine Surges",
+      "rule": "fragments_gain_50_percent_for_30_of_each_120_ticks",
+      "counterplay": "An announced surge window strengthens fragments without suppressing the baseline build.",
+      "excludes": [],
+      "minimumTier": 3
+    },
+    {
+      "id": "fracture.inherited_boss",
+      "name": "Accumulated Memory",
+      "rule": "boss_inherits_up_to_two_compatible_prior_elite_modifiers",
+      "counterplay": "Three prior rooms nominate traits in order; the boss keeps at most two distinct compatible traits. Inspect skipped candidates before commitment.",
+      "excludes": [],
+      "minimumTier": 4
+    }
+  ],
+  "hunts": [
+    {
+      "id": "hunt.false_vael",
+      "name": "The False Vael",
+      "family": "Vael",
+      "requiredTier": 3,
+      "secret": false,
+      "phases": [
+        "forge_heart_vents",
+        "sever_rebuilding_limbs",
+        "cool_the_solar_core"
+      ],
+      "counterplay": [
+        "Stand in inactive vents; each cycle retains a melee approach.",
+        "Interrupt one rebuilding limb while the other visibly charges.",
+        "Carry cooling gaps between marked solar waves."
+      ],
+      "evolutionMaterial": "material.vael_rib"
+    },
+    {
+      "id": "hunt.ilyra_teeth",
+      "name": "Ilyra Reborn in Teeth",
+      "family": "Ilyra",
+      "requiredTier": 4,
+      "secret": false,
+      "phases": [
+        "moving_jaw_roots",
+        "split_brood_channels",
+        "expose_the_seed"
+      ],
+      "counterplay": [
+        "Read the root trail before each jaw surfaces.",
+        "Close one brood channel to preserve a safe flank.",
+        "Break seed guards during the announced feeding pause."
+      ],
+      "evolutionMaterial": "material.ilyra_seed"
+    },
+    {
+      "id": "hunt.thousand_memories",
+      "name": "The Thousand Memories of Serath",
+      "family": "Serath",
+      "requiredTier": 5,
+      "secret": false,
+      "phases": [
+        "three_memory_processions",
+        "break_repeating_echoes",
+        "ring_the_silent_bell"
+      ],
+      "counterplay": [
+        "Use procession gaps; the real body always carries a solid sigil.",
+        "Interrupt only the marked repeating echo to avoid replenishing it.",
+        "Cross the silent lane after each visible bell pulse."
+      ],
+      "evolutionMaterial": "material.serath_memory"
+    },
+    {
+      "id": "hunt.orrun_without_oath",
+      "name": "Orrun Without an Oath",
+      "family": "Orrun",
+      "requiredTier": 6,
+      "secret": false,
+      "phases": [
+        "unbound_faults",
+        "carry_the_broken_terms",
+        "shatter_the_empty_contract"
+      ],
+      "counterplay": [
+        "Move along numbered faults as stone settles behind each strike.",
+        "Deposit marked terms on separate safe plinths.",
+        "Exploit the recovery after the final oathless slam."
+      ],
+      "evolutionMaterial": "material.orrun_oath"
+    },
+    {
+      "id": "hunt.nhal_reconstruction",
+      "name": "The Shape That Remembers Nhal",
+      "family": "Nhal",
+      "requiredTier": 8,
+      "secret": true,
+      "phases": [
+        "observe_the_absent_form",
+        "deny_the_perfect_copy",
+        "close_the_unremembered_door"
+      ],
+      "counterplay": [
+        "Anchor glyphs distinguish real safe space from decorative absence.",
+        "Interrupt a marked copy channel while preserving another exit.",
+        "Follow the stable rhythm beneath the reversed sound cues."
+      ],
+      "evolutionMaterial": "material.nhal_absence"
+    }
+  ]
+}

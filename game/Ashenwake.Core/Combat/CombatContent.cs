@@ -32,6 +32,7 @@ public sealed record CombatContent
     [JsonRequired] public CombatLoadout[] Loadouts { get; init; } = [];
     public CombatEncounterDefinition[] Encounters { get; init; } = [];
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public CampaignCombatDefinition? Campaign { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public EndgameCombatDefinition? Endgame { get; init; }
     [JsonIgnore] public string Identity => _legacyHash != "" ? _legacyHash : JsonData.Hash(this);
     private string _legacyHash = "";
     public static CombatContent Parse(string json)
@@ -77,6 +78,7 @@ public sealed record CombatContent
         foreach (var item in Items) { Id(item.Id, "item"); Check(!string.IsNullOrWhiteSpace(item.Name) && CombatSession.EquipmentSlots.Contains(item.Slot) && (item.CompatibleSlots is null || item.CompatibleSlots.Length > 0 && item.CompatibleSlots.All(CombatSession.EquipmentSlots.Contains)) && item.Hands is >= 0 and <= 2 && (item.Disciplines is null || item.Disciplines.All(CombatSession.Disciplines.Contains)) && item.Damage is >= 0 and <= 200 && item.Armor is >= 0 and <= 5000 && item.CriticalBasisPoints is >= 0 and <= 5000, "Invalid item: " + item.Id); }
         CombatSession.ValidateAuthoredEncounters(this);
         CombatSession.ValidateCampaignContent(this);
+        CombatSession.ValidateEndgameContent(this);
         foreach (var loadout in Loadouts)
         {
             Id(loadout.Id, "loadout");

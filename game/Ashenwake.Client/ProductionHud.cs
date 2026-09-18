@@ -35,6 +35,11 @@ public partial class ProductionHud : Control
     private CraftingService _service = CraftingService.Tempering;
     private ConfirmationDialog _confirmation = null!;
     private CraftingRequest? _pendingCraft;
+    private bool _endgameCrafting;
+    private IReadOnlyDictionary<string, int> _catalysts = new Dictionary<string, int>();
+    private string _craftCatalyst = "", _craftLineage = "Serath";
+    public void SetEndgameMaterials(bool enabled, IReadOnlyDictionary<string, int> catalysts)
+    { _endgameCrafting = enabled; _catalysts = catalysts; }
 
     public override void _Ready()
     {
@@ -222,26 +227,51 @@ public partial class ProductionHud : Control
         }
         if (_service == CraftingService.Engraving) property = Choice("Learned property", _state.Character.PropertyLibrary.Where(id => !id.StartsWith("evolution.", StringComparison.Ordinal)));
         if (_service == CraftingService.Purification) fragment = Choice("Unpurified fragment", _state.Character.OwnedFragments.Where(id => !_state.Character.PurifiedFragments.Contains(id)));
-        if (_service == CraftingService.DivineGrafting) lineage = Choice("Permanent evolution", new[] { "Serath", "Orrun" });
+        if (_service == CraftingService.DivineGrafting)
+        {
+            lineage = Choice("Permanent evolution", new[] { "Serath", "Orrun" });
+            lineage.Select(_craftLineage == "Orrun" ? 1 : 0);
+            lineage.ItemSelected += index => { _craftLineage = index == 1 ? "Orrun" : "Serath"; Rebuild(true); };
+            _rows.AddChild(Label($"Burning kills: {selected!.BurningKills}/1000 · current evolution: {(selected.Evolution.Length == 0 ? "none" : selected.Evolution)}", 12));
+            _rows.AddChild(Label(_craftLineage == "Serath" ? "Serath raises burning victims as temporary flaming revenants. It also retains its direct-hit healing benefit." : "Orrun replaces the awakened flame wave with an igniting molten seismic attack. It also retains its defense and on-hit barrier benefits.", 12));
+        }
+        if (_service == CraftingService.Tempering && selected!.Rarity == ItemRarity.Godwrought && _endgameCrafting)
+        {
+            _rows.AddChild(Label("Payment · +2 damage, up to the existing +10 cap", 13));
+            var payment = new OptionButton(); payment.AddItem($"{_content.CraftingCosts[_service]} common materials"); payment.SetItemMetadata(0, "");
+            foreach (var pair in _catalysts.Where(p => p.Value > 0))
+            { int index = payment.ItemCount; payment.AddItem($"1 {Readable(pair.Key)} · owned {pair.Value}"); payment.SetItemMetadata(index, pair.Key); if (_craftCatalyst == pair.Key) payment.Select(index); }
+            _craftCatalyst = payment.GetItemMetadata(payment.Selected).AsString();
+            payment.ItemSelected += index => { _craftCatalyst = payment.GetItemMetadata((int)index).AsString(); Rebuild(true); }; _rows.AddChild(payment);
+            _rows.AddChild(Label("Selecting a named catalyst replaces this Tempering craft's common-material fee. No automatic substitution occurs.", 12));
+        }
+        else _craftCatalyst = "";
         if (_service == CraftingService.Extraction) _rows.AddChild(Label("Extraction permanently destroys a Legendary item and learns its exceptional property.", 12));
         if (_service == CraftingService.DivineGrafting) _rows.AddChild(Label("An awakened Ashcleaver and the matching lineage fragment are required. This evolution is permanent.", 12));
-        var craft = Button($"{_service} · spend {_content.CraftingCosts[_service]} materials", () =>
+        string catalystId = _service == CraftingService.DivineGrafting && _endgameCrafting
+            ? _craftLineage == "Serath" ? "material.serath_memory" : "material.orrun_oath" : _craftCatalyst;
+        int materialCost = _service == CraftingService.Tempering && catalystId.Length > 0 ? 0 : _content.CraftingCosts[_service];
+        string paymentText = $"{materialCost} common materials" + (catalystId.Length == 0 ? "" : $" + 1 {Readable(catalystId)}");
+        if (catalystId.Length > 0) _rows.AddChild(Label($"Catalyst: {Readable(catalystId)} · owned {_catalysts.GetValueOrDefault(catalystId)}", 12));
+        var craft = Button($"{_service} · spend {paymentText}", () =>
         {
             string Value(OptionButton? control) => control is null || control.ItemCount == 0 ? "" : control.GetItemMetadata(control.Selected).AsString();
             var request = new CraftingRequest(Guid.NewGuid().ToString("N"), _service, selected?.Id ?? 0,
-                Value(existing), Value(replacement), Value(property), Value(lineage), Value(fragment));
+                Value(existing), Value(replacement), Value(property), Value(lineage), Value(fragment), CatalystId: catalystId.Length == 0 ? null : catalystId);
             if (_service is CraftingService.Extraction or CraftingService.DivineGrafting)
             {
                 _pendingCraft = request;
                 _confirmation.DialogText = _service == CraftingService.Extraction
                     ? $"Permanently destroy #{selected!.Id} {Readable(selected.DefinitionId)} and spend {_content.CraftingCosts[_service]} materials to learn its property?"
-                    : Catalog.Format("production.confirm_graft", new Dictionary<string, string> { ["item"] = "#" + selected!.Id, ["branch"] = request.Lineage });
+                    : Catalog.Format("production.confirm_graft", new Dictionary<string, string> { ["item"] = "#" + selected!.Id, ["branch"] = request.Lineage }) + "\n\nCost: " + paymentText + ". The other evolution branch will be unavailable for this item.";
                 _confirmation.PopupCentered(new(510, 200));
             }
             else CraftRequested?.Invoke(request);
         });
         string specialist = _service switch { CraftingService.Tempering => "service.torren", CraftingService.Rebinding => "npc.oris", CraftingService.Engraving => "hub.workshops", CraftingService.Extraction => "npc.kesh", CraftingService.Purification => "npc.cael", _ => "service.mara" };
-        craft.Disabled = !At(specialist) || _view.Materials < _content.CraftingCosts[_service] || new[] { existing, replacement, property, fragment, lineage }.Any(c => c is not null && c.ItemCount == 0);
+        craft.Disabled = !At(specialist) || _view.Materials < materialCost || catalystId.Length > 0 && _catalysts.GetValueOrDefault(catalystId) == 0 ||
+            _service == CraftingService.DivineGrafting && (selected!.DefinitionId != "item.ashcleaver" || selected.BurningKills < 1000 || selected.Evolution.Length > 0 ||
+                !_state.Character.OwnedFragments.Contains(_craftLineage == "Serath" ? "fragment.heart_serath" : "fragment.orrun_bone")) || new[] { existing, replacement, property, fragment, lineage }.Any(c => c is not null && c.ItemCount == 0);
         if (!At(specialist)) _rows.AddChild(Label("Approach this workshop's specialist to commit the craft.", 12));
     }
     private void Town()

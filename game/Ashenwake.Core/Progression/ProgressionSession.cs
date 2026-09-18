@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.ObjectModel;
+using System.Text.Json.Serialization;
 using Ashenwake.Core.Content;
 
 namespace Ashenwake.Core.Progression;
@@ -46,18 +47,21 @@ public sealed record ProgressionState
     public SortedSet<string> OwnedFragments { get; set; } = ["fragment.eye_vael", "fragment.nerve_ilyra", "fragment.orrun_bone"];
     public SortedSet<string> PurifiedFragments { get; set; } = [];
     public SortedDictionary<string, string> OperationReceipts { get; set; } = [];
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public EndgamePermanentState? Endgame { get; set; }
 }
 public sealed record ProgressionSnapshot(ProgressionState Character, LocalProfileState Profile);
 public sealed record ProgressionResult(bool Success, string Reason, string[] Events);
 public sealed record CraftingRequest(string OperationId, CraftingService Service, long ItemId = 0,
-    string AffixId = "", string ReplacementId = "", string PropertyId = "", string Lineage = "", string FragmentId = "", bool ConfirmPermanent = false);
+    string AffixId = "", string ReplacementId = "", string PropertyId = "", string Lineage = "", string FragmentId = "", bool ConfirmPermanent = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? CatalystId = null);
 public sealed record ProgressionView(string Discipline, string Resource, int Level, long Experience, long NextLevelExperience,
     int AvailablePassivePoints, int Materials, int HubStage, string[] MasteredSkills, string[] UltimateSkills,
     IReadOnlyDictionary<EquipmentSlot, long> Equipment, IReadOnlyDictionary<string, int> Stats, string[] Journal,
     CraftingService[] Services, string[] ProfileUnlocks);
 
 /// <summary>Permanent character progression, distinct from per-encounter resources and local profile unlocks.</summary>
-public sealed class ProgressionSession
+public sealed partial class ProgressionSession
 {
     private readonly ProgressionContent content;
     private ProgressionSnapshot snapshot;
@@ -252,10 +256,12 @@ public sealed class ProgressionSession
         var state = next.Character;
         if (!Enum.IsDefined(request.Service) || !state.Services.Contains(request.Service)) return "Crafting service is not unlocked.";
         int cost = Data.CraftingCosts[request.Service];
-        if (state.Materials < cost) return "Insufficient crafting materials.";
         var item = state.Items.FirstOrDefault(i => i.Id == request.ItemId);
         var definition = item is null ? null : Data.Items.Single(d => d.Id == item.DefinitionId);
         if (request.Service != CraftingService.Purification && item is null) return "Item does not exist.";
+        string? catalystError = SpendEndgameCraftCatalyst(state, item, request, ref cost);
+        if (catalystError is not null) return catalystError;
+        if (state.Materials < cost) return "Insufficient crafting materials.";
         switch (request.Service)
         {
             case CraftingService.Tempering:
@@ -349,6 +355,7 @@ public sealed class ProgressionSession
         Check(s.Services.SetEquals(expectedServices) && s.HubStage == Math.Min(3, s.CompletedObjectives.Count / 2), "Service/hub state does not match completed objectives.");
         Check(s.PropertyLibrary.All(id => d.Properties.Any(p => p.Id == id)) && s.OwnedFragments.All(d.FragmentIds.Contains) && s.PurifiedFragments.All(s.OwnedFragments.Contains), "Unknown extracted property or unowned purified fragment.");
         Check(s.OperationReceipts.Count <= 100000 && s.OperationReceipts.All(p => !string.IsNullOrWhiteSpace(p.Key) && p.Key.Length <= 120 && p.Value is { Length: 64 } && p.Value.All(Uri.IsHexDigit)), "Invalid operation receipt.");
+        EndgameProgression.Validate(s.Endgame);
         ValidateProfile(content, value.Profile);
     }
     public static void ValidateProfile(ProgressionContent content, LocalProfileState profile)
