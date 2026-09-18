@@ -1,0 +1,554 @@
+{
+  "schemaVersion": 1,
+  "version": "campaign.greybox.1",
+  "acts": [
+    {
+      "number": 1,
+      "id": "act.grey_march",
+      "name": "The Grey March",
+      "revelation": "Mara saves the protagonist through implantation. Monastery records contradict the official Ashenwake history.",
+      "anchor": "anchor.greyhaven",
+      "encounters": [
+        {
+          "id": "campaign.road",
+          "enemyIds": [
+            "enemy.ash_ghoul",
+            "enemy.cinder_priest"
+          ],
+          "mechanic": "escort_telegraphed_ambush",
+          "counterplay": "Interrupt the priest before pursuing the ghouls; the rescue route remains open.",
+          "eliteModifiers": [],
+          "experience": 50,
+          "materials": 5,
+          "rescuedResident": "Torren Bale"
+        },
+        {
+          "id": "campaign.monastery",
+          "enemyIds": [
+            "enemy.funeral_guard",
+            "enemy.memory_archer"
+          ],
+          "mechanic": "alternating_sonic_lanes",
+          "counterplay": "Cross a silent lane between bell pulses and recover the false-history ledger.",
+          "eliteModifiers": [
+            "Mirrorborn"
+          ],
+          "experience": 75,
+          "materials": 5,
+          "rescuedResident": "Sister Cael"
+        },
+        {
+          "id": "campaign.bell_saint",
+          "enemyIds": [
+            "boss.bell_saint"
+          ],
+          "mechanic": "chains_ritual_anchors_released_creature",
+          "counterplay": "Evade chains, destroy ritual anchors during resurrection, then use quiet gaps between independent bells.",
+          "eliteModifiers": [],
+          "experience": 150,
+          "materials": 15,
+          "rescuedResident": ""
+        }
+      ],
+      "requiredChoice": "choice.fragment"
+    },
+    {
+      "number": 2,
+      "id": "act.verdant_maw",
+      "name": "The Verdant Maw",
+      "revelation": "Ilyra's distributed ecosystem is assembling a body; transformed communities remain people with choices.",
+      "anchor": "anchor.living_ruins",
+      "encounters": [
+        {
+          "id": "campaign.living_ruins",
+          "enemyIds": [
+            "enemy.carnivorous_vine",
+            "enemy.needle_swarm"
+          ],
+          "mechanic": "rooting_pods_and_poison_lanes",
+          "counterplay": "Destroy visible rooting pods and preserve clean lanes between poison blooms.",
+          "eliteModifiers": [
+            "Devourer"
+          ],
+          "experience": 150,
+          "materials": 8,
+          "rescuedResident": "Oris Fen"
+        },
+        {
+          "id": "campaign.plague_village",
+          "enemyIds": [
+            "enemy.bloom_carrier",
+            "enemy.needle_swarm"
+          ],
+          "mechanic": "protect_quarantine_channels",
+          "counterplay": "Rotate between announced breaches; choose the village's treatment after securing the channels.",
+          "eliteModifiers": [],
+          "experience": 175,
+          "materials": 8,
+          "rescuedResident": ""
+        },
+        {
+          "id": "campaign.rootheart",
+          "enemyIds": [
+            "boss.rootheart"
+          ],
+          "mechanic": "three_feeding_roots_and_mobile_core",
+          "counterplay": "Sever one feeding root to expose the moving core; alternate paths remain viable for melee and ranged builds.",
+          "eliteModifiers": [
+            "Gravewake"
+          ],
+          "experience": 250,
+          "materials": 20,
+          "rescuedResident": ""
+        }
+      ],
+      "requiredChoice": "choice.transformation"
+    },
+    {
+      "number": 3,
+      "id": "act.cinder_reach",
+      "name": "The Cinder Reach",
+      "revelation": "Extraction warms cities and produces medicine while thinning a seal beneath the industrial works.",
+      "anchor": "anchor.cinder_station",
+      "encounters": [
+        {
+          "id": "campaign.cinder_pack",
+          "enemyIds": [
+            "enemy.ash_ghoul",
+            "enemy.cinder_priest",
+            "enemy.furnace_brute",
+            "enemy.emberling"
+          ],
+          "mechanic": "support_armored_pressure_and_death_bursts",
+          "counterplay": "Separate the priest from the brute and step outside the Emberlings' marked burst rings.",
+          "eliteModifiers": [
+            "Stormbound"
+          ],
+          "experience": 250,
+          "materials": 10,
+          "rescuedResident": "Kesh"
+        },
+        {
+          "id": "campaign.extraction_floor",
+          "enemyIds": [
+            "enemy.forge_sentinel",
+            "enemy.heat_tender"
+          ],
+          "mechanic": "alternating_conveyor_heat",
+          "counterplay": "Use cooled platforms during the machine's announced vent cycle.",
+          "eliteModifiers": [],
+          "experience": 275,
+          "materials": 10,
+          "rescuedResident": ""
+        },
+        {
+          "id": "campaign.furnace_spindle",
+          "enemyIds": [
+            "boss.furnace_spindle"
+          ],
+          "mechanic": "rotating_vents_slag_and_core_windows",
+          "counterplay": "Rotate into inactive vents and attack the exposed core after the slag discharge.",
+          "eliteModifiers": [
+            "Martyr"
+          ],
+          "experience": 350,
+          "materials": 25,
+          "rescuedResident": ""
+        }
+      ],
+      "requiredChoice": "choice.extraction"
+    },
+    {
+      "number": 4,
+      "id": "act.shattered_spine",
+      "name": "The Shattered Spine",
+      "revelation": "Orrun's bones are seals. Oathbound contracts sustain cities while binding people to cruel obligations.",
+      "anchor": "anchor.bone_causeway",
+      "encounters": [
+        {
+          "id": "campaign.bone_causeway",
+          "enemyIds": [
+            "enemy.oath_giant",
+            "enemy.contract_keeper"
+          ],
+          "mechanic": "sequential_seismic_faults",
+          "counterplay": "Read the numbered fault sequence and move to unbroken stone.",
+          "eliteModifiers": [
+            "Hunter"
+          ],
+          "experience": 350,
+          "materials": 12,
+          "rescuedResident": ""
+        },
+        {
+          "id": "campaign.contract_hall",
+          "enemyIds": [
+            "enemy.contract_keeper",
+            "enemy.bone_sentinel"
+          ],
+          "mechanic": "visible_oath_zones",
+          "counterplay": "Break the keeper's channel from an unmarked zone; no damage family is mandatory.",
+          "eliteModifiers": [],
+          "experience": 375,
+          "materials": 12,
+          "rescuedResident": ""
+        },
+        {
+          "id": "campaign.covenant_warden",
+          "enemyIds": [
+            "boss.covenant_warden"
+          ],
+          "mechanic": "oath_marks_faults_and_stagger_windows",
+          "counterplay": "Spread oath marks, cross the announced fault, then exploit the recovery window.",
+          "eliteModifiers": [
+            "Null"
+          ],
+          "experience": 450,
+          "materials": 30,
+          "rescuedResident": ""
+        }
+      ],
+      "requiredChoice": "choice.oath"
+    },
+    {
+      "number": 5,
+      "id": "act.hollow_night",
+      "name": "The Hollow Night",
+      "revelation": "Nhal never fell: Nhal remained beyond the breach to hold it closed. The protagonist carries an identity fragment, and the old seals cannot simply be restored.",
+      "anchor": "anchor.last_memory",
+      "encounters": [
+        {
+          "id": "campaign.repeating_rooms",
+          "enemyIds": [
+            "enemy.doubled_shadow",
+            "enemy.memory_archer"
+          ],
+          "mechanic": "marked_real_exit_and_shadow_decoys",
+          "counterplay": "Real exits keep their anchor glyph; decoys never cover required telegraphs.",
+          "eliteModifiers": [
+            "Riftborn"
+          ],
+          "experience": 450,
+          "materials": 15,
+          "rescuedResident": "Pale Child"
+        },
+        {
+          "id": "campaign.identity_memory",
+          "enemyIds": [
+            "enemy.breach_echo",
+            "enemy.doubled_shadow"
+          ],
+          "mechanic": "causal_echo_warnings",
+          "counterplay": "Future attack outlines appear before their source; follow the timing marks rather than decorative perspective.",
+          "eliteModifiers": [],
+          "experience": 1200,
+          "materials": 15,
+          "rescuedResident": ""
+        },
+        {
+          "id": "campaign.breach_heart",
+          "enemyIds": [
+            "boss.breach_heart"
+          ],
+          "mechanic": "three_seal_channels_and_returning_echoes",
+          "counterplay": "Rotate through visible seal channels, interrupt exposed echoes, and stabilize the breach during each recovery.",
+          "eliteModifiers": [
+            "Mirrorborn"
+          ],
+          "experience": 600,
+          "materials": 40,
+          "rescuedResident": ""
+        }
+      ],
+      "requiredChoice": "choice.future"
+    }
+  ],
+  "choices": [
+    {
+      "id": "choice.fragment",
+      "act": 1,
+      "prompt": "Who should hold the dangerous monastery fragment?",
+      "requiredEncounter": "campaign.monastery",
+      "outcomes": [
+        {
+          "id": "reliquary",
+          "text": "Entrust it to Sister Cael and the Reliquary, under public witness.",
+          "immediateFlags": [
+            "fragment.reliquary"
+          ],
+          "dueAct": 4,
+          "delayedFlags": [
+            "reliquary.witnesses_survive"
+          ],
+          "allies": [
+            "Reliquary Church"
+          ]
+        },
+        {
+          "id": "mara",
+          "text": "Give Mara access to study it and publish her methods.",
+          "immediateFlags": [
+            "fragment.anatomists"
+          ],
+          "dueAct": 3,
+          "delayedFlags": [
+            "anatomists.seal_evidence"
+          ],
+          "allies": [
+            "Anatomists"
+          ]
+        },
+        {
+          "id": "community",
+          "text": "Let Greyhaven keep it with a shared watch.",
+          "immediateFlags": [
+            "fragment.community"
+          ],
+          "dueAct": 4,
+          "delayedFlags": [
+            "greyhaven.shared_watch"
+          ],
+          "allies": []
+        },
+        {
+          "id": "keep",
+          "text": "Carry the fragment and accept personal responsibility.",
+          "immediateFlags": [
+            "fragment.protagonist"
+          ],
+          "dueAct": 5,
+          "delayedFlags": [
+            "identity.fragment_recognizes_carrier"
+          ],
+          "allies": []
+        }
+      ]
+    },
+    {
+      "id": "choice.transformation",
+      "act": 2,
+      "prompt": "Permit controlled Ilyran transformation to treat the plague village?",
+      "requiredEncounter": "campaign.plague_village",
+      "outcomes": [
+        {
+          "id": "permit",
+          "text": "Let volunteers choose the treatment under local oversight.",
+          "immediateFlags": [
+            "village.transformed",
+            "village.survivors"
+          ],
+          "dueAct": 4,
+          "delayedFlags": [
+            "ilyra.envoys_arrive",
+            "village.growth_needs_care"
+          ],
+          "allies": [
+            "Children of Ilyra"
+          ]
+        },
+        {
+          "id": "refuse",
+          "text": "Keep the quarantine and fund conventional care.",
+          "immediateFlags": [
+            "village.quarantined",
+            "medicine.committed"
+          ],
+          "dueAct": 4,
+          "delayedFlags": [
+            "village.slow_recovery",
+            "cael.clinic_needed"
+          ],
+          "allies": [
+            "Reliquary Church"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "choice.extraction",
+      "act": 3,
+      "prompt": "Continue extraction that heats the city but damages a divine seal?",
+      "requiredEncounter": "campaign.extraction_floor",
+      "outcomes": [
+        {
+          "id": "continue",
+          "text": "Keep essential furnaces running while limiting new shafts.",
+          "immediateFlags": [
+            "city.heated",
+            "seal.extraction_continues"
+          ],
+          "dueAct": 5,
+          "delayedFlags": [
+            "seal.cinder_weakened",
+            "compact.supplies_arrive"
+          ],
+          "allies": [
+            "Cinder Compact"
+          ]
+        },
+        {
+          "id": "stop",
+          "text": "Close the shafts and organize replacement heat and medicine.",
+          "immediateFlags": [
+            "seal.cinder_preserved",
+            "city.rationing"
+          ],
+          "dueAct": 5,
+          "delayedFlags": [
+            "city.hard_winter",
+            "seal.cinder_stable"
+          ],
+          "allies": [
+            "Anatomists"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "choice.oath",
+      "act": 4,
+      "prompt": "Enforce the cruel contract that powers the causeway, or break it?",
+      "requiredEncounter": "campaign.contract_hall",
+      "outcomes": [
+        {
+          "id": "enforce",
+          "text": "Preserve the binding while negotiating relief for its debtors.",
+          "immediateFlags": [
+            "causeway.stable",
+            "debtors.bound"
+          ],
+          "dueAct": 5,
+          "delayedFlags": [
+            "oathbound.guard_arrives",
+            "debtors.petition_pending"
+          ],
+          "allies": [
+            "Oathbound"
+          ]
+        },
+        {
+          "id": "break",
+          "text": "Free the debtors and rebuild the causeway without their bondage.",
+          "immediateFlags": [
+            "debtors.freed",
+            "causeway.damaged"
+          ],
+          "dueAct": 5,
+          "delayedFlags": [
+            "greyhaven.refugees_arrive",
+            "causeway.rebuild_needed"
+          ],
+          "allies": [
+            "Anatomists"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "choice.future",
+      "act": 5,
+      "prompt": "After stabilizing the breach, how should Edrath face the truth?",
+      "requiredEncounter": "campaign.identity_memory",
+      "outcomes": [
+        {
+          "id": "share",
+          "text": "Publish the evidence and form a coalition to outgrow divine extraction.",
+          "immediateFlags": [
+            "future.open_coalition"
+          ],
+          "dueAct": 5,
+          "delayedFlags": [
+            "ending.shared_stewardship"
+          ],
+          "allies": [
+            "Anatomists"
+          ]
+        },
+        {
+          "id": "guard",
+          "text": "Work with the Quiet to protect the truth while preparing the cities.",
+          "immediateFlags": [
+            "future.guarded_truth"
+          ],
+          "dueAct": 5,
+          "delayedFlags": [
+            "ending.guarded_transition"
+          ],
+          "allies": [
+            "Quiet"
+          ]
+        }
+      ]
+    }
+  ],
+  "exploration": [
+    {
+      "id": "event.resonance_storm",
+      "act": 3,
+      "kind": "Storm",
+      "name": "The Burning Rain",
+      "encounterId": "exploration.burning_rain",
+      "durationTicks": 900,
+      "rules": [
+        "population:stormbound",
+        "hazard:announced_fire_lanes",
+        "fragments:overcharge_windows",
+        "reward:forge_material"
+      ],
+      "clues": [],
+      "discovery": "discovery.storm",
+      "materials": 10
+    },
+    {
+      "id": "event.divine_memory",
+      "act": 4,
+      "kind": "Memory",
+      "name": "The Promise Before Stone",
+      "encounterId": "exploration.first_oath",
+      "durationTicks": 0,
+      "rules": [
+        "context:memory",
+        "rule:reversed_fault_order",
+        "return:recorded_anchor"
+      ],
+      "clues": [],
+      "discovery": "discovery.divine_seals",
+      "materials": 15
+    },
+    {
+      "id": "event.wake_hunt",
+      "act": 2,
+      "kind": "Hunt",
+      "name": "The Antler That Walks",
+      "encounterId": "exploration.antler_hunt",
+      "durationTicks": 0,
+      "rules": [
+        "behavior:burrow_then_root_charge",
+        "reward:unique_growth_material"
+      ],
+      "clues": [
+        "clue.shed_bark",
+        "clue.reversed_tracks",
+        "clue.heartwood_nest"
+      ],
+      "discovery": "discovery.antler",
+      "materials": 20
+    }
+  ],
+  "factions": [
+    "Reliquary Church",
+    "Anatomists",
+    "Cinder Compact",
+    "Children of Ilyra",
+    "Oathbound",
+    "Quiet"
+  ],
+  "residents": [
+    "Mara Vey",
+    "Torren Bale",
+    "Sister Cael",
+    "Oris Fen",
+    "Kesh",
+    "Pale Child"
+  ]
+}

@@ -69,3 +69,4 @@ mkdir -p "$production_output"
 if rg -n 'ERROR:|SCRIPT ERROR:' "$production_output/smoke.log"; then exit 1; fi
 rg -q 'ProductionClientSmokePassed' "$production_output/smoke.log"
 aw production replay "$production_output/production.awp"
+bash tools/campaign-verify.sh

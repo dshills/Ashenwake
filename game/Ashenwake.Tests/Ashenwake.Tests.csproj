@@ -14,7 +14,14 @@
     <None Include="../../content/adventure.json" Link="adventure.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/progression.json" Link="progression.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/text.en.json" Link="text.en.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../content/campaign.json" Link="campaign.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../content/campaign-combat.json" Link="campaign-combat.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/phase2-expedition-hub.json" Link="fixtures/phase2-expedition-hub.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/combat-phase2.json" Link="fixtures/combat-phase2.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/phase3-production-hub.json" Link="fixtures/phase3-production-hub.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/combat-phase3.json" Link="fixtures/combat-phase3.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/adventure-phase3.json" Link="fixtures/adventure-phase3.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/progression-phase3.json" Link="fixtures/progression-phase3.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/phase3-migration-manifest.json" Link="fixtures/phase3-migration-manifest.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

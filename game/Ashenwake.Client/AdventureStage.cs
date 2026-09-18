@@ -14,7 +14,7 @@ public partial class AdventureStage : Node3D
     public void ShowRoom(string roomId, int bellPhase, RoomDefinition room, IReadOnlyList<string> manifestations,
         IReadOnlyDictionary<string, Position> interactions, IReadOnlySet<string> spentInteractions, int hubStage = 0)
     {
-        string signature = roomId + bellPhase + hubStage + string.Join('|', manifestations) + string.Join('|', spentInteractions.Order());
+        string signature = roomId + bellPhase + hubStage + string.Join('|', manifestations) + string.Join('|', spentInteractions.Order()) + string.Join('|', interactions.Keys.Order());
         if (signature == _signature) return;
         _signature = signature;
         if (_decoration is not null) { RemoveChild(_decoration); _decoration.QueueFree(); }

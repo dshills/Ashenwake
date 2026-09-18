@@ -52,6 +52,12 @@ internal static class InspectionCommands
         using var t = JsonDocument.Parse(textSource);
         Walk(c.RootElement, "content/combat.json", ""); Walk(a.RootElement, "content/adventure.json", "");
         Walk(p.RootElement, "content/progression.json", ""); Walk(t.RootElement, "content/text.en.json", "");
+        foreach (string name in new[] { "campaign", "campaign-combat" })
+        {
+            string file = "content/" + name + ".json";
+            using var campaign = JsonDocument.Parse(File.ReadAllText(file));
+            Walk(campaign.RootElement, file, "");
+        }
         Console.WriteLine(JsonData.Write(new { combat.ContentVersion, adventureVersion = adventure.Capture().Version, progressionHash = progression.Hash, target, references }));
         return 0;
     }

@@ -59,6 +59,7 @@ public sealed partial class CombatSession
                 session.AddEncounterActor("enemy.broken_bell", new(5000, 5500)); break;
         }
         session.PopulateAuthoredEncounter(encounterId);
+        session.PopulateCampaignEncounter();
         session.ValidateSnapshot(); return session;
     }
     private CombatActor AddEncounterActor(string definitionId, Position position, bool corpse = false)
@@ -94,7 +95,7 @@ public sealed partial class CombatSession
     }
     private bool AshcleaverActive => _state.Build.AshcleaverEquipped && Equipped.Any(i => i.Slot == "MainHand" && i.DefinitionId == "item.ashcleaver");
     private int AttackDuration(int ticks) => AshcleaverActive ? Math.Max(1, (ticks * 100 + 99 + _state.Build.AshcleaverStacks * 5) / (100 + _state.Build.AshcleaverStacks * 5)) : ticks;
-    private bool IsRituallyShielded(CombatActor actor) => _state.EncounterId == "bell_saint.2" && actor.Role == "BellSaint" && _state.Actors.Any(a => a.Role == "Anchor" && a.Health > 0);
+    private bool IsRituallyShielded(CombatActor actor) => CampaignShielded(actor) || _state.EncounterId == "bell_saint.2" && actor.Role == "BellSaint" && _state.Actors.Any(a => a.Role == "Anchor" && a.Health > 0);
     private static int TelegraphRadius(CombatActor actor) => actor.Pending?.SkillId switch { "boss.chain" => 1500, "boss.sonic" => 2300, "boss.resurrect" => 0, "boss.beast_rush" => 2200, "boss.bell_ring" => 2000, "enemy.detonate" => 2200, _ => 0 };
     private static bool IsEncounterSkill(string id) => id is "enemy.mend" or "enemy.detonate" or "boss.chain" or "boss.sonic" or "boss.resurrect" or "boss.beast_rush" or "boss.bell_ring";
     private bool ThinkEncounterActor(CombatActor actor)
@@ -142,6 +143,7 @@ public sealed partial class CombatSession
                     int healing = Math.Min(30, target.MaxHealth - target.Health); target.Health += healing; target.Barrier = Math.Min(200, target.Barrier + 12);
                     Emit("Healed", actor.Id, target.Id, healing, pending.SkillId, pending.ActionId); Emit("BarrierGranted", actor.Id, target.Id, 12, pending.SkillId, pending.ActionId);
                 }
+                if (_state.Campaign is not null && CampaignPattern(actor) == "SupportFire") Warn(actor, "campaign.priest_flame", Player.Position, 1500, 30, 12, DamageFamily.Fire, "Burning");
                 break;
             case "boss.resurrect":
                 var corpse = _state.Actors.Where(a => a.Health == 0 && a.Role == "Melee" && !_state.ResurrectedActorIds.Contains(a.Id) && !_state.ConsumedCorpseIds.Contains(a.Id)).OrderBy(a => a.Id).FirstOrDefault();

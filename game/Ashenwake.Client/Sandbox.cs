@@ -14,6 +14,7 @@ public partial class Sandbox : Node3D
     private sealed record Preferences(bool ReducedEffects, bool ReducedShake, Dictionary<string, long> Keys);
     public CombatSession Session => _session;
     public string CombatContentJson => _contentJson;
+    public string? ContentJsonOverride { get; set; }
     public event Action<IReadOnlyList<CombatEvent>>? CombatAdvanced;
     public Func<CombatCommand[], IReadOnlyList<CombatEvent>>? AdvanceOverride { get; set; }
     public Func<CombatSession>? SessionOverride { get; set; }
@@ -62,7 +63,7 @@ public partial class Sandbox : Node3D
             _output = Argument("--output=") ?? ProjectSettings.GlobalizePath("user://sandbox");
             _capturePath = Argument("--capture=");
             _preferencesPath = ProjectSettings.GlobalizePath("user://sandbox-settings.json");
-            _contentJson = FileAccess.GetFileAsString("res://combat.json");
+            _contentJson = ContentJsonOverride ?? FileAccess.GetFileAsString("res://combat.json");
             _content = CombatContent.Parse(_contentJson);
             BindInputs(); LoadPreferences();
             BuildArena(_content.Room.HalfWidth, _content.Room.HalfDepth);
@@ -84,6 +85,7 @@ public partial class Sandbox : Node3D
         _subtitleLabel.Text = "GREYHAVEN  /  BASILICA OF LAST MERCY";
     }
     public void Notify(string text) => Message(text);
+    public void SetWorldSubtitle(string text) => _subtitleLabel.Text = text;
     public void SetPaused(bool paused) => _clock.Paused = paused;
     private void ShowInventory()
     { if (InventoryOverride is not null) InventoryOverride(); else TogglePanel(_inventoryPanel); }
@@ -98,6 +100,20 @@ public partial class Sandbox : Node3D
         ClearPresentation(); SynchronizeWorld();
         if (_inventoryPanel is not null)
         { _inventoryPanel.Visible = false; _settingsPanel.Visible = false; RefreshHud(); }
+    }
+
+    /// <summary>Adopts authoritative projections without restarting input or visual feedback in the same arena.</summary>
+    public void AdoptSession(CombatSession session)
+    {
+        AdoptSessionCore(session); _view = session.View; SynchronizeWorld(); RefreshHud();
+    }
+    private void AdoptSessionCore(CombatSession session)
+    {
+        bool changedArena = _session.EncounterId != session.EncounterId ||
+            _session.View.Actors.Single(a => a.Id == 1).Health <= 0 && session.View.Actors.Single(a => a.Id == 1).Health > 0;
+        _session = session; _recorder = new(session);
+        if (changedArena)
+        { _pending.Clear(); ClearPresentation(); _target = 0; _moveX = _moveZ = int.MinValue; }
     }
 
     public override void _Process(double delta)
@@ -201,8 +217,7 @@ public partial class Sandbox : Node3D
         var events = AdvanceOverride is null ? _recorder.Step(_session, commands) : AdvanceOverride(commands);
         if (SessionOverride is not null && !ReferenceEquals(_session, SessionOverride()))
         {
-            _session = SessionOverride(); _recorder = new(_session); ClearPresentation();
-            _moveX = _moveZ = int.MinValue;
+            AdoptSessionCore(SessionOverride());
         }
         _lastTickCost = Stopwatch.GetElapsedTime(timer).TotalMilliseconds;
         _lastTickBytes = GC.GetAllocatedBytesForCurrentThread() - before; Sample(_tickCosts, _lastTickCost);
@@ -251,8 +266,12 @@ public partial class Sandbox : Node3D
                 _ => actor.Role
             };
             if (actor.Role.EndsWith(" Elite", StringComparison.Ordinal)) name += " Elite";
+            if (actor.Faction == CombatFaction.Enemy && actor.DefinitionId.Length > 0)
+                name = Readable(actor.DefinitionId[(actor.DefinitionId.IndexOf('.') + 1)..]) + (actor.Role.EndsWith(" Elite", StringComparison.Ordinal) ? " Elite" : "");
+            var conditions = actor.Statuses.Select(s => s.Id).Concat(actor.EliteModifiers ?? []);
+            if (actor.State is "Guarded" or "Recover") conditions = conditions.Append(actor.State == "Guarded" ? "GUARDED" : "RECOVERY WINDOW");
             SynchronizeActor(actor.Id, name, role.ToLowerInvariant(), actor.Position.X, actor.Position.Z,
-                actor.Health, actor.MaxHealth, string.Join(" / ", actor.Statuses.Select(s => s.Id)),
+                actor.Health, actor.MaxHealth, string.Join(" / ", conditions),
                 actor.TelegraphTicks > 0 && actor.TelegraphRadius == 0, actor.Faction != CombatFaction.Enemy);
             _actors[actor.Id].Root.Visible &= actor.Visible;
         }
@@ -265,6 +284,9 @@ public partial class Sandbox : Node3D
                 PresentEffect($"illusion{i}", _view.Illusions[i].X, _view.Illusions[i].Z, .3f, new Color(.65f, .55f, .8f, .3f), silhouette: true);
         foreach (var actor in _view.Actors.Where(a => a.Health > 0 && a.TelegraphTicks > 0 && a.TelegraphRadius > 0 && a.TelegraphPosition is not null))
             PresentEffect($"t{actor.Id}", actor.TelegraphPosition!.Value.X, actor.TelegraphPosition.Value.Z, actor.TelegraphRadius * .001f, new Color(1, .18f, .12f, .35f));
+        if (_view.CampaignHazards is not null)
+            foreach (var hazard in _view.CampaignHazards)
+                PresentCampaignWarning(hazard.Id, hazard.Kind, hazard.Position.X, hazard.Position.Z, hazard.End.X, hazard.End.Z, hazard.Radius, hazard.RemainingTicks);
         foreach (var projectile in _view.Projectiles)
             PresentEffect($"p{projectile.Id}", projectile.Position.X, projectile.Position.Z, .15f, new("ffc178"), true);
         foreach (var area in _view.Areas)

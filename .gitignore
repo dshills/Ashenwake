@@ -15,3 +15,5 @@ game/Ashenwake.Client/combat.json
 game/Ashenwake.Client/adventure.json
 game/Ashenwake.Client/progression.json
 game/Ashenwake.Client/text.en.json
+game/Ashenwake.Client/campaign.json
+game/Ashenwake.Client/campaign-combat.json

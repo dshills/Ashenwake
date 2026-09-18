@@ -31,6 +31,7 @@ public sealed record CombatContent
     [JsonRequired] public CombatItemDefinition[] Items { get; init; } = [];
     [JsonRequired] public CombatLoadout[] Loadouts { get; init; } = [];
     public CombatEncounterDefinition[] Encounters { get; init; } = [];
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public CampaignCombatDefinition? Campaign { get; init; }
     [JsonIgnore] public string Identity => _legacyHash != "" ? _legacyHash : JsonData.Hash(this);
     private string _legacyHash = "";
     public static CombatContent Parse(string json)
@@ -67,7 +68,7 @@ public sealed record CombatContent
             Id(s.Id, "skill"); Check(!string.IsNullOrWhiteSpace(s.Name) && ValidShape(s.Shape) && Enum.IsDefined(s.Family) && s.Damage is >= 0 and <= 1000 && s.Range is >= 0 and <= 20000 && s.Windup is >= 1 and <= 180 && s.Recovery is >= 1 and <= 180 && s.Cooldown >= s.Windup + s.Recovery && s.Cooldown <= 3000 && s.Cost is >= 0 and <= 100 && s.Generate is >= 0 and <= 100 && s.Radius is >= 0 and <= 10000 && (s.Status == "" || CombatSession.StatusIds.Contains(s.Status)) && (CombatSession.Disciplines.Contains(s.Discipline) || s.Discipline == "Echo") && s.ResourceMode is "Spend" or "Heat" && s.Behavior is "" or "Vent" or "Vanish" or "Companion" or "Procession" or "Leech" or "ConsumeMarked" or "DetonatePoison" or "Regenerate", "Invalid skill: " + s.Id);
         }
         Check(Skills.Where(s => s.Discipline != "Echo").GroupBy(s => s.Discipline).All(g => g.Count() == 6) && Skills.Count(s => s.Discipline == "Vanguard") == 6, "Each authored discipline must define six skills.");
-        foreach (var e in Enemies) { Id(e.Id, "enemy"); Check(e.Role is "Melee" or "Ranged" or "Armored" or "Support" or "Rusher" or "BellSaint" or "Anchor" or "Bell" or "Beast" && e.Health is > 0 and <= 100000 && e.Damage is > 0 and <= 1000 && e.Armor is >= 0 and <= 7500 && e.Speed is > 0 and <= 500 && e.Windup is >= 6 and <= 180 && e.Recovery is >= 6 and <= 300 && e.Range is >= 1000 and <= 20000, "Invalid enemy: " + e.Id); }
+        foreach (var e in Enemies) { Id(e.Id, e.Id.StartsWith("boss.", StringComparison.Ordinal) ? "boss" : "enemy"); Check(e.Role is "Melee" or "Ranged" or "Armored" or "Support" or "Rusher" or "BellSaint" or "Anchor" or "Bell" or "Beast" && e.Health is > 0 and <= 100000 && e.Damage is > 0 and <= 1000 && e.Armor is >= 0 and <= 7500 && e.Speed is > 0 and <= 500 && e.Windup is >= 6 and <= 180 && e.Recovery is >= 6 and <= 300 && e.Range is >= 1000 and <= 20000, "Invalid enemy: " + e.Id); }
         Check(new[] { "Melee", "Ranged", "Armored" }.All(role => Enemies.Any(e => e.Role == role)), "Sandbox requires Melee, Ranged, and Armored enemy roles.");
         Check(new[] { "enemy.ash_ghoul", "enemy.cinder_acolyte", "enemy.furnace_brute", "enemy.cinder_priest", "enemy.emberling", "enemy.bell_saint", "enemy.ritual_anchor", "enemy.bell_beast", "enemy.broken_bell" }.All(id => Enemies.Any(e => e.Id == id)), "Missing required slice encounter enemy definition.");
         Check(Items.Any(i => i.Id != "item.ashcleaver"), "Ordinary loot requires at least one non-Godwrought item.");
@@ -75,6 +76,7 @@ public sealed record CombatContent
         foreach (var m in Mutations) { Id(m.Id, "mutation"); Check(Skills.Any(s => s.Id == m.SkillId) && ValidShape(m.Shape) && !string.IsNullOrWhiteSpace(m.Name) && !string.IsNullOrWhiteSpace(m.Description) && m.DamagePercent is >= 1 and <= 500 && m.Radius is >= 0 and <= 10000 && m.ExtraCost is >= 0 and <= 100 && Skills.Single(s => s.Id == m.SkillId).Cost + m.ExtraCost <= 100, "Invalid mutation: " + m.Id); }
         foreach (var item in Items) { Id(item.Id, "item"); Check(!string.IsNullOrWhiteSpace(item.Name) && CombatSession.EquipmentSlots.Contains(item.Slot) && (item.CompatibleSlots is null || item.CompatibleSlots.Length > 0 && item.CompatibleSlots.All(CombatSession.EquipmentSlots.Contains)) && item.Hands is >= 0 and <= 2 && (item.Disciplines is null || item.Disciplines.All(CombatSession.Disciplines.Contains)) && item.Damage is >= 0 and <= 200 && item.Armor is >= 0 and <= 5000 && item.CriticalBasisPoints is >= 0 and <= 5000, "Invalid item: " + item.Id); }
         CombatSession.ValidateAuthoredEncounters(this);
+        CombatSession.ValidateCampaignContent(this);
         foreach (var loadout in Loadouts)
         {
             Id(loadout.Id, "loadout");

@@ -9,7 +9,7 @@ public enum CombatFaction { Player, Enemy, Ally }
 public sealed record CombatCommand(CombatCommandKind Kind, int ActorId = 1, string SkillId = "", int TargetId = 0, int X = 0, int Z = 0, string ContentId = "", long ItemId = 0);
 public sealed record CombatEvent(long Tick, string Kind, int ActorId = 0, int TargetId = 0, int Amount = 0, string ContentId = "", long ActionId = 0, int Depth = 0);
 public sealed record CombatStatusView(string Id, int SourceId, long RemainingTicks, int Stacks);
-public sealed record CombatActorView(int Id, Position Position, int Health, int MaxHealth, CombatFaction Faction, string Role, int TelegraphTicks, string State, int Barrier, IReadOnlyList<CombatStatusView> Statuses, string DefinitionId = "", Position? TelegraphPosition = null, int TelegraphRadius = 0, bool Visible = true, bool CorpseConsumed = false);
+public sealed record CombatActorView(int Id, Position Position, int Health, int MaxHealth, CombatFaction Faction, string Role, int TelegraphTicks, string State, int Barrier, IReadOnlyList<CombatStatusView> Statuses, string DefinitionId = "", Position? TelegraphPosition = null, int TelegraphRadius = 0, bool Visible = true, bool CorpseConsumed = false, IReadOnlyList<string>? EliteModifiers = null);
 public sealed record CombatProjectileView(long Id, Position Position, Position Target, string ContentId, int OwnerId);
 public sealed record CombatAreaView(long Id, Position Position, int Radius, string ContentId, long RemainingTicks, int OwnerId);
 public sealed record CombatItem(long Id, string DefinitionId, string Name, string Slot, string Rarity, int Damage, int Armor, int CriticalBasisPoints);
@@ -22,7 +22,7 @@ public sealed record CombatView(long Tick, string Preset, IReadOnlyList<CombatAc
     IReadOnlyList<CombatAreaView> Areas, IReadOnlyList<CombatLoot> Loot, IReadOnlyList<CombatItem> Inventory,
     IReadOnlyList<CombatSkillView> Skills, IReadOnlyList<CombatFragmentView> Fragments, IReadOnlyList<CombatMutationView> Mutations,
     IReadOnlyDictionary<string, long> Equipment, int Momentum, int MaxMomentum, int Barrier, int PotionCharges, int PotionCooldownTicks,
-    int DodgeCooldownTicks, int Resonance, int PendingEffects, int PeakEffects, int RejectedEffects, string ContentVersion, string Discipline = "Vanguard", string ResourceName = "Momentum", string CapturedSkillId = "", int EchoTicks = 0, IReadOnlyList<Position>? Illusions = null, int FragmentHeat = 0, int SeismicCharge = 0)
+    int DodgeCooldownTicks, int Resonance, int PendingEffects, int PeakEffects, int RejectedEffects, string ContentVersion, string Discipline = "Vanguard", string ResourceName = "Momentum", string CapturedSkillId = "", int EchoTicks = 0, IReadOnlyList<Position>? Illusions = null, int FragmentHeat = 0, int SeismicCharge = 0, IReadOnlyList<CombatHazardView>? CampaignHazards = null, string CampaignRule = "", int BossPhase = 0, string SuppressedFragmentId = "")
 {
     public int Resource => Momentum;
     public int MaxResource => MaxMomentum;
@@ -77,6 +77,7 @@ public sealed record CombatProjectile(long Id, int OwnerId, int SourceId, Positi
 public sealed record CombatArea(long Id, int OwnerId, int SourceId, Position Position, int Radius, string SkillId, int Damage, DamageFamily Family, long NextTick, long ExpiresTick, long ActionId, int Depth);
 public sealed record CombatSnapshot
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public CampaignCombatState? Campaign { get; set; }
     public int SchemaVersion { get; init; } = 1;
     public string RulesVersion { get; init; } = "combat.1";
     public string ContentHash { get; init; } = "";

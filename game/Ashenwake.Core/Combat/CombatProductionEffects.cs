@@ -4,7 +4,7 @@ namespace Ashenwake.Core.Combat;
 
 public sealed partial class CombatSession
 {
-    private static bool LeavesCorpse(CombatActor actor) => actor.Faction == CombatFaction.Enemy && actor.Role is not ("Anchor" or "Bell");
+    private bool LeavesCorpse(CombatActor actor) => actor.Faction == CombatFaction.Enemy && actor.Role is not ("Anchor" or "Bell") && _state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.IsEcho != true;
     private CombatActor? AvailableCorpse(int targetId = 0) => _state.Actors.Where(a => LeavesCorpse(a) && a.Health == 0 && !_state.ConsumedCorpseIds.Contains(a.Id) && (targetId == 0 || a.Id == targetId) && Position.DistanceSquared(a.Position, Player.Position) <= 6000L * 6000).OrderBy(a => Position.DistanceSquared(a.Position, Player.Position)).ThenBy(a => a.Id).FirstOrDefault();
     private bool ClaimCorpse(CombatActor corpse, string reason, long action)
     {
@@ -32,7 +32,7 @@ public sealed partial class CombatSession
         if (command.Kind == CombatCommandKind.CastEcho)
         {
             var target = _state.Actors.FirstOrDefault(a => a.Id == command.TargetId && a.Faction == CombatFaction.Enemy && a.Health > 0);
-            if (_state.CapturedSkillId != "skill.echo_storm" || _state.CapturedUntil <= Tick || target is null || !ActorVisible(target) || Position.DistanceSquared(Player.Position, target.Position) > 10000L * 10000 || !_spatial.HasLineOfSight(Player.Position, target.Position) || Player.Pending is not null || Player.RecoveryUntil > Tick)
+            if (_state.CapturedSkillId != "skill.echo_storm" || _state.CapturedUntil <= Tick || !ActiveFragments().Any(f => f.Effect == "CaptureEcho") || target is null || !ActorVisible(target) || Position.DistanceSquared(Player.Position, target.Position) > 10000L * 10000 || !_spatial.HasLineOfSight(Player.Position, target.Position) || Player.Pending is not null || Player.RecoveryUntil > Tick)
             { Reject(command, "captured_echo_unavailable"); return true; }
             long action = _state.NextActionId++; _state.CapturedSkillId = "";
             foreach (var enemy in Hostiles(Player, target.Position, 2500)) Enqueue(new(1, 1, enemy.Id, 42, DamageFamily.Storm, "skill.echo_storm", action, 1, Status: "Shocked"));

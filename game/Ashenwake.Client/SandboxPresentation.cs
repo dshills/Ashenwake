@@ -20,6 +20,7 @@ public partial class Sandbox
     private readonly Dictionary<string, AudioStreamWav> _tones = [];
     private readonly List<AudioStreamPlayer> _voices = [];
     private readonly HashSet<int> _floatingActors = [];
+    private readonly HashSet<Node3D> _transientNodes = [];
     private readonly Color _ember = new("ffb56b"), _mint = new("79e0cb");
     private Camera3D _camera = null!;
     private Vector3 _cameraHome;
@@ -128,7 +129,7 @@ public partial class Sandbox
         }
         actor.Previous = actor.Current; actor.Current = target;
         actor.Root.Visible = health > 0;
-        actor.Label.Text = id == 1 ? $"UNBOUND  {health}/{maxHealth}" : $"{name.ToUpperInvariant()}\n{health}/{maxHealth}{(status.Length > 0 ? " · " + status : "")}";
+        actor.Label.Text = id == 1 ? $"UNBOUND  {health}/{maxHealth}" : $"{name.ToUpperInvariant()}\n{health}/{maxHealth}{(status.Length > 0 ? "\n" + status : "")}";
         actor.Tell.Visible = telegraph && health > 0;
         if (telegraph) actor.Label.Text += "\n⚠ ATTACK INCOMING";
         actor.Body.Rotation = telegraph ? new(.12f, .2f, 0) : Vector3.Zero;
@@ -181,11 +182,41 @@ public partial class Sandbox
             AddChild(mesh); _effects[id] = mesh;
         }
         mesh.Position = PositionOf(x, z) + Vector3.Up * (projectile || silhouette ? .65f : .04f);
+        ((StandardMaterial3D)mesh.MaterialOverride).AlbedoColor = color;
     }
     private void EndEffects()
     {
         foreach (var id in _effects.Keys.Where(id => !_visibleEffects.Contains(id)).ToArray())
         { _effects[id].QueueFree(); _effects.Remove(id); }
+    }
+
+    private void PresentCampaignWarning(long id, string kind, int x, int z, int endX, int endZ, int radius, long ticks)
+    {
+        Color color = ticks <= 12 ? new Color(1, .2f, .12f, .5f) : new Color(1, .58f, .12f, .35f);
+        float width = radius * .001f;
+        PresentEffect($"warning{id}-start", x, z, width, color);
+        if (kind == "Circle")
+        {
+            string rimId = $"warning{id}-rim"; _visibleEffects.Add(rimId);
+            if (!_effects.TryGetValue(rimId, out var rim))
+            {
+                rim = new MeshInstance3D { Mesh = new TorusMesh { InnerRadius = Math.Max(.02f, width - .06f), OuterRadius = width }, MaterialOverride = Material(new Color(1, .73f, .34f)) };
+                _effects[rimId] = rim; AddChild(rim);
+            }
+            rim.Position = PositionOf(x, z) + Vector3.Up * .075f;
+            return;
+        }
+        PresentEffect($"warning{id}-end", endX, endZ, width, color);
+        string lineId = $"warning{id}-line"; _visibleEffects.Add(lineId);
+        Vector3 start = PositionOf(x, z), end = PositionOf(endX, endZ), delta = end - start;
+        if (!_effects.TryGetValue(lineId, out var line))
+        {
+            line = new MeshInstance3D { Mesh = new BoxMesh { Size = new(width * 2, .035f, delta.Length()) }, MaterialOverride = Material(color, true) };
+            _effects[lineId] = line; AddChild(line);
+        }
+        line.Position = (start + end) / 2 + Vector3.Up * .08f;
+        line.Rotation = new(0, Mathf.Atan2(delta.X, delta.Z), 0);
+        ((StandardMaterial3D)line.MaterialOverride).AlbedoColor = color;
     }
 
     private void Feedback(int id, string text, string kind)
@@ -204,16 +235,17 @@ public partial class Sandbox
             OutlineSize = 6,
             NoDepthTest = true
         };
-        AddChild(label);
-        var tween = CreateTween();
+        AddChild(label); _transientNodes.Add(label);
+        var tween = label.CreateTween();
         tween.TweenProperty(label, "position", label.Position + Vector3.Up * (_reduceEffects ? .5f : 1.4f), .65);
         tween.Parallel().TweenProperty(label, "modulate:a", 0f, .65);
-        tween.TweenCallback(Callable.From(() => { _floatingActors.Remove(id); label.QueueFree(); }));
+        tween.TweenCallback(Callable.From(() => { _floatingActors.Remove(id); _transientNodes.Remove(label); label.QueueFree(); }));
         if (!_reduceEffects)
         {
             var pulse = Disc(.55f, new Color(color, .7f)); pulse.Position = actor.Root.Position + Vector3.Up * .4f;
-            var burst = CreateTween(); burst.TweenProperty(pulse, "scale", new Vector3(2.4f, .1f, 2.4f), .2);
-            burst.TweenCallback(Callable.From(pulse.QueueFree));
+            _transientNodes.Add(pulse);
+            var burst = pulse.CreateTween(); burst.TweenProperty(pulse, "scale", new Vector3(2.4f, .1f, 2.4f), .2);
+            burst.TweenCallback(Callable.From(() => { _transientNodes.Remove(pulse); pulse.QueueFree(); }));
         }
         if (id == 1 || kind == "death") _shake = kind == "death" ? .6 : .25;
         PlayTone(kind);
@@ -245,6 +277,7 @@ public partial class Sandbox
     {
         foreach (var actor in _actors.Values) actor.Root.QueueFree(); _actors.Clear();
         foreach (var mesh in _effects.Values) mesh.QueueFree(); _effects.Clear();
+        foreach (var node in _transientNodes) node.QueueFree(); _transientNodes.Clear();
         _floatingActors.Clear();
     }
     private MeshInstance3D Box(Vector3 size, Vector3 position, Color color)

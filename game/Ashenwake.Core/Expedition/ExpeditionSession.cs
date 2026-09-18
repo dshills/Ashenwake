@@ -25,7 +25,7 @@ public sealed record ExpeditionFrame(ExpeditionCommand Command, string StateHash
 public sealed record ExpeditionReplay(int SchemaVersion, ExpeditionSnapshot Initial, ExpeditionFrame[] Frames);
 
 /// <summary>Joins combat and permanent world transactions. Only authoritative deaths finish encounters.</summary>
-public sealed class ExpeditionSession
+public sealed partial class ExpeditionSession
 {
     private readonly string combatJson;
     private readonly AdventureContent content;

@@ -1,6 +1,6 @@
 # Ashenwake — Phased Implementation Plan
 
-**Status:** Phases 0–2 have committed, playable engineering implementations. Phase 3 integrates five disciplines, permanent progression, crafting, content tools, and a complete client; exact-index tests, rebuilt macOS package verification, and Prism review are complete. Review findings and authoring limits are recorded in its verification document. Phase 4 combat, progression, and client integration are in development. Production-art, external-playtest, and release acceptance gates remain open. See [Phase 0](../docs/phase0_verification.md), [Phase 1](../docs/phase1_verification.md), [Phase 2](../docs/phase2_verification.md), and [Phase 3 evidence](../docs/phase3_verification.md).
+**Status:** Phases 0–2 have committed, playable engineering implementations. Phase 3 integrates five disciplines, permanent progression, crafting, content tools, and a complete client. Phase 4 connects a playable five-act greybox campaign, actual bosses/exploration, choices, permanent rewards, saves, and the client. Both isolated snapshots pass local tests and macOS package verification. Phases 3–4 are Prism-reviewed with fixes and measured limitations documented, and each has its own commit. Phase 5/6 prototypes are not integrated; Phases 7/8 are not implemented. Production-art, external-playtest, and release acceptance gates remain open. See [Phase 0](../docs/phase0_verification.md), [Phase 1](../docs/phase1_verification.md), [Phase 2](../docs/phase2_verification.md), [Phase 3 evidence](../docs/phase3_verification.md), and [Phase 4 evidence](../docs/phase4_verification.md).
 
 **Planning baseline:** September 17, 2026
 
@@ -8,7 +8,7 @@
 
 Build a small, satisfying, replayable single-player game loop first. Prove that Divine Anatomy creates surprising build interactions, then establish a repeatable content pipeline, produce the campaign and endgame, and release a reliable single-player game. Cooperative play follows as a separately gated expansion.
 
-The repository currently contains the two source specifications and no implementation. This plan therefore starts from project setup. It preserves the architecture's Phases 0–4, adds explicit endgame and release phases, and moves its optional online prototype from Phase 5 to Phase 7. Phase numbers describe dependencies, not calendar commitments.
+At the planning baseline, the repository contained the two source specifications and no implementation. This plan therefore starts from project setup. It preserves the architecture's Phases 0–4, adds explicit endgame and release phases, and moves its optional online prototype from Phase 5 to Phase 7. Phase numbers describe dependencies, not calendar commitments.
 
 ## 1. Scope, assumptions, and planning rules
 

@@ -23,7 +23,7 @@ public sealed record ProductionFrame(ProductionCommand Command, string StateHash
 public sealed record ProductionReplay(int SchemaVersion, ProductionSnapshot Initial, ProductionFrame[] Frames);
 
 /// <summary>Permanent progression is authoritative; Expedition holds validated combat/world projections of those owned items and materials.</summary>
-public sealed class ProductionSession
+public sealed partial class ProductionSession
 {
     private readonly string combatJson;
     private readonly CombatContent combatContent;

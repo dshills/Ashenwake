@@ -75,6 +75,11 @@ public sealed partial class CombatSession
 /// <summary>A deterministic baseline policy for headless comparisons; it is not a combat-balance acceptance oracle.</summary>
 public static class CombatProductionSmoke
 {
+    public static Position MovementDirection(Position from, Position target, Ashenwake.Core.Content.RoomDefinition room)
+    {
+        var destination = Waypoint(room, from, target);
+        return new(Math.Sign(destination.X - from.X), Math.Sign(destination.Z - from.Z));
+    }
     public static CombatCommand[] Commands(CombatView view, Ashenwake.Core.Content.RoomDefinition? room = null)
     {
         var player = view.Actors.First(a => a.Id == 1);

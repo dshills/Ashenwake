@@ -97,7 +97,7 @@ public sealed partial class CombatSession
     public CombatView View => new(Tick, _state.Preset,
         _state.Actors.OrderBy(a => a.Id).Select(a => new CombatActorView(a.Id, a.Position, a.Health, a.MaxHealth, a.Faction, a.Elite ? a.Role + " Elite" : a.Role,
             a.Pending is null ? 0 : (int)Math.Max(0, a.Pending.ResolveTick - Tick), a.State, a.Barrier,
-            a.Statuses.Select(s => new CombatStatusView(s.Id, s.SourceId, Math.Max(0, s.ExpiresTick - Tick), s.Stacks)).ToArray(), a.DefinitionId, a.Pending?.Target, TelegraphRadius(a), ActorVisible(a), (_state.ConsumedCorpseIds.Contains(a.Id) || !LeavesCorpse(a)))).ToArray(),
+            a.Statuses.Select(s => new CombatStatusView(s.Id, s.SourceId, Math.Max(0, s.ExpiresTick - Tick), s.Stacks)).ToArray(), a.DefinitionId, a.Pending?.Target, TelegraphRadius(a), ActorVisible(a), (_state.ConsumedCorpseIds.Contains(a.Id) || !LeavesCorpse(a)), _state.Campaign?.Actors.GetValueOrDefault(a.Id)?.Modifiers.ToArray() ?? [])).ToArray(),
         _state.Projectiles.Select(p => new CombatProjectileView(p.Id, p.Position, p.Target, p.SkillId, p.OwnerId)).ToArray(),
         _state.Areas.Select(a => new CombatAreaView(a.Id, a.Position, a.Radius, a.SkillId, Math.Max(0, a.ExpiresTick - Tick), a.OwnerId)).ToArray(),
         _state.Loot.ToArray(), _state.Inventory.ToArray(),
@@ -106,7 +106,7 @@ public sealed partial class CombatSession
         _content.Fragments.Select(f => new CombatFragmentView(f.Id, f.Name, f.Slot, f.Lineage, f.Resonance, f.Description, _state.Fragments.Values.Contains(f.Id))).ToArray(),
         _content.Mutations.Select(m => new CombatMutationView(m.Id, m.SkillId, m.Name, m.Description)).ToArray(), new SortedDictionary<string, long>(_state.Equipment, StringComparer.Ordinal),
         _state.Momentum, 100, Player.Barrier, _state.PotionCharges, Remaining(_state.PotionReadyTick), Remaining(_state.DodgeReadyTick),
-        _content.Fragments.Where(f => _state.Fragments.Values.Contains(f.Id)).Sum(f => f.Resonance), _effects.Count, _state.PeakEffects, _state.RejectedEffects, _content.ContentVersion, Discipline, ResourceName, _state.CapturedSkillId, Remaining(_state.CapturedUntil), FalseSilhouettes().ToArray(), _state.FragmentHeat, _state.SeismicCharge);
+        _content.Fragments.Where(f => _state.Fragments.Values.Contains(f.Id)).Sum(f => f.Resonance), _effects.Count, _state.PeakEffects, _state.RejectedEffects, _content.ContentVersion, Discipline, ResourceName, _state.CapturedSkillId, Remaining(_state.CapturedUntil), FalseSilhouettes().ToArray(), _state.FragmentHeat, _state.SeismicCharge, CampaignHazards().ToArray(), CampaignRule, _state.Campaign?.BossPhase ?? 0, _state.Campaign?.SuppressedFragmentId ?? "");
     private int Remaining(long until) => (int)Math.Clamp(until - Tick, 0, int.MaxValue);
     private CombatMutation? Mutation(string skill) => _content.Mutations.FirstOrDefault(m => m.Id == _state.Mutations.GetValueOrDefault(skill));
     private void Emit(string kind, int actor = 0, int target = 0, int amount = 0, string content = "", long action = 0, int depth = 0) => _events.Add(new(Tick, kind, actor, target, amount, content, action, depth));
@@ -116,6 +116,7 @@ public sealed partial class CombatSession
         var inputs = (commands ?? []).Take(65).ToArray();
         if (inputs.Length > 64 || inputs.Any(c => c is null)) throw new InvalidDataException("At most 64 nonnull combat commands per tick.");
         _events.Clear(); _triggers.Clear(); _processed = 0;
+        TickCampaign();
         TickProductionState();
         foreach (var actor in _state.Actors)
         {
@@ -203,6 +204,7 @@ public sealed partial class CombatSession
     }
     private void RemoveFragment(string id)
     {
+        if (_state.Campaign?.SuppressedFragmentId == id) { _state.Campaign.SuppressedFragmentId = ""; _state.Campaign.SuppressedUntil = Tick; }
         var effect = _content.Fragments.Single(f => f.Id == id).Effect;
         if (effect == "CaptureEcho") { _state.CapturedSkillId = ""; _state.CapturedUntil = Tick; }
         if (effect == "Heat") { _state.FragmentHeat = 0; _state.OverheatedActionId = 0; }
@@ -231,7 +233,7 @@ public sealed partial class CombatSession
         }
         Pay(skill, cost); _state.Cooldowns[skill.Id] = Tick + AttackDuration(skill.Cooldown);
         Player.Pending = new(skill.Id, target?.Id ?? 0, target?.Position ?? Player.Position, Tick + (mutation?.Id == "mutation.orruns_patience" ? 60 : AttackDuration(skill.Windup)), _state.NextActionId++, StartTick: Tick);
-        if (_state.FragmentHeat >= 100 && skill.Cost >= 20) { _state.FragmentHeat = 0; _state.OverheatedActionId = Player.Pending.ActionId; }
+        if (_state.FragmentHeat >= 100 && skill.Cost >= 20 && ActiveFragments().Any(f => f.Effect == "Heat")) { _state.FragmentHeat = 0; _state.OverheatedActionId = Player.Pending.ActionId; }
         Player.RecoveryUntil = Tick + (mutation?.Id == "mutation.orruns_patience" ? 60 : AttackDuration(skill.Windup)) + AttackDuration(skill.Recovery); Player.State = "Windup";
         Emit("AbilityStarted", 1, target?.Id ?? 0, content: skill.Id, action: Player.Pending.ActionId);
     }
@@ -259,6 +261,7 @@ public sealed partial class CombatSession
     private void Think(CombatActor actor)
     {
         if (actor.Statuses.Any(s => s.Id == "Terrified" && s.ExpiresTick > Tick)) { actor.Pending = null; actor.State = "Flee"; MoveActor(actor, new(actor.Position.X + Math.Sign(actor.Position.X - Player.Position.X) * 100, actor.Position.Z + Math.Sign(actor.Position.Z - Player.Position.Z) * 100)); return; }
+        if (ThinkCampaignActor(actor)) return;
         if (ThinkEncounterActor(actor)) return;
         if (Stunned(actor)) { actor.State = "Staggered"; actor.Pending = null; return; }
         if (actor.Pending is not null || actor.RecoveryUntil > Tick) { actor.State = actor.Pending is null ? "Recover" : "Windup"; return; }
@@ -267,6 +270,7 @@ public sealed partial class CombatSession
         if (target is null) { actor.State = "Acquire"; return; }
         var definition = _content.Enemies.FirstOrDefault(e => e.Id == actor.DefinitionId);
         int range = definition?.Range ?? (actor.Role == "Companion" ? 1600 : 3500), speed = definition?.Speed ?? 150;
+        if (HasElite(actor, "Hunter")) speed = Math.Min(500, speed * 5 / 4);
         if (actor.Statuses.Any(s => s.Id == "Chilled")) speed = speed * 2 / 3;
         long distance = Position.DistanceSquared(actor.Position, target.Position);
         if (distance > (long)range * range || !_spatial.HasLineOfSight(actor.Position, target.Position)) { actor.State = "Approach"; MoveActor(actor, Toward(actor.Position, target.Position, speed)); return; }
@@ -280,7 +284,7 @@ public sealed partial class CombatSession
         if ((Tick + actor.Id) % 3 != 0) return;
         int windup = definition?.Windup ?? 10;
         var skillId = actor.Faction == CombatFaction.Ally ? (actor.Role == "Companion" ? "summon.companion_bite" : "summon.spirit_bolt") : actor.Role == "Ranged" ? "enemy.projectile" : "enemy.strike";
-        if (actor.Elite && Tick % 180 < 30) skillId = "enemy.stormbound";
+        if (actor.Elite && _state.Campaign is null && Tick % 180 < 30) skillId = "enemy.stormbound";
         actor.FacingX = Math.Sign(target.Position.X - actor.Position.X); actor.FacingZ = Math.Sign(target.Position.Z - actor.Position.Z);
         actor.Pending = new(skillId, target.Id, target.Position, Tick + windup, _state.NextActionId++, actor.Generation);
         actor.RecoveryUntil = Tick + windup + (definition?.Recovery ?? 15); actor.State = "Windup";
@@ -288,7 +292,7 @@ public sealed partial class CombatSession
     }
     private void Resolve(CombatActor actor, CombatPending pending)
     {
-        if (ResolveProductionAbility(actor, pending) || ResolveEncounterAbility(actor, pending)) return;
+        if (ResolveCampaignAbility(actor, pending) || ResolveProductionAbility(actor, pending) || ResolveEncounterAbility(actor, pending)) return;
         var target = _state.Actors.FirstOrDefault(a => a.Id == pending.TargetId && a.Health > 0);
         var skill = _content.Skills.FirstOrDefault(s => s.Id == pending.SkillId);
         var mutation = actor.Id == 1 ? Mutation(pending.SkillId) : null;
@@ -361,12 +365,15 @@ public sealed partial class CombatSession
         }
         bool physical = hit.Family is DamageFamily.PhysicalSlash or DamageFamily.PhysicalPierce or DamageFamily.PhysicalCrush;
         int defense = physical ? target.Armor + (target.Id == 1 ? Equipped.Sum(i => i.Armor) + _state.ProgressionBuild.Armor + _state.ProgressionBuild.Defense * 100 + _state.SeismicCharge * 10 : 0) : target.Resistance;
+        defense += CampaignDefenseBonus(target);
         if (target.Id == 1 && HasManifestation("manifestation.stone_memory") && _state.MemoryUntilTick > Tick && _state.MemoryAttackId == hit.ContentId) defense += _state.MemoryStacks * 1000;
         if (target.Id == 1 && AshcleaverActive && _state.Build.AshcleaverEvolution == "Orrun") defense += 500;
         if (target.Id == 1 && Discipline == "Warden" && _state.ThreatFamily == hit.Family && _state.ThreatUntil > Tick) defense += _state.ThreatStacks * 500;
         if (target.Id == 1 && Player.Pending?.SkillId == "skill.shield_breaker" && Mutation("skill.shield_breaker")?.Id == "mutation.orruns_patience") defense += 1500;
         int bonus = hit.OwnerId == 1 && source?.Id == 1 && !hit.Dot && !hit.Reflected ? Equipped.Sum(i => i.Damage) + _state.ProgressionBuild.FlatDamage + (AshcleaverActive ? _state.Build.TemperLevel * 2 : 0) : 0;
         int increased = hit.OwnerId == 1 ? _state.ProgressionBuild.Offense * 200 + (Discipline == "Arcanist" ? _state.Momentum * 40 : 0) : 0;
+        increased += CampaignDamageBonus(source);
+        if (StormOvercharged && hit.OwnerId == 1 && hit.Depth > 0) increased += 2500;
         if (source?.Statuses.Any(s => s.Id == "Cursed") == true) increased -= 2000;
         if (target.Statuses.Any(s => s.Id == "Marked") && _content.Skills.FirstOrDefault(s => s.Id == hit.ContentId)?.Behavior == "ConsumeMarked") increased += 10000;
         var result = DamageRules.Resolve(new(hit.Damage, bonus, IncreasedBasisPoints: increased, Critical: critical, Family: hit.Family, DefenseBasisPoints: defense,
@@ -408,11 +415,11 @@ public sealed partial class CombatSession
         ProductionHitEffects(hit, source, target, healthDamage, critical);
         if (target.Health <= 0 && !target.DeathProcessed) Kill(target, hit);
     }
-    private IEnumerable<CombatFragment> ActiveFragments() => _content.Fragments.Where(f => _state.Fragments.Values.Contains(f.Id));
+    private IEnumerable<CombatFragment> ActiveFragments() => _content.Fragments.Where(f => _state.Fragments.Values.Contains(f.Id) && !FragmentSuppressed(f.Id));
     private void ApplyStatus(CombatActor target, string id, Hit hit, string fragmentId)
     {
         if (hit.Depth > MaxChainDepth) { Budget(hit.ActionId); return; }
-        if (id is "Staggered" or "Frozen" or "Terrified" or "Rooted" && target.Role is "BellSaint" or "Beast" or "Bell" or "Anchor") { Emit("StatusResisted", hit.SourceId, target.Id, content: id, action: hit.ActionId); return; }
+        if (id is "Staggered" or "Frozen" or "Terrified" or "Rooted" && (target.Role is "BellSaint" or "Beast" or "Bell" or "Anchor" || HasElite(target, "Hunter"))) { Emit("StatusResisted", hit.SourceId, target.Id, content: id, action: hit.ActionId); return; }
         int duration = id switch { "Staggered" => target.Elite ? 8 : 18, "Frozen" => 30, "Terrified" => 45, "Rooted" => 45, _ => 90 };
         var status = target.Statuses.FirstOrDefault(s => s.Id == id && s.OwnerId == hit.OwnerId);
         if (status is null)
@@ -425,13 +432,14 @@ public sealed partial class CombatSession
         // Refresh ownership is stable: the first source retains kill credit until expiration.
         status.ExpiresTick = Tick + duration;
         if (id == "Chilled" && status.Stacks >= 3) { target.Statuses.Remove(status); ApplyStatus(target, "Frozen", hit with { Depth = hit.Depth + 1 }, fragmentId); return; }
-        if (id is "Staggered" or "Frozen" or "Terrified") { target.Pending = null; target.State = "Staggered"; }
+        if (id is "Staggered" or "Frozen" or "Terrified") { target.Pending = null; target.State = "Staggered"; _state.Campaign?.Hazards.RemoveAll(h => h.SourceId == target.Id); }
         Emit("StatusApplied", hit.SourceId, target.Id, status.Stacks, id, hit.ActionId, hit.Depth);
     }
     private void Kill(CombatActor target, Hit hit)
     {
+        if (TryCampaignPhaseTransition(target)) return;
         target.DeathProcessed = true; target.Pending = null; target.State = "Dead"; target.MoveX = 0; target.MoveZ = 0;
-        Emit("EntityKilled", hit.OwnerId, target.Id, content: hit.ContentId, action: hit.ActionId, depth: hit.Depth);
+        Emit(_state.Campaign?.Actors.GetValueOrDefault(target.Id)?.IsEcho == true ? "EliteCopyKilled" : "EntityKilled", hit.OwnerId, target.Id, content: hit.ContentId, action: hit.ActionId, depth: hit.Depth);
         if (target.Id == 1) _state.BufferedCommand = null;
         if (target.Role == "Rusher" && hit.ContentId != "enemy.detonate")
         {
@@ -439,7 +447,8 @@ public sealed partial class CombatSession
             else Budget(hit.ActionId);
         }
         if (target.Faction != CombatFaction.Enemy) return;
-        if (_state.Loot.Count < 512 && !_state.ResurrectedActorIds.Contains(target.Id))
+        CampaignDeath(target);
+        if (_state.Loot.Count < 512 && !_state.ResurrectedActorIds.Contains(target.Id) && CampaignRewardEligible(target))
         {
             var rng = _state.Rng.Loot;
             var eligibleItems = _content.Items.Where(i => i.Id != "item.ashcleaver").ToArray();
@@ -449,6 +458,7 @@ public sealed partial class CombatSession
             var item = new CombatItem(_state.NextObjectId++, definition.Id, definition.Name, definition.Slot, rarity, definition.Damage + (definition.Damage > 0 ? roll : 0), definition.Armor + (definition.Armor > 0 ? roll * 50 : 0), definition.CriticalBasisPoints + roll * 30);
             _state.Rng = _state.Rng with { Loot = rng }; _state.Loot.Add(new(item.Id, target.Position, item)); Emit("LootDropped", hit.OwnerId, target.Id, (int)item.Id, definition.Id, hit.ActionId, hit.Depth);
         }
+        if (!CampaignRewardEligible(target)) return;
         OnProductionKill(target, hit);
         if (!hit.Dot || hit.OwnerId != 1) return;
         foreach (var fragment in ActiveFragments().Where(f => f.Trigger == "DotDeath"))
@@ -492,7 +502,7 @@ public sealed partial class CombatSession
             Require((actor.Health == 0) == actor.DeathProcessed, "death flag");
             Require(actor.RecoveryUntil >= 0 && actor.RecoveryUntil <= Tick + 3000 && actor.InvulnerableUntil >= 0 && actor.InvulnerableUntil <= Tick + 3000 && actor.ExpiresTick >= 0 && actor.ExpiresTick <= Tick + 3000, "actor timers");
             Require(actor.Statuses is not null && actor.Statuses.Count <= 32 && actor.Statuses.All(s => s is not null && StatusIds.Contains(s.Id) && s.Stacks is >= 1 and <= 3 && s.SourceGeneration is >= 0 and <= 2 && s.Depth is >= 0 and <= MaxChainDepth && s.SourceId > 0 && s.OwnerId > 0 && s.ActionId > 0 && s.NextTick >= 0 && s.NextTick <= Tick + 3000 && s.ExpiresTick >= 0 && s.ExpiresTick <= Tick + 3000 && s.ActionId < _state.NextActionId && s.SourceId < _state.NextActorId && (s.FragmentId == "" || _content.Fragments.Any(f => f.Id == s.FragmentId))), "statuses");
-            if (actor.Pending is { } p) Require(p.ResolveTick >= Tick && p.ResolveTick <= Tick + 3000 && p.StartTick >= 0 && p.StartTick <= Tick && p.ChargeTicks is >= 0 and <= 60 && p.ActionId > 0 && p.ActionId < _state.NextActionId && p.Depth is >= 0 and <= MaxChainDepth && _spatial.CanOccupy(p.Target, 0) && (p.TargetId == 0 || _state.Actors.Any(a => a.Id == p.TargetId)) && (actor.Id == 1 ? _content.Skills.Any(s => s.Id == p.SkillId) : actor.Faction == CombatFaction.Ally ? p.SkillId is "summon.spirit_bolt" or "summon.companion_bite" : (p.SkillId is "enemy.projectile" or "enemy.strike" or "enemy.stormbound" || IsEncounterSkill(p.SkillId))), "pending ability");
+            if (actor.Pending is { } p) Require(p.ResolveTick >= Tick && p.ResolveTick <= Tick + 3000 && p.StartTick >= 0 && p.StartTick <= Tick && p.ChargeTicks is >= 0 and <= 60 && p.ActionId > 0 && p.ActionId < _state.NextActionId && p.Depth is >= 0 and <= MaxChainDepth && _spatial.CanOccupy(p.Target, 0) && (p.TargetId == 0 || _state.Actors.Any(a => a.Id == p.TargetId)) && (actor.Id == 1 ? _content.Skills.Any(s => s.Id == p.SkillId) : actor.Faction == CombatFaction.Ally ? p.SkillId is "summon.spirit_bolt" or "summon.companion_bite" : (p.SkillId is "enemy.projectile" or "enemy.strike" or "enemy.stormbound" || IsEncounterSkill(p.SkillId) || CampaignSkill(p.SkillId))), "pending ability");
         }
         Require(_state.Projectiles!.Count <= MaxProjectiles && _state.Areas!.Count <= MaxAreas && _state.Loot!.Count <= 512 && _state.Inventory!.Count <= 512, "object budgets");
         Require(_state.Loot.All(l => l is not null && l.Item is not null && l.Id == l.Item.Id && _spatial.CanOccupy(l.Position, 0)), "loot");
@@ -501,9 +511,9 @@ public sealed partial class CombatSession
         Require(_state.Equipment!.Values.Distinct().Count() == _state.Equipment.Count, "item equipped more than once");
         foreach (var equipped in _state.Equipment!) Require(_state.Inventory.Any(i => i.Id == equipped.Value && CanEquip(i, equipped.Key)), "equipped item");
         foreach (var fragment in _state.Fragments!) Require(_content.Fragments.Any(f => f.Id == fragment.Value && f.Slot.ToString() == fragment.Key), "fragment slot");
-        Require(ActiveFragments().Any(f => f.Effect == "Heat") || _state.FragmentHeat == 0 && _state.OverheatedActionId == 0, "heat requires its active fragment");
-        Require(ActiveFragments().Any(f => f.Effect == "CaptureEcho") || _state.CapturedSkillId == "", "captured echo requires its active fragment");
-        Require(ActiveFragments().Any(f => f.Effect == "SeismicCharge") || _state.SeismicCharge == 0, "seismic charge requires its active fragment");
+        Require(_content.Fragments.Any(f => f.Effect == "Heat" && _state.Fragments.Values.Contains(f.Id)) || _state.FragmentHeat == 0 && _state.OverheatedActionId == 0, "heat requires its equipped fragment");
+        Require(_content.Fragments.Any(f => f.Effect == "CaptureEcho" && _state.Fragments.Values.Contains(f.Id)) || _state.CapturedSkillId == "", "captured echo requires its equipped fragment");
+        Require(_content.Fragments.Any(f => f.Effect == "SeismicCharge" && _state.Fragments.Values.Contains(f.Id)) || _state.SeismicCharge == 0, "seismic charge requires its equipped fragment");
         foreach (var mutation in _state.Mutations!) Require(_content.Mutations.Any(m => m.Id == mutation.Value && m.SkillId == mutation.Key), "mutation");
         foreach (var cooldown in _state.Cooldowns!) Require((_content.Skills.Any(s => s.Id == cooldown.Key) || _content.Fragments.Any(f => f.Id == cooldown.Key) || cooldown.Key == "effect.ashcleaver_wave") && cooldown.Value >= 0 && cooldown.Value <= Tick + 3000, "cooldown");
         Require(_state.NextActorId > _state.Actors.Max(a => a.Id) && _state.NextActorId <= 1000000000 && _state.NextObjectId > 0 && _state.NextObjectId <= 1000000000000 && _state.NextActionId > 0 && _state.NextActionId <= 1000000000000, "identity counters");
@@ -515,5 +525,6 @@ public sealed partial class CombatSession
         Require(_state.ResourceActions is not null && _state.ResourceActions.Count <= 512 && _state.ResourceActions.All(p => p.Key > 0 && p.Key < _state.NextActionId && p.Value >= Tick - 1 && p.Value <= Tick + 300), "resource action receipts");
         Require(_state.ConsumedCorpseIds is not null && _state.ConsumedCorpseIds.Count <= MaxActors && _state.ConsumedCorpseIds.All(id => _state.Actors.Any(a => a.Id == id && a.Faction == CombatFaction.Enemy)) && _state.TemporaryLife is >= 0 and <= 60 && _state.TemporaryLifeUntil >= 0 && _state.TemporaryLifeUntil <= Tick + 3000 && _state.CapturedSkillId is "" or "skill.echo_storm" && _state.CapturedUntil >= 0 && _state.CapturedUntil <= Tick + 3000 && _state.FragmentHeat is >= 0 and <= 100 && _state.SeismicCharge is >= 0 and <= 90 && _state.ThreatStacks is >= 0 and <= 4 && _state.ThreatUntil >= 0 && _state.ThreatUntil <= Tick + 3000 && _state.OverheatedActionId >= 0 && _state.OverheatedActionId < _state.NextActionId && (_state.MinionTargetId == 0 || _state.Actors.Any(a => a.Id == _state.MinionTargetId && a.Faction == CombatFaction.Enemy)) && (_state.ThreatFamily is null || Enum.IsDefined(_state.ThreatFamily.Value)), "production runtime state");
         if (_state.BufferedCommand is { } command) Require(command.Kind == CombatCommandKind.Cast && command.ActorId == 1 && _content.Skills.Any(s => s.Id == command.SkillId), "buffered input");
+        ValidateCampaignSnapshot();
     }
 }

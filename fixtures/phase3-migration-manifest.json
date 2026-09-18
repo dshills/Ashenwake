@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "source": "Frozen Phase 3 exact-index validation build, actual Vanguard return-to-hub archive",
+  "files": {
+    "phase3-production-hub.json": "9D2FC82B06CDFA6964000FA792316D44317ACFAE433A85F81F45523E254CD4ED",
+    "combat-phase3.json": "410C7ADB851AEEA8614AEC7C1235BA0192E3C9B50C44174510C9527F69B8DE58",
+    "progression-phase3.json": "21EF420C769539E99C4D37457964A656561AC0380FDEC2204E8DB833FF2C6710",
+    "adventure-phase3.json": "5209578AEB626B320F73A36B82B7EE64BCAFD66AC2827DFA4AC885575A651DC1"
+  }
+}
