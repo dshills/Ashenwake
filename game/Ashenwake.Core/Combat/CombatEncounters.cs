@@ -10,8 +10,8 @@ public sealed partial class CombatSession
     public CombatBuildModifiers Build => _state.Build with { };
     public static CombatSession CreateEncounter(string contentJson, ulong seed, string encounterId, CombatSnapshot? previous = null, bool restoreAtAnchor = false)
     {
-        if (encounterId == "" || !EncounterIds.Contains(encounterId)) throw new ArgumentException("Unknown slice encounter.", nameof(encounterId));
         var original = previous is null ? Create(contentJson, seed) : Restore(contentJson, previous);
+        if (encounterId == "" || !original.KnownEncounter(encounterId)) throw new ArgumentException("Unknown combat encounter.", nameof(encounterId));
         var state = original.Capture() with { EncounterId = encounterId, Preset = "standard" };
         var player = state.Actors.Single(a => a.Id == 1);
         if (player.Health <= 0 && encounterId != "hub" && !restoreAtAnchor) throw new InvalidOperationException("A dead character must return to an anchor.");
@@ -21,7 +21,9 @@ public sealed partial class CombatSession
             // Adventure reward ownership is enforced by its coordinator, not the diagnostic arena's unlocked collection.
             var starterIds = state.Equipment.Values.ToHashSet(); state.Inventory.RemoveAll(i => !starterIds.Contains(i.Id));
         }
-        state.Actors.Clear(); state.Actors.Add(player); state.Projectiles.Clear(); state.Areas.Clear(); state.Loot.Clear(); state.ResurrectedActorIds.Clear();
+        state.Actors.Clear(); state.Actors.Add(player); state.Projectiles.Clear(); state.Areas.Clear(); state.Loot.Clear(); state.ResurrectedActorIds.Clear(); state.ConsumedCorpseIds.Clear();
+        if (state.TemporaryLife > 0) { player = player with { MaxHealth = Math.Max(1, player.MaxHealth - state.TemporaryLife) }; player.Health = Math.Min(player.Health, player.MaxHealth); state.Actors[0] = player; state.TemporaryLife = 0; }
+        state.MinionTargetId = 0;
         state.BufferedCommand = null; state.MemoryAttackId = ""; state.MemoryStacks = 0; state.MemoryUntilTick = state.Tick;
         player.Pending = null; player.Statuses.Clear(); player.Barrier = 0; player.MoveX = 0; player.MoveZ = 0;
         player.Position = original._content.Room.PlayerSpawn; player.InvulnerableUntil = state.Tick; player.RecoveryUntil = state.Tick; player.State = "Idle";
@@ -56,6 +58,7 @@ public sealed partial class CombatSession
                 session.AddEncounterActor("enemy.broken_bell", new(-5000, -5500));
                 session.AddEncounterActor("enemy.broken_bell", new(5000, 5500)); break;
         }
+        session.PopulateAuthoredEncounter(encounterId);
         session.ValidateSnapshot(); return session;
     }
     private CombatActor AddEncounterActor(string definitionId, Position position, bool corpse = false)
@@ -80,12 +83,13 @@ public sealed partial class CombatSession
     public void ApplyAdventureBuild(CombatBuildModifiers modifiers)
     {
         ValidateBuild(modifiers);
-        if (_state.Build.Manifestation != modifiers.Manifestation) { _state.MemoryAttackId = ""; _state.MemoryStacks = 0; _state.MemoryUntilTick = Tick; }
+        if (_state.Build.Manifestation != modifiers.Manifestation || _state.Build.SecondaryManifestation != modifiers.SecondaryManifestation) { _state.MemoryAttackId = ""; _state.MemoryStacks = 0; _state.MemoryUntilTick = Tick; }
         _state.Build = modifiers with { };
     }
+    private bool HasManifestation(string id) => _state.Build.Manifestation == id || _state.Build.SecondaryManifestation == id;
     private static void ValidateBuild(CombatBuildModifiers modifiers)
     {
-        if (modifiers is null || modifiers.Manifestation is not ("" or "manifestation.burning_blood" or "manifestation.stone_memory") || modifiers.AshcleaverStacks is < 0 or > 5 || modifiers.TemperLevel is < 0 or > 5 || modifiers.AshcleaverEvolution is not ("" or "Serath" or "Orrun") || modifiers.AshcleaverEvolution != "" && !modifiers.AshcleaverAwakened)
+        if (modifiers is null || modifiers.SecondaryManifestation is not ("" or "manifestation.burning_blood" or "manifestation.stone_memory" or "manifestation.whispering_shadow" or "manifestation.voracious_renewal") || modifiers.SecondaryManifestation != "" && modifiers.SecondaryManifestation == modifiers.Manifestation || modifiers.Manifestation is not ("" or "manifestation.burning_blood" or "manifestation.stone_memory" or "manifestation.whispering_shadow" or "manifestation.voracious_renewal") || modifiers.AshcleaverStacks is < 0 or > 5 || modifiers.TemperLevel is < 0 or > 5 || modifiers.AshcleaverEvolution is not ("" or "Serath" or "Orrun") || modifiers.AshcleaverEvolution != "" && !modifiers.AshcleaverAwakened)
             throw new InvalidDataException("Invalid adventure combat modifiers.");
     }
     private bool AshcleaverActive => _state.Build.AshcleaverEquipped && Equipped.Any(i => i.Slot == "MainHand" && i.DefinitionId == "item.ashcleaver");
@@ -111,7 +115,7 @@ public sealed partial class CombatSession
             "Rusher" => "enemy.detonate",
             "Beast" => "boss.beast_rush",
             "Bell" => "boss.bell_ring",
-            _ => _state.EncounterId == "bell_saint.2" && _state.ResurrectedActorIds.Count < 2 && _state.Actors.Any(a => a.Health == 0 && a.Role == "Melee" && !_state.ResurrectedActorIds.Contains(a.Id)) ? "boss.resurrect" : actor.SpecialCycle % 2 == 0 ? "boss.chain" : "boss.sonic"
+            _ => _state.EncounterId == "bell_saint.2" && _state.ResurrectedActorIds.Count < 2 && _state.Actors.Any(a => a.Health == 0 && a.Role == "Melee" && !_state.ResurrectedActorIds.Contains(a.Id) && !_state.ConsumedCorpseIds.Contains(a.Id)) ? "boss.resurrect" : actor.SpecialCycle % 2 == 0 ? "boss.chain" : "boss.sonic"
         };
         if (actor.Role == "Support")
         {
@@ -140,7 +144,7 @@ public sealed partial class CombatSession
                 }
                 break;
             case "boss.resurrect":
-                var corpse = _state.Actors.Where(a => a.Health == 0 && a.Role == "Melee" && !_state.ResurrectedActorIds.Contains(a.Id)).OrderBy(a => a.Id).FirstOrDefault();
+                var corpse = _state.Actors.Where(a => a.Health == 0 && a.Role == "Melee" && !_state.ResurrectedActorIds.Contains(a.Id) && !_state.ConsumedCorpseIds.Contains(a.Id)).OrderBy(a => a.Id).FirstOrDefault();
                 if (corpse is not null && _state.ResurrectedActorIds.Count < 2)
                 {
                     _state.ResurrectedActorIds.Add(corpse.Id); corpse.Health = corpse.MaxHealth / 2; corpse.DeathProcessed = false; corpse.Statuses.Clear(); corpse.State = "Acquire";
@@ -166,11 +170,11 @@ public sealed partial class CombatSession
     {
         if (target.Id == 1 && healthDamage > 0)
         {
-            if (_state.Build.Manifestation == "manifestation.stone_memory")
+            if (HasManifestation("manifestation.stone_memory"))
             {
                 _state.MemoryStacks = _state.MemoryUntilTick > Tick && _state.MemoryAttackId == hit.ContentId ? Math.Min(3, _state.MemoryStacks + 1) : 1;
                 _state.MemoryAttackId = hit.ContentId; _state.MemoryUntilTick = Tick + 150;
-                Emit("ManifestationTriggered", 1, 1, _state.MemoryStacks, _state.Build.Manifestation, hit.ActionId);
+                Emit("ManifestationTriggered", 1, 1, _state.MemoryStacks, "manifestation.stone_memory", hit.ActionId);
             }
             foreach (var fragment in ActiveFragments().Where(f => f.Trigger == "DamageTaken" && _state.Cooldowns.GetValueOrDefault(f.Id) <= Tick))
             {
@@ -178,23 +182,27 @@ public sealed partial class CombatSession
                 Emit("FragmentTriggered", 1, 1, 12, fragment.Id, hit.ActionId, hit.Depth + 1);
             }
         }
-        if (target.Id == 1 && healthDamage > 0 && physical && !hit.Reflected && _state.Build.Manifestation == "manifestation.burning_blood" && _triggers.Add($"{hit.ActionId}:burning_blood"))
+        if (target.Id == 1 && healthDamage > 0 && physical && !hit.Reflected && HasManifestation("manifestation.burning_blood") && _triggers.Add($"{hit.ActionId}:burning_blood"))
         {
             foreach (var hostile in Hostiles(Player, Player.Position, 1800)) Enqueue(new(1, 1, hostile.Id, 8, DamageFamily.Fire, "effect.burning_blood", hit.ActionId, hit.Depth + 1, Reflected: true));
-            Emit("ManifestationTriggered", 1, 1, content: _state.Build.Manifestation, action: hit.ActionId);
+            Emit("ManifestationTriggered", 1, 1, content: "manifestation.burning_blood", action: hit.ActionId);
         }
         if (source?.Id != 1 || hit.Dot || hit.Reflected || !_content.Skills.Any(s => s.Id == hit.ContentId)) return;
         if (!AshcleaverActive) return;
         if (_state.Build.AshcleaverEvolution == "Serath" && healthDamage > 0)
         {
-            int healing = Math.Min(Math.Max(1, healthDamage / 10), Player.MaxHealth - Player.Health); Player.Health += healing;
-            Emit("Healed", 1, 1, healing, "evolution.serath", hit.ActionId);
+            int healing = Math.Min(Math.Max(1, healthDamage / 10), Player.MaxHealth - Player.Health); Player.Health += HealingAmount(healing);
+            Emit("Healed", 1, 1, HealingAmount(healing), "evolution.serath", hit.ActionId);
         }
         if (_state.Build.AshcleaverEvolution == "Orrun" && healthDamage > 0) { Player.Barrier = Math.Min(200, Player.Barrier + 4); Emit("BarrierGranted", 1, 1, 4, "evolution.orrun", hit.ActionId); }
         if (!_state.Build.AshcleaverAwakened || _state.Build.AshcleaverStacks < 5 || _state.Cooldowns.GetValueOrDefault("effect.ashcleaver_wave") > Tick) return;
         _state.Cooldowns["effect.ashcleaver_wave"] = Tick + 30;
         if (_state.Projectiles.Count >= MaxProjectiles) { Budget(hit.ActionId); return; }
-        _state.Projectiles.Add(new(_state.NextObjectId++, 1, 1, source.Position, target.Position, target.Id, "effect.ashcleaver_wave", 28, DamageFamily.Fire, Tick + 90, hit.ActionId, hit.Depth + 1));
+        if (_state.Build.AshcleaverEvolution == "Orrun")
+        {
+            foreach (var enemy in Hostiles(source, target.Position, 2600)) Enqueue(new(1, 1, enemy.Id, 36, DamageFamily.PhysicalCrush, "effect.molten_seismic", hit.ActionId, hit.Depth + 1, Reflected: true, Status: "Burning"));
+        }
+        else _state.Projectiles.Add(new(_state.NextObjectId++, 1, 1, source.Position, target.Position, target.Id, "effect.ashcleaver_wave", 28, DamageFamily.Fire, Tick + 90, hit.ActionId, hit.Depth + 1));
         Emit("FlameWaveCreated", 1, target.Id, content: "item.ashcleaver", action: hit.ActionId, depth: hit.Depth + 1);
     }
 }

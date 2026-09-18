@@ -13,6 +13,9 @@ static int Run(string[] args)
         if (args.Length < 2) return Usage();
         if (args[0] == "sandbox") return Ashenwake.Tooling.SandboxCommands.Run(args);
         if (args[0] == "adventure") return Ashenwake.Tooling.AdventureCommands.Run(args);
+        if (args[0] == "authoring") return Ashenwake.Tooling.AuthoringCommands.Run(args);
+        if (args[0] == "balance") return Ashenwake.Tooling.BalanceCommands.Run(args);
+        if (args[0] == "production") return Ashenwake.Tooling.ProductionCommands.Run(args);
         if (args[0] == "item") return Ashenwake.Tooling.InspectionCommands.Item(args);
         if (args[0] == "content" && args[1] == "refs") return Ashenwake.Tooling.InspectionCommands.References(args);
         if (args[0] == "content" && args[1] is "validate" or "compile")
@@ -125,6 +128,6 @@ static void Write(string path, string contents)
 }
 static int Usage()
 {
-    Console.Error.WriteLine("aw content validate [source] | content compile [source] [output] | demo run [output-dir] | replay run <file> | benchmark run [output] | sandbox validate|compile|demo|replay|benchmark");
+    Console.Error.WriteLine("aw content validate|compile|refs | item show <id> | demo run | replay run <file> | benchmark run | sandbox validate|compile|demo|builds|replay|benchmark | adventure validate|compile|demo|replay|benchmark | production validate|compile|demo|replay|benchmark|migrate-phase2 | authoring validate|templates|pseudo | balance run|loot");
     return 2;
 }

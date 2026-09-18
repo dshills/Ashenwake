@@ -45,7 +45,9 @@ public sealed class CombatArchiveTests
             CombatSaveStore.Write(path, Content, session.Capture());
             Assert.Equal(initial, CombatSession.Restore(Content, CombatSaveStore.Read(File.ReadAllText(path + ".bak"), Content)).StateHash);
             var newer = JsonData.Read<CombatSave>(File.ReadAllText(path)) with { SchemaVersion = 99 };
-            var future = JsonData.Write(newer);
+            var futureNode = System.Text.Json.Nodes.JsonNode.Parse(JsonData.Write(newer))!;
+            futureNode["futureMetadata"] = "unknown";
+            var future = futureNode.ToJsonString();
             File.WriteAllText(path, future);
             Assert.Throws<SaveCompatibilityException>(() => CombatSaveStore.Load(path, Content));
             Assert.Throws<SaveCompatibilityException>(() => CombatSaveStore.Write(path, Content, session.Capture()));

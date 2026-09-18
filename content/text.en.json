@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "locale": "en",
+  "messages": {
+    "production.title": { "other": "Greyhaven Workshop" },
+    "production.level": { "other": "Level {level} · {discipline}" },
+    "production.materials": { "other": "{count} materials", "one": "{count} material" },
+    "production.discipline": { "other": "Discipline" },
+    "production.equipment": { "other": "Equipment" },
+    "production.mastery": { "other": "Mastery and mutations" },
+    "production.crafting": { "other": "Crafting" },
+    "production.profile": { "other": "Discoveries and Greyhaven" },
+    "production.confirm_graft": { "other": "This graft permanently changes {item}. Confirm {branch}." },
+    "production.respec": { "other": "Respec · {count} materials", "one": "Respec · {count} material" },
+    "production.retrain": { "other": "Retrain as {discipline}" },
+    "production.saved": { "other": "Character and local profile saved." }
+  }
+}

@@ -20,6 +20,7 @@ public partial class Sandbox : Node3D
     public Action? SaveOverride { get; set; }
     public Action? LoadOverride { get; set; }
     public Action? ReplayOverride { get; set; }
+    public Action? InventoryOverride { get; set; }
     public bool AutomaticStep { get; set; }
     private bool _campaignMode;
     private readonly List<Control> _sandboxControls = [];
@@ -83,6 +84,9 @@ public partial class Sandbox : Node3D
         _subtitleLabel.Text = "GREYHAVEN  /  BASILICA OF LAST MERCY";
     }
     public void Notify(string text) => Message(text);
+    public void SetPaused(bool paused) => _clock.Paused = paused;
+    private void ShowInventory()
+    { if (InventoryOverride is not null) InventoryOverride(); else TogglePanel(_inventoryPanel); }
 
     public void SetSession(CombatSession session)
     {
@@ -149,7 +153,7 @@ public partial class Sandbox : Node3D
         if (_smoke || _session is null) return;
         try
         {
-            if (input.IsActionPressed("aw_inventory")) { TogglePanel(_inventoryPanel); return; }
+            if (input.IsActionPressed("aw_inventory")) { ShowInventory(); return; }
             if (input.IsActionPressed("aw_settings")) { TogglePanel(_settingsPanel); return; }
             if (input.IsActionPressed("aw_pause")) { _clock.Paused = !_clock.Paused; return; }
             if (input.IsActionPressed("aw_step")) { _clock.SingleStep(StepCombat); return; }
@@ -158,6 +162,9 @@ public partial class Sandbox : Node3D
             if (input.IsActionPressed("aw_replay")) { VerifyReplay(); return; }
             if (input.IsActionPressed("aw_reset")) { Reset(_view.Preset); return; }
             if (input.IsActionPressed("aw_target")) { CycleTarget(); return; }
+            if (!_clock.Paused && _view.Skills.Any(s => s.Mutation == "mutation.orruns_patience") &&
+                (input.IsActionReleased("aw_skill2") || input is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: false }))
+            { Enqueue(new(CombatCommandKind.ReleaseCharge)); return; }
             if (input is InputEventMouseButton { Pressed: true } mouse)
             {
                 if (mouse.ButtonIndex is MouseButton.WheelUp or MouseButton.WheelDown)
@@ -172,6 +179,14 @@ public partial class Sandbox : Node3D
             if (input.IsActionPressed("aw_dodge")) Enqueue(new(CombatCommandKind.Dodge, X: _moveX == 0 && _moveZ == 0 ? 1 : _moveX, Z: _moveZ));
             if (input.IsActionPressed("aw_potion")) Enqueue(new(CombatCommandKind.Potion));
             if (input.IsActionPressed("aw_pickup")) PickupNearest();
+            if (input.IsActionPressed("aw_corpse"))
+            {
+                var player = _view.Actors.Single(a => a.Id == 1);
+                var corpse = _view.Actors.Where(a => a.Health == 0 && a.Faction == CombatFaction.Enemy && !a.CorpseConsumed)
+                    .OrderBy(a => DistanceSquared(a.Position, player.Position)).ThenBy(a => a.Id).FirstOrDefault();
+                if (corpse is not null) Enqueue(new(CombatCommandKind.ConsumeCorpse, TargetId: corpse.Id));
+            }
+            if (input.IsActionPressed("aw_echo")) Enqueue(new(CombatCommandKind.CastEcho, TargetId: _target));
             if (input.IsActionPressed("aw_stop")) { Enqueue(new(CombatCommandKind.Stop)); _moveX = _moveZ = 0; }
         }
         catch (Exception ex) { Message(ex.Message); GD.PushWarning(ex.Message); }
@@ -239,8 +254,15 @@ public partial class Sandbox : Node3D
             SynchronizeActor(actor.Id, name, role.ToLowerInvariant(), actor.Position.X, actor.Position.Z,
                 actor.Health, actor.MaxHealth, string.Join(" / ", actor.Statuses.Select(s => s.Id)),
                 actor.TelegraphTicks > 0 && actor.TelegraphRadius == 0, actor.Faction != CombatFaction.Enemy);
+            _actors[actor.Id].Root.Visible &= actor.Visible;
         }
         BeginEffects();
+        if (_view.Discipline == "Gravecaller" || _manifestations.Contains("manifestation.voracious_renewal"))
+            foreach (var corpse in _view.Actors.Where(a => a.Health == 0 && a.Faction == CombatFaction.Enemy && !a.CorpseConsumed))
+                PresentEffect($"corpse{corpse.Id}", corpse.Position.X, corpse.Position.Z, .45f, new Color(.6f, .4f, .8f, .6f));
+        if (_view.Illusions is not null)
+            for (int i = 0; i < _view.Illusions.Count; i++)
+                PresentEffect($"illusion{i}", _view.Illusions[i].X, _view.Illusions[i].Z, .3f, new Color(.65f, .55f, .8f, .3f), silhouette: true);
         foreach (var actor in _view.Actors.Where(a => a.Health > 0 && a.TelegraphTicks > 0 && a.TelegraphRadius > 0 && a.TelegraphPosition is not null))
             PresentEffect($"t{actor.Id}", actor.TelegraphPosition!.Value.X, actor.TelegraphPosition.Value.Z, actor.TelegraphRadius * .001f, new Color(1, .18f, .12f, .35f));
         foreach (var projectile in _view.Projectiles)
@@ -251,7 +273,7 @@ public partial class Sandbox : Node3D
             PresentEffect($"l{loot.Id}", loot.Position.X, loot.Position.Z, .4f,
                 loot.Item.Rarity == "Rare" ? new Color(.64f, .4f, 1, .9f) : new Color(1, .8f, .3f, .9f));
         EndEffects();
-        if (!_view.Actors.Any(a => a.Id == _target && a.Health > 0)) _target = NearestEnemy()?.Id ?? 0;
+        if (!_view.Actors.Any(a => a.Id == _target && a.Health > 0 && a.Visible)) _target = NearestEnemy()?.Id ?? 0;
     }
 
     private void Enqueue(CombatCommand command) => _pending.Add(command);
@@ -267,16 +289,16 @@ public partial class Sandbox : Node3D
         if (index < _view.Skills.Count)
         { if (_target == 0) _target = NearestEnemy()?.Id ?? 0; Enqueue(new(CombatCommandKind.Cast, SkillId: _view.Skills[index].Id, TargetId: _target)); }
     }
-    private CombatActorView? NearestEnemy() => _view.Actors.Where(a => a.Faction == CombatFaction.Enemy && a.Health > 0)
+    private CombatActorView? NearestEnemy() => _view.Actors.Where(a => a.Faction == CombatFaction.Enemy && a.Health > 0 && a.Visible)
         .OrderBy(a => DistanceSquared(a.Position, _view.Actors.Single(p => p.Id == 1).Position)).ThenBy(a => a.Id).FirstOrDefault();
     private void CycleTarget()
     {
-        var ids = _view.Actors.Where(a => a.Faction == CombatFaction.Enemy && a.Health > 0).Select(a => a.Id).Order().ToArray();
+        var ids = _view.Actors.Where(a => a.Faction == CombatFaction.Enemy && a.Health > 0 && a.Visible).Select(a => a.Id).Order().ToArray();
         if (ids.Length > 0) _target = ids[(Array.IndexOf(ids, _target) + 1) % ids.Length];
     }
     private void SelectAt(Vector2 mouse)
     {
-        var target = _view.Actors.Where(a => a.Faction == CombatFaction.Enemy && a.Health > 0)
+        var target = _view.Actors.Where(a => a.Faction == CombatFaction.Enemy && a.Health > 0 && a.Visible)
             .Select(a => (Actor: a, Distance: _camera.UnprojectPosition(PositionOf(a.Position.X, a.Position.Z) + Vector3.Up).DistanceTo(mouse)))
             .Where(p => p.Distance < 90).OrderBy(p => p.Distance).ThenBy(p => p.Actor.Id).FirstOrDefault();
         if (target.Actor is not null) _target = target.Actor.Id;
@@ -301,7 +323,7 @@ public partial class Sandbox : Node3D
         _health = Bar(new(32, 669), new(290, 9), _mint);
         _momentumText = LabelAt("", new(350, 641), 16, _ember);
         _momentum = Bar(new(350, 669), new(260, 9), _ember);
-        ButtonAt("Inventory [I]", new(916, 650), new(152, 30), () => TogglePanel(_inventoryPanel));
+        ButtonAt("Inventory [I]", new(916, 650), new(152, 30), ShowInventory);
         ButtonAt("Settings [Esc]", new(1081, 650), new(166, 30), () => TogglePanel(_settingsPanel));
         for (int i = 0; i < 6; i++)
         {
@@ -450,7 +472,7 @@ public partial class Sandbox : Node3D
         var player = _view.Actors.Single(a => a.Id == 1);
         _healthText.Text = $"HEALTH  {player.Health}/{player.MaxHealth}    BARRIER {_view.Barrier}";
         _health.Value = player.Health * 100d / player.MaxHealth;
-        _momentumText.Text = $"MOMENTUM  {_view.Momentum}/{_view.MaxMomentum}"; _momentum.Value = _view.Momentum * 100d / _view.MaxMomentum;
+        _momentumText.Text = $"{_view.ResourceName.ToUpperInvariant()}  {_view.Resource}/{_view.MaxResource}"; _momentum.Value = _view.Resource * 100d / _view.MaxResource;
         int enemies = _view.Actors.Count(a => a.Faction == CombatFaction.Enemy && a.Health > 0);
         _stateText.Text = player.Health <= 0 ? "YOU HAVE FALLEN · R to reset the arena" : enemies == 0 ? "ENCOUNTER CLEARED · collect the spoils with E" :
             $"{_view.Preset.ToUpperInvariant()} · {enemies} hostiles · {(_clock.Paused ? "PAUSED" : "LIVE")} · target {_target}";
@@ -463,10 +485,13 @@ public partial class Sandbox : Node3D
         for (int i = 0; i < _view.Skills.Count && i < _skillButtons.Count; i++)
         {
             var skill = _view.Skills[i];
-            string state = skill.RemainingTicks > 0 ? $"{skill.RemainingTicks / 30d:F1}s" : skill.Cost > 0 ? $"{skill.Cost} Momentum" : $"+{skill.Generate} Momentum";
+            bool insufficient = skill.ResourceMode == "Heat" ? _view.Resource + skill.Cost > _view.MaxResource : skill.Cost > _view.Resource;
+            string state = !skill.Available ? "Locked" : skill.RemainingTicks > 0 ? $"{skill.RemainingTicks / 30d:F1}s" :
+                skill.ResourceMode == "Heat" ? $"+{skill.Cost} {_view.ResourceName}" : skill.Cost > 0 ? $"{skill.Cost} {_view.ResourceName}" : $"+{skill.Generate} {_view.ResourceName}";
             _skillButtons[i].Text = $"{_keys[$"skill{i + 1}"].ToString().Replace("Key", "", StringComparison.Ordinal)}  {skill.Name}\n{state}";
-            _skillButtons[i].Modulate = skill.RemainingTicks > 0 || skill.Cost > _view.Momentum ? new Color(.65f, .7f, .75f) : Colors.White;
-            _skillButtons[i].TooltipText = $"{skill.Shape} · {skill.Mutation}";
+            _skillButtons[i].Disabled = !skill.Available;
+            _skillButtons[i].Modulate = skill.RemainingTicks > 0 || insufficient ? new Color(.65f, .7f, .75f) : Colors.White;
+            _skillButtons[i].TooltipText = skill.Mutation == "mutation.orruns_patience" ? "Hold 2 / right click to charge; release to strike." : $"{skill.Shape} · {skill.Mutation}";
         }
         if (_inventoryPanel.Visible) RefreshInventory();
     }
@@ -537,6 +562,9 @@ public partial class Sandbox : Node3D
             ["settings"] = Key.Escape,
             ["journey"] = Key.J,
             ["interact"] = Key.F,
+            ["character"] = Key.C,
+            ["corpse"] = Key.V,
+            ["echo"] = Key.G,
             ["pause"] = Key.P,
             ["step"] = Key.Period,
             ["reset"] = Key.R,
@@ -549,7 +577,8 @@ public partial class Sandbox : Node3D
             InputMap.ActionAddEvent("aw_" + pair.Item1, new InputEventJoypadMotion { Axis = pair.Item2, AxisValue = pair.Item3 });
         foreach (var pair in new[] { ("skill1", JoyButton.A), ("skill2", JoyButton.X), ("skill3", JoyButton.Y), ("dodge", JoyButton.B),
             ("skill4", JoyButton.LeftShoulder), ("skill5", JoyButton.RightShoulder), ("skill6", JoyButton.DpadUp), ("potion", JoyButton.DpadDown),
-            ("pickup", JoyButton.DpadLeft), ("target", JoyButton.RightStick), ("inventory", JoyButton.Back), ("pause", JoyButton.Start) })
+            ("pickup", JoyButton.DpadLeft), ("journey", JoyButton.DpadRight), ("interact", JoyButton.LeftStick),
+            ("target", JoyButton.RightStick), ("inventory", JoyButton.Back), ("pause", JoyButton.Start) })
             InputMap.ActionAddEvent("aw_" + pair.Item1, new InputEventJoypadButton { ButtonIndex = pair.Item2 });
     }
     private void SetKey(string action, Key key)

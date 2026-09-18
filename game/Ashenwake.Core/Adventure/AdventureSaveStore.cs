@@ -24,9 +24,10 @@ public static class AdventureSaveStore
     public static AdventureSession Deserialize(AdventureContent content, string json)
     {
         using var document = JsonDocument.Parse(json);
-        if (!document.RootElement.TryGetProperty("schemaVersion", out var schema) || !schema.TryGetInt32(out var version))
+        if (document.RootElement.ValueKind != JsonValueKind.Object || !document.RootElement.TryGetProperty("schemaVersion", out var schema) || schema.ValueKind != JsonValueKind.Number || !schema.TryGetInt32(out var version))
             throw new InvalidDataException("Adventure save schema is missing.");
         if (version is < 1 or > SchemaVersion) throw new SaveCompatibilityException("Unsupported adventure save version; preserve this file and open its matching build.");
+        ArchiveHeaders.Identity(document.RootElement, "contentHash", content.Hash);
         if (version == 1)
         {
             var legacy = JsonData.Read<AdventureLegacySave>(json);

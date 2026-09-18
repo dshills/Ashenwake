@@ -4,6 +4,7 @@ artifacts/
 **/obj/
 **/.godot/
 **/TestResults/
+**/__pycache__/
 .DS_Store
 .idea/
 .vscode/
@@ -12,3 +13,5 @@ artifacts/
 game/Ashenwake.Client/content.bundle.json
 game/Ashenwake.Client/combat.json
 game/Ashenwake.Client/adventure.json
+game/Ashenwake.Client/progression.json
+game/Ashenwake.Client/text.en.json

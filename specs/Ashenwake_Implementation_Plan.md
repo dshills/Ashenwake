@@ -1,6 +1,6 @@
 # Ashenwake — Phased Implementation Plan
 
-**Status:** Phase 0 architecture spike and Phase 1 combat sandbox implemented. Phase 2 has a playable Greyhaven/Bell Saint prototype with combined persistence and replay; its production-art and external-playtest acceptance gates remain open. Later phases are in development. See [Phase 0](../docs/phase0_verification.md), [Phase 1](../docs/phase1_verification.md), and [Phase 2 evidence](../docs/phase2_verification.md).
+**Status:** Phases 0–2 have committed, playable engineering implementations. Phase 3 integrates five disciplines, permanent progression, crafting, content tools, and a complete client; exact-index tests, rebuilt macOS package verification, and Prism review are complete. Review findings and authoring limits are recorded in its verification document. Phase 4 combat, progression, and client integration are in development. Production-art, external-playtest, and release acceptance gates remain open. See [Phase 0](../docs/phase0_verification.md), [Phase 1](../docs/phase1_verification.md), [Phase 2](../docs/phase2_verification.md), and [Phase 3 evidence](../docs/phase3_verification.md).
 
 **Planning baseline:** September 17, 2026
 

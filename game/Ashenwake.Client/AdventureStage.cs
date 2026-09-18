@@ -12,9 +12,9 @@ public partial class AdventureStage : Node3D
     private string _signature = "";
 
     public void ShowRoom(string roomId, int bellPhase, RoomDefinition room, IReadOnlyList<string> manifestations,
-        IReadOnlyDictionary<string, Position> interactions, IReadOnlySet<string> spentInteractions)
+        IReadOnlyDictionary<string, Position> interactions, IReadOnlySet<string> spentInteractions, int hubStage = 0)
     {
-        string signature = roomId + bellPhase + string.Join('|', manifestations) + string.Join('|', spentInteractions.Order());
+        string signature = roomId + bellPhase + hubStage + string.Join('|', manifestations) + string.Join('|', spentInteractions.Order());
         if (signature == _signature) return;
         _signature = signature;
         if (_decoration is not null) { RemoveChild(_decoration); _decoration.QueueFree(); }
@@ -22,14 +22,15 @@ public partial class AdventureStage : Node3D
         float halfWidth = room.HalfWidth * .001f, halfDepth = room.HalfDepth * .001f;
         switch (roomId)
         {
-            case "room.greyhaven": Greyhaven(halfWidth, halfDepth); break;
+            case "room.greyhaven": Greyhaven(halfWidth, halfDepth, hubStage); break;
             case "room.ossuary": Ossuary(halfWidth, halfDepth); break;
             case "room.cloister": Cloister(halfWidth, halfDepth); break;
             case "room.bell_sanctum": Sanctum(halfWidth, halfDepth, bellPhase); break;
         }
+        var occupiedMarkers = new HashSet<Position>();
         foreach (var pair in interactions)
         {
-            if (pair.Key == "service.mara" && interactions.ContainsKey("npc.mara")) continue;
+            if (!occupiedMarkers.Add(pair.Value)) continue;
             bool spent = spentInteractions.Contains(pair.Key);
             var point = new Node3D { Position = new(pair.Value.X * .001f, 0, pair.Value.Z * .001f) };
             _decoration.AddChild(point); _points[pair.Key] = point;
@@ -39,7 +40,11 @@ public partial class AdventureStage : Node3D
             Label(pair.Key switch
             {
                 "npc.mara" => "MARA VEY · ANATOMY",
-                "service.torren" => "TORREN · THE FORGE",
+                "npc.torren" or "service.torren" => "TORREN · THE FORGE",
+                "npc.cael" => "SISTER CAEL · PURIFICATION",
+                "npc.oris" => "ORIS · REBINDING",
+                "npc.kesh" => "KESH · EXTRACTION",
+                "hub.workshops" => "GREYHAVEN WORKSHOPS",
                 "dungeon.replay" => "EXPEDITION GATE",
                 "ritual.anchor_left" => spent ? "SILENCED ANCHOR" : "RITUAL ANCHOR · LEFT",
                 "ritual.anchor_right" => spent ? "SILENCED ANCHOR" : "RITUAL ANCHOR · RIGHT",
@@ -53,7 +58,16 @@ public partial class AdventureStage : Node3D
         }
     }
 
-    private void Greyhaven(float x, float z)
+    public void FocusNearestInteraction(Position playerPosition)
+    {
+        if (_points.Count == 0) return;
+        var player = new Vector3(playerPosition.X * .001f, 0, playerPosition.Z * .001f);
+        string nearest = _points.MinBy(pair => pair.Value.Position.DistanceSquaredTo(player)).Key;
+        foreach (var pair in _points)
+            foreach (var label in pair.Value.GetChildren().OfType<Label3D>()) label.Visible = pair.Key == nearest;
+    }
+
+    private void Greyhaven(float x, float z, int hubStage)
     {
         for (int i = -2; i <= 2; i++)
         {
@@ -67,6 +81,11 @@ public partial class AdventureStage : Node3D
         Banner(new(-x - .7f, 0, -4), new("86b9b6")); Banner(new(-x - .7f, 0, 4), new("86b9b6"));
         Label("GREYHAVEN · A FIRE THAT STILL BURNS", new(0, 4.4f, -z - 1), new("dbc7a0"));
         Box(new(3.2f, .15f, .7f), new(x + .2f, .08f, 0), new("907c61"));
+        for (int i = 0; i < hubStage; i++)
+        {
+            Banner(new(x + .8f, 0, -5 + i * 4), new("c9ac78"));
+            Box(new(1.7f, .75f, 1.1f), new(x + 1.4f, .4f, -3 + i * 4), new("8c987b"));
+        }
     }
 
     private void Ossuary(float x, float z)

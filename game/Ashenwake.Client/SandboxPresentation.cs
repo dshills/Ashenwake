@@ -151,9 +151,10 @@ public partial class Sandbox
         if (_actors.TryGetValue(1, out var player))
         {
             bool burning = _manifestations.Contains("manifestation.burning_blood"), stone = _manifestations.Contains("manifestation.stone_memory");
+            bool shadow = _manifestations.Contains("manifestation.whispering_shadow"), renewal = _manifestations.Contains("manifestation.voracious_renewal");
             var playerMaterial = (StandardMaterial3D)player.Body.MaterialOverride;
-            playerMaterial.AlbedoColor = burning ? new Color("ffc072") : stone ? new Color("c6c6bc") : _mint;
-            _manifestationMarker.Visible = (burning || stone) && player.Root.Visible;
+            playerMaterial.AlbedoColor = renewal ? new Color("b1db83") : shadow ? new Color("b6a1ed") : burning ? new Color("ffc072") : stone ? new Color("c6c6bc") : _mint;
+            _manifestationMarker.Visible = (burning || stone || shadow || renewal) && player.Root.Visible;
             _manifestationMarker.Position = player.Root.Position + Vector3.Up * .06f;
             _manifestationMarker.Rotation = new(0, (float)(Time.GetTicksMsec() * .001), burning ? .12f : 0);
             ((StandardMaterial3D)_manifestationMarker.MaterialOverride).AlbedoColor = new Color(playerMaterial.AlbedoColor, .3f);
@@ -169,16 +170,17 @@ public partial class Sandbox
     }
 
     private void BeginEffects() => _visibleEffects.Clear();
-    private void PresentEffect(string id, int x, int z, float radius, Color color, bool projectile = false)
+    private void PresentEffect(string id, int x, int z, float radius, Color color, bool projectile = false, bool silhouette = false)
     {
         _visibleEffects.Add(id);
         if (!_effects.TryGetValue(id, out var mesh))
         {
-            mesh = projectile ? new MeshInstance3D { Mesh = new SphereMesh { Radius = .15f, Height = .3f }, MaterialOverride = Material(color) }
+            mesh = silhouette ? new MeshInstance3D { Mesh = new CapsuleMesh { Radius = .3f, Height = 1.3f }, MaterialOverride = Material(color, true) }
+                : projectile ? new MeshInstance3D { Mesh = new SphereMesh { Radius = .15f, Height = .3f }, MaterialOverride = Material(color) }
                 : new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = radius, BottomRadius = radius, Height = .025f }, MaterialOverride = Material(color, true) };
             AddChild(mesh); _effects[id] = mesh;
         }
-        mesh.Position = PositionOf(x, z) + Vector3.Up * (projectile ? .65f : .04f);
+        mesh.Position = PositionOf(x, z) + Vector3.Up * (projectile || silhouette ? .65f : .04f);
     }
     private void EndEffects()
     {

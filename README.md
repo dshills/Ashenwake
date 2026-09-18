@@ -1,8 +1,8 @@
 # Ashenwake
 
-An isometric action RPG about building power from the remains of dead gods. The current playable milestone is **Phase 2: the Greyhaven vertical slice**.
+An isometric action RPG about building power from the remains of dead gods. The current working milestone is **Phase 3: five-discipline progression and crafting**, built on the committed Greyhaven slice.
 
-The slice connects Greyhaven, an ossuary, a cloister checkpoint, and the three-phase Bell Saint encounter to persistent rewards, anatomy, Manifestations, crafting, and dungeon replay. It retains six Vanguard abilities, Momentum, dodge, potion, active enemy AI, loot, mutations, and bounded fire/spirit/poison interactions. Godot renders an engine-independent C# simulation.
+Choose Vanguard, Veilwalker, Arcanist, Gravecaller, or Warden, each with six skills and its own resource loop. The dungeon connects Greyhaven, an ossuary, a cloister checkpoint, and the three-phase Bell Saint to persistent equipment, anatomy, mastery, Manifestations, crafting, and replay. Godot renders an engine-independent C# simulation.
 
 ## Start here
 
@@ -29,19 +29,20 @@ Speak with Mara near the starting point, then open the journey map to enter the 
 | Six abilities | 1–6; left/right click for primary/secondary |
 | Dodge / potion | Space / Q |
 | Collect nearby loot | E |
-| Reset the seeded encounter | R |
+| Reset the diagnostic arena | R in Sandbox |
 | Pause / advance one paused tick | P / period |
 | Save / load | F5 / F9 |
 | Save and verify recent replay | F6 |
-| Inventory/anatomy / settings | I / Escape |
+| Character, equipment, crafting / settings | C or I / Escape |
 | Cycle target / camera zoom | Tab / mouse wheel |
 | Interact / journey map, journal and services | F / J |
+| Consume a corpse / use captured elite echo | V / G |
 
-Build Momentum with Cleave or Breaker Charge, then spend it on Shield Breaker, Seismic Wave, Iron Guard, or Cataclysm. Enemy windup circles show when to move or dodge. Inventory compares equipment and selects mutations. Mara handles owned anatomy, Manifestations, and permanent divine grafts; Torren tempers Ashcleaver. Move within reach of their service markers. The slice includes an unawakened Ashcleaver for progression testing; its canonical awakening requirement remains 1,000 burning-enemy kills.
+Build Momentum, Exposure, Instability, Remains, or Adaptation through your discipline's actions; the skill bar shows costs and heat generation. Ultimates unlock at level 10; retraining unlocks at level 5 and costs five materials. Master skills to select mutations, and spend level-earned passive points near Mara. Equipment has twelve slots, with affixes and hand/discipline restrictions. Rescue the specialists through dungeon objectives and restore their workshops to unlock all six crafting services. Destructive extraction and permanent grafts require confirmation. The prototype grants an unawakened Ashcleaver; its canonical awakening requirement remains 1,000 burning-enemy kills.
 
 Run `"$GODOT" --path game/Ashenwake.Client res://Sandbox.tscn` for the independent diagnostic arena, where all prototype fragments, equipment, and workload presets are unlocked. Settings include rebinding and reduced effects/shake; a controller has movement and combat bindings.
 
-Pass `-- --output=/absolute/directory` to select the save/replay directory. F6 verifies the current replay segment, which rolls over after 3,600 ticks (120 simulation seconds) to bound memory. Reset and load start new segments. Saves include pending abilities/statuses, item instances, cooldowns, and all RNG streams. Corrupt primaries can recover from a valid backup; incompatible versions are preserved for their matching build.
+Pass `-- --output=/absolute/directory` to select the save/replay directory. F6 verifies the current production replay segment, which retains at most 1,800 operations and its checkpoint to bound memory. Saves include permanent progression, pending abilities/statuses, item instances, cooldowns, and RNG streams. A separate local profile shares only validated discoveries and unlocks across characters. Corrupt primaries can recover from a valid backup; incompatible versions are preserved. `--pseudo-locale` expands production labels for layout inspection. Run `res://Adventure.tscn` for the retained Phase 2 client.
 
 The original Phase 0 fixture remains available with `"$GODOT" --path game/Ashenwake.Client res://Main.tscn`. Its smoke, replay, and hash checks still run as regression coverage.
 
@@ -68,6 +69,17 @@ aw adventure benchmark
 aw adventure replay artifacts/adventure/session.awe
 aw item show item.ashcleaver
 aw content refs fragment.heart_serath
+aw production validate
+aw production compile
+aw production demo
+aw production benchmark
+aw production replay /path/to/production.awp
+aw production migrate-phase2 /path/to/expedition.save.json /new/directory/production.save.json
+aw authoring validate
+aw authoring templates artifacts/new-templates
+aw authoring pseudo artifacts/text.qps-ploc.json
+aw balance run
+aw balance loot
 bash tools/export.sh
 ```
 
@@ -86,4 +98,4 @@ Run `aw` within this checkout; source/output paths are relative to the repositor
 - [Architecture decisions](docs/decisions/0001-phase0-foundation.md), [simulation contract](docs/simulation_contract.md), [combat rules](docs/combat_rules.md), and [Phase 0 verification](docs/phase0_verification.md).
 - [Implementation plan](specs/Ashenwake_Implementation_Plan.md), [game design](specs/Ashenwake_Game_Design.md), and [technical architecture](specs/Ashenwake_Technical_Architecture.md).
 
-Phase status and evidence are recorded in [Phase 1 verification](docs/phase1_verification.md) and [Phase 2 verification](docs/phase2_verification.md). The scenes use authored procedural prototype geometry and audio. Automated correctness and profiling do not replace the implementation plan's external playtest and production-art acceptance gates.
+Phase status and evidence are recorded in [Phase 1 verification](docs/phase1_verification.md), [Phase 2 verification](docs/phase2_verification.md), and [Phase 3 verification](docs/phase3_verification.md). See [production authoring](docs/content_production.md) for templates, localization, and inventory scope. The scenes use procedural prototype geometry and audio. Automated correctness and profiling do not replace external playtests, production art, or platform certification.

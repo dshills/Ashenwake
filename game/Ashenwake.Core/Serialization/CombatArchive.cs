@@ -14,6 +14,10 @@ public static class CombatSaveStore
 {
     public static CombatSnapshot Read(string json, string contentJson)
     {
+        using var headers = System.Text.Json.JsonDocument.Parse(json);
+        ArchiveHeaders.Require(headers.RootElement, 1);
+        var logical = ArchiveHeaders.Object(headers.RootElement, "state"); ArchiveHeaders.Require(logical, 1, "combat.1");
+        ArchiveHeaders.Identity(logical, "contentHash", CombatContent.Parse(contentJson).Identity);
         var save = JsonData.Read<CombatSave>(json);
         if (save.SchemaVersion != 1)
             throw new SaveCompatibilityException("Unsupported combat save version. Keep this file for its matching build.");

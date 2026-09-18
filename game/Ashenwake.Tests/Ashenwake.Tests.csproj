@@ -12,5 +12,9 @@
     <None Include="../../content/phase0.json" Link="phase0.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/combat.json" Link="combat.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/adventure.json" Link="adventure.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../content/progression.json" Link="progression.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../content/text.en.json" Link="text.en.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/phase2-expedition-hub.json" Link="fixtures/phase2-expedition-hub.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/combat-phase2.json" Link="fixtures/combat-phase2.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

@@ -14,6 +14,12 @@ public static class ExpeditionSaveStore
 {
     public static ExpeditionSession Read(string combatJson, AdventureContent content, string json)
     {
+        using var headers = System.Text.Json.JsonDocument.Parse(json);
+        ArchiveHeaders.Require(headers.RootElement, 1);
+        var logical = ArchiveHeaders.Object(headers.RootElement, "state"); ArchiveHeaders.Require(logical, 1, "expedition.1");
+        var combat = ArchiveHeaders.Object(logical, "combat"); ArchiveHeaders.Require(combat, 1, "combat.1");
+        ArchiveHeaders.Identity(logical, "adventureHash", content.Hash);
+        ArchiveHeaders.Identity(combat, "contentHash", CombatContent.Parse(combatJson).Identity);
         var document = JsonData.Read<ExpeditionSave>(json);
         if (document.SchemaVersion != 1)
             throw new SaveCompatibilityException("Unsupported expedition save version; preserve this file for its matching build.");

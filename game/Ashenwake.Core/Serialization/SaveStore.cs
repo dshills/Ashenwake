@@ -17,6 +17,10 @@ public static class SaveStore
 
     public static WorldState Read(string json, ContentBundle bundle)
     {
+        using var headers = System.Text.Json.JsonDocument.Parse(json);
+        ArchiveHeaders.Require(headers.RootElement, BuildIdentity.SaveSchemaVersion, BuildIdentity.RulesVersion);
+        ArchiveHeaders.Identity(headers.RootElement, "contentHash", bundle.Hash);
+        ArchiveHeaders.Identity(headers.RootElement, "contentVersion", bundle.Content.ContentVersion);
         var save = JsonData.Read<SaveDocument>(json);
         if (save.SchemaVersion != BuildIdentity.SaveSchemaVersion || save.RulesVersion != BuildIdentity.RulesVersion ||
             save.ContentHash != bundle.Hash || save.ContentVersion != bundle.Content.ContentVersion)

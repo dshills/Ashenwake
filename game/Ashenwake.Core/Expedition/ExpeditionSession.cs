@@ -105,6 +105,7 @@ public sealed class ExpeditionSession
         Combat = Combat.Capture(),
         GodwroughtItems = new(godwroughtItems, StringComparer.Ordinal)
     };
+    internal AdventureState CaptureAdventure() => adventure.Capture();
     public ExpeditionReplay CaptureReplay() => JsonData.Copy(new ExpeditionReplay(1, initial, frames.ToArray()));
     public IReadOnlyList<CombatEvent> Step(params CombatCommand[] commands) => Execute(new(ExpeditionAction.Tick, Commands: commands)).CombatEvents;
     public AdventureResult Travel(string roomId) => Result(Execute(new(ExpeditionAction.Travel, roomId)));
@@ -116,18 +117,29 @@ public sealed class ExpeditionSession
     public AdventureResult EquipGodwrought(string instanceId) => Result(Execute(new(ExpeditionAction.EquipGodwrought, instanceId)));
     private static AdventureResult Result(ExpeditionResult result) => new(result.Success, result.Reason, result.WorldEvents);
 
-    public ExpeditionResult Execute(ExpeditionCommand command)
+    public ExpeditionResult Execute(ExpeditionCommand command, bool recordReplay = true)
     {
         if (command is null || !Enum.IsDefined(command.Action)) throw new InvalidDataException("Invalid expedition command.");
-        if (frames.Count >= 3600) { initial = Capture(); frames.Clear(); }
+        if (recordReplay && frames.Count >= 3600) { initial = Capture(); frames.Clear(); }
         WorldEvents = [];
         ExpeditionResult result;
         if (command.Action == ExpeditionAction.Tick) result = Advance(command.Commands ?? []);
         else if (Combat.View.Actors.Single(a => a.Id == 1).Health <= 0) result = new(false, "The player is dead.", [], []);
         else result = ChangeWorld(command);
         WorldEvents = result.WorldEvents;
-        frames.Add(new(JsonData.Copy(command), StateHash, JsonData.Hash(result)));
+        if (recordReplay) frames.Add(new(JsonData.Copy(command), StateHash, JsonData.Hash(result)));
         return result;
+    }
+
+    /// <summary>Production owns permanent inventory and currency; this validated projection preserves the active encounter.</summary>
+    internal void ApplyPermanentProjection(AdventureState world, CombatSnapshot? combatSnapshot = null, SortedDictionary<string, long>? itemMapping = null)
+    {
+        if (world.RoomId != View.RoomId || world.Expedition != adventure.Capture().Expedition)
+            throw new InvalidDataException("Permanent projection cannot change world travel or expedition identity.");
+        adventure = AdventureSession.Restore(content, world);
+        if (combatSnapshot is not null) Combat = CombatSession.Restore(combatJson, combatSnapshot);
+        if (itemMapping is not null) { godwroughtItems.Clear(); foreach (var pair in itemMapping) godwroughtItems.Add(pair.Key, pair.Value); }
+        SynchronizeBuild();
     }
 
     private ExpeditionResult Advance(CombatCommand[] commands)
@@ -192,8 +204,6 @@ public sealed class ExpeditionSession
                 result = adventure.InstallFragment(command.Id, command.Value == "" ? null : command.Value); break;
             case ExpeditionAction.Manifestation:
                 if (!InRange("service.mara")) return new(false, "Visit Mara in Greyhaven to choose a manifestation.", [], []);
-                // Later manifestations are authored for production but not falsely offered before their combat rules exist.
-                if (command.Id is not ("manifestation.burning_blood" or "manifestation.stone_memory")) return new(false, "This manifestation is unavailable in the slice.", [], []);
                 result = adventure.SelectManifestation(command.Id); break;
             case ExpeditionAction.Temper:
                 if (!InRange("service.torren")) return new(false, "Visit Torren to temper this weapon.", [], []);
@@ -232,8 +242,12 @@ public sealed class ExpeditionSession
     {
         var permanent = adventure.Capture();
         var state = Combat.Capture();
-        bool changed = !state.Fragments.SequenceEqual(permanent.Anatomy);
-        if (changed) { state.Fragments.Clear(); foreach (var pair in permanent.Anatomy) state.Fragments.Add(pair.Key, pair.Value); }
+        if (!state.Fragments.SequenceEqual(permanent.Anatomy))
+        {
+            Combat.ApplyAnatomy(permanent.Anatomy);
+            state = Combat.Capture();
+        }
+        bool changed = false;
         foreach (var item in permanent.Godwrought.Where(g => !godwroughtItems.ContainsKey(g.InstanceId)))
         {
             if (state.Inventory.Count >= 512) break; // Permanent reward remains owned; never discard another item to make space.
@@ -248,7 +262,8 @@ public sealed class ExpeditionSession
     private CombatBuildModifiers CurrentBuild()
     {
         var equipped = EquippedGodwrought();
-        return new(View.ActiveManifestations.FirstOrDefault(id => id is "manifestation.burning_blood" or "manifestation.stone_memory") ?? "",
-            equipped?.AttackSpeedStacks ?? 0, equipped?.Awakened ?? false, equipped?.Evolution ?? "", equipped?.TemperLevel ?? 0, equipped is not null);
+        var active = View.ActiveManifestations;
+        return new(active.FirstOrDefault() ?? "",
+            equipped?.AttackSpeedStacks ?? 0, equipped?.Awakened ?? false, equipped?.Evolution ?? "", equipped?.TemperLevel ?? 0, equipped is not null, active.Skip(1).FirstOrDefault() ?? "");
     }
 }

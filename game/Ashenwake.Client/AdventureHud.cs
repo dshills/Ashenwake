@@ -8,6 +8,7 @@ public sealed record InteractionDisplay(string Id, string Name, int Distance, in
 /// <summary>World and service UI. Choices are requests; the ExpeditionSession validates and applies them.</summary>
 public partial class AdventureHud : Control
 {
+    public bool ProductionMode { get; set; }
     public event Action<string>? TravelRequested;
     public event Action<string>? InteractionRequested;
     public event Action<string, string?>? ImplantRequested;
@@ -21,6 +22,7 @@ public partial class AdventureHud : Control
     private PanelContainer _panel = null!;
     private VBoxContainer _rows = null!;
     private Button _journey = null!;
+    private Button _firstTab = null!;
     private string _tab = "Journey";
     private (long Revision, string Tab, string Room, int RangeMask, int RangeCount)? _renderedKey;
     private long _revision;
@@ -49,7 +51,9 @@ public partial class AdventureHud : Control
         var tabs = new HBoxContainer(); column.AddChild(tabs);
         foreach (var name in new[] { "Journey", "Anatomy", "Forge", "Journal" })
         {
+            if (ProductionMode && name == "Forge") continue;
             var button = new Button { Text = name, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            if (name == "Journey") _firstTab = button;
             button.AddThemeFontSizeOverride("font_size", 12); button.Pressed += () => { _tab = name; Rebuild(true); }; tabs.AddChild(button);
         }
         var scroll = new ScrollContainer { CustomMinimumSize = new(339, 425), SizeFlagsVertical = SizeFlags.ExpandFill }; column.AddChild(scroll);
@@ -71,7 +75,7 @@ public partial class AdventureHud : Control
     public void Toggle()
     {
         _panel.Visible = !_panel.Visible;
-        if (_panel.Visible) Rebuild(true);
+        if (_panel.Visible) { Rebuild(true); _firstTab.GrabFocus(); }
     }
     public void Notice(string text) => _notice.Text = text;
     public void SetFragmentDescriptions(IReadOnlyDictionary<string, string> descriptions) => _fragmentDescriptions = descriptions;
@@ -158,7 +162,7 @@ public partial class AdventureHud : Control
                 _rows.AddChild(Label(description, 12));
         }
         _rows.AddChild(new HSeparator()); _rows.AddChild(Label("MANIFESTATIONS · reversible choices", 14));
-        foreach (var manifestation in _content.Manifestations.Where(m => m.Id is "manifestation.burning_blood" or "manifestation.stone_memory"))
+        foreach (var manifestation in _content.Manifestations.Where(m => ProductionMode || m.Id is "manifestation.burning_blood" or "manifestation.stone_memory"))
         {
             bool selected = _state.Manifestations.GetValueOrDefault(manifestation.Threshold) == manifestation.Id;
             var button = Button($"{(selected ? "◆ " : "")}{ReadableName(manifestation.Id)} · {manifestation.Threshold} R", () => ManifestationRequested?.Invoke(manifestation.Id));
