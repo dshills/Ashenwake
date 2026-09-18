@@ -70,6 +70,27 @@ func run():
     checks["discipline_selection_accepts_mouse"] = not visible_label("CHOOSE YOUR FIRST DISCIPLINE")
     await key(KEY_J)
     checks["journey_key_closes_map"] = not visible_label("EDRATH · REGIONS")
+    var resident = null
+    for stage in nodes(self):
+        if stage.get_script() != null and stage.get_script().resource_path.ends_with("/AdventureStage.cs"):
+            for node in nodes(stage):
+                if node.get_script() != null and node.get_script().resource_path.ends_with("/CharacterVisual.cs"):
+                    resident = node
+                    break
+            if resident != null: break
+    checks["resident_has_idle_animation"] = false
+    checks["resident_idle_respects_pause"] = false
+    if resident != null:
+        var body = resident.get_child(0)
+        var origin = resident.transform
+        var idle_pose = body.transform
+        for i in range(12): await get_tree().process_frame
+        checks["resident_has_idle_animation"] = not body.transform.is_equal_approx(idle_pose) and resident.transform.is_equal_approx(origin)
+        await key(KEY_P)
+        idle_pose = body.transform
+        for i in range(12): await get_tree().process_frame
+        checks["resident_idle_respects_pause"] = body.transform.is_equal_approx(idle_pose)
+        await click(button_containing("Resume playing"))
     await key(KEY_F)
     checks["interact_shows_mara_dialogue"] = visible_label("Mara: The wound will hold.")
     checks["interact_exposes_campaign_entry"] = visible_label("EDRATH · REGIONS")
@@ -119,7 +140,7 @@ func run():
     await click(button_containing("Resume playing"))
     for i in range(12): await get_tree().process_frame
     checks["echoes_requires_explicit_resume"] = await saved_tick() > paused_tick
-    var passed = checks.size() == 15
+    var passed = checks.size() == 17
     for value in checks.values(): passed = passed and value
     var report = {"kind": "InteractionClientSmokePassed" if passed else "InteractionClientSmokeFailed", "passed": passed, "checks": checks}
     var file = FileAccess.open(output.path_join("interaction-review.json"), FileAccess.WRITE)

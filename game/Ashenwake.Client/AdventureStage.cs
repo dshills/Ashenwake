@@ -8,8 +8,22 @@ namespace Ashenwake.Client;
 public partial class AdventureStage : Node3D
 {
     private readonly Dictionary<string, Node3D> _points = [];
+    private readonly List<CharacterVisual> _residents = [];
+    private Sandbox? _sandbox;
     private Node3D _decoration = null!;
     private string _signature = "";
+
+    public override void _Ready()
+    {
+        for (Node? parent = GetParent(); parent is not null && _sandbox is null; parent = parent.GetParent())
+            _sandbox = parent.GetChildren().OfType<Sandbox>().FirstOrDefault();
+    }
+
+    public override void _Process(double delta)
+    {
+        if (!IsVisibleInTree() || _sandbox?.IsPaused == true) return;
+        foreach (var resident in _residents) resident.Animate(delta, Vector3.Zero);
+    }
 
     public void ShowRoom(string roomId, int bellPhase, RoomDefinition room, IReadOnlyList<string> manifestations,
         IReadOnlyDictionary<string, Position> interactions, IReadOnlySet<string> spentInteractions, int hubStage = 0)
@@ -18,7 +32,7 @@ public partial class AdventureStage : Node3D
         if (signature == _signature) return;
         _signature = signature;
         if (_decoration is not null) { RemoveChild(_decoration); _decoration.QueueFree(); }
-        _decoration = new Node3D(); AddChild(_decoration); _points.Clear();
+        _decoration = new Node3D(); AddChild(_decoration); _points.Clear(); _residents.Clear();
         float halfWidth = room.HalfWidth * .001f, halfDepth = room.HalfDepth * .001f;
         switch (roomId)
         {
@@ -35,7 +49,14 @@ public partial class AdventureStage : Node3D
             var point = new Node3D { Position = new(pair.Value.X * .001f, 0, pair.Value.Z * .001f) };
             _decoration.AddChild(point); _points[pair.Key] = point;
             Color color = spent ? new("46515b") : pair.Key.StartsWith("ritual", StringComparison.Ordinal) ? new("e3a1ef") : new("85dfc7");
-            AddMesh(new CylinderMesh { TopRadius = .52f, BottomRadius = .65f, Height = .5f }, new(0, .25f, 0), color, point);
+            bool specialist = pair.Key.StartsWith("npc.", StringComparison.Ordinal) || pair.Key.StartsWith("service.", StringComparison.Ordinal);
+            float labelHeight = 1.5f;
+            if (specialist)
+            {
+                var character = CharacterVisual.CreateNpc(pair.Key.Replace("service.", "npc.", StringComparison.Ordinal));
+                point.AddChild(character); _residents.Add(character); labelHeight = character.Height + .4f;
+            }
+            else AddMesh(new CylinderMesh { TopRadius = .52f, BottomRadius = .65f, Height = .5f }, new(0, .25f, 0), color, point);
             AddMesh(new TorusMesh { InnerRadius = .55f, OuterRadius = .64f }, new(0, .05f, 0), color, point);
             Label(pair.Key switch
             {
@@ -49,7 +70,7 @@ public partial class AdventureStage : Node3D
                 "ritual.anchor_left" => spent ? "SILENCED ANCHOR" : "RITUAL ANCHOR · LEFT",
                 "ritual.anchor_right" => spent ? "SILENCED ANCHOR" : "RITUAL ANCHOR · RIGHT",
                 _ => pair.Key.Replace('.', ' ').ToUpperInvariant()
-            }, new(0, 1.5f, 0), color, point);
+            }, new(0, labelHeight, 0), color, point);
         }
         if (manifestations.Count > 0)
         {

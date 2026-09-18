@@ -8,7 +8,7 @@ namespace Ashenwake.Client;
 /// <summary>Cosmetic interpolation and prediction only; every gameplay value comes from the received world.</summary>
 public partial class CoopClientPresentation : Node3D
 {
-    private sealed record ActorMesh(Node3D Root, MeshInstance3D Body, MeshInstance3D Tell, Label3D Name);
+    private sealed record ActorMesh(Node3D Root, CharacterVisual Body, MeshInstance3D Tell, Label3D Name);
     private readonly Dictionary<int, ActorMesh> actors = [];
     private readonly Dictionary<long, Node3D> warnings = [], projectiles = [];
     private Node3D arena = null!;
@@ -21,7 +21,7 @@ public partial class CoopClientPresentation : Node3D
         var environment = new Godot.Environment { BackgroundMode = Godot.Environment.BGMode.Color, BackgroundColor = new("0d1621"), AmbientLightSource = Godot.Environment.AmbientSource.Color, AmbientLightColor = new("8ca7bc"), AmbientLightEnergy = .85f };
         AddChild(new WorldEnvironment { Environment = environment });
         AddChild(new DirectionalLight3D { RotationDegrees = new(-55, -25, 0), LightEnergy = 1.3f, ShadowEnabled = true });
-        camera = new Camera3D { Projection = Camera3D.ProjectionType.Orthogonal, Size = 35, Position = new(22, 25, 25), Current = true };
+        camera = new Camera3D { Projection = Camera3D.ProjectionType.Orthogonal, Size = 25, Position = new(22, 25, 25), Current = true };
         AddChild(camera); camera.LookAt(Vector3.Zero);
         arena = new Node3D(); AddChild(arena);
         targetRing = Mesh(new TorusMesh { InnerRadius = .55f, OuterRadius = .65f }, Vector3.Zero, new("fbd88a"), this); targetRing.Visible = false;
@@ -43,10 +43,11 @@ public partial class CoopClientPresentation : Node3D
             {
                 var root = new Node3D(); AddChild(root);
                 Color color = actor.PlayerId == 1 ? new("73d9c3") : actor.PlayerId == 2 ? new("9abaff") : actor.Role.Contains("Anchor", StringComparison.Ordinal) ? new("d0a9ed") : new("d9967d");
-                Mesh shape = actor.PlayerId > 0 ? new CapsuleMesh { Radius = .28f, Height = 1.35f } : actor.Role.Contains("Anchor", StringComparison.Ordinal) ? new BoxMesh { Size = new(.75f, 1.2f, .75f) } : new CylinderMesh { TopRadius = .3f, BottomRadius = .45f, Height = 1.3f };
-                var body = Mesh(shape, new(0, .68f, 0), color, root);
+                var body = CharacterVisual.Create(actor.DefinitionId, actor.Role, actor.PlayerId > 0 ? "Vanguard" : "");
+                if (actor.PlayerId > 0) body.SetAccent(color);
+                root.AddChild(body);
                 var tell = Mesh(new TorusMesh { InnerRadius = .65f, OuterRadius = .76f }, new(0, .05f, 0), new("ffb855"), root);
-                var label = Label("", new(actor.PlayerId == 1 ? -.7f : actor.PlayerId == 2 ? .7f : 0, actor.PlayerId == 2 ? 2.1f : 1.7f, 0), color); root.AddChild(label);
+                var label = Label("", new(actor.PlayerId == 1 ? -.7f : actor.PlayerId == 2 ? .7f : 0, body.Height + (actor.PlayerId == 2 ? .8f : .4f), 0), color); root.AddChild(label);
                 mesh = new(root, body, tell, label); actors.Add(actor.Id, mesh); mesh.Root.Position = Point(actor.Position);
             }
             var authoritative = Point(actor.Position);
@@ -61,6 +62,15 @@ public partial class CoopClientPresentation : Node3D
                 CorrectionMeters = mesh.Root.Position.DistanceTo(authoritative);
                 if (!changed && mesh.Root.Position.DistanceTo(display) < 2) display = mesh.Root.Position.Lerp(display, 1 - MathF.Exp((float)-delta * 24));
             }
+            var motion = changed ? Vector3.Zero : display - mesh.Root.Position;
+            Vector3? facing = null;
+            if (actor.TelegraphTicks > 0)
+            {
+                var opponent = actor.PlayerId > 0 ? view.Actors.FirstOrDefault(a => a.Id == target) :
+                    view.Actors.Where(a => a.PlayerId > 0 && a.Health > 0).OrderBy(a => CorePosition.DistanceSquared(a.Position, actor.Position)).FirstOrDefault();
+                if (opponent is not null) facing = Point(opponent.Position) - display;
+            }
+            mesh.Body.Animate(delta, motion, actor.TelegraphTicks > 0, actor.State, facing: facing);
             mesh.Root.Position = display; mesh.Root.Visible = actor.Health > 0; mesh.Tell.Visible = actor.TelegraphTicks > 0;
             string name = actor.PlayerId > 0 ? $"P{actor.PlayerId}{(actor.PlayerId == localPlayer ? " · YOU" : "")}" : Readable(actor.DefinitionId);
             mesh.Name.Text = name + (actor.Shielded ? "\nSHIELDED" : actor.Role.Contains("Anchor", StringComparison.Ordinal) ? "\nBREAK SHIELD" : "");
@@ -68,6 +78,12 @@ public partial class CoopClientPresentation : Node3D
         }
         targetRing.Visible = actors.TryGetValue(target, out var selected) && selected.Root.Visible;
         if (targetRing.Visible) targetRing.Position = selected!.Root.Position + Vector3.Up * .03f;
+        var localActor = view.Actors.FirstOrDefault(a => a.PlayerId == localPlayer);
+        if (localActor is not null && actors.TryGetValue(localActor.Id, out var localMesh))
+        {
+            var destination = new Vector3(22, 25, 25) + localMesh.Root.Position;
+            camera.Position = changed ? destination : camera.Position.Lerp(destination, 1 - MathF.Exp(-(float)delta * 8));
+        }
         RenderWarnings(view);
         var shotIds = view.Projectiles.Select(p => p.Id).ToHashSet();
         foreach (long id in projectiles.Keys.Where(id => !shotIds.Contains(id)).ToArray()) { projectiles[id].QueueFree(); projectiles.Remove(id); }

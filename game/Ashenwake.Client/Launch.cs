@@ -9,6 +9,7 @@ public partial class Launch : Node
     {
         var arguments = OS.GetCmdlineUserArgs();
         string scene = arguments.Contains("--coop") || arguments.Contains("--coop-smoke") ? "res://Coop.tscn" :
+            arguments.Contains("--visual-smoke") ? "res://VisualSmoke.tscn" :
             arguments.Contains("--release-smoke") ? "res://ReleaseSmoke.tscn" :
             arguments.Contains("--journey-smoke") ? "res://JourneySmoke.tscn" :
             arguments.Contains("--service-interaction-smoke") ? "res://ServiceInteractionSmoke.tscn" :

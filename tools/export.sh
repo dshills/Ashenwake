@@ -55,6 +55,12 @@ mkdir -p "$service_output"
 python3 tools/check-godot-log.py "$service_output/smoke.log"
 rg -q 'ServiceInteractionClientSmokePassed' "$service_output/smoke.log"
 
+visual_output="$package_output/visual-client"
+mkdir -p "$visual_output"
+"$binary" --headless --quit-after 1200 --log-file "$visual_output/smoke.log" -- --visual-smoke --output="$visual_output"
+python3 tools/check-godot-log.py "$visual_output/smoke.log"
+rg -q 'VisualClientSmokePassed' "$visual_output/smoke.log"
+
 experiment_output="$package_output/experiment-client"
 mkdir -p "$experiment_output"
 "$binary" --headless --quit-after 12000 --log-file "$experiment_output/smoke.log" -- --echoes-smoke --output="$experiment_output"

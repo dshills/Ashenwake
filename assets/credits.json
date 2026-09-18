@@ -3,9 +3,12 @@
   "assets": [
     {
       "id": "asset.procedural_combat",
-      "name": "Procedural combat actors, telegraphs, status markers, and synthesized audio cues",
+      "name": "Articulated low-poly heroes, specialists and monsters; combat telegraphs, status markers and synthesized audio cues",
       "sourceFiles": [
-        "game/Ashenwake.Client/SandboxPresentation.cs"
+        "game/Ashenwake.Client/SandboxPresentation.cs",
+        "game/Ashenwake.Client/CharacterVisual.cs",
+        "game/Ashenwake.Client/CharacterVisual.Humanoids.cs",
+        "game/Ashenwake.Client/CharacterVisual.Monsters.cs"
       ],
       "origin": "Authored in the Ashenwake repository from Godot primitive meshes and synthesized waveforms; no downloaded art or audio samples are declared.",
       "rightsStatus": "Project-authored source. The repository does not yet declare a distribution license or owner approval.",

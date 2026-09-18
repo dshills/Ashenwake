@@ -7,11 +7,14 @@ public partial class Sandbox
     private sealed class ActorPresentation
     {
         public required Node3D Root { get; init; }
-        public required MeshInstance3D Body { get; init; }
+        public required CharacterVisual Body { get; init; }
+        public required string VisualKey { get; init; }
         public required MeshInstance3D Tell { get; init; }
         public required Label3D Label { get; init; }
         public Vector3 Previous { get; set; }
         public Vector3 Current { get; set; }
+        public bool Windup { get; set; }
+        public string State { get; set; } = "";
     }
     private readonly Dictionary<int, ActorPresentation> _actors = [];
     private readonly Dictionary<string, MeshInstance3D> _effects = [];
@@ -24,6 +27,7 @@ public partial class Sandbox
     private readonly Color _ember = new("ffb56b"), _mint = new("79e0cb");
     private Camera3D _camera = null!;
     private Vector3 _cameraHome;
+    private Vector3 _cameraFollow;
     private MeshInstance3D _targetMarker = null!;
     private MeshInstance3D _manifestationMarker = null!;
     private IReadOnlyList<string> _manifestations = [];
@@ -56,7 +60,7 @@ public partial class Sandbox
         _camera = new Camera3D
         {
             Projection = Camera3D.ProjectionType.Orthogonal,
-            Size = Math.Max(halfWidth, halfDepth) * .0023f + 10,
+            Size = DefaultCameraSize(halfWidth, halfDepth),
             Position = new(14, 20, 16),
             Current = true
         };
@@ -88,9 +92,14 @@ public partial class Sandbox
     }
 
     private void SynchronizeActor(int id, string name, string role, int x, int z, int health, int maxHealth,
-        string status, bool telegraph, bool allied, int radius = 350)
+        string status, bool telegraph, bool allied, string definitionId, string state, bool windingUp)
     {
         Vector3 target = PositionOf(x, z);
+        if (definitionId is "boss.bell_saint" && _view.BossPhase >= 3) definitionId = "enemy.bell_beast";
+        string discipline = id == 1 ? _view.Discipline : "";
+        string visualKey = $"{definitionId}/{role}/{discipline}/{allied}";
+        if (_actors.TryGetValue(id, out var previous) && previous.VisualKey != visualKey)
+        { previous.Root.QueueFree(); _actors.Remove(id); }
         if (!_actors.TryGetValue(id, out var actor))
         {
             Color color = id == 1 ? _mint : allied ? new("af9cff") : role switch
@@ -103,20 +112,16 @@ public partial class Sandbox
                 _ => new("ed8870")
             };
             var root = new Node3D { Position = target }; AddChild(root);
-            Mesh bodyMesh = role == "armored" ? new BoxMesh { Size = new(.85f, 1.5f, .85f) }
-                : role == "bellsaint" ? new CylinderMesh { TopRadius = .35f, BottomRadius = .8f, Height = 2.8f }
-                : role == "anchor" ? new CylinderMesh { TopRadius = .25f, BottomRadius = .5f, Height = 1.1f }
-                : role == "bell" ? new SphereMesh { Radius = .45f, Height = .9f }
-                : role == "beast" ? new BoxMesh { Size = new(1.2f, 1.8f, 1f) }
-                : new CapsuleMesh { Radius = Math.Max(.22f, radius * .001f), Height = allied && id != 1 ? 1f : 1.4f };
-            var body = new MeshInstance3D { Mesh = bodyMesh, Position = Vector3.Up * (role == "bellsaint" ? 1.4f : .75f), MaterialOverride = Material(color) };
+            if (id == 1) _cameraFollow = target;
+            var body = CharacterVisual.Create(definitionId, role, discipline, allied);
             root.AddChild(body);
             var label = new Label3D
             {
-                Position = Vector3.Up * (role == "bellsaint" ? 3.3f : 2.05f),
+                Position = Vector3.Up * (body.Height + .4f),
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                 FontSize = 64,
-                PixelSize = .012f,
+                PixelSize = .008f,
+                VerticalAlignment = VerticalAlignment.Bottom,
                 Modulate = color,
                 OutlineSize = 6,
                 NoDepthTest = true,
@@ -124,16 +129,16 @@ public partial class Sandbox
             };
             root.AddChild(label);
             var tell = Disc(1.15f, new Color(1, .22f, .08f, .38f), root);
-            actor = new() { Root = root, Body = body, Tell = tell, Label = label, Previous = target, Current = target };
+            actor = new() { Root = root, Body = body, VisualKey = visualKey, Tell = tell, Label = label, Previous = target, Current = target };
             _actors[id] = actor;
         }
         actor.Previous = actor.Current; actor.Current = target;
+        actor.Windup = windingUp; actor.State = state;
         actor.Root.Visible = health > 0;
-        if (role == "bellsaint") actor.Label.Position = Vector3.Up * (_view.BossPhase == 2 ? 4.8f : 3.3f);
+        actor.Label.Position = Vector3.Up * (actor.Body.Height + (role == "bellsaint" && _view.BossPhase == 2 ? 1.2f : .4f));
         actor.Label.Text = id == 1 ? $"UNBOUND  {health}/{maxHealth}" : $"{name.ToUpperInvariant()}\n{health}/{maxHealth}{(status.Length > 0 ? "\n" + status : "")}";
         actor.Tell.Visible = telegraph && health > 0;
         if (telegraph) actor.Label.Text += "\n⚠ ATTACK INCOMING";
-        actor.Body.Rotation = telegraph ? new(.12f, .2f, 0) : Vector3.Zero;
     }
 
     private void AnimatePresentation(double delta, double alpha, int selected)
@@ -141,25 +146,31 @@ public partial class Sandbox
         foreach (var pair in _actors)
         {
             pair.Value.Root.Position = pair.Value.Previous.Lerp(pair.Value.Current, (float)alpha);
+            Vector3? facing = null;
+            if (pair.Value.Windup && _actors.TryGetValue(pair.Key == 1 ? selected : 1, out var opponent))
+                facing = opponent.Current - pair.Value.Current;
+            pair.Value.Body.Animate(delta, pair.Value.Current - pair.Value.Previous, pair.Value.Windup, pair.Value.State, IsPaused, facing);
             // Keep the selected role/status readable even when several melee actors overlap.
             pair.Value.Label.Visible = pair.Key == selected || _mechanicLabels.Contains(pair.Key);
         }
         _targetMarker.Visible = selected > 0 && _actors.TryGetValue(selected, out var target) && target.Root.Visible;
         if (_targetMarker.Visible) _targetMarker.Position = _actors[selected].Root.Position + Vector3.Up * .04f;
+        if (_actors.TryGetValue(1, out var focus))
+            _cameraFollow = _cameraFollow.Lerp(focus.Root.Position, 1 - MathF.Exp(-(float)delta * 8));
         _shake = Math.Max(0, _shake - delta * 4);
-        _camera.Position = _cameraHome + (_reduceShake ? Vector3.Zero : new Vector3(
+        _camera.Position = _cameraHome + _cameraFollow + (_reduceShake ? Vector3.Zero : new Vector3(
             (float)(Math.Sin(Time.GetTicksMsec() * .081) * _shake * .12),
             (float)(Math.Cos(Time.GetTicksMsec() * .103) * _shake * .08), 0));
         if (_actors.TryGetValue(1, out var player))
         {
             bool burning = _manifestations.Contains("manifestation.burning_blood"), stone = _manifestations.Contains("manifestation.stone_memory");
             bool shadow = _manifestations.Contains("manifestation.whispering_shadow"), renewal = _manifestations.Contains("manifestation.voracious_renewal");
-            var playerMaterial = (StandardMaterial3D)player.Body.MaterialOverride;
-            playerMaterial.AlbedoColor = renewal ? new Color("b1db83") : shadow ? new Color("b6a1ed") : burning ? new Color("ffc072") : stone ? new Color("c6c6bc") : _mint;
+            Color accent = renewal ? new Color("b1db83") : shadow ? new Color("b6a1ed") : burning ? new Color("ffc072") : stone ? new Color("c6c6bc") : player.Body.BaseAccentColor;
+            player.Body.SetAccent(accent);
             _manifestationMarker.Visible = (burning || stone || shadow || renewal) && player.Root.Visible;
             _manifestationMarker.Position = player.Root.Position + Vector3.Up * .06f;
             _manifestationMarker.Rotation = new(0, (float)(Time.GetTicksMsec() * .001), burning ? .12f : 0);
-            ((StandardMaterial3D)_manifestationMarker.MaterialOverride).AlbedoColor = new Color(playerMaterial.AlbedoColor, .3f);
+            ((StandardMaterial3D)_manifestationMarker.MaterialOverride).AlbedoColor = new Color(accent, .3f);
             Vector2 screen = _camera.UnprojectPosition(player.Root.Position + Vector3.Up);
             foreach (var occluder in _occluders)
             {
@@ -170,6 +181,9 @@ public partial class Sandbox
             }
         }
     }
+
+    private static float DefaultCameraSize(int halfWidth, int halfDepth)
+        => Math.Clamp(Math.Max(halfWidth, halfDepth) * .0012f + 10, 20, 30);
 
     private void BeginEffects() => _visibleEffects.Clear();
     private void PresentEffect(string id, int x, int z, float radius, Color color, bool projectile = false, bool silhouette = false)

@@ -64,7 +64,7 @@ public partial class Sandbox
             ArenaBox(new((obstacle.MaxX - obstacle.MinX) * .001f + .12f, .13f, (obstacle.MaxZ - obstacle.MinZ) * .001f + .12f), mesh.Position + Vector3.Up * .76f, new("a89b7c"));
         }
         if (_authoredBounds != (room.HalfWidth, room.HalfDepth))
-        { _camera.Size = Math.Max(room.HalfWidth, room.HalfDepth) * .0023f + 10; _authoredBounds = (room.HalfWidth, room.HalfDepth); }
+        { _camera.Size = DefaultCameraSize(room.HalfWidth, room.HalfDepth); _authoredBounds = (room.HalfWidth, room.HalfDepth); }
     }
     private MeshInstance3D ArenaBox(Vector3 size, Vector3 position, Color color)
     {

@@ -278,9 +278,10 @@ public partial class Sandbox : Node3D
             if (mechanic is null && (actor.State is "Guarded" or "Recover")) conditions = conditions.Append(actor.State == "Guarded" ? "GUARDED" : "RECOVERY WINDOW");
             SynchronizeActor(actor.Id, name, role.ToLowerInvariant(), actor.Position.X, actor.Position.Z,
                 actor.Health, actor.MaxHealth, string.Join(" / ", conditions),
-                actor.TelegraphTicks > 0 && actor.TelegraphRadius == 0, actor.Faction != CombatFaction.Enemy);
+                actor.TelegraphTicks > 0 && actor.TelegraphRadius == 0, actor.Faction != CombatFaction.Enemy,
+                actor.DefinitionId, actor.State, actor.TelegraphTicks > 0 || actor.State.EndsWith("Windup", StringComparison.Ordinal));
             _actors[actor.Id].Root.Visible &= actor.Visible;
-            if (actor.State is "MarkedEcho" or "FalseEcho") ((StandardMaterial3D)_actors[actor.Id].Body.MaterialOverride).AlbedoColor = actor.State == "MarkedEcho" ? new Color("ffe297") : new Color("69818f");
+            if (actor.Id != 1) _actors[actor.Id].Body.SetAccent(actor.State == "MarkedEcho" ? new Color("ffe297") : actor.State == "FalseEcho" ? new Color("69818f") : _actors[actor.Id].Body.BaseAccentColor);
         }
         BeginEffects();
         foreach (var actor in _view.Actors.Where(a => a.Health > 0 && a.Visible && a.State is "MarkedEcho" or "FalseEcho"))

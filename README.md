@@ -4,6 +4,8 @@ An isometric action RPG about building power from the remains of dead gods. The 
 
 Choose Vanguard, Veilwalker, Arcanist, Gravecaller, or Warden, each with six skills and its own resource loop. Travel through five regions, rescue Greyhaven's specialists, choose consequential alliances, confront five bosses, and investigate three optional exploration encounters. Equipment, anatomy, mastery, Manifestations, crafting, and rewards persist. Godot renders an engine-independent C# simulation.
 
+Heroes, Greyhaven specialists, and enemies now use articulated low-poly models with distinct heads, clothing, armor, weapons, and monster silhouettes. The [character art notes](docs/character_art.md) describe the first visual pass and its reproducible preview; environments remain prototype geometry.
+
 ## Start here
 
 Requires Git/Git LFS, Python 3, `curl`, `unzip`, `ripgrep`, and **Go 1.27.1**. The bootstrap installs **.NET SDK 8.0.425** and **Godot 4.6.2 Mono** inside ignored `.tools/`; it does not replace the system Godot. Supported bootstrap hosts are macOS Apple Silicon and Linux x86_64.

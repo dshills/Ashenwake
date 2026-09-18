@@ -44,6 +44,7 @@ public partial class JourneySmoke : Node
             await Click("Act 1 ·");
             Check("map_starts_first_encounter", _session.ActiveEncounterId == "campaign.road" && !VisibleLabel("EDRATH ·"));
             Check("no_continue_prompt_during_combat", !NextStep().Visible);
+            await Capture("first-encounter-characters.png");
             await FightUntil(() => _session.EncounterCleared);
             Check("clear_prompts_loot_and_next_step", NextStep().Visible && _session.Combat.View.Loot.Count > 0 && VisibleLabel($"{_session.Combat.View.Loot.Count} dropped"));
             await Capture("first-encounter-cleared.png");
@@ -65,6 +66,7 @@ public partial class JourneySmoke : Node
             Check("story_choice_commits_through_confirmation", _session.Capture().Campaign.Choices.GetValueOrDefault(choice.Id) == choice.Outcomes[0].Id);
             await ClickNode(NextStep()); await Click("Continue onward");
             Check("continue_enters_bell_saint", _session.ActiveEncounterId == "campaign.bell_saint");
+            await Capture("bell-saint-character.png");
             await FightUntil(() => _session.Combat.View.BossPhase == 2);
             Check("bell_shield_explains_two_anchors", VisibleLabel("BELL SAINT PROTECTED · Destroy 2 ritual anchors"));
             Check("both_anchors_have_persistent_labels", Descendants(this).OfType<Label3D>().Count(l => l.IsVisibleInTree() && l.Visible && l.Text.StartsWith("RITUAL ANCHOR\n", StringComparison.Ordinal) && l.Text.Contains("DESTROY", StringComparison.Ordinal)) == 2);
@@ -73,9 +75,12 @@ public partial class JourneySmoke : Node
             Check("anchor_guidance_updates_after_first_kill", VisibleLabel("BELL SAINT PROTECTED · Destroy 1 ritual anchor."));
             await FightUntil(() => !_session.Combat.View.Actors.Any(a => a.DefinitionId == "enemy.ritual_anchor" && a.Health > 0));
             Check("broken_ritual_exposes_damage_window", VisibleLabel("RITUAL BROKEN ·"));
+            await FightUntil(() => _session.Combat.View.BossPhase == 3 || _session.EncounterCleared);
+            await Capture("bell-saint-unbound.png");
             await FightUntil(() => _session.EncounterCleared);
             Check("boss_victory_points_to_next_region", NextStep().Text.StartsWith("Region complete", StringComparison.Ordinal));
             await ClickNode(NextStep());
+            Check("region_complete_opens_map", VisibleLabel("EDRATH ·"));
             Check("completed_region_has_no_dead_end_continue", !Descendants(this).OfType<Button>().Any(b => b.IsVisibleInTree() && b.Text.StartsWith("Continue onward", StringComparison.Ordinal)));
             await Click("Travel to Act 2 ·");
             Check("next_region_button_enters_act_two", _session.Capture().Campaign.CurrentAct == 2 && !_session.InHub);
@@ -83,7 +88,7 @@ public partial class JourneySmoke : Node
             Check("navigation_and_combat_replay", replay.Success);
             Finish(true, "");
         }
-        catch (Exception ex) { GD.PushError(ex.ToString()); Finish(false, ex.Message); }
+        catch (Exception ex) { await Capture("journey-failure.png"); GD.PushError(ex.ToString()); Finish(false, ex.Message); }
     }
 
     private static string Read(string name) => FileAccess.GetFileAsString("res://" + name + ".json");
@@ -120,8 +125,12 @@ public partial class JourneySmoke : Node
         for (Node? parent = button.GetParent(); parent is not null; parent = parent.GetParent())
             if (parent is ScrollContainer scroll) { scroll.EnsureControlVisible(button); await Settle(); break; }
         Vector2 position = button.GetGlobalRect().GetCenter();
+        var viewport = button.GetViewport();
+        viewport.PushInput(new InputEventMouseMotion { Position = position }, true);
+        // Deliver a complete viewport click without holding it across frames of native pointer input.
         foreach (bool pressed in new[] { true, false })
-        { button.GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Position = position, Pressed = pressed }, true); await Settle(); }
+            viewport.PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Position = position, Pressed = pressed }, true);
+        await Settle();
     }
     private async Task Settle() { for (int i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
     private async Task Capture(string filename)
