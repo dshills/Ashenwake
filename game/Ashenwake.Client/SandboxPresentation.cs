@@ -44,6 +44,7 @@ public partial class Sandbox
     {
         VerdantAmbience.Prewarm();
         CinderAmbience.Prewarm();
+        SpineAmbience.Prewarm();
         _worldEnvironment = new WorldEnvironment
         {
             Environment = new Godot.Environment
@@ -221,7 +222,7 @@ public partial class Sandbox
         { _effects[id].QueueFree(); _effects.Remove(id); }
     }
 
-    private void PresentCampaignWarning(long id, string kind, int x, int z, int endX, int endZ, int radius, long ticks)
+    private void PresentCampaignWarning(long id, string kind, int x, int z, int endX, int endZ, int radius, long ticks, string contentId)
     {
         Color color = ticks <= 12 ? new Color(1, .2f, .12f, .5f) : new Color(1, .58f, .12f, .35f);
         float width = radius * .001f;
@@ -248,6 +249,30 @@ public partial class Sandbox
         line.Position = (start + end) / 2 + Vector3.Up * .08f;
         line.Rotation = new(0, Mathf.Atan2(delta.X, delta.Z), 0);
         ((StandardMaterial3D)line.MaterialOverride).AlbedoColor = color;
+        string order = contentId switch { "rule.fault.1" => "1", "rule.fault.2" => "2", "rule.fault.3" => "3", _ => "" };
+        if (order.Length == 0) return;
+        // These numbers belong to the authoritative warning, including its reversed memory
+        // ordering. A child label shares the warning's lifetime and survives reduced effects.
+        string labelName = "FaultSequence_" + id;
+        var sequence = line.GetNodeOrNull<Label3D>(labelName);
+        if (sequence is null)
+        {
+            sequence = new Label3D
+            {
+                Name = labelName,
+                Text = order,
+                FontSize = 64,
+                PixelSize = .013f,
+                OutlineSize = 12,
+                Modulate = new("fff3d4"),
+                OutlineModulate = new("201c26"),
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                NoDepthTest = true
+            };
+            line.AddChild(sequence);
+        }
+        Vector3 inset = delta.LengthSquared() > .0001f ? delta.Normalized() * Math.Min(1f, delta.Length() * .25f) : Vector3.Zero;
+        sequence.GlobalPosition = start + inset + Vector3.Up * .3f;
     }
 
     private void Feedback(int id, string text, string kind)

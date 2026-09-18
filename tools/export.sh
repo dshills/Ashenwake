@@ -67,6 +67,12 @@ mkdir -p "$cinder_output"
 python3 tools/check-godot-log.py "$cinder_output/smoke.log"
 rg -q 'CinderClientSmokePassed' "$cinder_output/smoke.log"
 
+spine_output="$package_output/spine-client"
+mkdir -p "$spine_output"
+"$binary" --headless --quit-after 4800 --log-file "$spine_output/smoke.log" -- --spine-smoke --output="$spine_output"
+python3 tools/check-godot-log.py "$spine_output/smoke.log"
+rg -q 'SpineClientSmokePassed' "$spine_output/smoke.log"
+
 service_output="$package_output/service-client"
 mkdir -p "$service_output"
 "$binary" --headless --quit-after 600 --log-file "$service_output/smoke.log" -- --service-interaction-smoke --output="$service_output"

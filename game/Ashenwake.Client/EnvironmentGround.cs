@@ -5,7 +5,7 @@ namespace Ashenwake.Client;
 
 public static class EnvironmentGround
 {
-    public static string Style(bool inHub, string encounterId, string? explorationId = null, int act = 0) => inHub ? "greyhaven" : explorationId == "event.wake_hunt" ? "verdant_hunt" : explorationId == "event.resonance_storm" ? "cinder_storm" : encounterId switch
+    public static string Style(bool inHub, string encounterId, string? explorationId = null, int act = 0) => inHub ? "greyhaven" : explorationId == "event.wake_hunt" ? "verdant_hunt" : explorationId == "event.resonance_storm" ? "cinder_storm" : explorationId == "event.divine_memory" ? "spine_memory" : encounterId switch
     {
         "campaign.road" or "room.ossuary" => "road",
         "campaign.monastery" or "room.cloister" => "monastery",
@@ -20,6 +20,11 @@ public static class EnvironmentGround
         "campaign.furnace_spindle" => "cinder_furnace",
         "exploration.burning_rain" => "cinder_storm",
         "clear" when act == 3 => "cinder_fields",
+        "campaign.bone_causeway" => "spine_causeway",
+        "campaign.contract_hall" => "spine_hall",
+        "campaign.covenant_warden" => "spine_warden",
+        "exploration.first_oath" => "spine_memory",
+        "clear" when act == 4 => "spine_causeway",
         _ => "default"
     };
 
@@ -30,6 +35,8 @@ public static class EnvironmentGround
         { VerdantGround.Build(parent, room, style); return; }
         if (CinderAmbience.CueForStyle(style).Length != 0)
         { CinderGround.Build(parent, room, style); return; }
+        if (SpineAmbience.CueForStyle(style).Length != 0)
+        { SpineGround.Build(parent, room, style); return; }
         var b = new EnvironmentBuilder(parent, "AuthoredGround");
         float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
         bool hub = style == "greyhaven", road = style == "road", sanctum = style == "sanctum";

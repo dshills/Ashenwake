@@ -18,6 +18,7 @@ public partial class CampaignStage : Node3D
     private BellSanctuaryVisual? _bell;
     private VerdantHeartVisual? _heart;
     private FurnaceSpindleVisual? _furnace;
+    private CovenantWardenVisual? _warden;
     private readonly Dictionary<string, VerdantTrailVisual> _trails = [];
     private Vector3? _lastTrailPoint;
     public string PresentedEncounter { get; private set; } = "";
@@ -35,6 +36,7 @@ public partial class CampaignStage : Node3D
         _bell?.Animate(delta, paused, reduced);
         _heart?.Animate(delta, paused, reduced);
         _furnace?.Animate(delta, paused, reduced);
+        _warden?.Animate(delta, paused, reduced);
         foreach (var trail in _trails.Values) trail.Animate(delta, paused, reduced);
     }
     public void Show(CampaignState state, CampaignView view, RoomDefinition room, IReadOnlyList<ExpeditionInteraction> interactions,
@@ -54,6 +56,7 @@ public partial class CampaignStage : Node3D
         {
             "event.wake_hunt" => "exploration.antler_hunt",
             "event.resonance_storm" => "exploration.burning_rain",
+            "event.divine_memory" => "exploration.first_oath",
             _ => activeEncounterId ?? view.EncounterId ?? ""
         };
         PresentedEncounter = encounter;
@@ -64,7 +67,7 @@ public partial class CampaignStage : Node3D
         {
             _signature = signature;
             foreach (var child in _region.GetChildren()) { _region.RemoveChild(child); child.QueueFree(); }
-            _markers.Clear(); _trails.Clear(); _lastTrailPoint = null; _markerSignature = ""; _bell = null; _heart = null; _furnace = null;
+            _markers.Clear(); _trails.Clear(); _lastTrailPoint = null; _markerSignature = ""; _bell = null; _heart = null; _furnace = null; _warden = null;
             BuildRegion(state.CurrentAct, room.HalfWidth * .001f, room.HalfDepth * .001f, encounter, bellPhase, bossDefeated);
             if (state.CurrentAct == 2 && encounter == "campaign.rootheart")
             { _heart = VerdantHeartVisual.Create(room.HalfWidth * .001f, room.HalfDepth * .001f, roots, heartDefeated); _region.AddChild(_heart); }
@@ -74,10 +77,17 @@ public partial class CampaignStage : Node3D
                     state.CompletedEncounters.Contains("campaign.furnace_spindle"));
                 _region.AddChild(_furnace);
             }
+            if (state.CurrentAct == 4 && encounter == "campaign.covenant_warden" && combat is not null)
+            {
+                _warden = CovenantWardenVisual.Create(room.HalfWidth * .001f, room.HalfDepth * .001f, combat,
+                    state.CompletedEncounters.Contains("campaign.covenant_warden"));
+                _region.AddChild(_warden);
+            }
         }
         _bell?.SetPhase(bellPhase, bossDefeated);
         _heart?.SetState(roots, heartDefeated);
         if (combat is not null) _furnace?.SetState(combat, state.CompletedEncounters.Contains("campaign.furnace_spindle"));
+        if (combat is not null) _warden?.SetState(combat, state.CompletedEncounters.Contains("campaign.covenant_warden"));
         string markerSignature = string.Join('|', interactions.Select(i => $"{i.ActionId}:{i.Position.X}:{i.Position.Z}:{i.Name}"));
         if (_markerSignature != markerSignature)
         {
@@ -121,6 +131,7 @@ public partial class CampaignStage : Node3D
         if (act == 1) { _bell = GreyMarchArt.Build(_region, x, z, encounterId, bellPhase, bossDefeated); return; }
         if (act == 2) { VerdantMawArt.Build(_region, x, z, encounterId); return; }
         if (act == 3) { CinderReachArt.Build(_region, x, z, encounterId); return; }
+        if (act == 4) { ShatteredSpineArt.Build(_region, x, z, encounterId); return; }
         Color stone = new(new[] { "727b83", "416956", "66544a", "b1aa91", "514c72" }[act - 1]);
         Color accent = new(new[] { "c0be9a", "9bb662", "e69a55", "dfcea1", "a38acc" }[act - 1]);
         // These perimeter bands visually separate regions without adding navigational obstacles.
@@ -130,18 +141,8 @@ public partial class CampaignStage : Node3D
         for (int i = -2; i <= 2; i++)
         {
             float px = i * 4.6f;
-            switch (act)
-            {
-                case 4:
-                    var bone = Box(new(.65f, 5.5f, .85f), new(px, 2.65f, -z - 1.7f), stone); bone.RotationDegrees = new(0, 0, i * 6);
-                    Mesh(new SphereMesh { Radius = .65f, Height = 1 }, new(px, 5.5f, -z - 1.7f), accent);
-                    if (i < 2) Box(new(3.9f, .45f, .65f), new(px + 2.3f, 4.6f, -z - 1.7f), stone);
-                    break;
-                default:
-                    var crystal = Box(new(1.35f, 3.2f, 1.35f), new(px, 2.7f + Math.Abs(i) * .3f, -z - 1.7f), stone); crystal.RotationDegrees = new(0, 35, 25);
-                    Mesh(new TorusMesh { InnerRadius = .65f, OuterRadius = .78f }, new(px, .3f, -z - 1.7f), accent);
-                    break;
-            }
+            var crystal = Box(new(1.35f, 3.2f, 1.35f), new(px, 2.7f + Math.Abs(i) * .3f, -z - 1.7f), stone); crystal.RotationDegrees = new(0, 35, 25);
+            Mesh(new TorusMesh { InnerRadius = .65f, OuterRadius = .78f }, new(px, .3f, -z - 1.7f), accent);
         }
         string region = new[] { "THE GREY MARCH", "THE VERDANT MAW", "THE CINDER REACH", "THE SHATTERED SPINE", "THE HOLLOW NIGHT" }[act - 1];
         Label(region, new(0, 6.3f, -z - 2), accent);

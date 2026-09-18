@@ -293,7 +293,7 @@ public partial class Sandbox : Node3D
             PresentEffect($"t{actor.Id}", actor.TelegraphPosition!.Value.X, actor.TelegraphPosition.Value.Z, actor.TelegraphRadius * .001f, new Color(1, .18f, .12f, .35f));
         if (_view.CampaignHazards is not null)
             foreach (var hazard in _view.CampaignHazards)
-                PresentCampaignWarning(hazard.Id, hazard.Kind, hazard.Position.X, hazard.Position.Z, hazard.End.X, hazard.End.Z, hazard.Radius, hazard.RemainingTicks);
+                PresentCampaignWarning(hazard.Id, hazard.Kind, hazard.Position.X, hazard.Position.Z, hazard.End.X, hazard.End.Z, hazard.Radius, hazard.RemainingTicks, hazard.ContentId);
         foreach (var projectile in _view.Projectiles)
             PresentEffect($"p{projectile.Id}", projectile.Position.X, projectile.Position.Z, .15f, new("ffc178"), true);
         foreach (var area in _view.Areas)

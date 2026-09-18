@@ -21,7 +21,7 @@ Mouse controls remain left-click ground to walk, left-click an enemy to attack, 
 
 The only Core presentation addition is a read-only `CombatActorView.Guarded` projection of the existing campaign defense timer. This avoids deriving defense from animation state, which can lag the timer at a tick boundary. Persistent state, replay commands and combat rules are unchanged.
 
-Cinder-region endgame arenas reuse the city setting, floor and ambience; the campaign boss rig appears only in its authored Furnace encounter. This pass covers solo presentation. Cooperative arenas and Acts IV–V retain their previous environment treatment. The assets are repository-authored procedural geometry and synthesized audio.
+Cinder-region endgame arenas reuse the city setting, floor and ambience; the campaign boss rig appears only in its authored Furnace encounter. This pass covers solo presentation. [Act IV’s Shattered Spine](shattered_spine.md) now has bone cities and an animated covenant. Cooperative arenas and Act V retain their previous environment treatment. The assets are repository-authored procedural geometry and synthesized audio.
 
 ## Inspection run
 

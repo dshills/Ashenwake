@@ -40,6 +40,7 @@ public partial class Sandbox
         _sun.RotationDegrees = new(-58, -35, 0);
         bool verdant = VerdantAmbience.CueForStyle(style).Length != 0;
         bool cinder = CinderAmbience.CueForStyle(style).Length != 0;
+        bool spine = SpineAmbience.CueForStyle(style).Length != 0;
         if (verdant)
         {
             bool village = style == "verdant_village", heart = style == "verdant_heart";
@@ -71,6 +72,21 @@ public partial class Sandbox
             _sun.LightEnergy = storm ? .78f : .84f;
             _sun.RotationDegrees = new(-58, -30, 0);
         }
+        if (spine)
+        {
+            bool memory = style == "spine_memory", hall = style == "spine_hall";
+            environment.BackgroundColor = new Color(memory ? "30312c" : "202833");
+            environment.AmbientLightColor = new Color(memory ? "bbc3ba" : "a9b8cb");
+            environment.AmbientLightEnergy = memory ? .38f : .42f;
+            environment.FogLightColor = new Color(memory ? "777666" : "5b687b");
+            environment.FogLightEnergy = .19f;
+            environment.FogDensity = hall ? .13f : .17f;
+            environment.FogDepthBegin = 35;
+            environment.FogDepthEnd = 68;
+            _sun.LightColor = new Color(memory ? "e9e3d1" : "dae3f1");
+            _sun.LightEnergy = memory ? .68f : .8f;
+            _sun.RotationDegrees = new(-54, -32, 0);
+        }
         if (_ambientMotes is null)
         {
             _ambientMotes = new MultiMeshInstance3D
@@ -89,7 +105,8 @@ public partial class Sandbox
         }
         ((StandardMaterial3D)_ambientMotes.MaterialOverride).AlbedoColor = new Color(verdant
             ? style == "verdant_heart" ? "90b68a" : "b9ca86"
-            : cinder ? style == "cinder_storm" ? "aeb3c2" : "bc9172" : hub ? "ffbe76" : "8aafb5");
+            : cinder ? style == "cinder_storm" ? "aeb3c2" : "bc9172"
+            : spine ? style == "spine_memory" ? "d0c6a4" : "a6b1c4" : hub ? "ffbe76" : "8aafb5");
         SetRegionalAmbience(style);
         UpdateEnvironmentAtmosphere(0);
     }
@@ -104,8 +121,9 @@ public partial class Sandbox
         if (!_ambientMotes.Visible) return;
         bool verdant = VerdantAmbience.CueForStyle(_environmentStyle).Length != 0;
         bool cinder = CinderAmbience.CueForStyle(_environmentStyle).Length != 0, storm = _environmentStyle == "cinder_storm";
+        bool spine = SpineAmbience.CueForStyle(_environmentStyle).Length != 0;
         float x = _content.Room.HalfWidth * .001f, z = _content.Room.HalfDepth * .001f;
-        if ((verdant || cinder) && _authoredBounds.Width > 0 && _authoredBounds.Depth > 0)
+        if ((verdant || cinder || spine) && _authoredBounds.Width > 0 && _authoredBounds.Depth > 0)
         { x = _authoredBounds.Width * .001f; z = _authoredBounds.Depth * .001f; }
         // A newly shown room still receives its initial layout when entered through a paused menu.
         bool layoutChanged = _motePlacementStyle != _environmentStyle || _motePlacementBounds != (x, z);
@@ -119,7 +137,7 @@ public partial class Sandbox
             // Only the distant perimeter receives ambient motes; the combat floor stays clear.
             var position = new Vector3(-x + i * (x * 2 / 23) + Mathf.Sin((float)_atmosphereTime + i) * .2f,
                 .35f + cycle * 2.8f, -z - 1.1f - i % 3 * .55f);
-            if (verdant || cinder)
+            if (verdant || cinder || spine)
             {
                 float drift = Mathf.Sin((float)(_atmosphereTime * Math.Tau / 10) + i) * .18f;
                 float spread = (i % 8 + .5f) / 8;
@@ -145,7 +163,8 @@ public partial class Sandbox
     private void SetRegionalAmbience(string style)
     {
         bool cinder = CinderAmbience.CueForStyle(style).Length != 0;
-        string cue = cinder ? CinderAmbience.CueForStyle(style) : VerdantAmbience.CueForStyle(style);
+        bool spine = SpineAmbience.CueForStyle(style).Length != 0;
+        string cue = cinder ? CinderAmbience.CueForStyle(style) : spine ? SpineAmbience.CueForStyle(style) : VerdantAmbience.CueForStyle(style);
         if (cue == _ambienceCue) return;
         _ambienceCue = cue;
         if (_regionalAmbience is not null)
@@ -161,7 +180,7 @@ public partial class Sandbox
             _regionalAmbience = new AudioStreamPlayer { Name = "RegionalAmbience", VolumeDb = -25, Bus = "Master" };
             AddChild(_regionalAmbience);
         }
-        _regionalAmbience.Stream = cinder ? CinderAmbience.GetStream(cue) : VerdantAmbience.GetStream(cue);
+        _regionalAmbience.Stream = cinder ? CinderAmbience.GetStream(cue) : spine ? SpineAmbience.GetStream(cue) : VerdantAmbience.GetStream(cue);
         _regionalAmbience.Play();
         _regionalAmbience.StreamPaused = _clock.Paused;
     }

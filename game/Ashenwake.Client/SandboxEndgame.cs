@@ -12,6 +12,7 @@ public partial class Sandbox
         if (actor.DefinitionId == "enemy.feeding_root") return "SEVER";
         if (actor.DefinitionId == "boss.rootheart") return _view.Actors.Count(a => a.DefinitionId == "enemy.feeding_root" && a.Health > 0) >= 3 ? "PROTECTED" : "EXPOSED";
         if (actor.DefinitionId == "boss.furnace_spindle") return actor.Guarded ? "CORE GUARDED" : "CORE EXPOSED";
+        if (actor.DefinitionId == "boss.covenant_warden") return actor.Guarded ? "OATH GUARDED" : "WARDEN EXPOSED";
         if (actor.DefinitionId != "boss.bell_saint" || _view.BossPhase != 2) return null;
         return _view.Actors.Any(a => a.DefinitionId == "enemy.ritual_anchor" && a.Health > 0)
             ? "PROTECTED" : "RITUAL BROKEN · ATTACK NOW";
@@ -68,6 +69,8 @@ public partial class Sandbox
                 VerdantObstacleArt.Build(builder, width, depth, center, visualStyle);
             else if (CinderAmbience.CueForStyle(visualStyle).Length != 0)
                 CinderObstacleArt.Build(builder, width, depth, center, visualStyle);
+            else if (SpineAmbience.CueForStyle(visualStyle).Length != 0)
+                SpineObstacleArt.Build(builder, width, depth, center, visualStyle);
             else
             {
                 builder.Box(new(width, 1.08f, depth), center + Vector3.Up * .54f, visualStyle == "greyhaven" ? "5c665b" : "536367");
