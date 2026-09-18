@@ -71,3 +71,4 @@ rg -q 'ProductionClientSmokePassed' "$production_output/smoke.log"
 aw production replay "$production_output/production.awp"
 bash tools/campaign-verify.sh
 bash tools/endgame-verify.sh
+bash tools/release-verify.sh

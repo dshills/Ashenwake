@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "sourceTree": "474fe594868370c49fee740381ecc999dd973e34",
+  "sourcePackageSha256": "96980AB5FA93727151D2624BF99F40F116BD860E972F4750989A37F9E46853AA",
+  "sourceStateHash": "07CA337276B242FCB437F668EFFFFB490C8F0CB6F61CCC08695D42DBD6E32D55",
+  "fixtureSha256": "E77BC48A9090750F48E2578223A522687EB72F07FB34F1E22323E4EBA831B247",
+  "scope": "Actual exported Phase5 application: fresh campaign, ten Fractures, all five hunts, death/retry/abandon/recovery, final hub. No test-authored character state."
+}

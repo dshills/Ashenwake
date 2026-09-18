@@ -1,6 +1,6 @@
 # Ashenwake
 
-An isometric action RPG about building power from the remains of dead gods. The current working milestone is **Phase 5: playable Fractures and God Hunts**, continuing the five-act greybox campaign and five-discipline progression foundation. Phase verification documents record tests, Prism reviews, and remaining production acceptance gates. Release hardening is in progress.
+An isometric action RPG about building power from the remains of dead gods. The current working milestone is **Phase 6: release hardening**, continuing the five-act greybox campaign and five-discipline progression foundation. Phase verification documents record tests, Prism reviews, and remaining production acceptance gates. Recovery, local diagnostics, maintained upgrade fixtures, soak tools and integrity-checked local release candidates are implemented. Public-release and external acceptance gates remain open.
 
 Choose Vanguard, Veilwalker, Arcanist, Gravecaller, or Warden, each with six skills and its own resource loop. Travel through five regions, rescue Greyhaven's specialists, choose consequential alliances, confront five bosses, and investigate three optional exploration encounters. Equipment, anatomy, mastery, Manifestations, crafting, and rewards persist. Godot renders an engine-independent C# simulation.
 
@@ -93,6 +93,10 @@ aw endgame builds
 aw endgame exhaustive
 aw endgame replay /path/to/endgame.awendgame
 aw endgame migrate-phase4 /path/to/campaign.save.json /new/directory/endgame.save.json
+aw release audit
+aw release fixtures
+aw release projectile-ceiling
+aw release endgame-soak artifacts/release/new-persistent-run 3
 aw authoring validate
 aw authoring templates artifacts/new-templates
 aw authoring pseudo artifacts/text.qps-ploc.json
@@ -117,3 +121,9 @@ Run `aw` within this checkout; source/output paths are relative to the repositor
 - [Implementation plan](specs/Ashenwake_Implementation_Plan.md), [game design](specs/Ashenwake_Game_Design.md), and [technical architecture](specs/Ashenwake_Technical_Architecture.md).
 
 Phase status and evidence are recorded in [Phase 1 verification](docs/phase1_verification.md), [Phase 2 verification](docs/phase2_verification.md), [Phase 3 verification](docs/phase3_verification.md), [Phase 4 verification](docs/phase4_verification.md), and [Phase 5 verification](docs/phase5_verification.md). See [production authoring](docs/content_production.md) and the [endgame contract](docs/endgame_contract.md) for scope and rules. The scenes use procedural prototype geometry and audio. Automated correctness and profiling do not replace external playtests, production art, or platform certification.
+
+## Release validation
+
+`bash tools/release-verify.sh` runs fixture/asset audits, repeated combat and continuing endgame soaks, and the actual release-settings smoke. `bash tools/release-package.sh <reviewed-commit-or-tree-hash>` exports and runs the application, collects pinned runtime notices, and creates a new local candidate with an immutable integrity manifest. It does not publish or sign a release. See [Phase 6 evidence](docs/phase6_verification.md), [release readiness](docs/release_readiness.md), and [third-party notices](docs/third_party_notices.md).
+
+Focus loss or controller disconnect pauses and clears held inputs; reconnection requires explicit resume. Settings recover from a validated backup. The settings panel can export bounded local diagnostics with the exact loaded Core build/content identity. Replay is excluded by default and nothing uploads automatically.

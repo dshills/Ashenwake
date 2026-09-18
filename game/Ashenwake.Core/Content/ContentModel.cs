@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Ashenwake.Core.Simulation;
@@ -18,8 +17,10 @@ public static class JsonData
     public static string Write<T>(T value) => JsonSerializer.Serialize(value, Options);
     public static T Read<T>(string json) => JsonSerializer.Deserialize<T>(json, Options)
         ?? throw new InvalidDataException("JSON document is null.");
-    public static T Copy<T>(T value) => Read<T>(Write(value));
-    public static string Hash<T>(T value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Write(value))));
+    // Keep the canonical JSON bytes while avoiding an intermediate UTF-16 string on every simulation command.
+    public static T Copy<T>(T value) => JsonSerializer.Deserialize<T>(JsonSerializer.SerializeToUtf8Bytes(value, Options), Options)
+        ?? throw new InvalidDataException("JSON document is null.");
+    public static string Hash<T>(T value) => Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(value, Options)));
 }
 
 public sealed record AbilityDefinition([property: JsonRequired] string Id, [property: JsonRequired] string NameKey, [property: JsonRequired] int Damage, [property: JsonRequired] int Range, [property: JsonRequired] int WindupTicks, [property: JsonRequired] int CooldownTicks);

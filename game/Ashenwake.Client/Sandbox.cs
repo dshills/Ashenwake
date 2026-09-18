@@ -62,7 +62,7 @@ public partial class Sandbox : Node3D
             _smoke = OS.GetCmdlineUserArgs().Contains("--sandbox-smoke");
             _output = Argument("--output=") ?? ProjectSettings.GlobalizePath("user://sandbox");
             _capturePath = Argument("--capture=");
-            _preferencesPath = ProjectSettings.GlobalizePath("user://sandbox-settings.json");
+            _preferencesPath = ResolveReleasePreferencesPath();
             _contentJson = ContentJsonOverride ?? FileAccess.GetFileAsString("res://combat.json");
             _content = CombatContent.Parse(_contentJson);
             BindInputs(); LoadPreferences();
@@ -70,6 +70,7 @@ public partial class Sandbox : Node3D
             foreach (var obstacle in _content.Room.Obstacles) AddObstacle(obstacle.MinX, obstacle.MinZ, obstacle.MaxX, obstacle.MaxZ);
             BuildHud();
             SetSession(CombatSession.Create(_contentJson, 42, Argument("--preset=") ?? "standard"));
+            InitializeReleaseSupport();
             Message("Vanguard · build Momentum with Cleave, spend it to control the pack.");
             Message("Enemy circles signal windup. Move away or dodge before the hit.");
         }
@@ -86,7 +87,7 @@ public partial class Sandbox : Node3D
     }
     public void Notify(string text) => Message(text);
     public void SetWorldSubtitle(string text) => _subtitleLabel.Text = text;
-    public void SetPaused(bool paused) => _clock.Paused = paused;
+    public void SetPaused(bool paused) => ChangePause(paused);
     private void ShowInventory()
     { if (InventoryOverride is not null) InventoryOverride(); else TogglePanel(_inventoryPanel); }
 
@@ -100,6 +101,7 @@ public partial class Sandbox : Node3D
         ClearPresentation(); SynchronizeWorld();
         if (_inventoryPanel is not null)
         { _inventoryPanel.Visible = false; _settingsPanel.Visible = false; if (_lootPanel is not null) _lootPanel.Visible = false; _lootSignature = ""; _inspectedLoot = 0; RefreshHud(); }
+        if (_releaseEnabled) ChangePause(false);
     }
 
     /// <summary>Adopts authoritative projections without restarting input or visual feedback in the same arena.</summary>
@@ -124,7 +126,7 @@ public partial class Sandbox : Node3D
             var watch = Stopwatch.GetTimestamp();
             if (!_smoke && !AutomaticStep && !_clock.Paused)
             {
-                var direction = Input.GetVector("aw_left", "aw_right", "aw_up", "aw_down", .28f);
+                var direction = ReadReleaseMovement();
                 int x = Math.Abs(direction.X) < .28f ? 0 : Math.Sign(direction.X);
                 int z = Math.Abs(direction.Y) < .28f ? 0 : Math.Sign(direction.Y);
                 if (x != _moveX || z != _moveZ)
@@ -171,7 +173,7 @@ public partial class Sandbox : Node3D
         {
             if (input.IsActionPressed("aw_inventory")) { ShowInventory(); return; }
             if (input.IsActionPressed("aw_settings")) { TogglePanel(_settingsPanel); return; }
-            if (input.IsActionPressed("aw_pause")) { _clock.Paused = !_clock.Paused; return; }
+            if (input.IsActionPressed("aw_pause")) { ChangePause(!_clock.Paused); return; }
             if (input.IsActionPressed("aw_step")) { _clock.SingleStep(StepCombat); return; }
             if (input.IsActionPressed("aw_save")) { Save(); return; }
             if (input.IsActionPressed("aw_load")) { Load(); return; }
@@ -362,7 +364,7 @@ public partial class Sandbox : Node3D
         }
         LabelAt("WASD / LEFT STICK  Move   ·   CLICK / 1–6  Attack   ·   SPACE / B  Dodge   ·   Q  Potion   ·   E  Collect   ·   TAB  Target", new(32, 765), 12, new("abc0cb"));
         _sandboxControls.Add(ButtonAt("Reset [R]", new(985, 697), new(122, 54), () => Reset(_view.Preset)));
-        ButtonAt("Pause [P]", new(1118, 697), new(129, 54), () => _clock.Paused = !_clock.Paused);
+        ButtonAt("Pause [P]", new(1118, 697), new(129, 54), () => ChangePause(!_clock.Paused));
         BuildInventory(); BuildSettings();
     }
     private Label LabelAt(string text, Vector2 position, int size, Color color, Node? parent = null)
@@ -463,6 +465,7 @@ public partial class Sandbox : Node3D
         foreach (var preset in Presets) AddButton(arenas, preset.ToUpperInvariant(), () => Reset(preset));
         AddButton(column, "Save character [F5]", Save); AddButton(column, "Load character [F9]", Load);
         AddButton(column, "Verify & save replay [F6]", VerifyReplay);
+        BuildReleaseSettings(column);
         column.AddChild(TextLabel("KEY BINDINGS · select, then press a key", 14));
         foreach (var pair in _keys)
         {
@@ -477,8 +480,8 @@ public partial class Sandbox : Node3D
     {
         bool open = !panel.Visible; _inventoryPanel.Visible = false; _settingsPanel.Visible = false;
         if (_lootPanel is not null) _lootPanel.Visible = false;
-        panel.Visible = open; _clock.Paused = open; _awaitingKey = null;
-        if (open) { _pending.Clear(); _pending.Add(new(CombatCommandKind.Stop)); _clock.SingleStep(StepCombat); _moveX = _moveZ = 0; }
+        panel.Visible = open; ChangePause(open);
+        if (open) FocusFirstAction(panel); else GetViewport().GuiGetFocusOwner()?.ReleaseFocus();
         RefreshHud();
     }
     private void ApplyWhilePaused(CombatCommand command)
@@ -621,20 +624,8 @@ public partial class Sandbox : Node3D
         foreach (var input in InputMap.ActionGetEvents(name).OfType<InputEventKey>()) InputMap.ActionEraseEvent(name, input);
         InputMap.ActionAddEvent(name, new InputEventKey { PhysicalKeycode = key }); _keys[action] = key;
     }
-    private void LoadPreferences()
-    {
-        if (!File.Exists(_preferencesPath)) return;
-        try
-        {
-            var preferences = JsonData.Read<Preferences>(File.ReadAllText(_preferencesPath));
-            _reduceEffects = preferences.ReducedEffects; _reduceShake = preferences.ReducedShake;
-            _minimumLootRarity = Math.Clamp(preferences.MinimumLootRarity, 0, 5); _compatibleLootOnly = preferences.CompatibleLootOnly;
-            foreach (var pair in preferences.Keys) if (_keys.ContainsKey(pair.Key) && Enum.IsDefined((Key)pair.Value)) SetKey(pair.Key, (Key)pair.Value);
-        }
-        catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException or InvalidDataException)
-        { GD.PushWarning("Settings reset: " + ex.Message); }
-    }
-    private void SavePreferences() => AtomicWrite(_preferencesPath, JsonData.Write(new Preferences(_reduceEffects, _reduceShake, _keys.ToDictionary(p => p.Key, p => (long)p.Value), _minimumLootRarity, _compatibleLootOnly)));
+    private void LoadPreferences() => LoadReleasePreferences();
+    private void SavePreferences() => SaveReleasePreferences();
 
     private void Save()
     {

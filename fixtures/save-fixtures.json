@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "id": "adventure.v1.hub",
+      "path": "fixtures/adventure-v1-hub.json",
+      "kind": "Adventure",
+      "sha256": "1EE37B8BEF2B1F0362461EC8294DC7FF8A633618947BFCBD63A30ED26BF383E8"
+    },
+    {
+      "id": "adventure-phase3",
+      "path": "fixtures/adventure-phase3.json",
+      "kind": "FrozenDocument",
+      "sha256": "5209578AEB626B320F73A36B82B7EE64BCAFD66AC2827DFA4AC885575A651DC1"
+    },
+    {
+      "id": "adventure-phase4",
+      "path": "fixtures/adventure-phase4.json",
+      "kind": "FrozenDocument",
+      "sha256": "5209578AEB626B320F73A36B82B7EE64BCAFD66AC2827DFA4AC885575A651DC1"
+    },
+    {
+      "id": "campaign-combat-phase4",
+      "path": "fixtures/campaign-combat-phase4.json",
+      "kind": "FrozenDocument",
+      "sha256": "22D855B8B703015F8DF56ECD6D0A423A42AB4F40A44336C059D45C4DB5AF78ED"
+    },
+    {
+      "id": "campaign-phase4",
+      "path": "fixtures/campaign-phase4.json",
+      "kind": "FrozenDocument",
+      "sha256": "A8C5E95A465BEBADF484EEA2F4991AF9B8520C9A6B242678577A1A09C576012F"
+    },
+    {
+      "id": "combat-phase2",
+      "path": "fixtures/combat-phase2.json",
+      "kind": "FrozenDocument",
+      "sha256": "0355660F0B14930C996EB74C94775027724E8D79FA8D1E4E4E09FB10166E4250"
+    },
+    {
+      "id": "combat-phase3",
+      "path": "fixtures/combat-phase3.json",
+      "kind": "FrozenDocument",
+      "sha256": "410C7ADB851AEEA8614AEC7C1235BA0192E3C9B50C44174510C9527F69B8DE58"
+    },
+    {
+      "id": "combat-phase4",
+      "path": "fixtures/combat-phase4.json",
+      "kind": "FrozenDocument",
+      "sha256": "410C7ADB851AEEA8614AEC7C1235BA0192E3C9B50C44174510C9527F69B8DE58"
+    },
+    {
+      "id": "phase2-expedition-hub",
+      "path": "fixtures/phase2-expedition-hub.json",
+      "kind": "PhaseTwo",
+      "sha256": "05CCF799FB6CDCB4EB24634F1337B4580CE9ECDAFDD9EB3D908DF08DEED2019D"
+    },
+    {
+      "id": "phase3-migration-manifest",
+      "path": "fixtures/phase3-migration-manifest.json",
+      "kind": "FrozenDocument",
+      "sha256": "844EBED5A33C94566004CF2DF06A9D4EA99E57D3550CD86DF97008B362529EE3"
+    },
+    {
+      "id": "phase3-production-hub",
+      "path": "fixtures/phase3-production-hub.json",
+      "kind": "PhaseThree",
+      "sha256": "9D2FC82B06CDFA6964000FA792316D44317ACFAE433A85F81F45523E254CD4ED"
+    },
+    {
+      "id": "phase4-campaign-complete",
+      "path": "fixtures/phase4-campaign-complete.json",
+      "kind": "PhaseFour",
+      "sha256": "CD346F511BFC7B317B80EBA332C69A22B07DAB260785CB433EB606DB58871F1C"
+    },
+    {
+      "id": "phase4-migration-manifest",
+      "path": "fixtures/phase4-migration-manifest.json",
+      "kind": "FrozenDocument",
+      "sha256": "F08FC0EC8AC753B7198969BA20EFB808133224E09B1455A7885A9275260D6F53"
+    },
+    {
+      "id": "progression-phase3",
+      "path": "fixtures/progression-phase3.json",
+      "kind": "FrozenDocument",
+      "sha256": "21EF420C769539E99C4D37457964A656561AC0380FDEC2204E8DB833FF2C6710"
+    },
+    {
+      "id": "progression-phase4",
+      "path": "fixtures/progression-phase4.json",
+      "kind": "FrozenDocument",
+      "sha256": "21EF420C769539E99C4D37457964A656561AC0380FDEC2204E8DB833FF2C6710"
+    },
+    {
+      "id": "phase5-endgame-complete",
+      "path": "fixtures/phase5-endgame-complete.json",
+      "kind": "PhaseFive",
+      "sha256": "E77BC48A9090750F48E2578223A522687EB72F07FB34F1E22323E4EBA831B247"
+    },
+    {
+      "id": "phase5-release-manifest",
+      "path": "fixtures/phase5-release-manifest.json",
+      "kind": "FrozenDocument",
+      "sha256": "B08C44546C04BCD0942DD28B074DF0E8F7FB73C3CF62D9D49E9DDEC08FD8BCE7"
+    }
+  ]
+}

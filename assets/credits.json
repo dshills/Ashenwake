@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "assets": [
+    {
+      "id": "asset.procedural_combat",
+      "name": "Procedural combat actors, telegraphs, status markers, and synthesized audio cues",
+      "sourceFiles": [
+        "game/Ashenwake.Client/SandboxPresentation.cs"
+      ],
+      "origin": "Authored in the Ashenwake repository from Godot primitive meshes and synthesized waveforms; no downloaded art or audio samples are declared.",
+      "rightsStatus": "Project-authored source. The repository does not yet declare a distribution license or owner approval.",
+      "redistributionApproved": false,
+      "requiredCredit": "Ashenwake project contributors; final release credit names and distribution terms await the owner."
+    },
+    {
+      "id": "asset.procedural_adventure",
+      "name": "Procedural Greyhaven, dungeon, Bell Saint, and ritual anchor scenery",
+      "sourceFiles": [
+        "game/Ashenwake.Client/AdventureStage.cs"
+      ],
+      "origin": "Authored in the Ashenwake repository using Godot primitive meshes and materials.",
+      "rightsStatus": "Project-authored source. The repository does not yet declare a distribution license or owner approval.",
+      "redistributionApproved": false,
+      "requiredCredit": "Ashenwake project contributors; final release credit names and distribution terms await the owner."
+    },
+    {
+      "id": "asset.procedural_campaign_endgame",
+      "name": "Procedural regional environments, Fracture arenas, God Hunt mechanisms and warning geometry",
+      "sourceFiles": [
+        "game/Ashenwake.Client/CampaignStage.cs",
+        "game/Ashenwake.Client/EndgamePresentation.cs",
+        "game/Ashenwake.Client/SandboxEndgame.cs"
+      ],
+      "origin": "Authored in this repository using Godot primitive meshes, materials, and text labels.",
+      "rightsStatus": "Project-authored source; final contributor names and distribution terms remain owner decisions.",
+      "redistributionApproved": false,
+      "requiredCredit": "Ashenwake project contributors; final release credits await owner declaration."
+    }
+  ],
+  "thirdPartyRuntimeNotices": [
+    "docs/third_party_notices.md"
+  ]
+}

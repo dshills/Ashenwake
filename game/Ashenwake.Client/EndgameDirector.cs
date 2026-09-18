@@ -37,7 +37,7 @@ public partial class EndgameDirector : Node3D
     private PanelContainer _classSelection = null!;
     private ColorRect _classBackdrop = null!;
     private FileDialog _importDialog = null!;
-    private string _combatJson = "", _previousCombatJson = "", _output = "", _saveName = "endgame.save.json";
+    private string _combatJson = "", _previousCombatJson = "", _output = "", _saveName = "endgame.save.json", _selectionNotice = "";
     private long _revision, _steps, _drillRun, _drillTick;
     private bool _smoke, _finished, _capture, _capturing, _retried, _abandoned, _recovered, _attuned, _deathSaved, _loaded, _migrationVerified, _pausedBeforeModal;
     private readonly Dictionary<string, int> _events = new(StringComparer.Ordinal);
@@ -55,12 +55,7 @@ public partial class EndgameDirector : Node3D
             _smoke = OS.GetCmdlineUserArgs().Contains("--endgame-smoke");
             _capture = OS.GetCmdlineUserArgs().Contains("--capture-endgame");
             _output = Argument("--output=") ?? ProjectSettings.GlobalizePath("user://endgame");
-            string selectedSave = Path.Combine(_output, "current-save.txt");
-            if (!_smoke && File.Exists(selectedSave))
-            {
-                string filename = File.ReadAllText(selectedSave).Trim();
-                if (filename == Path.GetFileName(filename) && filename.StartsWith("endgame.", StringComparison.Ordinal) && filename.EndsWith(".save.json", StringComparison.Ordinal)) _saveName = filename;
-            }
+            if (!_smoke) (_saveName, _selectionNotice) = ClientSaveSelection.Read(_output);
             string campaignCombatJson = CampaignCombatContent.Parse(FileAccess.GetFileAsString("res://combat.json"), FileAccess.GetFileAsString("res://campaign-combat.json")).CombatJson;
             _previousCombatJson = CampaignCombatContent.Parse(FileAccess.GetFileAsString("res://combat-phase4.json"), FileAccess.GetFileAsString("res://campaign-combat-phase4.json")).CombatJson;
             _endgame = EndgameContent.Parse(FileAccess.GetFileAsString("res://endgame.json")); _endgameDefinition = _endgame.Capture();
@@ -534,6 +529,7 @@ public partial class EndgameDirector : Node3D
         }
         var load = new Button { Text = "Continue saved character", Disabled = !File.Exists(SavePath) && !File.Exists(SavePath + ".bak") };
         load.Pressed += () => Safely(Load); column.AddChild(load);
+        if (_selectionNotice.Length > 0) column.AddChild(new Label { Text = _selectionNotice, AutowrapMode = TextServer.AutowrapMode.WordSmart });
         var import = new Button { Text = "Import a Phase 4 campaign save" }; import.Pressed += () => _importDialog.PopupCentered(new(860, 560)); column.AddChild(import);
     }
     private void BuildImportDialog()
