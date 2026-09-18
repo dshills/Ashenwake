@@ -31,6 +31,19 @@ public partial class CampaignHud
             ? "Region complete · choose where to go next [J]" : "Area secured · review loot and continue [J]";
         if (_state.InHub)
         { _objective.Text = "Choose an unlocked act on the Journey map [J] to leave Greyhaven."; return; }
+        if (_state.Exploration?.Id == "event.wake_hunt" && _interactions.FirstOrDefault(i => i.Id.StartsWith("clue.", StringComparison.Ordinal)) is { } clue)
+        {
+            int total = _content.Exploration.Single(e => e.Id == "event.wake_hunt").Clues.Length;
+            _objective.Text = $"THE ANTLER THAT WALKS · Trace {_state.Exploration.TrackedClues + 1}/{total}: {clue.Name.Replace("Track ", "", StringComparison.Ordinal)}. Approach the marked trace and interact to follow it.";
+            return;
+        }
+        if (_combat.Actors.Any(a => a.DefinitionId == "boss.rootheart" && a.Health > 0))
+        {
+            int roots = _combat.Actors.Count(a => a.DefinitionId == "enemy.feeding_root" && a.Health > 0);
+            _objective.Text = roots >= 3 ? "ROOTHEART PROTECTED · Sever a feeding root to expose the moving core. Click a root or use Tab to target it."
+                : $"ROOTHEART EXPOSED · Attack the moving core. {roots} feeding root{(roots == 1 ? "" : "s")} remain; keep clear of the spore warnings.";
+            return;
+        }
         if (_combat.Actors.Any(a => a.DefinitionId == "boss.bell_saint" && a.Health > 0) && _combat.BossPhase == 2)
         {
             int anchors = _combat.Actors.Count(a => a.DefinitionId == "enemy.ritual_anchor" && a.Health > 0);

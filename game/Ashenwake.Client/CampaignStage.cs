@@ -1,4 +1,5 @@
 using Ashenwake.Core.Campaign;
+using Ashenwake.Core.Combat;
 using Ashenwake.Core.Content;
 using Ashenwake.Core.Expedition;
 using Godot;
@@ -15,6 +16,10 @@ public partial class CampaignStage : Node3D
     private string _signature = "";
     private string _markerSignature = "";
     private BellSanctuaryVisual? _bell;
+    private VerdantHeartVisual? _heart;
+    private readonly Dictionary<string, VerdantTrailVisual> _trails = [];
+    private Vector3? _lastTrailPoint;
+    public string PresentedEncounter { get; private set; } = "";
     private Sandbox? _sandbox;
     public override void _Ready()
     {
@@ -24,41 +29,68 @@ public partial class CampaignStage : Node3D
     }
     public override void _Process(double delta)
     {
-        if (_region.IsVisibleInTree()) _bell?.Animate(delta, _sandbox?.IsPaused == true, _sandbox?.ReducedEffects == true);
+        if (!_region.IsVisibleInTree()) return;
+        bool paused = _sandbox?.IsPaused == true, reduced = _sandbox?.ReducedEffects == true;
+        _bell?.Animate(delta, paused, reduced);
+        _heart?.Animate(delta, paused, reduced);
+        foreach (var trail in _trails.Values) trail.Animate(delta, paused, reduced);
     }
     public void Show(CampaignState state, CampaignView view, RoomDefinition room, IReadOnlyList<ExpeditionInteraction> interactions,
-        IReadOnlyList<string> manifestations, int hubStage, CorePosition player, int bellPhase = 0, bool bossDefeated = false)
+        IReadOnlyList<string> manifestations, int hubStage, CorePosition player, int bellPhase = 0, bool bossDefeated = false,
+        CombatView? combat = null, string? activeEncounterId = null)
     {
         _hub.Visible = state.InHub; _region.Visible = !state.InHub;
         if (state.InHub)
         {
-            _signature = "";
+            _signature = ""; PresentedEncounter = "hub";
             _hub.ShowRoom("room.greyhaven", 0, room, manifestations, interactions.ToDictionary(i => i.ActionId, i => i.Position), new HashSet<string>(), hubStage);
             _hub.FocusNearestInteraction(player); return;
         }
-        string signature = state.CurrentAct + ":" + view.EncounterId + ":" + room.HalfWidth + ":" + room.HalfDepth;
+        // StoryView points to the next objective as soon as a fight is won. Scenery belongs
+        // to the actual occupied arena, including its loot and finite victory sequence.
+        string encounter = state.Exploration?.Id == "event.wake_hunt" ? "exploration.antler_hunt" : activeEncounterId ?? view.EncounterId ?? "";
+        PresentedEncounter = encounter;
+        int roots = combat?.Actors.Count(a => a.DefinitionId == "enemy.feeding_root" && a.Health > 0) ?? 3;
+        bool heartDefeated = state.CompletedEncounters.Contains("campaign.rootheart") || combat?.Actors.Any(a => a.DefinitionId == "boss.rootheart" && a.Health <= 0) == true;
+        string signature = state.CurrentAct + ":" + encounter + ":" + state.Deaths + ":" + room.HalfWidth + ":" + room.HalfDepth;
         if (_signature != signature)
         {
             _signature = signature;
             foreach (var child in _region.GetChildren()) { _region.RemoveChild(child); child.QueueFree(); }
-            _markers.Clear(); _markerSignature = ""; _bell = null;
-            BuildRegion(state.CurrentAct, room.HalfWidth * .001f, room.HalfDepth * .001f, view.EncounterId ?? "", bellPhase, bossDefeated);
+            _markers.Clear(); _trails.Clear(); _lastTrailPoint = null; _markerSignature = ""; _bell = null; _heart = null;
+            BuildRegion(state.CurrentAct, room.HalfWidth * .001f, room.HalfDepth * .001f, encounter, bellPhase, bossDefeated);
+            if (state.CurrentAct == 2 && encounter == "campaign.rootheart")
+            { _heart = VerdantHeartVisual.Create(room.HalfWidth * .001f, room.HalfDepth * .001f, roots, heartDefeated); _region.AddChild(_heart); }
         }
         _bell?.SetPhase(bellPhase, bossDefeated);
+        _heart?.SetState(roots, heartDefeated);
         string markerSignature = string.Join('|', interactions.Select(i => $"{i.ActionId}:{i.Position.X}:{i.Position.Z}:{i.Name}"));
         if (_markerSignature != markerSignature)
         {
             _markerSignature = markerSignature;
             foreach (var marker in _markers.Values) { _region.RemoveChild(marker); marker.QueueFree(); }
             _markers.Clear();
+            foreach (var pair in _trails)
+                if (!interactions.Any(i => i.ActionId == pair.Key)) pair.Value.MarkTracked();
             var points = new HashSet<CorePosition>();
             foreach (var interaction in interactions)
             {
                 if (!points.Add(interaction.Position)) continue;
                 var marker = new Node3D { Position = new(interaction.Position.X * .001f, 0, interaction.Position.Z * .001f) };
                 _region.AddChild(marker); _markers[interaction.ActionId] = marker;
-                Mesh(new TorusMesh { InnerRadius = .47f, OuterRadius = .58f }, new(0, .07f, 0), new("d8c790"), marker);
-                Mesh(new CylinderMesh { TopRadius = .16f, BottomRadius = .3f, Height = .5f }, new(0, .25f, 0), new("93d6c9"), marker);
+                if (state.Exploration?.Id == "event.wake_hunt" && interaction.ActionId.StartsWith("clue.", StringComparison.Ordinal))
+                {
+                    if (!_trails.ContainsKey(interaction.ActionId))
+                    {
+                        var trail = VerdantTrailVisual.Create(interaction.ActionId, marker.Position, _lastTrailPoint);
+                        _trails[interaction.ActionId] = trail; _region.AddChild(trail); _lastTrailPoint = marker.Position;
+                    }
+                }
+                else
+                {
+                    Mesh(new TorusMesh { InnerRadius = .47f, OuterRadius = .58f }, new(0, .07f, 0), new("d8c790"), marker);
+                    Mesh(new CylinderMesh { TopRadius = .16f, BottomRadius = .3f, Height = .5f }, new(0, .25f, 0), new("93d6c9"), marker);
+                }
                 Label(interaction.Name, new(0, 1.3f, 0), new("eee0b8"), marker);
             }
         }
@@ -67,11 +99,13 @@ public partial class CampaignStage : Node3D
             Vector3 position = new(player.X * .001f, 0, player.Z * .001f);
             string nearest = _markers.MinBy(pair => pair.Value.Position.DistanceSquaredTo(position)).Key;
             foreach (var pair in _markers) foreach (var label in pair.Value.GetChildren().OfType<Label3D>()) label.Visible = pair.Key == nearest;
+            foreach (var pair in _trails) pair.Value.SetFocused(pair.Key == nearest);
         }
     }
     private void BuildRegion(int act, float x, float z, string encounterId, int bellPhase, bool bossDefeated)
     {
         if (act == 1) { _bell = GreyMarchArt.Build(_region, x, z, encounterId, bellPhase, bossDefeated); return; }
+        if (act == 2) { VerdantMawArt.Build(_region, x, z, encounterId); return; }
         Color stone = new(new[] { "727b83", "416956", "66544a", "b1aa91", "514c72" }[act - 1]);
         Color accent = new(new[] { "c0be9a", "9bb662", "e69a55", "dfcea1", "a38acc" }[act - 1]);
         // These perimeter bands visually separate regions without adding navigational obstacles.
@@ -87,12 +121,6 @@ public partial class CampaignStage : Node3D
                     Box(new(1.1f, 4.1f, 1.2f), new(px, 2, -z - 1.7f), stone);
                     Box(new(1.7f, .45f, 1.7f), new(px, 4.2f, -z - 1.7f), accent);
                     if (i < 2) Box(new(3.5f, .5f, .65f), new(px + 2.3f, 3.3f, -z - 1.7f), stone);
-                    break;
-                case 2:
-                    var trunk = Mesh(new CylinderMesh { TopRadius = .27f, BottomRadius = .8f, Height = 4.5f }, new(px, 2.2f, -z - 1.6f), stone);
-                    trunk.RotationDegrees = new(0, 0, i * 4);
-                    Mesh(new SphereMesh { Radius = 1.75f, Height = 2 }, new(px + .35f, 4.3f, -z - 1.6f), accent);
-                    Mesh(new SphereMesh { Radius = .8f, Height = 1.2f }, new(-x - 1.4f, 1.8f, i * 3.5f), accent);
                     break;
                 case 3:
                     Box(new(2.5f, 2.7f, 2), new(px, 1.35f, -z - 1.7f), stone);

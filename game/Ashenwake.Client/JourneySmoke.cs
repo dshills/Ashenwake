@@ -133,15 +133,14 @@ public partial class JourneySmoke : Node
         var interactions = _session.Interactions.Select(i => new InteractionDisplay(i.ActionId, i.Name,
             (int)Math.Sqrt(Ashenwake.Core.Simulation.Position.DistanceSquared(player.Position, i.Position)), i.Range)).ToArray();
         _sandbox.AdoptSession(_session.Combat);
-        string style = _session.InHub ? "greyhaven" : _session.ActiveEncounterId switch
-        { "campaign.road" => "road", "campaign.monastery" => "monastery", "campaign.bell_saint" => "sanctum", _ => "default" };
+        string style = EnvironmentGround.Style(_session.InHub, _session.ActiveEncounterId, snapshot.Campaign.Exploration?.Id, snapshot.Campaign.CurrentAct);
         _sandbox.PresentAuthoredRoom(_session.Room, $"journey:{_session.InHub}:{_session.ActiveEncounterId}:{snapshot.Campaign.Deaths}", style);
         _sandbox.SetEnvironmentStyle(style);
         var manifestations = _session.Production.View.ActiveManifestations;
         _stage.Show(snapshot.Campaign, _session.View, _session.Room, _session.Interactions, manifestations,
             _session.Production.ProgressionView.HubStage, player.Position, _session.Combat.View.BossPhase,
             _session.ActiveEncounterId == "campaign.bell_saint" && (_session.EncounterCleared ||
-                _session.Combat.View.Actors.Any(actor => actor.DefinitionId == "boss.bell_saint" && actor.Health <= 0)));
+                _session.Combat.View.Actors.Any(actor => actor.DefinitionId == "boss.bell_saint" && actor.Health <= 0)), _session.Combat.View, _session.ActiveEncounterId);
         _sandbox.SetManifestationPresentation(manifestations);
         _sandbox.SetWorldSubtitle($"CAMPAIGN / {_session.View.Region.ToUpperInvariant()}");
         _hud.SetView(_session.View, snapshot.Campaign, _campaign.Capture(), _session.Production.View, snapshot.Production.Expedition.Adventure,

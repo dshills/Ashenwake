@@ -10,7 +10,7 @@ Greyhaven uses warm lighting; Act I uses cooler light and distant depth fog supp
 
 `EnvironmentBuilder` merges static primitives into one mesh per palette color/emission setting on room entry. It retains no global environment cache and discards temporary authoring primitives after merging. Architecture does not allocate geometry per frame. Greyhaven uses 22 material batches and two shadowless local lights; Act I uses 8–11 batches, including the extra ritual-light material during phase II. The floor uses 6–9 batches. Obstacles have independent opacity materials so fading one cannot fade the whole environment.
 
-The normal launcher and the retained Campaign, Production and Adventure entry scenes use these builders. Cooperative arenas retain their earlier environment presentation. Acts II–V retain their existing regional landmark designs with the shared stone floor. This is a first procedural art pass, not final textured assets, a changed level layout, dynamic destruction, or a measured hardware performance certification.
+The normal launcher and the retained Campaign, Production and Adventure entry scenes use these opening builders. [Act II's Verdant Maw](verdant_maw.md) now has its own organic terrain, inhabited ruins, tracking clues and animated boss setting. Cooperative arenas and Acts III–V retain their earlier environment presentation; the later acts still use the shared stone floor. These are procedural art passes, not final textured assets, changed level layouts, dynamic destruction, or measured hardware performance certification.
 
 ## Reproduce the opening run
 

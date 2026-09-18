@@ -5,17 +5,24 @@ namespace Ashenwake.Client;
 
 public static class EnvironmentGround
 {
-    public static string Style(bool inHub, string encounterId) => inHub ? "greyhaven" : encounterId switch
+    public static string Style(bool inHub, string encounterId, string? explorationId = null, int act = 0) => inHub ? "greyhaven" : explorationId == "event.wake_hunt" ? "verdant_hunt" : encounterId switch
     {
         "campaign.road" or "room.ossuary" => "road",
         "campaign.monastery" or "room.cloister" => "monastery",
         "campaign.bell_saint" or "room.bell_sanctum" => "sanctum",
+        "campaign.living_ruins" => "verdant_ruins",
+        "campaign.plague_village" => "verdant_village",
+        "campaign.rootheart" => "verdant_heart",
+        "exploration.antler_hunt" => "verdant_hunt",
+        "clear" when act == 2 => "verdant_ruins",
         _ => "default"
     };
 
     /// <summary>All ground tops stay below Y=0, below gameplay telegraphs and interaction rings.</summary>
     public static void Build(Node3D parent, RoomDefinition room, string style)
     {
+        if (style is "verdant_ruins" or "verdant_village" or "verdant_heart" or "verdant_hunt")
+        { VerdantGround.Build(parent, room, style); return; }
         var b = new EnvironmentBuilder(parent, "AuthoredGround");
         float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
         bool hub = style == "greyhaven", road = style == "road", sanctum = style == "sanctum";

@@ -221,8 +221,8 @@ public partial class CampaignDirector : Node3D
         _character.SetAppearance(CharacterAppearance.FromProgression(snapshot.Production.Progression, manifestations));
         bool bellDefeated = !_session.InHub && _session.ActiveEncounterId == "campaign.bell_saint" &&
             (_session.EncounterCleared || combat.Actors.Any(actor => actor.DefinitionId == "boss.bell_saint" && actor.Health <= 0));
-        _stage.Show(snapshot.Campaign, _session.View, _combat.Room, _session.Interactions, manifestations, _session.Production.ProgressionView.HubStage, player.Position, combat.BossPhase, bellDefeated);
-        _sandbox.PresentAuthoredRoom(_session.Room, $"campaign:{_session.ActiveEncounterId}:{snapshot.Campaign.Deaths}", EnvironmentGround.Style(_session.InHub, _session.ActiveEncounterId));
+        _stage.Show(snapshot.Campaign, _session.View, _combat.Room, _session.Interactions, manifestations, _session.Production.ProgressionView.HubStage, player.Position, combat.BossPhase, bellDefeated, combat, _session.ActiveEncounterId);
+        _sandbox.PresentAuthoredRoom(_session.Room, $"campaign:{_session.ActiveEncounterId}:{snapshot.Campaign.Deaths}", EnvironmentGround.Style(_session.InHub, _session.ActiveEncounterId, snapshot.Campaign.Exploration?.Id, snapshot.Campaign.CurrentAct));
         _sandbox.SetManifestationPresentation(manifestations); _sandbox.SetWorldSubtitle($"CAMPAIGN / {_session.View.Region.ToUpperInvariant()}");
         if (_captureCampaign && DisplayServer.GetName() != "headless" && !_session.InHub &&
             combat.CampaignHazards is { Count: > 0 } && _capturedActs.Add(snapshot.Campaign.CurrentAct))

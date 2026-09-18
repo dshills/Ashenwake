@@ -49,6 +49,12 @@ mkdir -p "$journey_output"
 python3 tools/check-godot-log.py "$journey_output/smoke.log"
 rg -q 'JourneyClientSmokePassed' "$journey_output/smoke.log"
 
+verdant_output="$package_output/verdant-client"
+mkdir -p "$verdant_output"
+"$binary" --headless --quit-after 2400 --log-file "$verdant_output/smoke.log" -- --verdant-smoke --output="$verdant_output"
+python3 tools/check-godot-log.py "$verdant_output/smoke.log"
+rg -q 'VerdantClientSmokePassed' "$verdant_output/smoke.log"
+
 service_output="$package_output/service-client"
 mkdir -p "$service_output"
 "$binary" --headless --quit-after 600 --log-file "$service_output/smoke.log" -- --service-interaction-smoke --output="$service_output"

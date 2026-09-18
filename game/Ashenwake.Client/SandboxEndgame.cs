@@ -9,6 +9,8 @@ public partial class Sandbox
     private string? CampaignActorLabel(CombatActorView actor)
     {
         if (actor.DefinitionId == "enemy.ritual_anchor") return "DESTROY";
+        if (actor.DefinitionId == "enemy.feeding_root") return "SEVER";
+        if (actor.DefinitionId == "boss.rootheart") return _view.Actors.Count(a => a.DefinitionId == "enemy.feeding_root" && a.Health > 0) >= 3 ? "PROTECTED" : "EXPOSED";
         if (actor.DefinitionId != "boss.bell_saint" || _view.BossPhase != 2) return null;
         return _view.Actors.Any(a => a.DefinitionId == "enemy.ritual_anchor" && a.Health > 0)
             ? "PROTECTED" : "RITUAL BROKEN · ATTACK NOW";
@@ -29,14 +31,21 @@ public partial class Sandbox
     };
     private Node3D? _authoredGeometry;
     private string _presentationContext = "";
+    private string _presentedGroundStyle = "";
     private (int Width, int Depth) _authoredBounds;
 
     /// <summary>Uses the authoritative arena footprint and an attempt identity, preserving input during same-room build projections.</summary>
     public void PresentAuthoredRoom(RoomDefinition room, string context, string visualStyle = "default")
     {
+        bool resized = _authoredBounds != (room.HalfWidth, room.HalfDepth);
+        if (resized)
+        { _authoredBounds = (room.HalfWidth, room.HalfDepth); _camera.Size = DefaultCameraSize(room.HalfWidth, room.HalfDepth); }
         SetEnvironmentStyle(visualStyle);
-        if (_presentationContext == context) return;
+        // A resize can keep the same style; its motes still need the new perimeter immediately.
+        if (resized) UpdateEnvironmentAtmosphere(0);
+        if (_presentationContext == context && _presentedGroundStyle == visualStyle && !resized) return;
         _presentationContext = context;
+        _presentedGroundStyle = visualStyle;
         _pending.Clear(); ClearPresentation(); _lootSignature = ""; _inspectedLoot = 0; _target = 0; _moveX = _moveZ = int.MinValue;
         if (_authoredGeometry is null)
         {
@@ -54,11 +63,16 @@ public partial class Sandbox
             float width = (obstacle.MaxX - obstacle.MinX) * .001f, depth = (obstacle.MaxZ - obstacle.MinZ) * .001f;
             Vector3 center = new((obstacle.MinX + obstacle.MaxX) * .0005f, 0, (obstacle.MinZ + obstacle.MaxZ) * .0005f);
             var builder = new EnvironmentBuilder(_authoredGeometry, "AuthoritativeObstacle_" + index++);
-            builder.Box(new(width, 1.08f, depth), center + Vector3.Up * .54f, visualStyle == "greyhaven" ? "5c665b" : "536367");
-            builder.Box(new(width, .12f, depth), center + Vector3.Up * 1.12f, "90978a");
-            builder.Box(new(width * .86f, .075f, depth * .82f), center + Vector3.Up * 1.215f, "727d73");
-            for (int seam = 1; seam < 4; seam++)
-                builder.Box(new(width, .018f, depth), center + Vector3.Up * (seam * .26f), "384849");
+            if (visualStyle is "verdant_ruins" or "verdant_village" or "verdant_heart" or "verdant_hunt")
+                VerdantObstacleArt.Build(builder, width, depth, center, visualStyle);
+            else
+            {
+                builder.Box(new(width, 1.08f, depth), center + Vector3.Up * .54f, visualStyle == "greyhaven" ? "5c665b" : "536367");
+                builder.Box(new(width, .12f, depth), center + Vector3.Up * 1.12f, "90978a");
+                builder.Box(new(width * .86f, .075f, depth * .82f), center + Vector3.Up * 1.215f, "727d73");
+                for (int seam = 1; seam < 4; seam++)
+                    builder.Box(new(width, .018f, depth), center + Vector3.Up * (seam * .26f), "384849");
+            }
             builder.Flush();
             foreach (var mesh in _authoredGeometry.GetChildren().Last().GetChildren().OfType<MeshInstance3D>())
             {
@@ -68,8 +82,6 @@ public partial class Sandbox
                 _occluderCenters[mesh] = center + Vector3.Up * .63f;
             }
         }
-        if (_authoredBounds != (room.HalfWidth, room.HalfDepth))
-        { _camera.Size = DefaultCameraSize(room.HalfWidth, room.HalfDepth); _authoredBounds = (room.HalfWidth, room.HalfDepth); }
         // A room can change while a modal keeps the simulation paused. Recreate its current
         // actors and drops now instead of leaving the cleared presentation empty until a tick.
         _view = _session.View; SynchronizeWorld();
