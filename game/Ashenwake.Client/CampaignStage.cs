@@ -15,7 +15,7 @@ public partial class CampaignStage : Node3D
     private string _signature = "";
     public override void _Ready() { _hub = new AdventureStage(); AddChild(_hub); _region = new Node3D(); AddChild(_region); }
     public void Show(CampaignState state, CampaignView view, RoomDefinition room, IReadOnlyList<ExpeditionInteraction> interactions,
-        IReadOnlyList<string> manifestations, int hubStage, CorePosition player)
+        IReadOnlyList<string> manifestations, int hubStage, CorePosition player, int bellPhase = 0)
     {
         _hub.Visible = state.InHub; _region.Visible = !state.InHub;
         if (state.InHub)
@@ -23,12 +23,12 @@ public partial class CampaignStage : Node3D
             _hub.ShowRoom("room.greyhaven", 0, room, manifestations, interactions.ToDictionary(i => i.ActionId, i => i.Position), new HashSet<string>(), hubStage);
             _hub.FocusNearestInteraction(player); return;
         }
-        string signature = state.CurrentAct + ":" + view.EncounterId + ":" + string.Join('|', interactions.Select(i => i.ActionId));
+        string signature = state.CurrentAct + ":" + view.EncounterId + ":" + (view.EncounterId == "campaign.bell_saint" ? bellPhase : 0) + ":" + string.Join('|', interactions.Select(i => i.ActionId));
         if (_signature != signature)
         {
             _signature = signature;
             foreach (var child in _region.GetChildren()) { _region.RemoveChild(child); child.QueueFree(); }
-            _markers.Clear(); BuildRegion(state.CurrentAct, room.HalfWidth * .001f, room.HalfDepth * .001f);
+            _markers.Clear(); BuildRegion(state.CurrentAct, room.HalfWidth * .001f, room.HalfDepth * .001f, view.EncounterId ?? "", bellPhase);
             var points = new HashSet<CorePosition>();
             foreach (var interaction in interactions)
             {
@@ -47,8 +47,9 @@ public partial class CampaignStage : Node3D
             foreach (var pair in _markers) foreach (var label in pair.Value.GetChildren().OfType<Label3D>()) label.Visible = pair.Key == nearest;
         }
     }
-    private void BuildRegion(int act, float x, float z)
+    private void BuildRegion(int act, float x, float z, string encounterId, int bellPhase)
     {
+        if (act == 1) { GreyMarchArt.Build(_region, x, z, encounterId, bellPhase); return; }
         Color stone = new(new[] { "727b83", "416956", "66544a", "b1aa91", "514c72" }[act - 1]);
         Color accent = new(new[] { "c0be9a", "9bb662", "e69a55", "dfcea1", "a38acc" }[act - 1]);
         // These perimeter bands visually separate regions without adding navigational obstacles.

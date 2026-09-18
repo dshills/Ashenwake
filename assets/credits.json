@@ -17,9 +17,14 @@
     },
     {
       "id": "asset.procedural_adventure",
-      "name": "Procedural Greyhaven, dungeon, Bell Saint, and ritual anchor scenery",
+      "name": "Low-poly Greyhaven workshops, Grey March memorials, monastery and Bell Saint sanctuary",
       "sourceFiles": [
-        "game/Ashenwake.Client/AdventureStage.cs"
+        "game/Ashenwake.Client/AdventureStage.cs",
+        "game/Ashenwake.Client/EnvironmentBuilder.cs",
+        "game/Ashenwake.Client/EnvironmentGround.cs",
+        "game/Ashenwake.Client/GreyhavenArt.cs",
+        "game/Ashenwake.Client/GreyMarchArt.cs",
+        "game/Ashenwake.Client/SandboxEnvironment.cs"
       ],
       "origin": "Authored in the Ashenwake repository using Godot primitive meshes and materials.",
       "rightsStatus": "Project-authored source. The repository does not yet declare a distribution license or owner approval.",

@@ -36,10 +36,13 @@ public partial class AdventureStage : Node3D
         float halfWidth = room.HalfWidth * .001f, halfDepth = room.HalfDepth * .001f;
         switch (roomId)
         {
-            case "room.greyhaven": Greyhaven(halfWidth, halfDepth, hubStage); break;
-            case "room.ossuary": Ossuary(halfWidth, halfDepth); break;
-            case "room.cloister": Cloister(halfWidth, halfDepth); break;
-            case "room.bell_sanctum": Sanctum(halfWidth, halfDepth, bellPhase); break;
+            case "room.greyhaven":
+                GreyhavenArt.Build(_decoration, halfWidth, halfDepth, hubStage);
+                AddServiceMats(interactions);
+                break;
+            case "room.ossuary":
+            case "room.cloister":
+            case "room.bell_sanctum": GreyMarchArt.Build(_decoration, halfWidth, halfDepth, roomId, bellPhase); break;
         }
         var occupiedMarkers = new HashSet<Position>();
         foreach (var pair in interactions)
@@ -88,94 +91,22 @@ public partial class AdventureStage : Node3D
             foreach (var label in pair.Value.GetChildren().OfType<Label3D>()) label.Visible = pair.Key == nearest;
     }
 
-    private void Greyhaven(float x, float z, int hubStage)
+    private void AddServiceMats(IReadOnlyDictionary<string, Position> interactions)
     {
-        for (int i = -2; i <= 2; i++)
+        var builder = new EnvironmentBuilder(_decoration, "ServiceMats");
+        var occupied = new HashSet<Position>();
+        foreach (var (id, point) in interactions)
         {
-            float px = i * 4.2f;
-            Box(new(3.2f, 2.8f, 2.3f), new(px, 1.4f, -z - 1.5f), new("677479"));
-            var roof = Box(new(3.7f, .35f, 2.9f), new(px, 3f, -z - 1.5f), new("596d7d"));
-            roof.RotationDegrees = new(0, 0, i % 2 == 0 ? 9 : -9);
-            Box(new(.75f, 1.55f, .08f), new(px, .8f, -z - .29f), new("283b45"));
-            Box(new(.55f, .6f, .09f), new(px + 1, 1.65f, -z - .28f), new("edc687"));
-        }
-        Banner(new(-x - .7f, 0, -4), new("86b9b6")); Banner(new(-x - .7f, 0, 4), new("86b9b6"));
-        Label("GREYHAVEN · A FIRE THAT STILL BURNS", new(0, 4.4f, -z - 1), new("dbc7a0"));
-        Box(new(3.2f, .15f, .7f), new(x + .2f, .08f, 0), new("907c61"));
-        for (int i = 0; i < hubStage; i++)
-        {
-            Banner(new(x + .8f, 0, -5 + i * 4), new("c9ac78"));
-            Box(new(1.7f, .75f, 1.1f), new(x + 1.4f, .4f, -3 + i * 4), new("8c987b"));
-        }
-    }
-
-    private void Ossuary(float x, float z)
-    {
-        for (int i = -2; i <= 2; i++)
-        {
+            if (!occupied.Add(point)) continue;
+            string color = id.Contains("torren", StringComparison.Ordinal) ? "705443" : id == "dungeon.replay" ? "747764" : "395e5c";
+            Vector3 position = new(point.X * .001f, -.007f, point.Z * .001f);
+            builder.Box(new(2.25f, .008f, 1.95f), position, color);
             foreach (float side in new[] { -1f, 1f })
-            {
-                var position = new Vector3(side * (x + .9f), .35f, i * 3.4f);
-                Box(new(1.35f, .7f, 2.4f), position, new("858579"));
-                Box(new(1.48f, .16f, 2.55f), position + Vector3.Up * .44f, new("b7ac90"));
-            }
+                builder.Box(new(.045f, .009f, 1.85f), position + new Vector3(side * 1.03f, .001f, 0), "9d9680");
         }
-        for (int i = -2; i <= 2; i++) Arch(new(i * 4.5f, 0, -z - .9f), new("807d73"));
-        Label("THE OSSUARY · THE NAMES WERE CHANGED", new(0, 4.5f, -z - 1), new("dbcea9"));
+        builder.Flush();
     }
 
-    private void Cloister(float x, float z)
-    {
-        for (int i = -2; i <= 2; i++)
-        {
-            Arch(new(i * 4.5f, 0, -z - .9f), new("738485"));
-            var arch = Arch(new(-x - .9f, 0, i * 3.8f), new("738485")); arch.RotationDegrees = new(0, 90, 0);
-        }
-        for (int i = -1; i <= 1; i++) Banner(new(x + .6f, 0, i * 4), new("9787ab"));
-        Label("FUNERAL CLOISTER · ANCHOR OF MEMORY", new(0, 4.6f, -z - 1), new("c4d7d1"));
-    }
-
-    private void Sanctum(float x, float z, int phase)
-    {
-        Color stone = phase >= 3 ? new("857486") : new("7d827f");
-        for (int i = -2; i <= 2; i++) Arch(new(i * 4.5f, 0, -z - 1), stone);
-        foreach (float side in new[] { -1f, 1f })
-        {
-            Box(new(.55f, 4.8f, .55f), new(side * (x + .6f), 2.4f, -3.5f), stone);
-            Box(new(.55f, 4.8f, .55f), new(side * (x + .6f), 2.4f, 3.5f), stone);
-        }
-        var bell = new Node3D { Position = new(0, 3.6f, -z - .2f) }; _decoration.AddChild(bell);
-        AddMesh(new CylinderMesh { TopRadius = .5f, BottomRadius = 1.7f, Height = 2.8f }, Vector3.Zero, new("ad9870"), bell);
-        AddMesh(new TorusMesh { InnerRadius = 1.45f, OuterRadius = 1.7f }, new(0, -1.45f, 0), new("dcc38e"), bell);
-        if (phase >= 3)
-        {
-            bell.RotationDegrees = new(0, 0, 25);
-            for (int i = 0; i < 5; i++)
-                Box(new(.35f, .8f, .2f), new(-3 + i * 1.5f, 1 + i % 2, -z + .7f), new("d6b986"));
-        }
-        Label(phase switch
-        {
-            1 => "BELL SAINT · CHAINS & SHOCKWAVES",
-            2 => "BELL SAINT · BREAK THE RITUAL ANCHORS",
-            3 => "BELL SAINT · THE CREATURE UNBOUND",
-            _ => "THE BELL IS SILENT"
-        }, new(0, 6f, -z - .5f), new("ead4ac"));
-    }
-
-    private Node3D Arch(Vector3 position, Color color)
-    {
-        var node = new Node3D { Position = position }; _decoration.AddChild(node);
-        AddMesh(new BoxMesh { Size = new(.45f, 3.4f, .6f) }, new(-1.6f, 1.7f, 0), color, node);
-        AddMesh(new BoxMesh { Size = new(.45f, 3.4f, .6f) }, new(1.6f, 1.7f, 0), color, node);
-        AddMesh(new BoxMesh { Size = new(3.65f, .5f, .7f) }, new(0, 3.55f, 0), color, node);
-        return node;
-    }
-    private void Banner(Vector3 position, Color color)
-    {
-        Box(new(.09f, 3.5f, .09f), position + Vector3.Up * 1.75f, new("aaae9c"));
-        Box(new(1.1f, 1.7f, .035f), position + new Vector3(.5f, 2.7f, 0), color);
-    }
-    private MeshInstance3D Box(Vector3 size, Vector3 position, Color color) => AddMesh(new BoxMesh { Size = size }, position, color, _decoration);
     private static MeshInstance3D AddMesh(Mesh mesh, Vector3 position, Color color, Node parent)
     {
         var actor = new MeshInstance3D { Mesh = mesh, Position = position, MaterialOverride = new StandardMaterial3D { AlbedoColor = color, Roughness = .95f } };
@@ -187,8 +118,8 @@ public partial class AdventureStage : Node3D
         {
             Text = text,
             Position = position,
-            FontSize = 64,
-            PixelSize = .012f,
+            FontSize = 38,
+            PixelSize = .008f,
             OutlineSize = 5,
             Modulate = color,
             Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,

@@ -152,6 +152,7 @@ public partial class AdventureDirector : Node3D
         _hud.SetView(view, snapshot.Adventure, _definition, interactions, _uiRevision);
         _stage.ShowRoom(view.RoomId, view.BellPhase, _combatContent.Room, view.ActiveManifestations,
             _expedition.Interactions.ToDictionary(i => i.ActionId, i => i.Position), snapshot.Adventure.DestroyedAnchors);
+        _sandbox.PresentAuthoredRoom(_combatContent.Room, view.RoomId, EnvironmentGround.Style(view.RoomId == "room.greyhaven", view.RoomId));
         _sandbox.SetManifestationPresentation(view.ActiveManifestations);
     }
 

@@ -133,7 +133,7 @@ public partial class Sandbox : Node3D
                 { Enqueue(new(CombatCommandKind.Move, X: x, Z: z)); _moveX = x; _moveZ = z; }
             }
             _clock.Advance(_smoke || AutomaticStep ? FixedStepClock.SecondsPerTick * 5 : delta, StepCombat);
-            AnimatePresentation(delta, _clock.Alpha, _target); RefreshHud(); RefreshLootInspector();
+            AnimatePresentation(delta, _clock.Alpha, _target); UpdateEnvironmentAtmosphere(delta); RefreshHud(); RefreshLootInspector();
             _frames++; Sample(_frameCosts, Stopwatch.GetElapsedTime(watch).TotalMilliseconds);
             if (_frames > 10) Sample(_frameIntervals, delta * 1000);
             if (_capturePath is not null && _frames == 30 && DisplayServer.GetName() != "headless")

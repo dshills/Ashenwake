@@ -32,8 +32,9 @@ public partial class Sandbox
     private (int Width, int Depth) _authoredBounds;
 
     /// <summary>Uses the authoritative arena footprint and an attempt identity, preserving input during same-room build projections.</summary>
-    public void PresentAuthoredRoom(RoomDefinition room, string context)
+    public void PresentAuthoredRoom(RoomDefinition room, string context, string visualStyle = "default")
     {
+        SetEnvironmentStyle(visualStyle);
         if (_presentationContext == context) return;
         _presentationContext = context;
         _pending.Clear(); ClearPresentation(); _lootSignature = ""; _inspectedLoot = 0; _target = 0; _moveX = _moveZ = int.MinValue;
@@ -45,30 +46,29 @@ public partial class Sandbox
             _authoredGeometry = new Node3D(); AddChild(_authoredGeometry);
         }
         foreach (var child in _authoredGeometry.GetChildren()) { _authoredGeometry.RemoveChild(child); child.QueueFree(); }
-        _occluders.Clear();
-        float width = room.HalfWidth * .002f, depth = room.HalfDepth * .002f;
-        ArenaBox(new(width, .3f, depth), new(0, -.2f, 0), new("14202d"));
-        for (int x = -room.HalfWidth / 1000; x <= room.HalfWidth / 1000; x += 2)
-            ArenaBox(new(.024f, .012f, depth), new(x, -.042f, 0), new("43515c"));
-        for (int z = -room.HalfDepth / 1000; z <= room.HalfDepth / 1000; z += 2)
-            ArenaBox(new(width, .012f, .024f), new(0, -.042f, z), new("43515c"));
-        ArenaBox(new(width, .28f, .2f), new(0, .03f, -depth / 2), new("69858c"));
-        ArenaBox(new(.2f, .28f, depth), new(-width / 2, .03f, 0), new("69858c"));
-        ArenaBox(new(width, .1f, .16f), new(0, .01f, depth / 2), new("78816f"));
-        ArenaBox(new(.16f, .1f, depth), new(width / 2, .01f, 0), new("78816f"));
+        _occluders.Clear(); _occluderCenters.Clear();
+        EnvironmentGround.Build(_authoredGeometry, room, visualStyle);
+        int index = 0;
         foreach (var obstacle in room.Obstacles)
         {
-            var mesh = ArenaBox(new((obstacle.MaxX - obstacle.MinX) * .001f, 1.5f, (obstacle.MaxZ - obstacle.MinZ) * .001f),
-                new((obstacle.MinX + obstacle.MaxX) * .0005f, .75f, (obstacle.MinZ + obstacle.MaxZ) * .0005f), new("677578"));
-            _occluders.Add(mesh);
-            ArenaBox(new((obstacle.MaxX - obstacle.MinX) * .001f + .12f, .13f, (obstacle.MaxZ - obstacle.MinZ) * .001f + .12f), mesh.Position + Vector3.Up * .76f, new("a89b7c"));
+            float width = (obstacle.MaxX - obstacle.MinX) * .001f, depth = (obstacle.MaxZ - obstacle.MinZ) * .001f;
+            Vector3 center = new((obstacle.MinX + obstacle.MaxX) * .0005f, 0, (obstacle.MinZ + obstacle.MaxZ) * .0005f);
+            var builder = new EnvironmentBuilder(_authoredGeometry, "AuthoritativeObstacle_" + index++);
+            builder.Box(new(width, 1.08f, depth), center + Vector3.Up * .54f, visualStyle == "greyhaven" ? "5c665b" : "536367");
+            builder.Box(new(width, .12f, depth), center + Vector3.Up * 1.12f, "90978a");
+            builder.Box(new(width * .86f, .075f, depth * .82f), center + Vector3.Up * 1.215f, "727d73");
+            for (int seam = 1; seam < 4; seam++)
+                builder.Box(new(width, .018f, depth), center + Vector3.Up * (seam * .26f), "384849");
+            builder.Flush();
+            foreach (var mesh in _authoredGeometry.GetChildren().Last().GetChildren().OfType<MeshInstance3D>())
+            {
+                // Each obstacle keeps an independent opacity material, including its cap and seams.
+                mesh.MaterialOverride = mesh.Mesh.SurfaceGetMaterial(0).Duplicate() as Material;
+                _occluders.Add(mesh);
+                _occluderCenters[mesh] = center + Vector3.Up * .63f;
+            }
         }
         if (_authoredBounds != (room.HalfWidth, room.HalfDepth))
         { _camera.Size = DefaultCameraSize(room.HalfWidth, room.HalfDepth); _authoredBounds = (room.HalfWidth, room.HalfDepth); }
-    }
-    private MeshInstance3D ArenaBox(Vector3 size, Vector3 position, Color color)
-    {
-        var mesh = new MeshInstance3D { Mesh = new BoxMesh { Size = size }, Position = position, MaterialOverride = Material(color) };
-        _authoredGeometry!.AddChild(mesh); return mesh;
     }
 }

@@ -187,6 +187,7 @@ public partial class ProductionDirector : Node3D
         _stage.ShowRoom(world.RoomId, world.BellPhase, _combat.Room, world.ActiveManifestations,
             _session.Interactions.ToDictionary(i => i.ActionId, i => i.Position), snapshot.Expedition.Adventure.DestroyedAnchors, _session.ProgressionView.HubStage);
         _stage.FocusNearestInteraction(player.Position);
+        _sandbox.PresentAuthoredRoom(_combat.Room, world.RoomId, EnvironmentGround.Style(world.RoomId == "room.greyhaven", world.RoomId));
         _sandbox.SetManifestationPresentation(world.ActiveManifestations);
     }
     private void Save()

@@ -4,7 +4,7 @@ An isometric action RPG about building power from the remains of dead gods. The 
 
 Choose Vanguard, Veilwalker, Arcanist, Gravecaller, or Warden, each with six skills and its own resource loop. Travel through five regions, rescue Greyhaven's specialists, choose consequential alliances, confront five bosses, and investigate three optional exploration encounters. Equipment, anatomy, mastery, Manifestations, crafting, and rewards persist. Godot renders an engine-independent C# simulation.
 
-Heroes, Greyhaven specialists, and enemies now use articulated low-poly models with distinct heads, clothing, armor, weapons, and monster silhouettes. The [character art notes](docs/character_art.md) describe the first visual pass and its reproducible preview; environments remain prototype geometry.
+Heroes, Greyhaven specialists, and enemies now use articulated low-poly models with distinct heads, clothing, armor, weapons, and monster silhouettes. The [character art notes](docs/character_art.md) describe the character models and their reproducible preview. Greyhaven and Act I now have stone streets, workshops, memorial ruins, a funeral cloister, and a chain-hung bell sanctuary, with warm town lighting and cool distant haze. The [environment art notes](docs/environment_art.md) describe this first environment pass; later regions retain their prototype landmarks.
 
 ## Start here
 

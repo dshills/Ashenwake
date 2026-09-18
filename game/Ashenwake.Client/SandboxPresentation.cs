@@ -20,6 +20,7 @@ public partial class Sandbox
     private readonly Dictionary<string, MeshInstance3D> _effects = [];
     private readonly HashSet<string> _visibleEffects = [];
     private readonly List<MeshInstance3D> _occluders = [];
+    private readonly Dictionary<MeshInstance3D, Vector3> _occluderCenters = [];
     private readonly Dictionary<string, AudioStreamWav> _tones = [];
     private readonly List<AudioStreamPlayer> _voices = [];
     private readonly HashSet<int> _floatingActors = [];
@@ -37,7 +38,7 @@ public partial class Sandbox
 
     private void BuildArena(int halfWidth, int halfDepth)
     {
-        var environment = new WorldEnvironment
+        _worldEnvironment = new WorldEnvironment
         {
             Environment = new Godot.Environment
             {
@@ -49,14 +50,15 @@ public partial class Sandbox
                 TonemapMode = Godot.Environment.ToneMapper.Filmic
             }
         };
-        AddChild(environment);
-        AddChild(new DirectionalLight3D
+        AddChild(_worldEnvironment);
+        _sun = new DirectionalLight3D
         {
             RotationDegrees = new(-65, -30, 0),
             LightColor = new Color("ffe0b0"),
             LightEnergy = 1.5f,
             ShadowEnabled = true
-        });
+        };
+        AddChild(_sun);
         _camera = new Camera3D
         {
             Projection = Camera3D.ProjectionType.Orthogonal,
@@ -172,9 +174,11 @@ public partial class Sandbox
             _manifestationMarker.Rotation = new(0, (float)(Time.GetTicksMsec() * .001), burning ? .12f : 0);
             ((StandardMaterial3D)_manifestationMarker.MaterialOverride).AlbedoColor = new Color(accent, .3f);
             Vector2 screen = _camera.UnprojectPosition(player.Root.Position + Vector3.Up);
+            float fadeRadius = GetViewport().GetVisibleRect().Size.Y * .1f;
             foreach (var occluder in _occluders)
             {
-                bool overlaps = _camera.UnprojectPosition(occluder.Position).DistanceTo(screen) < 80;
+                Vector3 center = _occluderCenters.GetValueOrDefault(occluder, occluder.GetAabb().GetCenter());
+                bool overlaps = _camera.UnprojectPosition(occluder.GlobalTransform * center).DistanceTo(screen) < fadeRadius;
                 var mat = (StandardMaterial3D)occluder.MaterialOverride;
                 mat.Transparency = overlaps ? BaseMaterial3D.TransparencyEnum.Alpha : BaseMaterial3D.TransparencyEnum.Disabled;
                 mat.AlbedoColor = new Color(mat.AlbedoColor, overlaps ? .25f : 1);

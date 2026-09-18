@@ -313,11 +313,11 @@ public partial class EndgameDirector : Node3D
             int act = Array.FindIndex(_campaignDefinition.Acts, a => a.Id == snapshot.Manifest?.Region) + 1; if (act == 0) act = 1;
             var stageState = campaign.Campaign with { InHub = false, CurrentAct = act };
             var stageView = _session.Campaign.View with { Act = act, Region = _campaignDefinition.Acts[act - 1].Name, EncounterId = active.ContextKey };
-            _stage.Show(stageState, stageView, _session.Room, [], manifestations, _session.Production.ProgressionView.HubStage, player.Position);
+            _stage.Show(stageState, stageView, _session.Room, [], manifestations, _session.Production.ProgressionView.HubStage, player.Position, combat.BossPhase);
         }
-        else _stage.Show(campaign.Campaign, _session.Campaign.View, _session.Room, _session.Interactions, manifestations, _session.Production.ProgressionView.HubStage, player.Position);
+        else _stage.Show(campaign.Campaign, _session.Campaign.View, _session.Room, _session.Interactions, manifestations, _session.Production.ProgressionView.HubStage, player.Position, combat.BossPhase);
         string context = combat.Endgame?.ContextKey ?? $"campaign:{_session.Campaign.ActiveEncounterId}:{campaign.Campaign.Deaths}";
-        _sandbox.PresentAuthoredRoom(_session.Room, context);
+        _sandbox.PresentAuthoredRoom(_session.Room, context, EnvironmentGround.Style(_session.InHub, combat.Endgame is null ? _session.Campaign.ActiveEncounterId : ""));
         _effects.Show(combat.Endgame, player.Position, _board.IsOpen);
         _sandbox.SetManifestationPresentation(manifestations);
         _sandbox.SetWorldSubtitle(combat.Endgame is null ? $"CAMPAIGN / {_session.Campaign.View.Region.ToUpperInvariant()}" : $"{view.Run?.Kind.ToUpperInvariant()} / {view.Run?.Name.ToUpperInvariant()}");
