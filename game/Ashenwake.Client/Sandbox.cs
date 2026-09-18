@@ -111,8 +111,7 @@ public partial class Sandbox : Node3D
     }
     private void AdoptSessionCore(CombatSession session)
     {
-        bool changedArena = _session.EncounterId != session.EncounterId ||
-            _session.View.Actors.Single(a => a.Id == 1).Health <= 0 && session.View.Actors.Single(a => a.Id == 1).Health > 0;
+        bool changedArena = CrossedCombatBoundary(_session, session);
         _session = session; _recorder = new(session);
         if (changedArena)
         { _pending.Clear(); ClearPresentation(); _target = 0; _moveX = _moveZ = int.MinValue; }
@@ -215,6 +214,7 @@ public partial class Sandbox : Node3D
         if (_recorder.FrameCount >= ReplayLimit) _recorder = new(_session);
         if (_smoke) ScriptSmoke();
         var commands = _pending.ToArray(); _pending.Clear();
+        var advancedSession = _session;
         long before = GC.GetAllocatedBytesForCurrentThread(); var timer = Stopwatch.GetTimestamp();
         var events = AdvanceOverride is null ? _recorder.Step(_session, commands) : AdvanceOverride(commands);
         if (SessionOverride is not null && !ReferenceEquals(_session, SessionOverride()))
@@ -223,26 +223,7 @@ public partial class Sandbox : Node3D
         }
         _lastTickCost = Stopwatch.GetElapsedTime(timer).TotalMilliseconds;
         _lastTickBytes = GC.GetAllocatedBytesForCurrentThread() - before; Sample(_tickCosts, _lastTickCost);
-        _view = _session.View;
-        SynchronizeWorld();
-        foreach (var e in events)
-        {
-            _eventLog.Add(e); if (_eventLog.Count > 8192) _eventLog.RemoveAt(0);
-            switch (e.Kind)
-            {
-                case "AbilityStarted": if (e.ActorId != 1) PlayTone("tell"); else PlayTone("cast"); break;
-                case "DamageApplied": Feedback(e.TargetId, $"−{e.Amount}", "hit"); break;
-                case "Healed": Feedback(e.TargetId == 0 ? e.ActorId : e.TargetId, $"+{e.Amount}", "heal"); break;
-                case "BarrierAbsorbed": Feedback(e.TargetId, $"BLOCK {e.Amount}", "heal"); break;
-                case "EntityKilled": Feedback(e.TargetId == 0 ? e.ActorId : e.TargetId, "FALLEN", "death"); break;
-                case "LootPickedUp": Message($"Collected {Readable(e.ContentId)}. Open inventory to compare."); PlayTone("loot"); break;
-                case "FragmentTriggered": Message($"{Readable(e.ContentId)} triggered · action {e.ActionId} / chain {e.Depth}"); break;
-                case "SummonSpawned": Message("A Serath spirit rises from a damage-over-time death."); break;
-                case "StatusApplied": if (e.ContentId is "Burning" or "Poisoned") Message($"{e.ContentId} → actor {e.TargetId} · owner {e.ActorId}"); break;
-                case "CommandRejected": if (!_smoke) Message($"Action unavailable: {Readable(e.ContentId)}"); break;
-                case "EffectBudgetExceeded": Message("Effect safety budget reached; see event log for origin."); break;
-            }
-        }
+        PresentCombatEventsCore(events, CrossedCombatBoundary(advancedSession, _session));
         CombatAdvanced?.Invoke(events);
     }
 
@@ -271,16 +252,24 @@ public partial class Sandbox : Node3D
             if (actor.Role.EndsWith(" Elite", StringComparison.Ordinal)) name += " Elite";
             if (actor.Faction == CombatFaction.Enemy && actor.DefinitionId.Length > 0)
                 name = Readable(actor.DefinitionId[(actor.DefinitionId.IndexOf('.') + 1)..]) + (actor.Role.EndsWith(" Elite", StringComparison.Ordinal) ? " Elite" : "");
+            var hazard = (_view.CampaignHazards ?? []).Where(h => h.SourceId == actor.Id && h.RemainingTicks > 0 && !h.ContentId.StartsWith("rule.", StringComparison.Ordinal))
+                .OrderBy(h => h.RemainingTicks).FirstOrDefault();
             var conditions = actor.Statuses.Select(s => s.Id).Concat(actor.EliteModifiers ?? []);
             string? mechanic = CampaignActorLabel(actor) ?? EndgameActorLabel(actor.State);
             if (mechanic is not null) _mechanicLabels.Add(actor.Id);
             if (mechanic is not null) conditions = conditions.Append(mechanic);
-            if (mechanic is null && (actor.State is "Guarded" or "Recover")) conditions = conditions.Append(actor.State == "Guarded" ? "GUARDED" : "RECOVERY WINDOW");
+            if (hazard is not null) conditions = conditions.Append("ATTACK INCOMING");
+            else if (mechanic is null && (actor.State is "Guarded" or "Recover")) conditions = conditions.Append(actor.State == "Guarded" ? "GUARDED" : "RECOVERY WINDOW");
             SynchronizeActor(actor.Id, name, role.ToLowerInvariant(), actor.Position.X, actor.Position.Z,
                 actor.Health, actor.MaxHealth, string.Join(" / ", conditions),
                 actor.TelegraphTicks > 0 && actor.TelegraphRadius == 0, actor.Faction != CombatFaction.Enemy,
-                actor.DefinitionId, actor.State, actor.TelegraphTicks > 0 || actor.State.EndsWith("Windup", StringComparison.Ordinal));
+                actor.DefinitionId, actor.State, actor.TelegraphTicks > 0 || hazard is not null || actor.State.EndsWith("Windup", StringComparison.Ordinal));
+            _actors[actor.Id].AuthoredVisible = actor.Visible;
             _actors[actor.Id].Root.Visible &= actor.Visible;
+            var aim = actor.TelegraphPosition ?? (hazard is null ? null : hazard.Kind == "Circle" ? hazard.Position : hazard.End);
+            var presentation = _actors[actor.Id];
+            if (aim is { } destination) presentation.Facing = PositionOf(destination.X, destination.Z) - presentation.Current;
+            else if (presentation.Body.ActiveCue is not ("attack" or "dodge")) presentation.Facing = null;
             if (actor.Id != 1) _actors[actor.Id].Body.SetAccent(actor.State == "MarkedEcho" ? new Color("ffe297") : actor.State == "FalseEcho" ? new Color("69818f") : _actors[actor.Id].Body.BaseAccentColor);
         }
         BeginEffects();

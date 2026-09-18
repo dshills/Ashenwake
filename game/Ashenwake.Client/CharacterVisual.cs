@@ -5,7 +5,7 @@ namespace Ashenwake.Client;
 /// <summary>Articulated, cosmetic models. No physics bodies, root motion, or gameplay clocks.</summary>
 public partial class CharacterVisual : Node3D
 {
-    private sealed record Limb(Node3D Node, string Motion, float Amplitude, Vector3 Rest);
+    private sealed record Limb(Node3D Node, string Motion, float Amplitude, Vector3 Rest, Vector3 Origin);
     private static readonly Dictionary<string, Mesh[]> MeshTemplates = new(StringComparer.Ordinal);
     private static readonly Dictionary<(string Color, bool Metallic, bool Emissive), StandardMaterial3D> SharedMaterials = [];
     private const int MeshTemplateLimit = 96, MaterialTemplateLimit = 256;
@@ -14,7 +14,7 @@ public partial class CharacterVisual : Node3D
     private readonly StandardMaterial3D Accent = new();
     private StandardMaterial3D Main = null!, Dark = null!, Metal = null!, Bone = null!, Skin = null!, Glow = null!;
     private double _time;
-    private float _stride, _windup, _facing = -2.7f;
+    private float _stride, _windup, _recovery, _facing = -2.7f;
     public float Height { get; private set; } = 2.3f;
     public Color AccentColor => Accent.AlbedoColor;
     public Color BaseAccentColor { get; private set; }
@@ -26,6 +26,7 @@ public partial class CharacterVisual : Node3D
         if (discipline.Length > 0) visual.BuildHumanoid(discipline);
         else if (allied) { visual.BuildHumanoid("Gravecaller"); visual.SetAccent(new("af9cff")); }
         else visual.BuildMonster(definitionId, role.ToLowerInvariant().Replace(" elite", "", StringComparison.Ordinal));
+        visual.ConfigureAnimation(definitionId, role, discipline, allied);
         string key = discipline.Length > 0 ? "hero:" + discipline.ToLowerInvariant() : allied ? "ally:gravecaller" :
             "monster:" + definitionId.ToLowerInvariant() + "/" + role.ToLowerInvariant().Replace(" elite", "", StringComparison.Ordinal);
         visual.Finish(key); return visual;
@@ -43,15 +44,18 @@ public partial class CharacterVisual : Node3D
     {
         if (paused) return;
         float dt = (float)Math.Clamp(delta, 0, .1);
+        if (IsDying) { AnimateDeath(dt); return; }
+        AdvanceCue(dt, windup);
         _time += dt;
         bool moving = movement.LengthSquared() > .00001f;
         _stride = Mathf.Lerp(_stride, moving ? 1 : 0, 1 - MathF.Exp(-dt * 12));
         _windup = Mathf.Lerp(_windup, windup ? 1 : 0, 1 - MathF.Exp(-dt * 16));
+        _recovery = Mathf.Lerp(_recovery, state == "Recover" && !windup ? 1 : 0, 1 - MathF.Exp(-dt * 14));
         Vector3 direction = facing ?? movement;
         direction.Y = 0;
         if (direction.LengthSquared() > .00001f)
             _facing = Mathf.LerpAngle(_facing, Mathf.Atan2(-direction.X, -direction.Z), 1 - MathF.Exp(-dt * 14));
-        BodyRoot.Rotation = new(_windup * -.12f, _facing, 0);
+        BodyRoot.Rotation = new(_windup * -.16f, _facing, 0);
         float cycle = (float)_time * 9;
         BodyRoot.Position = Vector3.Up * (.018f * MathF.Sin((float)_time * 2) + .045f * _stride * MathF.Abs(MathF.Sin(cycle)));
         foreach (var limb in _limbs)
@@ -66,9 +70,12 @@ public partial class CharacterVisual : Node3D
                 "jaw" => new((.06f + _windup * .2f) * (1 + MathF.Sin((float)_time * 3)), 0, 0),
                 _ => new(.035f * MathF.Sin((float)_time * 2) * limb.Amplitude, 0, .025f * MathF.Sin((float)_time * 1.5f) * limb.Amplitude)
             };
-            if (state is "Recover" && limb.Motion.Contains("arm", StringComparison.Ordinal)) rotation.X += .25f;
+            if (limb.Motion.Contains("arm", StringComparison.Ordinal)) rotation.X += _recovery * .4f;
             limb.Node.Rotation = limb.Rest + rotation;
+            limb.Node.Position = limb.Origin;
         }
+        AnimateFamilyAnticipation();
+        AnimateCue();
     }
 
     private void Palette(string main, string accent, string dark, string metal, string bone, string skin, string glow)
@@ -97,7 +104,7 @@ public partial class CharacterVisual : Node3D
     private Node3D Joint(Node parent, Vector3 at, string motion, float amplitude = 1)
     {
         var joint = new Node3D { Position = at }; parent.AddChild(joint);
-        _limbs.Add(new(joint, motion, amplitude, joint.Rotation)); return joint;
+        _limbs.Add(new(joint, motion, amplitude, joint.Rotation, joint.Position)); return joint;
     }
 
     private static MeshInstance3D Box(Node parent, Vector3 at, Vector3 size, Material mat, Vector3? rotationDegrees = null)
@@ -134,6 +141,8 @@ public partial class CharacterVisual : Node3D
         if (cached is null && MeshTemplates.Count < MeshTemplateLimit) MeshTemplates.Add(key, generated.ToArray());
         Height = Math.Max(Height, Top(BodyRoot, Transform3D.Identity));
         for (int i = 0; i < _limbs.Count; i++) _limbs[i] = _limbs[i] with { Rest = _limbs[i].Node.Rotation };
+        _deathFromRotations = new Vector3[_limbs.Count];
+        _deathFromPositions = new Vector3[_limbs.Count];
         BodyRoot.Rotation = new(0, _facing, 0);
     }
     private static float Top(Node3D node, Transform3D parentTransform)

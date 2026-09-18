@@ -185,7 +185,8 @@ public partial class ProductionDirector : Node3D
         _character.SetView(_session.ProgressionView, snapshot.Progression, _productionDefinition, _session.Combat.View,
             interactions, world.RoomId == _adventureDefinition.Hub, _revision, _session.Combat.ProgressionBuild.UnlockedMutations);
         _stage.ShowRoom(world.RoomId, world.BellPhase, _combat.Room, world.ActiveManifestations,
-            _session.Interactions.ToDictionary(i => i.ActionId, i => i.Position), snapshot.Expedition.Adventure.DestroyedAnchors, _session.ProgressionView.HubStage);
+            _session.Interactions.ToDictionary(i => i.ActionId, i => i.Position), snapshot.Expedition.Adventure.DestroyedAnchors, _session.ProgressionView.HubStage,
+            bossDefeated: world.RoomId == _adventureDefinition.BossRoom && world.BellPhase >= 4);
         _stage.FocusNearestInteraction(player.Position);
         _sandbox.PresentAuthoredRoom(_combat.Room, world.RoomId, EnvironmentGround.Style(world.RoomId == "room.greyhaven", world.RoomId));
         _sandbox.SetManifestationPresentation(world.ActiveManifestations);

@@ -13,6 +13,10 @@ public partial class Sandbox
         public required Label3D Label { get; init; }
         public Vector3 Previous { get; set; }
         public Vector3 Current { get; set; }
+        public int Health { get; set; }
+        public bool AuthoredVisible { get; set; } = true;
+        public Vector3? Facing { get; set; }
+        public long LastAttackTick { get; set; } = -1;
         public bool Windup { get; set; }
         public string State { get; set; } = "";
     }
@@ -100,8 +104,8 @@ public partial class Sandbox
         if (definitionId is "boss.bell_saint" && _view.BossPhase >= 3) definitionId = "enemy.bell_beast";
         string discipline = id == 1 ? _view.Discipline : "";
         string visualKey = $"{definitionId}/{role}/{discipline}/{allied}";
-        if (_actors.TryGetValue(id, out var previous) && previous.VisualKey != visualKey)
-        { previous.Root.QueueFree(); _actors.Remove(id); }
+        if (_actors.TryGetValue(id, out var previous) && (previous.VisualKey != visualKey || previous.Body.IsDying && health > 0))
+        { RemoveChild(previous.Root); previous.Root.QueueFree(); _actors.Remove(id); }
         if (!_actors.TryGetValue(id, out var actor))
         {
             Color color = id == 1 ? _mint : allied ? new("af9cff") : role switch
@@ -113,7 +117,7 @@ public partial class Sandbox
                 "beast" => new("c96879"),
                 _ => new("ed8870")
             };
-            var root = new Node3D { Position = target }; AddChild(root);
+            var root = new Node3D { Name = $"Actor{id}", Position = target }; AddChild(root);
             if (id == 1) _cameraFollow = target;
             var body = CharacterVisual.Create(definitionId, role, discipline, allied);
             root.AddChild(body);
@@ -131,12 +135,14 @@ public partial class Sandbox
             };
             root.AddChild(label);
             var tell = Disc(1.15f, new Color(1, .22f, .08f, .38f), root);
-            actor = new() { Root = root, Body = body, VisualKey = visualKey, Tell = tell, Label = label, Previous = target, Current = target };
+            actor = new() { Root = root, Body = body, VisualKey = visualKey, Tell = tell, Label = label, Previous = target, Current = target, Health = health };
             _actors[id] = actor;
         }
         actor.Previous = actor.Current; actor.Current = target;
         actor.Windup = windingUp; actor.State = state;
-        actor.Root.Visible = health > 0;
+        if (actor.Health > 0 && health <= 0) actor.Body.React("death");
+        actor.Health = health;
+        actor.Root.Visible = health > 0 || actor.Body.IsDying && !actor.Body.DeathFinished;
         actor.Label.Position = Vector3.Up * (actor.Body.Height + (role == "bellsaint" && _view.BossPhase == 2 ? 1.2f : .4f));
         actor.Label.Text = id == 1 ? $"UNBOUND  {health}/{maxHealth}" : $"{name.ToUpperInvariant()}\n{health}/{maxHealth}{(status.Length > 0 ? "\n" + status : "")}";
         actor.Tell.Visible = telegraph && health > 0;
@@ -148,21 +154,23 @@ public partial class Sandbox
         foreach (var pair in _actors)
         {
             pair.Value.Root.Position = pair.Value.Previous.Lerp(pair.Value.Current, (float)alpha);
-            Vector3? facing = null;
-            if (pair.Value.Windup && _actors.TryGetValue(pair.Key == 1 ? selected : 1, out var opponent))
+            Vector3? facing = pair.Value.Facing;
+            if (facing is null && pair.Value.Windup && _actors.TryGetValue(pair.Key == 1 ? selected : 1, out var opponent))
                 facing = opponent.Current - pair.Value.Current;
             pair.Value.Body.Animate(delta, pair.Value.Current - pair.Value.Previous, pair.Value.Windup, pair.Value.State, IsPaused, facing);
             // Keep the selected role/status readable even when several melee actors overlap.
-            pair.Value.Label.Visible = pair.Key == selected || _mechanicLabels.Contains(pair.Key);
+            pair.Value.Root.Visible = pair.Value.AuthoredVisible && (pair.Value.Health > 0 || pair.Value.Body.IsDying && !pair.Value.Body.DeathFinished);
+            pair.Value.Label.Visible = pair.Value.Health > 0 && (pair.Key == selected || _mechanicLabels.Contains(pair.Key));
         }
-        _targetMarker.Visible = selected > 0 && _actors.TryGetValue(selected, out var target) && target.Root.Visible;
+        _targetMarker.Visible = selected > 0 && _actors.TryGetValue(selected, out var target) && target.Root.Visible && target.Health > 0;
         if (_targetMarker.Visible) _targetMarker.Position = _actors[selected].Root.Position + Vector3.Up * .04f;
         if (_actors.TryGetValue(1, out var focus))
             _cameraFollow = _cameraFollow.Lerp(focus.Root.Position, 1 - MathF.Exp(-(float)delta * 8));
-        _shake = Math.Max(0, _shake - delta * 4);
+        AdvanceCombatFeedback(delta);
+        if (!IsPaused) _shake = Math.Max(0, _shake - delta * 4);
         _camera.Position = _cameraHome + _cameraFollow + (_reduceShake ? Vector3.Zero : new Vector3(
-            (float)(Math.Sin(Time.GetTicksMsec() * .081) * _shake * .12),
-            (float)(Math.Cos(Time.GetTicksMsec() * .103) * _shake * .08), 0));
+            (float)(Math.Sin(_cosmeticTime * 81) * _shake * .12),
+            (float)(Math.Cos(_cosmeticTime * 103) * _shake * .08), 0));
         if (_actors.TryGetValue(1, out var player))
         {
             bool burning = _manifestations.Contains("manifestation.burning_blood"), stone = _manifestations.Contains("manifestation.stone_memory");
@@ -171,7 +179,7 @@ public partial class Sandbox
             player.Body.SetAccent(accent);
             _manifestationMarker.Visible = (burning || stone || shadow || renewal) && player.Root.Visible;
             _manifestationMarker.Position = player.Root.Position + Vector3.Up * .06f;
-            _manifestationMarker.Rotation = new(0, (float)(Time.GetTicksMsec() * .001), burning ? .12f : 0);
+            _manifestationMarker.Rotation = new(0, (float)(_cosmeticTime), burning ? .12f : 0);
             ((StandardMaterial3D)_manifestationMarker.MaterialOverride).AlbedoColor = new Color(accent, .3f);
             Vector2 screen = _camera.UnprojectPosition(player.Root.Position + Vector3.Up);
             float fadeRadius = GetViewport().GetVisibleRect().Size.Y * .1f;
@@ -241,8 +249,13 @@ public partial class Sandbox
     private void Feedback(int id, string text, string kind)
     {
         if (!_actors.TryGetValue(id, out var actor) || DisplayServer.GetName() == "headless") return;
-        if (!_floatingActors.Add(id)) return;
         Color color = kind == "heal" ? _mint : kind == "death" ? new Color("f4d99f") : _ember;
+        if (kind == "death" && _floatingLabels.FirstOrDefault(label => label.ActorId == id) is { } existing)
+        {
+            existing.Node.Text = text; existing.Color = color; existing.Age = 0;
+            existing.Node.Modulate = color; existing.Node.Position = existing.Origin; return;
+        }
+        if (_floatingActors.Count >= 32 || !_floatingActors.Add(id)) return;
         var label = new Label3D
         {
             Text = text,
@@ -255,49 +268,36 @@ public partial class Sandbox
             NoDepthTest = true
         };
         AddChild(label); _transientNodes.Add(label);
-        var tween = label.CreateTween();
-        tween.TweenProperty(label, "position", label.Position + Vector3.Up * (_reduceEffects ? .5f : 1.4f), .65);
-        tween.Parallel().TweenProperty(label, "modulate:a", 0f, .65);
-        tween.TweenCallback(Callable.From(() => { _floatingActors.Remove(id); _transientNodes.Remove(label); label.QueueFree(); }));
-        if (!_reduceEffects)
-        {
-            var pulse = Disc(.55f, new Color(color, .7f)); pulse.Position = actor.Root.Position + Vector3.Up * .4f;
-            _transientNodes.Add(pulse);
-            var burst = pulse.CreateTween(); burst.TweenProperty(pulse, "scale", new Vector3(2.4f, .1f, 2.4f), .2);
-            burst.TweenCallback(Callable.From(() => { _transientNodes.Remove(pulse); pulse.QueueFree(); }));
-        }
-        if (id == 1 || kind == "death") _shake = kind == "death" ? .6 : .25;
-        PlayTone(kind);
+        _floatingLabels.Add(new FloatingLabel(id, label, label.Position, color));
     }
 
     private void BuildAudio()
     {
-        foreach (var pair in new[] { ("hit", 240d), ("death", 120d), ("heal", 660d), ("loot", 880d), ("tell", 440d), ("cast", 330d) })
-        {
-            const int rate = 22050, samples = 3307;
-            var bytes = new byte[samples * 2];
-            for (int i = 0; i < samples; i++)
-            {
-                double envelope = Math.Min(1, i / 110d) * (1 - i / (double)samples);
-                short sample = (short)(Math.Sin(i * pair.Item2 * 2 * Math.PI / rate) * envelope * 7000);
-                bytes[i * 2] = (byte)(sample & 255); bytes[i * 2 + 1] = (byte)((sample >> 8) & 255);
-            }
-            _tones[pair.Item1] = new AudioStreamWav { Format = AudioStreamWav.FormatEnum.Format16Bits, MixRate = rate, Data = bytes };
-        }
-        for (int i = 0; i < 6; i++)
-        { var voice = new AudioStreamPlayer { VolumeDb = -14 }; AddChild(voice); _voices.Add(voice); }
+        _combatEffects = new CombatEffects { Name = "CombatEffects" }; AddChild(_combatEffects);
+        foreach (string cue in CombatAudio.CueNames)
+            _tones[cue] = new AudioStreamWav { Format = AudioStreamWav.FormatEnum.Format16Bits, MixRate = 22050, Data = CombatAudio.CreateSamples(cue) };
+        for (int i = 0; i < 8; i++)
+        { var voice = new AudioStreamPlayer { VolumeDb = -12 }; AddChild(voice); _voices.Add(voice); }
     }
     private void PlayTone(string kind)
     {
         if (DisplayServer.GetName() == "headless" || !_tones.TryGetValue(kind, out var stream)) return;
-        var voice = _voices[_voiceIndex++ % _voices.Count]; voice.Stream = stream; voice.Play();
+        if (_lastSounds.TryGetValue(kind, out double last) && _cosmeticTime - last < .07) return;
+        _lastSounds[kind] = _cosmeticTime;
+        // Leave two channels for important boss and incoming-attack cues.
+        bool important = kind is "bell" or "chain" or "victory" or "tell";
+        int slot = important ? 6 + _importantVoiceIndex++ % 2 : _voiceIndex++ % 6;
+        var voice = _voices[slot]; voice.Stream = stream; voice.StreamPaused = IsPaused; voice.Play();
     }
     private void ClearPresentation()
     {
-        foreach (var actor in _actors.Values) actor.Root.QueueFree(); _actors.Clear();
+        foreach (var actor in _actors.Values) { RemoveChild(actor.Root); actor.Root.QueueFree(); }
+        _actors.Clear();
         foreach (var mesh in _effects.Values) mesh.QueueFree(); _effects.Clear();
         foreach (var node in _transientNodes) node.QueueFree(); _transientNodes.Clear();
-        _floatingActors.Clear();
+        _floatingActors.Clear(); _floatingLabels.Clear(); _combatEffects?.Clear(); _lastSounds.Clear();
+        foreach (var voice in _voices) voice.Stop();
+        _shake = 0;
     }
     private MeshInstance3D Box(Vector3 size, Vector3 position, Color color)
     {

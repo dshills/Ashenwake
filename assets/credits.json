@@ -8,7 +8,11 @@
         "game/Ashenwake.Client/SandboxPresentation.cs",
         "game/Ashenwake.Client/CharacterVisual.cs",
         "game/Ashenwake.Client/CharacterVisual.Humanoids.cs",
-        "game/Ashenwake.Client/CharacterVisual.Monsters.cs"
+        "game/Ashenwake.Client/CharacterVisual.Monsters.cs",
+        "game/Ashenwake.Client/CharacterVisual.Animation.cs",
+        "game/Ashenwake.Client/CombatEffects.cs",
+        "game/Ashenwake.Client/CombatAudio.cs",
+        "game/Ashenwake.Client/SandboxCombatFeedback.cs"
       ],
       "origin": "Authored in the Ashenwake repository from Godot primitive meshes and synthesized waveforms; no downloaded art or audio samples are declared.",
       "rightsStatus": "Project-authored source. The repository does not yet declare a distribution license or owner approval.",
@@ -24,7 +28,8 @@
         "game/Ashenwake.Client/EnvironmentGround.cs",
         "game/Ashenwake.Client/GreyhavenArt.cs",
         "game/Ashenwake.Client/GreyMarchArt.cs",
-        "game/Ashenwake.Client/SandboxEnvironment.cs"
+        "game/Ashenwake.Client/SandboxEnvironment.cs",
+        "game/Ashenwake.Client/BellSanctuaryVisual.cs"
       ],
       "origin": "Authored in the Ashenwake repository using Godot primitive meshes and materials.",
       "rightsStatus": "Project-authored source. The repository does not yet declare a distribution license or owner approval.",

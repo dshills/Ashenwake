@@ -6,6 +6,8 @@ Choose Vanguard, Veilwalker, Arcanist, Gravecaller, or Warden, each with six ski
 
 Heroes, Greyhaven specialists, and enemies now use articulated low-poly models with distinct heads, clothing, armor, weapons, and monster silhouettes. The [character art notes](docs/character_art.md) describe the character models and their reproducible preview. Greyhaven and Act I now have stone streets, workshops, memorial ruins, a funeral cloister, and a chain-hung bell sanctuary, with warm town lighting and cool distant haze. The [environment art notes](docs/environment_art.md) describe this first environment pass; later regions retain their prototype landmarks.
 
+Combat now includes discipline-specific attacks, enemy anticipation and recovery, dodge and hit reactions, and visible defeat clips. Short weapon/spell effects and sixteen synthesized sound cues follow Core combat events. The Bell Saint sanctuary swings, sheds broken links, and settles after victory. See [combat feedback](docs/combat_feedback.md) for scope, accessibility behavior, and diagnostics.
+
 ## Start here
 
 Requires Git/Git LFS, Python 3, `curl`, `unzip`, `ripgrep`, and **Go 1.27.1**. The bootstrap installs **.NET SDK 8.0.425** and **Godot 4.6.2 Mono** inside ignored `.tools/`; it does not replace the system Godot. Supported bootstrap hosts are macOS Apple Silicon and Linux x86_64.

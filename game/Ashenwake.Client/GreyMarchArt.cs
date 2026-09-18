@@ -17,16 +17,15 @@ public static class GreyMarchArt
     private const string Iron = "535650";
     private const string Bronze = "ad8b57";
     private const string Gold = "dec895";
-    private const string Ritual = "87cec0";
 
-    public static void Build(Node3D parent, float x, float z, string encounterId, int bellPhase)
+    public static BellSanctuaryVisual? Build(Node3D parent, float x, float z, string encounterId, int bellPhase, bool bossDefeated = false)
     {
         var art = new EnvironmentBuilder(parent, "GreyMarchArchitecture");
         switch (encounterId)
         {
             case "campaign.bell_saint":
             case "room.bell_sanctum":
-                Sanctuary(art, x, z, bellPhase);
+                Sanctuary(art, x, z);
                 break;
             case "campaign.monastery":
             case "room.cloister":
@@ -37,6 +36,10 @@ public static class GreyMarchArt
                 break;
         }
         art.Flush();
+        if (encounterId is not ("campaign.bell_saint" or "room.bell_sanctum")) return null;
+        var bell = BellSanctuaryVisual.Create(x, z, bellPhase, bossDefeated);
+        parent.AddChild(bell);
+        return bell;
     }
 
     private static void MemorialRoad(EnvironmentBuilder art, float x, float z)
@@ -108,7 +111,7 @@ public static class GreyMarchArt
         LowFragments(art, x, z);
     }
 
-    private static void Sanctuary(EnvironmentBuilder art, float x, float z, int phase)
+    private static void Sanctuary(EnvironmentBuilder art, float x, float z)
     {
         Vector3 shrine = new(0, 0, -z - 3.3f);
         Arch(art, shrine, 7.7f, 5.5f, 9.15f);
@@ -125,7 +128,7 @@ public static class GreyMarchArt
             // Ritual lights live on the peripheral memorials, never over a combat telegraph.
             var ritualBase = new Vector3(side * (x - 1.2f), 0, -z - 1.35f);
             art.Cylinder(.65f, .5f, .35f, ritualBase + Vector3.Up * .175f, Weathered);
-            art.Torus(.36f, .43f, ritualBase + Vector3.Up * .42f, phase == 2 ? Ritual : Bronze, glow: phase == 2);
+            art.Torus(.36f, .43f, ritualBase + Vector3.Up * .42f, Bronze);
             Candle(art, ritualBase + new Vector3(0, .35f, 0));
         }
 
@@ -133,49 +136,9 @@ public static class GreyMarchArt
         art.Box(new Vector3(5.9f, .52f, .55f), shrine + new Vector3(0, 7.55f, .12f), Wood);
         art.Box(new Vector3(.3f, .76f, .68f), shrine + new Vector3(-2.4f, 7.5f, .12f), Iron);
         art.Box(new Vector3(.3f, .76f, .68f), shrine + new Vector3(2.4f, 7.5f, .12f), Iron);
-        HangingBell(art, shrine + new Vector3(phase >= 3 ? .48f : 0, 5.05f, .35f), phase >= 3);
-        if (phase >= 3)
-        {
-            Chain(art, shrine + new Vector3(-.42f, 7.2f, .35f), shrine + new Vector3(-.7f, 6.48f, .35f));
-            Chain(art, shrine + new Vector3(.65f, 7.2f, .35f), shrine + new Vector3(.16f, 6.22f, .35f));
-            Chain(art, shrine + new Vector3(-2.6f, 5.25f, .45f), shrine + new Vector3(-2.8f, 2.75f, .45f));
-            for (int i = 0; i < 4; i++)
-                art.Box(new Vector3(.6f, .23f, .9f), shrine + new Vector3(-2.1f + i * 1.45f, .16f, .85f), Bronze, new(0, i * 21, i % 2 * 10));
-        }
-        else
-        {
-            Chain(art, shrine + new Vector3(-.42f, 7.3f, .35f), shrine + new Vector3(-.42f, 6.15f, .35f));
-            Chain(art, shrine + new Vector3(.42f, 7.3f, .35f), shrine + new Vector3(.42f, 6.15f, .35f));
-            Chain(art, shrine + new Vector3(-2.75f, 7.3f, .2f), shrine + new Vector3(-1.05f, 4.62f, .8f));
-            Chain(art, shrine + new Vector3(2.75f, 7.3f, .2f), shrine + new Vector3(1.05f, 4.62f, .8f));
-        }
         Arch(art, new(-x - 1.6f, 0, -z * .32f), 4.8f, 3.8f, 6.5f, 90, true);
         Sarcophagus(art, new(-x - 1.6f, 0, z * .52f));
         LowFragments(art, x, z);
-    }
-
-    private static void HangingBell(EnvironmentBuilder art, Vector3 center, bool broken)
-    {
-        float tilt = broken ? -19 : 0;
-        Vector3 rotation = new(0, 0, tilt);
-        Vector3 At(float y) => center + new Vector3(0, y, 0).Rotated(Vector3.Back, Mathf.DegToRad(tilt));
-        art.Cylinder(1.48f, .64f, 1.83f, At(0), Bronze, rotation);
-        art.Cylinder(.65f, .36f, .32f, At(1.06f), Gold, rotation);
-        art.Cylinder(1.64f, 1.48f, .23f, At(-1.02f), Bronze, rotation);
-        art.Cylinder(1.43f, 1.43f, .035f, At(-1.155f), Dark, rotation);
-        art.Torus(1.42f, 1.65f, At(-1.155f), Gold, rotation);
-        art.Torus(.6f, .71f, At(.8f), Gold, rotation);
-        art.Torus(.99f, 1.07f, At(-.08f), Gold, rotation);
-        art.Cylinder(.11f, .12f, .92f, At(-1.36f), Iron, rotation);
-        art.Cylinder(.21f, .16f, .32f, At(-1.82f), Bronze, rotation);
-        for (int i = -2; i <= 2; i++)
-        {
-            float angle = i * .45f;
-            Vector3 local = new(Mathf.Sin(angle) * 1.05f, -.24f, Mathf.Cos(angle) * 1.05f);
-            Vector3 inscription = center + local.Rotated(Vector3.Back, Mathf.DegToRad(tilt));
-            Basis orientation = Basis.FromEuler(new(0, 0, Mathf.DegToRad(tilt))) * Basis.FromEuler(new(0, angle, 0));
-            art.Box(new Vector3(.11f, .4f, .055f), inscription, Gold, orientation.GetEuler() * (180 / Mathf.Pi));
-        }
     }
 
     private static void Arch(EnvironmentBuilder art, Vector3 origin, float width, float spring, float peak, float yaw = 0, bool broken = false)
@@ -264,16 +227,6 @@ public static class GreyMarchArt
         art.Cylinder(.19f, .16f, .16f, origin + Vector3.Up * .08f, Iron);
         art.Cylinder(.085f, .07f, .4f, origin + Vector3.Up * .34f, Pale);
         art.Cylinder(.055f, 0, .17f, origin + Vector3.Up * .625f, Gold, glow: true);
-    }
-
-    private static void Chain(EnvironmentBuilder art, Vector3 from, Vector3 to)
-    {
-        int count = Math.Max(2, Mathf.CeilToInt(from.DistanceTo(to) / .24f));
-        for (int i = 0; i <= count; i++)
-        {
-            Vector3 center = from.Lerp(to, i / (float)count);
-            art.Torus(.075f, .126f, center, Iron, i % 2 == 0 ? new(90, 0, 0) : new(0, 0, 90));
-        }
     }
 
     private static void LowFragments(EnvironmentBuilder art, float x, float z)

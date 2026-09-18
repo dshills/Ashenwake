@@ -13,22 +13,44 @@ public partial class CampaignStage : Node3D
     private Node3D _region = null!;
     private readonly Dictionary<string, Node3D> _markers = [];
     private string _signature = "";
-    public override void _Ready() { _hub = new AdventureStage(); AddChild(_hub); _region = new Node3D(); AddChild(_region); }
+    private string _markerSignature = "";
+    private BellSanctuaryVisual? _bell;
+    private Sandbox? _sandbox;
+    public override void _Ready()
+    {
+        _hub = new AdventureStage(); AddChild(_hub); _region = new Node3D(); AddChild(_region);
+        for (Node? parent = GetParent(); parent is not null && _sandbox is null; parent = parent.GetParent())
+            _sandbox = parent.GetChildren().OfType<Sandbox>().FirstOrDefault();
+    }
+    public override void _Process(double delta)
+    {
+        if (_region.IsVisibleInTree()) _bell?.Animate(delta, _sandbox?.IsPaused == true, _sandbox?.ReducedEffects == true);
+    }
     public void Show(CampaignState state, CampaignView view, RoomDefinition room, IReadOnlyList<ExpeditionInteraction> interactions,
-        IReadOnlyList<string> manifestations, int hubStage, CorePosition player, int bellPhase = 0)
+        IReadOnlyList<string> manifestations, int hubStage, CorePosition player, int bellPhase = 0, bool bossDefeated = false)
     {
         _hub.Visible = state.InHub; _region.Visible = !state.InHub;
         if (state.InHub)
         {
+            _signature = "";
             _hub.ShowRoom("room.greyhaven", 0, room, manifestations, interactions.ToDictionary(i => i.ActionId, i => i.Position), new HashSet<string>(), hubStage);
             _hub.FocusNearestInteraction(player); return;
         }
-        string signature = state.CurrentAct + ":" + view.EncounterId + ":" + (view.EncounterId == "campaign.bell_saint" ? bellPhase : 0) + ":" + string.Join('|', interactions.Select(i => i.ActionId));
+        string signature = state.CurrentAct + ":" + view.EncounterId + ":" + room.HalfWidth + ":" + room.HalfDepth;
         if (_signature != signature)
         {
             _signature = signature;
             foreach (var child in _region.GetChildren()) { _region.RemoveChild(child); child.QueueFree(); }
-            _markers.Clear(); BuildRegion(state.CurrentAct, room.HalfWidth * .001f, room.HalfDepth * .001f, view.EncounterId ?? "", bellPhase);
+            _markers.Clear(); _markerSignature = ""; _bell = null;
+            BuildRegion(state.CurrentAct, room.HalfWidth * .001f, room.HalfDepth * .001f, view.EncounterId ?? "", bellPhase, bossDefeated);
+        }
+        _bell?.SetPhase(bellPhase, bossDefeated);
+        string markerSignature = string.Join('|', interactions.Select(i => $"{i.ActionId}:{i.Position.X}:{i.Position.Z}:{i.Name}"));
+        if (_markerSignature != markerSignature)
+        {
+            _markerSignature = markerSignature;
+            foreach (var marker in _markers.Values) { _region.RemoveChild(marker); marker.QueueFree(); }
+            _markers.Clear();
             var points = new HashSet<CorePosition>();
             foreach (var interaction in interactions)
             {
@@ -47,9 +69,9 @@ public partial class CampaignStage : Node3D
             foreach (var pair in _markers) foreach (var label in pair.Value.GetChildren().OfType<Label3D>()) label.Visible = pair.Key == nearest;
         }
     }
-    private void BuildRegion(int act, float x, float z, string encounterId, int bellPhase)
+    private void BuildRegion(int act, float x, float z, string encounterId, int bellPhase, bool bossDefeated)
     {
-        if (act == 1) { GreyMarchArt.Build(_region, x, z, encounterId, bellPhase); return; }
+        if (act == 1) { _bell = GreyMarchArt.Build(_region, x, z, encounterId, bellPhase, bossDefeated); return; }
         Color stone = new(new[] { "727b83", "416956", "66544a", "b1aa91", "514c72" }[act - 1]);
         Color accent = new(new[] { "c0be9a", "9bb662", "e69a55", "dfcea1", "a38acc" }[act - 1]);
         // These perimeter bands visually separate regions without adding navigational obstacles.

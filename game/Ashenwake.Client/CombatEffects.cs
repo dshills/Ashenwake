@@ -1,0 +1,113 @@
+using Godot;
+
+namespace Ashenwake.Client;
+
+/// <summary>Bounded cosmetic particles. No physics, gameplay clocks, or simulation random numbers.</summary>
+public partial class CombatEffects : Node3D
+{
+    public const int Maximum = 40;
+    private static readonly BoxMesh Shard = new() { Size = Vector3.One };
+    private static readonly SphereMesh Puff = new() { Radius = .5f, Height = 1, RadialSegments = 8, Rings = 4 };
+    private sealed class Burst
+    {
+        public required Node3D Root;
+        public required MeshInstance3D[] Pieces;
+        public required StandardMaterial3D Material;
+        public string Cue = "";
+        public Color Color;
+        public float Age, Duration;
+        public long Serial;
+        public bool Active;
+    }
+    private readonly List<Burst> _pool = [];
+    private long _serial;
+    public int Count => _pool.Count(b => b.Active);
+    public int PoolCount => _pool.Count;
+
+    public void Emit(string cue, Vector3 origin, Vector3 direction, Color color, bool reducedEffects = false)
+    {
+        if (reducedEffects) return;
+        var burst = _pool.FirstOrDefault(b => !b.Active);
+        if (burst is null && _pool.Count < Maximum)
+        {
+            var root = new Node3D(); AddChild(root);
+            var material = new StandardMaterial3D
+            {
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                CullMode = BaseMaterial3D.CullModeEnum.Disabled
+            };
+            var pieces = new MeshInstance3D[6];
+            for (int i = 0; i < pieces.Length; i++)
+            {
+                pieces[i] = new MeshInstance3D { Mesh = Shard, MaterialOverride = material, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+                root.AddChild(pieces[i]);
+            }
+            burst = new Burst { Root = root, Pieces = pieces, Material = material }; _pool.Add(burst);
+        }
+        burst ??= _pool.MinBy(b => b.Serial)!;
+        burst.Active = true; burst.Serial = ++_serial; burst.Age = 0; burst.Cue = cue; burst.Color = color;
+        burst.Duration = cue switch { "victory" => 1.3f, "phase" => .85f, "death" => .65f, "spell" => .4f, "dodge" or "dust" => .32f, _ => .24f };
+        burst.Root.Position = origin;
+        burst.Root.Rotation = new(0, direction.LengthSquared() > .001f ? Mathf.Atan2(direction.X, direction.Z) : 0, 0);
+        burst.Root.Visible = true;
+        foreach (var piece in burst.Pieces) piece.Mesh = cue is "dodge" or "dust" or "death" ? Puff : Shard;
+        Pose(burst);
+    }
+
+    public void Advance(double delta, bool paused, bool reducedEffects)
+    {
+        if (reducedEffects) { Clear(); return; }
+        if (paused) return;
+        float dt = (float)Math.Clamp(delta, 0, .1);
+        foreach (var burst in _pool)
+        {
+            if (!burst.Active) continue;
+            burst.Age += dt;
+            if (burst.Age >= burst.Duration) { burst.Active = false; burst.Root.Visible = false; }
+            else Pose(burst);
+        }
+    }
+
+    public void Clear()
+    { foreach (var burst in _pool) { burst.Active = false; burst.Root.Visible = false; } }
+
+    private static void Pose(Burst burst)
+    {
+        float t = burst.Age / burst.Duration;
+        burst.Material.AlbedoColor = new Color(burst.Color, (1 - t) * .8f);
+        for (int i = 0; i < 6; i++)
+        {
+            var piece = burst.Pieces[i];
+            float a = i * Mathf.Tau / 6;
+            piece.Rotation = Vector3.Zero;
+            switch (burst.Cue)
+            {
+                case "slash":
+                    a = -.95f + i * .32f + t * .6f;
+                    piece.Position = new(MathF.Sin(a) * 1.05f, .95f + i * .025f, MathF.Cos(a) * 1.05f);
+                    piece.Rotation = new(0, a, -.12f);
+                    piece.Scale = new(.34f, .045f, .045f); break;
+                case "thrust":
+                    piece.Position = new((i % 2 - .5f) * .08f, 1 + i * .025f, .55f + i * .14f + t * .5f);
+                    piece.Scale = new(.025f, .025f, .48f); break;
+                case "spell":
+                    a += t * 2;
+                    piece.Position = new(MathF.Sin(a) * (.38f + t * .3f), .8f + i * .09f + t * .4f, .5f + MathF.Cos(a) * (.38f + t * .3f));
+                    piece.Rotation = new(a, a, a); piece.Scale = new(.08f, .18f, .08f); break;
+                case "dust":
+                case "dodge":
+                    piece.Position = new(MathF.Sin(a) * (.2f + t * .6f), .1f + t * .13f, MathF.Cos(a) * (.2f + t * .3f) - t * .5f);
+                    piece.Scale = Vector3.One * (.12f + t * .22f); break;
+                case "death":
+                    piece.Position = new(MathF.Sin(a) * (.25f + t * .5f), .15f + MathF.Sin(t * Mathf.Pi) * .28f, MathF.Cos(a) * (.25f + t * .5f));
+                    piece.Scale = Vector3.One * (.12f + t * .14f); break;
+                default:
+                    float spread = burst.Cue is "victory" or "phase" ? 1.5f : .65f;
+                    piece.Position = new(MathF.Sin(a) * t * spread, .85f + MathF.Sin(a * 2 + 1) * t * .5f + (burst.Cue == "victory" ? t : 0), MathF.Cos(a) * t * spread);
+                    piece.Rotation = new(a, a + t, a * .5f);
+                    piece.Scale = new(.035f, burst.Cue == "block" ? .25f : .15f, .035f); break;
+            }
+        }
+    }
+}
