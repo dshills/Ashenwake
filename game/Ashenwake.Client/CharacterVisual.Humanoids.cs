@@ -44,6 +44,8 @@ public partial class CharacterVisual : Node3D
                 break;
         }
 
+        if (_appearance is not null) { BuildEquippedBody(); return; }
+
         Height = 2.3f;
         var plate = kind == "vanguard";
         var robe = kind is "arcanist" or "gravecaller" or "cael";

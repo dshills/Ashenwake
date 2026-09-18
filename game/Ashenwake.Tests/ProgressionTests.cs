@@ -121,7 +121,10 @@ public sealed class ProgressionTests
         Assert.False(session.Craft(extraction with { ItemId = 1 }).Success); Assert.Equal(hash, session.StateHash);
         session.GrantItem("godwrought", "item.ashcleaver", ItemRarity.Godwrought); session.Equip("axe", 3, EquipmentSlot.MainHand);
         var state = session.Capture(); state.Character.Items.Single(i => i.Id == 3).BurningKills = 999;
+        Assert.False(state.Character.Items.Single(i => i.Id == 3).Awakened);
         session = ProgressionSession.Restore(content, state); Assert.True(session.RecordGodwroughtKill("burning.kill.1000", 3).Success);
+        Assert.True(session.Capture().Character.Items.Single(i => i.Id == 3).Awakened);
+        Assert.DoesNotContain("awakened", JsonData.Write(session.Capture()), StringComparison.OrdinalIgnoreCase);
         Assert.True(session.Craft(new("graft", CraftingService.DivineGrafting, 3, Lineage: "Orrun", ConfirmPermanent: true)).Success);
         Assert.False(session.Craft(new("regraft", CraftingService.DivineGrafting, 3, Lineage: "Serath", ConfirmPermanent: true)).Success);
         Assert.True(session.Craft(new("purify", CraftingService.Purification, FragmentId: "fragment.eye_vael")).Success);

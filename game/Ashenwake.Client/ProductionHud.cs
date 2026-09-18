@@ -1,5 +1,6 @@
 using Ashenwake.Core.Combat;
 using Ashenwake.Core.Authoring;
+using Ashenwake.Core.Adventure;
 using Ashenwake.Core.Progression;
 using Godot;
 
@@ -24,6 +25,13 @@ public partial class ProductionHud : Control
     private IReadOnlyList<InteractionDisplay> _interactions = [];
     private IReadOnlyList<string>? _unlockedMutations;
     private PanelContainer _panel = null!;
+    private BoxContainer _body = null!;
+    private ScrollContainer _scroll = null!;
+    private CharacterPreview _preview = null!;
+    private CharacterAppearance? _appearance;
+    private EquipmentSlot _gearSlot = EquipmentSlot.MainHand;
+    private long _gearItemId;
+    private bool _gearInspecting;
     private VBoxContainer _rows = null!;
     private Label _summary = null!, _notice = null!;
     private Button _firstTab = null!;
@@ -74,15 +82,26 @@ public partial class ProductionHud : Control
             button.AddThemeFontSizeOverride("font_size", 12); button.Pressed += () => { _tab = tab; Rebuild(true); }; tabs.AddChild(button);
         }
         _notice = Label("", 12); column.AddChild(_notice);
-        var scroll = new ScrollContainer { CustomMinimumSize = new(429, 319), SizeFlagsVertical = SizeFlags.ExpandFill }; column.AddChild(scroll);
-        _rows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; scroll.AddChild(_rows);
+        _body = new BoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill }; _body.AddThemeConstantOverride("separation", 16); column.AddChild(_body);
+        _preview = new CharacterPreview { Visible = false }; _body.AddChild(_preview);
+        _scroll = new ScrollContainer
+        {
+            CustomMinimumSize = new(429, 319),
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
+        }; _body.AddChild(_scroll);
+        _rows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; _scroll.AddChild(_rows);
         var close = new Button { Text = "Close character" }; close.Pressed += Toggle; column.AddChild(close);
         _confirmation = new ConfirmationDialog { Title = "Confirm permanent crafting", OkButtonText = "Commit craft", CancelButtonText = "Keep current item" };
         _confirmation.Confirmed += () => { if (_pendingCraft is not null) CraftRequested?.Invoke(_pendingCraft with { ConfirmPermanent = true }); _pendingCraft = null; };
         _confirmation.Canceled += () => _pendingCraft = null; AddChild(_confirmation);
+        GetViewport().SizeChanged += LayoutPanel;
+        VisibilityChanged += () => { if (!IsVisibleInTree()) _gearInspecting = false; };
     }
 
-    public void Toggle() { _panel.Visible = !_panel.Visible; if (_panel.Visible) { Rebuild(true); _firstTab.GrabFocus(); } }
+    public override void _ExitTree() { GetViewport().SizeChanged -= LayoutPanel; }
+    public void Toggle() { _panel.Visible = !_panel.Visible; if (_panel.Visible) { Rebuild(true); _firstTab.GrabFocus(); } else _gearInspecting = false; }
     public bool PresentInteraction(string message)
     {
         string specialist;
@@ -105,10 +124,17 @@ public partial class ProductionHud : Control
         Visible = true; _panel.Visible = true; Notice(specialist); Rebuild(true); _tabs[_tab].GrabFocus(); return true;
     }
     public void Notice(string message) => _notice.Text = message;
+    public void SetAppearance(CharacterAppearance appearance)
+    {
+        if (_appearance?.Key == appearance.Key) return;
+        _appearance = appearance;
+        if (_preview is not null) UpdatePreview();
+    }
     public void SetView(ProgressionView view, ProgressionSnapshot state, ProgressionDefinition content, CombatView combat,
         IReadOnlyList<InteractionDisplay> interactions, bool inTown, long revision, IReadOnlyList<string>? unlockedMutations)
     {
         _view = view; _state = state; _content = content; _combat = combat; _interactions = interactions; _inTown = inTown; _revision = revision;
+        if (_gearInspecting && _gearItemId != 0 && !state.Character.Items.Any(i => i.Id == _gearItemId && Compatible(i, _gearSlot))) _gearInspecting = false;
         _unlockedMutations = unlockedMutations;
         _rangeMask = 0;
         for (int i = 0; i < interactions.Count; i++) if (interactions[i].Distance <= interactions[i].Range) _rangeMask |= 1 << i;
@@ -120,6 +146,7 @@ public partial class ProductionHud : Control
     {
         if (_view is null || !_panel.Visible || (!force && _renderedRevision == _revision && _renderedRangeMask == _rangeMask)) return;
         _renderedRevision = _revision; _renderedRangeMask = _rangeMask;
+        LayoutPanel();
         foreach (var child in _rows.GetChildren()) { _rows.RemoveChild(child); child.QueueFree(); }
         switch (_tab)
         {
@@ -129,6 +156,26 @@ public partial class ProductionHud : Control
             case "Town": Town(); break;
             case "Profile": Profile(); break;
         }
+        UpdatePreview();
+    }
+
+    private void LayoutPanel()
+    {
+        if (_preview is null) return;
+        bool showPreview = _tab is "Character" or "Gear";
+        bool compact = GetViewportRect().Size.X < 820;
+        _preview.Visible = showPreview;
+        _body.Vertical = compact && showPreview;
+        var viewport = GetViewportRect().Size;
+        float height = Math.Min(showPreview && compact ? 660 : showPreview ? 560 : 419, viewport.Y - 44);
+        float bodyHeight = Math.Max(100, height - 140);
+        float scrollHeight = compact && showPreview ? Math.Min(190, bodyHeight * .4f) : Math.Min(319, bodyHeight);
+        _scroll.CustomMinimumSize = new(compact ? 300 : 429, scrollHeight);
+        _preview.SetCompact(compact, compact && showPreview ? bodyHeight - scrollHeight - 16 : bodyHeight);
+        // Lift the panel at shorter viewport heights instead of letting the preview's minimum size push Close below the screen.
+        _panel.Position = new(22, Math.Max(22, Math.Min(compact && showPreview ? 98 : 201, viewport.Y - height - 22)));
+        _panel.Size = new(Math.Min(showPreview && !compact ? 755 : 455, viewport.X - 44),
+            height);
     }
     private void Character()
     {
@@ -169,31 +216,130 @@ public partial class ProductionHud : Control
     private void Gear()
     {
         _rows.AddChild(Label(Catalog.Format("production.equipment") + " · 12 PERMANENT SLOTS", 16));
-        _rows.AddChild(Label("Approach Torren to equip a compatible item. Rolls and identity persist through travel, death and retraining.", 12));
+        _rows.AddChild(Label("Inspect an item to compare its stats and appearance. Approach Torren to equip it.", 12));
+        var slots = new OptionButton { Name = "GearSlot" };
         foreach (var slot in Enum.GetValues<EquipmentSlot>())
         {
-            _rows.AddChild(Label(slot.ToString(), 13));
-            var choice = new OptionButton { Disabled = !At("service.torren") }; choice.AddItem("Empty"); choice.SetItemMetadata(0, 0L); int selection = 0;
-            foreach (var item in _state.Character.Items)
-            {
-                var definition = _content.Items.Single(d => d.Id == item.DefinitionId);
-                if (!definition.Slots.Contains(slot) || definition.Disciplines.Length > 0 && !definition.Disciplines.Contains(_view.Discipline)) continue;
-                int index = choice.ItemCount;
-                choice.AddItem($"#{item.Id} {Readable(item.DefinitionId)} · {item.Rarity}"); choice.SetItemMetadata(index, item.Id);
-                choice.SetItemTooltip(index, DescribeItem(item, slot));
-                if (_state.Character.Equipment.GetValueOrDefault(slot) == item.Id) selection = index;
-            }
-            choice.Select(selection);
-            choice.ItemSelected += index =>
-            { long id = choice.GetItemMetadata((int)index).AsInt64(); if (id == 0) UnequipRequested?.Invoke(slot); else EquipRequested?.Invoke(id, slot); };
-            _rows.AddChild(choice);
-            if (_state.Character.Equipment.TryGetValue(slot, out long equipped))
-                _rows.AddChild(Label(DescribeItem(_state.Character.Items.Single(i => i.Id == equipped), slot), 12));
+            long equippedId = _state.Character.Equipment.GetValueOrDefault(slot);
+            var equippedItem = _state.Character.Items.FirstOrDefault(i => i.Id == equippedId);
+            slots.AddItem($"{slot} · {(equippedItem is null ? "Empty" : Readable(equippedItem.DefinitionId))}", (int)slot);
         }
+        slots.Select((int)_gearSlot);
+        slots.ItemSelected += index => { _gearSlot = (EquipmentSlot)slots.GetItemId((int)index); _gearInspecting = false; Rebuild(true); };
+        _rows.AddChild(slots);
+        long currentId = _state.Character.Equipment.GetValueOrDefault(_gearSlot);
+        if (!_gearInspecting) _gearItemId = currentId;
+        var current = _state.Character.Items.FirstOrDefault(i => i.Id == currentId);
+        var candidate = _state.Character.Items.FirstOrDefault(i => i.Id == _gearItemId);
+        var choice = new OptionButton { Name = "GearItem" };
+        choice.AddItem("Empty · preview unequipped slot"); choice.SetItemMetadata(0, 0L);
+        foreach (var item in _state.Character.Items.Where(i => Compatible(i, _gearSlot)))
+        {
+            int index = choice.ItemCount;
+            choice.AddItem($"#{item.Id} {Readable(item.DefinitionId)} · {item.Rarity}"); choice.SetItemMetadata(index, item.Id);
+            choice.SetItemTooltip(index, DescribeItem(item, _gearSlot));
+            if (_gearItemId == item.Id) choice.Select(index);
+        }
+        choice.ItemSelected += index => { _gearItemId = choice.GetItemMetadata((int)index).AsInt64(); _gearInspecting = true; Rebuild(true); };
+        _rows.AddChild(choice);
+        _rows.AddChild(new HSeparator());
+        _rows.AddChild(Label("SLOT COMPARISON · EQUIPPED → SELECTED", 13));
+        _rows.AddChild(Label($"{ItemTitle(current)}\n→ {ItemTitle(candidate)}", 12));
+        AddComparison("Damage", ItemDamage(current), ItemDamage(candidate));
+        AddComparison("Armor", ItemArmor(current), ItemArmor(candidate));
+        AddComparison("Critical chance (basis points)", ItemCritical(current), ItemCritical(candidate));
+        var affixIds = (current?.Affixes.Keys.AsEnumerable() ?? []).Union(candidate?.Affixes.Keys.AsEnumerable() ?? [])
+            .Where(id => id is not ("affix.damage" or "affix.armor" or "affix.critical")).Order(StringComparer.Ordinal);
+        foreach (string id in affixIds) AddComparison(Readable(id), current?.Affixes.GetValueOrDefault(id) ?? 0, candidate?.Affixes.GetValueOrDefault(id) ?? 0);
+        if (current?.Engraving.Length > 0 || candidate?.Engraving.Length > 0)
+            _rows.AddChild(Label($"Engraving: {OptionalName(current?.Engraving)} → {OptionalName(candidate?.Engraving)}", 12));
+        string oldProperty = current is null ? "" : _content.Items.Single(i => i.Id == current.DefinitionId).Property;
+        string newProperty = candidate is null ? "" : _content.Items.Single(i => i.Id == candidate.DefinitionId).Property;
+        if (oldProperty.Length > 0 || newProperty.Length > 0)
+            _rows.AddChild(Label($"Property: {OptionalName(oldProperty)} → {OptionalName(newProperty)}", 12));
+        if (candidate is not null)
+        {
+            var elsewhere = _state.Character.Equipment.Where(p => p.Value == candidate.Id && p.Key != _gearSlot).Select(p => p.Key.ToString()).ToArray();
+            if (elsewhere.Length > 0) _rows.AddChild(Label($"Equipping this item moves it from {string.Join(", ", elsewhere)}. Comparisons above show this slot only.", 12));
+            if (candidate.Rarity == ItemRarity.Godwrought)
+                _rows.AddChild(Label($"Burning kills {candidate.BurningKills}/{GodwroughtProgress.AwakeningKills} · {(candidate.Evolution.Length > 0 ? candidate.Evolution : candidate.Awakened ? "Awakened" : "Dormant")}", 12));
+        }
+        string conflict = EquipmentConflict(candidate);
+        var equip = Button(candidate is null ? $"Unequip {_gearSlot}" : $"Equip selected {_gearSlot}", () =>
+        {
+            if (_gearItemId == 0) UnequipRequested?.Invoke(_gearSlot);
+            else EquipRequested?.Invoke(_gearItemId, _gearSlot);
+        });
+        equip.Name = candidate is null ? "UnequipItem" : "EquipItem";
+        equip.Disabled = !At("service.torren") || _gearItemId == currentId || conflict.Length > 0;
+        if (conflict.Length > 0) _rows.AddChild(Label(conflict, 12));
+        if (!At("service.torren")) _rows.AddChild(Label("Inspect anywhere. Stand near Torren in Greyhaven to equip or unequip.", 12));
+        if (_gearItemId != currentId)
+        {
+            var reset = Button("Show equipped item", () => { _gearInspecting = false; Rebuild(true); });
+            reset.Name = "ResetGearPreview";
+        }
+        if (_gearSlot is not (EquipmentSlot.MainHand or EquipmentSlot.OffHand or EquipmentSlot.Head or EquipmentSlot.Chest))
+            _rows.AddChild(Label("This slot changes stats. The model displays your weapon, off hand, helmet and chest armor.", 12));
         _rows.AddChild(new HSeparator()); _rows.AddChild(Label("PERMANENT BONUSES · EQUIPMENT + PASSIVES", 14));
         foreach (var pair in _view.Stats) _rows.AddChild(Label($"{Readable(pair.Key)}  {pair.Value}", 12));
         if (_view.Stats.Count == 0) _rows.AddChild(Label("Equip rolled items and allocate passives to add permanent stats.", 12));
     }
+
+    private bool Compatible(PermanentItem item, EquipmentSlot slot)
+    {
+        var definition = _content.Items.Single(d => d.Id == item.DefinitionId);
+        return definition.Slots.Contains(slot) && (definition.Disciplines.Length == 0 || definition.Disciplines.Contains(_view.Discipline));
+    }
+
+    private string EquipmentConflict(PermanentItem? candidate)
+    {
+        if (candidate is null) return "";
+        var definition = _content.Items.Single(i => i.Id == candidate.DefinitionId);
+        if (definition.Hands == 2 && _state.Character.Equipment.ContainsKey(EquipmentSlot.OffHand))
+            return "This weapon needs both hands. Unequip the off hand first; the preview shows the required empty off hand.";
+        if (_gearSlot == EquipmentSlot.OffHand && _state.Character.Equipment.TryGetValue(EquipmentSlot.MainHand, out long mainId))
+        {
+            var main = _state.Character.Items.Single(i => i.Id == mainId);
+            if (_content.Items.Single(i => i.Id == main.DefinitionId).Hands == 2)
+                return "Your equipped weapon uses both hands. Unequip it before equipping an off-hand item.";
+        }
+        return "";
+    }
+
+    private void AddComparison(string label, int current, int candidate)
+    {
+        int delta = candidate - current;
+        var line = Label($"{label}  {current} → {candidate}   ({delta:+0;-0;0})", 12);
+        line.Modulate = delta > 0 ? new("9eddb4") : delta < 0 ? new("eeb196") : new("c3ced5");
+        _rows.AddChild(line);
+    }
+
+    private void UpdatePreview()
+    {
+        if (_appearance is null || _preview is null) return;
+        CharacterAppearance shown = _appearance;
+        bool inspecting = _tab == "Gear" && _gearInspecting && _state is not null &&
+            _gearItemId != _state.Character.Equipment.GetValueOrDefault(_gearSlot);
+        if (inspecting && _state is not null)
+        {
+            var equipment = new SortedDictionary<EquipmentSlot, long>(_state.Character.Equipment);
+            foreach (var occupied in equipment.Where(p => p.Value == _gearItemId).Select(p => p.Key).ToArray()) equipment.Remove(occupied);
+            if (_gearItemId == 0) equipment.Remove(_gearSlot); else equipment[_gearSlot] = _gearItemId;
+            var candidate = _state.Character.Items.FirstOrDefault(i => i.Id == _gearItemId);
+            if (candidate is not null && _content.Items.Single(i => i.Id == candidate.DefinitionId).Hands == 2) equipment.Remove(EquipmentSlot.OffHand);
+            var previewState = _state with { Character = _state.Character with { Equipment = equipment } };
+            shown = CharacterAppearance.FromProgression(previewState) with { ManifestationMask = _appearance.ManifestationMask };
+        }
+        _preview.SetAppearance(shown);
+        _preview.SetCaption(inspecting ? $"Previewing {_gearSlot} · not equipped" : "Equipped appearance · drag to rotate");
+    }
+
+    private static string ItemTitle(PermanentItem? item) => item is null ? "Empty" : $"#{item.Id} {Readable(item.DefinitionId)} · {item.Rarity}";
+    private static string OptionalName(string? id) => string.IsNullOrEmpty(id) ? "none" : Readable(id);
+    private static int ItemDamage(PermanentItem? item) => (item?.BaseDamage ?? 0) + (item?.Affixes.GetValueOrDefault("affix.damage") ?? 0);
+    private static int ItemArmor(PermanentItem? item) => (item?.BaseArmor ?? 0) + (item?.Affixes.GetValueOrDefault("affix.armor") ?? 0);
+    private static int ItemCritical(PermanentItem? item) => (item?.BaseCriticalBasisPoints ?? 0) + (item?.Affixes.GetValueOrDefault("affix.critical") ?? 0);
     private string DescribeItem(PermanentItem item, EquipmentSlot slot)
     {
         var equipped = _state.Character.Equipment.TryGetValue(slot, out long id) ? _state.Character.Items.FirstOrDefault(i => i.Id == id) : null;
@@ -204,7 +350,7 @@ public partial class ProductionHud : Control
         var entries = item.Affixes.Select(p => $"{Readable(p.Key)} {p.Value} ({p.Value - (equipped?.Affixes.GetValueOrDefault(p.Key) ?? 0):+0;-0;0})");
         return $"Damage {damage} ({damage - oldDamage:+0;-0;0}) · Armor {armor} ({armor - oldArmor:+0;-0;0})\n" +
             string.Join(" · ", entries) + (item.Engraving.Length == 0 ? "" : "\nEngraving: " + Readable(item.Engraving)) +
-            (item.Rarity == ItemRarity.Godwrought ? $"\nBurning kills {item.BurningKills}/1000 · {item.Evolution}" : "");
+            (item.Rarity == ItemRarity.Godwrought ? $"\nBurning kills {item.BurningKills}/{GodwroughtProgress.AwakeningKills} · {item.Evolution}" : "");
     }
 
     private void Craft()
@@ -255,7 +401,7 @@ public partial class ProductionHud : Control
             lineage = Choice("Permanent evolution", new[] { "Serath", "Orrun" });
             lineage.Select(_craftLineage == "Orrun" ? 1 : 0);
             lineage.ItemSelected += index => { _craftLineage = index == 1 ? "Orrun" : "Serath"; Rebuild(true); };
-            _rows.AddChild(Label($"Burning kills: {selected!.BurningKills}/1000 · current evolution: {(selected.Evolution.Length == 0 ? "none" : selected.Evolution)}", 12));
+            _rows.AddChild(Label($"Burning kills: {selected!.BurningKills}/{GodwroughtProgress.AwakeningKills} · current evolution: {(selected.Evolution.Length == 0 ? "none" : selected.Evolution)}", 12));
             _rows.AddChild(Label(_craftLineage == "Serath" ? "Serath raises burning victims as temporary flaming revenants. It also retains its direct-hit healing benefit." : "Orrun replaces the awakened flame wave with an igniting molten seismic attack. It also retains its defense and on-hit barrier benefits.", 12));
         }
         if (_service == CraftingService.Tempering && selected!.Rarity == ItemRarity.Godwrought && _endgameCrafting)
@@ -293,7 +439,7 @@ public partial class ProductionHud : Control
         });
         string specialist = _service switch { CraftingService.Tempering => "service.torren", CraftingService.Rebinding => "npc.oris", CraftingService.Engraving => "hub.workshops", CraftingService.Extraction => "npc.kesh", CraftingService.Purification => "npc.cael", _ => "service.mara" };
         craft.Disabled = !At(specialist) || _view.Materials < materialCost || catalystId.Length > 0 && _catalysts.GetValueOrDefault(catalystId) == 0 ||
-            _service == CraftingService.DivineGrafting && (selected!.DefinitionId != "item.ashcleaver" || selected.BurningKills < 1000 || selected.Evolution.Length > 0 ||
+            _service == CraftingService.DivineGrafting && (selected!.DefinitionId != "item.ashcleaver" || !selected.Awakened || selected.Evolution.Length > 0 ||
                 !_state.Character.OwnedFragments.Contains(_craftLineage == "Serath" ? "fragment.heart_serath" : "fragment.orrun_bone")) || new[] { existing, replacement, property, fragment, lineage }.Any(c => c is not null && c.ItemCount == 0);
         if (!At(specialist)) _rows.AddChild(Label("Approach this workshop's specialist to commit the craft.", 12));
     }

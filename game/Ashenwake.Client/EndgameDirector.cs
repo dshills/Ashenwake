@@ -308,6 +308,7 @@ public partial class EndgameDirector : Node3D
         }
         _board.SetView(_cachedDisplay);
         var manifestations = _session.Production.View.ActiveManifestations;
+        _character.SetAppearance(CharacterAppearance.FromProgression(campaign.Production.Progression, manifestations));
         if (combat.Endgame is { } active)
         {
             int act = Array.FindIndex(_campaignDefinition.Acts, a => a.Id == snapshot.Manifest?.Region) + 1; if (act == 0) act = 1;

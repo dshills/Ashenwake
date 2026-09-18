@@ -70,5 +70,8 @@ public partial class Sandbox
         }
         if (_authoredBounds != (room.HalfWidth, room.HalfDepth))
         { _camera.Size = DefaultCameraSize(room.HalfWidth, room.HalfDepth); _authoredBounds = (room.HalfWidth, room.HalfDepth); }
+        // A room can change while a modal keeps the simulation paused. Recreate its current
+        // actors and drops now instead of leaving the cleared presentation empty until a tick.
+        _view = _session.View; SynchronizeWorld();
     }
 }

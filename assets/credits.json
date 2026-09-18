@@ -3,13 +3,17 @@
   "assets": [
     {
       "id": "asset.procedural_combat",
-      "name": "Articulated low-poly heroes, specialists and monsters; combat telegraphs, status markers and synthesized audio cues",
+      "name": "Articulated low-poly heroes, specialists and monsters; modular equipment, divine manifestations, ground loot, combat telegraphs, status markers and synthesized audio cues",
       "sourceFiles": [
         "game/Ashenwake.Client/SandboxPresentation.cs",
         "game/Ashenwake.Client/CharacterVisual.cs",
         "game/Ashenwake.Client/CharacterVisual.Humanoids.cs",
         "game/Ashenwake.Client/CharacterVisual.Monsters.cs",
         "game/Ashenwake.Client/CharacterVisual.Animation.cs",
+        "game/Ashenwake.Client/CharacterVisual.Equipment.cs",
+        "game/Ashenwake.Client/CharacterVisual.Manifestations.cs",
+        "game/Ashenwake.Client/LootVisual.cs",
+        "game/Ashenwake.Client/LootVisual.Catalog.cs",
         "game/Ashenwake.Client/CombatEffects.cs",
         "game/Ashenwake.Client/CombatAudio.cs",
         "game/Ashenwake.Client/SandboxCombatFeedback.cs"

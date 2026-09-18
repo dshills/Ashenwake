@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.ObjectModel;
 using System.Text.Json.Serialization;
+using Ashenwake.Core.Adventure;
 using Ashenwake.Core.Content;
 
 namespace Ashenwake.Core.Progression;
@@ -14,6 +15,7 @@ public sealed record PermanentItem
     public string Engraving { get; set; } = "";
     public int BurningKills { get; set; }
     public string Evolution { get; set; } = "";
+    [JsonIgnore] public bool Awakened => DefinitionId == "item.ashcleaver" && GodwroughtProgress.HasAwakened(BurningKills);
     public int BaseDamage { get; init; }
     public int BaseArmor { get; init; }
     public int BaseCriticalBasisPoints { get; init; }
@@ -289,7 +291,7 @@ public sealed partial class ProgressionSession
                 foreach (var slot in state.Equipment.Where(p => p.Value == item.Id).Select(p => p.Key).ToArray()) state.Equipment.Remove(slot);
                 break;
             case CraftingService.DivineGrafting:
-                if (!request.ConfirmPermanent || item!.Rarity != ItemRarity.Godwrought || item.DefinitionId != "item.ashcleaver" || item.BurningKills < 1000 || item.Evolution != "" || request.Lineage is not ("Serath" or "Orrun")) return "Confirm one permanent evolution of an awakened Godwrought item.";
+                if (!request.ConfirmPermanent || item!.Rarity != ItemRarity.Godwrought || item.DefinitionId != "item.ashcleaver" || !item.Awakened || item.Evolution != "" || request.Lineage is not ("Serath" or "Orrun")) return "Confirm one permanent evolution of an awakened Godwrought item.";
                 if (!state.OwnedFragments.Contains(request.Lineage == "Serath" ? "fragment.heart_serath" : "fragment.orrun_bone")) return "Learn the selected lineage's fragment before grafting.";
                 item.Evolution = request.Lineage; break;
             case CraftingService.Purification:

@@ -8,6 +8,7 @@ public partial class Sandbox
     public Func<CombatItem, bool>? LootCompatibility { get; set; }
     private int _minimumLootRarity;
     private bool _compatibleLootOnly, _inspectAllLoot;
+    private bool _showAllLootHeld;
     private PanelContainer? _lootPanel;
     private VBoxContainer? _lootRows;
     private Label? _lootDescription;
@@ -23,9 +24,10 @@ public partial class Sandbox
         column.AddChild(new HSeparator()); column.AddChild(TextLabel("GROUND LOOT", 14));
         var rarity = new OptionButton();
         for (int i = 0; i < LootRarities.Length; i++) rarity.AddItem(i == 0 ? "Show all rarities" : LootRarities[i] + " and above");
-        rarity.Select(_minimumLootRarity); rarity.ItemSelected += index => { _minimumLootRarity = (int)index; SavePreferences(); _lootSignature = ""; }; column.AddChild(rarity);
+        rarity.Name = "LootRarityFilter";
+        rarity.Select(_minimumLootRarity); rarity.ItemSelected += index => { _minimumLootRarity = (int)index; SavePreferences(); _lootSignature = ""; if (_view is not null) SynchronizeLootVisuals(); }; column.AddChild(rarity);
         var compatible = new CheckButton { Text = "Only items for the current discipline", ButtonPressed = _compatibleLootOnly };
-        compatible.Toggled += value => { _compatibleLootOnly = value; SavePreferences(); _lootSignature = ""; }; column.AddChild(compatible);
+        compatible.Toggled += value => { _compatibleLootOnly = value; SavePreferences(); _lootSignature = ""; if (_view is not null) SynchronizeLootVisuals(); }; column.AddChild(compatible);
         column.AddChild(TextLabel("Filtering does not delete drops. Godwrought items remain visible. Hold Show loot (default Alt) to reveal every drop; this binding can be changed below.", 12));
         AddButton(column, "Inspect ground loot", ToggleLootInspector);
         _lootPanel = Panel(new(841, 105), new(407, 518));
@@ -61,7 +63,7 @@ public partial class Sandbox
         foreach (var child in _lootRows.GetChildren()) { _lootRows.RemoveChild(child); child.QueueFree(); }
         foreach (var drop in drops)
         {
-            var button = AddButton(_lootRows, $"{drop.Item.Name} · {drop.Item.Rarity} · {Math.Sqrt(DistanceSquared(drop.Position, player.Position)) * .001:F1}m", () => { _inspectedLoot = drop.Id; _lootSignature = ""; RefreshLootInspector(); });
+            var button = AddButton(_lootRows, $"{drop.Item.Name} · {drop.Item.Rarity} · {Math.Sqrt(DistanceSquared(drop.Position, player.Position)) * .001:F1}m", () => { _inspectedLoot = drop.Id; _lootSignature = ""; SynchronizeLootVisuals(); RefreshLootInspector(); });
             button.AddThemeFontSizeOverride("font_size", 12);
         }
         if (drops.Length == 0) _lootRows.AddChild(TextLabel(_view.Loot.Count > 0 ? "Your filter hides these drops. Enable Inspect all drops to reveal them." : "No ground loot in this arena.", 12));

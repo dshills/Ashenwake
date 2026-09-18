@@ -86,7 +86,6 @@ public partial class Sandbox
         _manifestationMarker = Disc(.85f, new Color(.9f, .6f, .25f, .4f)); _manifestationMarker.Visible = false;
         BuildAudio();
     }
-    public void SetManifestationPresentation(IReadOnlyList<string> ids) => _manifestations = ids;
 
     private void AddObstacle(int minX, int minZ, int maxX, int maxZ)
     {
@@ -103,7 +102,8 @@ public partial class Sandbox
         Vector3 target = PositionOf(x, z);
         if (definitionId is "boss.bell_saint" && _view.BossPhase >= 3) definitionId = "enemy.bell_beast";
         string discipline = id == 1 ? _view.Discipline : "";
-        string visualKey = $"{definitionId}/{role}/{discipline}/{allied}";
+        CharacterAppearance? appearance = id == 1 ? _playerAppearance : null;
+        string visualKey = $"{definitionId}/{role}/{discipline}/{allied}/{appearance?.Key}";
         if (_actors.TryGetValue(id, out var previous) && (previous.VisualKey != visualKey || previous.Body.IsDying && health > 0))
         { RemoveChild(previous.Root); previous.Root.QueueFree(); _actors.Remove(id); }
         if (!_actors.TryGetValue(id, out var actor))
@@ -119,7 +119,7 @@ public partial class Sandbox
             };
             var root = new Node3D { Name = $"Actor{id}", Position = target }; AddChild(root);
             if (id == 1) _cameraFollow = target;
-            var body = CharacterVisual.Create(definitionId, role, discipline, allied);
+            var body = CharacterVisual.Create(definitionId, role, discipline, allied, appearance);
             root.AddChild(body);
             var label = new Label3D
             {
@@ -157,11 +157,13 @@ public partial class Sandbox
             Vector3? facing = pair.Value.Facing;
             if (facing is null && pair.Value.Windup && _actors.TryGetValue(pair.Key == 1 ? selected : 1, out var opponent))
                 facing = opponent.Current - pair.Value.Current;
+            pair.Value.Body.SetReducedEffects(_reduceEffects);
             pair.Value.Body.Animate(delta, pair.Value.Current - pair.Value.Previous, pair.Value.Windup, pair.Value.State, IsPaused, facing);
             // Keep the selected role/status readable even when several melee actors overlap.
             pair.Value.Root.Visible = pair.Value.AuthoredVisible && (pair.Value.Health > 0 || pair.Value.Body.IsDying && !pair.Value.Body.DeathFinished);
             pair.Value.Label.Visible = pair.Value.Health > 0 && (pair.Key == selected || _mechanicLabels.Contains(pair.Key));
         }
+        foreach (var loot in _lootVisuals.Values) loot.Animate(delta, IsPaused, _reduceEffects);
         _targetMarker.Visible = selected > 0 && _actors.TryGetValue(selected, out var target) && target.Root.Visible && target.Health > 0;
         if (_targetMarker.Visible) _targetMarker.Position = _actors[selected].Root.Position + Vector3.Up * .04f;
         if (_actors.TryGetValue(1, out var focus))
@@ -291,6 +293,7 @@ public partial class Sandbox
     }
     private void ClearPresentation()
     {
+        ClearLootVisuals();
         foreach (var actor in _actors.Values) { RemoveChild(actor.Root); actor.Root.QueueFree(); }
         _actors.Clear();
         foreach (var mesh in _effects.Values) mesh.QueueFree(); _effects.Clear();

@@ -67,6 +67,12 @@ mkdir -p "$combat_feedback_output"
 python3 tools/check-godot-log.py "$combat_feedback_output/smoke.log"
 rg -q 'CombatFeedbackClientSmokePassed' "$combat_feedback_output/smoke.log"
 
+appearance_output="$package_output/appearance-client"
+mkdir -p "$appearance_output"
+"$binary" --headless --quit-after 2400 --log-file "$appearance_output/smoke.log" -- --appearance-smoke --output="$appearance_output"
+python3 tools/check-godot-log.py "$appearance_output/smoke.log"
+rg -q 'AppearanceClientSmokePassed' "$appearance_output/smoke.log"
+
 experiment_output="$package_output/experiment-client"
 mkdir -p "$experiment_output"
 "$binary" --headless --quit-after 12000 --log-file "$experiment_output/smoke.log" -- --echoes-smoke --output="$experiment_output"

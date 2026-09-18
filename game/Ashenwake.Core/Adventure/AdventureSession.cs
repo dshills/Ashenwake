@@ -5,6 +5,7 @@ namespace Ashenwake.Core.Adventure;
 
 public sealed record GodwroughtProgress
 {
+    public const int AwakeningKills = 1000;
     public string InstanceId { get; init; } = "ashcleaver.1";
     public string DefinitionId { get; init; } = "item.ashcleaver";
     public int BurningKills { get; set; }
@@ -13,7 +14,8 @@ public sealed record GodwroughtProgress
     public int StackTicks { get; set; }
     public string Evolution { get; set; } = "";
     public int TemperLevel { get; set; }
-    public bool Awakened => BurningKills >= 1000;
+    public static bool HasAwakened(int burningKills) => burningKills >= AwakeningKills;
+    public bool Awakened => HasAwakened(BurningKills);
     public bool FlameWaveReady => Awakened && AttackSpeedStacks == 5;
 }
 

@@ -184,6 +184,7 @@ public partial class ProductionDirector : Node3D
         _journey.SetView(world, snapshot.Expedition.Adventure, _adventureDefinition, interactions, _revision);
         _character.SetView(_session.ProgressionView, snapshot.Progression, _productionDefinition, _session.Combat.View,
             interactions, world.RoomId == _adventureDefinition.Hub, _revision, _session.Combat.ProgressionBuild.UnlockedMutations);
+        _character.SetAppearance(CharacterAppearance.FromProgression(snapshot.Progression, world.ActiveManifestations));
         _stage.ShowRoom(world.RoomId, world.BellPhase, _combat.Room, world.ActiveManifestations,
             _session.Interactions.ToDictionary(i => i.ActionId, i => i.Position), snapshot.Expedition.Adventure.DestroyedAnchors, _session.ProgressionView.HubStage,
             bossDefeated: world.RoomId == _adventureDefinition.BossRoom && world.BellPhase >= 4);

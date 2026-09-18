@@ -218,6 +218,7 @@ public partial class CampaignDirector : Node3D
         _campaign.SetView(_session.View, snapshot.Campaign, _definition, _session.Production.View, snapshot.Production.Expedition.Adventure, _anatomyDefinition, combat, interactions, _revision);
         _character.SetView(_session.Production.ProgressionView, snapshot.Production.Progression, _productionDefinition, combat, interactions, _session.InHub, _revision, _session.Combat.ProgressionBuild.UnlockedMutations);
         var manifestations = _session.Production.View.ActiveManifestations;
+        _character.SetAppearance(CharacterAppearance.FromProgression(snapshot.Production.Progression, manifestations));
         bool bellDefeated = !_session.InHub && _session.ActiveEncounterId == "campaign.bell_saint" &&
             (_session.EncounterCleared || combat.Actors.Any(actor => actor.DefinitionId == "boss.bell_saint" && actor.Health <= 0));
         _stage.Show(snapshot.Campaign, _session.View, _combat.Room, _session.Interactions, manifestations, _session.Production.ProgressionView.HubStage, player.Position, combat.BossPhase, bellDefeated);

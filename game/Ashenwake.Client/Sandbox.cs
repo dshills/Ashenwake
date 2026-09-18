@@ -132,6 +132,9 @@ public partial class Sandbox : Node3D
                 { Enqueue(new(CombatCommandKind.Move, X: x, Z: z)); _moveX = x; _moveZ = z; }
             }
             _clock.Advance(_smoke || AutomaticStep ? FixedStepClock.SecondsPerTick * 5 : delta, StepCombat);
+            bool showAllLootHeld = Input.IsActionPressed("aw_showloot");
+            if (showAllLootHeld != _showAllLootHeld)
+            { _showAllLootHeld = showAllLootHeld; SynchronizeLootVisuals(); _lootSignature = ""; }
             AnimatePresentation(delta, _clock.Alpha, _target); UpdateEnvironmentAtmosphere(delta); RefreshHud(); RefreshLootInspector();
             _frames++; Sample(_frameCosts, Stopwatch.GetElapsedTime(watch).TotalMilliseconds);
             if (_frames > 10) Sample(_frameIntervals, delta * 1000);
@@ -229,6 +232,7 @@ public partial class Sandbox : Node3D
 
     private void SynchronizeWorld()
     {
+        RefreshAppearance();
         _mechanicLabels.Clear();
         var actorIds = _view.Actors.Select(a => a.Id).ToHashSet();
         foreach (var id in _actors.Keys.Where(id => !actorIds.Contains(id)).ToArray())
@@ -290,9 +294,7 @@ public partial class Sandbox : Node3D
             PresentEffect($"p{projectile.Id}", projectile.Position.X, projectile.Position.Z, .15f, new("ffc178"), true);
         foreach (var area in _view.Areas)
             PresentEffect($"a{area.Id}", area.Position.X, area.Position.Z, area.Radius * .001f, new Color(1, .38f, .13f, .24f));
-        foreach (var loot in _view.Loot.Where(IsLootVisible))
-            PresentEffect($"l{loot.Id}", loot.Position.X, loot.Position.Z, .4f,
-                loot.Item.Rarity == "Rare" ? new Color(.64f, .4f, 1, .9f) : new Color(1, .8f, .3f, .9f));
+        SynchronizeLootVisuals();
         EndEffects();
         if (!_view.Actors.Any(a => a.Id == _target && a.Health > 0 && a.Visible)) _target = NearestEnemy()?.Id ?? 0;
     }

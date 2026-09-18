@@ -20,16 +20,24 @@ public partial class CharacterVisual : Node3D
     public Color BaseAccentColor { get; private set; }
     internal static (int Models, int Materials) CachedResourceCounts => (MeshTemplates.Count, SharedMaterials.Count);
 
-    public static CharacterVisual Create(string definitionId, string role, string discipline = "", bool allied = false)
+    public static CharacterVisual Create(string definitionId, string role, string discipline = "", bool allied = false, CharacterAppearance? appearance = null)
     {
         var visual = new CharacterVisual(); visual.AddChild(visual.BodyRoot);
+        visual._appearance = discipline.Length > 0 ? appearance : null;
         if (discipline.Length > 0) visual.BuildHumanoid(discipline);
         else if (allied) { visual.BuildHumanoid("Gravecaller"); visual.SetAccent(new("af9cff")); }
         else visual.BuildMonster(definitionId, role.ToLowerInvariant().Replace(" elite", "", StringComparison.Ordinal));
         visual.ConfigureAnimation(definitionId, role, discipline, allied);
         string key = discipline.Length > 0 ? "hero:" + discipline.ToLowerInvariant() : allied ? "ally:gravecaller" :
             "monster:" + definitionId.ToLowerInvariant() + "/" + role.ToLowerInvariant().Replace(" elite", "", StringComparison.Ordinal);
-        visual.Finish(key); return visual;
+        visual.Finish(visual._appearance is null ? key : key + ":cloth-base");
+        if (visual._appearance is not null)
+        {
+            visual.BuildEquipment(visual._appearance);
+            visual.BuildManifestations(visual._appearance.ManifestationMask);
+            visual.CaptureRigBounds();
+        }
+        return visual;
     }
 
     public static CharacterVisual CreateNpc(string npcId)
@@ -76,6 +84,7 @@ public partial class CharacterVisual : Node3D
         }
         AnimateFamilyAnticipation();
         AnimateCue();
+        AnimateManifestations();
     }
 
     private void Palette(string main, string accent, string dark, string metal, string bone, string skin, string glow)
@@ -139,11 +148,16 @@ public partial class CharacterVisual : Node3D
         var generated = new List<Mesh>(); int groupIndex = 0;
         Batch(BodyRoot, generated, cached, ref groupIndex);
         if (cached is null && MeshTemplates.Count < MeshTemplateLimit) MeshTemplates.Add(key, generated.ToArray());
+        CaptureRigBounds();
+        BodyRoot.Rotation = new(0, _facing, 0);
+    }
+
+    private void CaptureRigBounds()
+    {
         Height = Math.Max(Height, Top(BodyRoot, Transform3D.Identity));
         for (int i = 0; i < _limbs.Count; i++) _limbs[i] = _limbs[i] with { Rest = _limbs[i].Node.Rotation };
         _deathFromRotations = new Vector3[_limbs.Count];
         _deathFromPositions = new Vector3[_limbs.Count];
-        BodyRoot.Rotation = new(0, _facing, 0);
     }
     private static float Top(Node3D node, Transform3D parentTransform)
     {
