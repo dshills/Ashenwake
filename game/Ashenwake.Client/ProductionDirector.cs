@@ -63,7 +63,7 @@ public partial class ProductionDirector : Node3D
             _journey = new AdventureHud { ProductionMode = true }; _sandbox.AddOverlay(_journey);
             _journey.SetFragmentDescriptions(_combat.Fragments.ToDictionary(f => f.Id, f => f.Description));
             _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character);
-            _sandbox.InventoryOverride = _character.Toggle;
+            _sandbox.InventoryOverride = _character.ToggleInventory;
             _journey.TravelRequested += id => Apply(() => _session.Travel(id));
             _journey.InteractionRequested += id => Apply(() => _session.Interact(id));
             _journey.ImplantRequested += (slot, id) => Apply(() => _session.InstallFragment(slot, id));

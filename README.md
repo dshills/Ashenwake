@@ -10,7 +10,7 @@ Combat now includes discipline-specific attacks, enemy anticipation and recovery
 
 Enemies have compact health bars. The selected or hovered enemy's exact health and conditions appear in one detail card, while required boss and seal instructions remain overhead. The objective card and a clickable **WAY FORWARD** marker after cleared campaign encounters offer the same contextual next action; remaining ground loot stays behind an explicit reward/travel review, and permanent story choices still require confirmation. See [mouse actions verification](docs/mouse_actions_verification.md).
 
-Solo characters now display equipped weapons, off-hand items, helmets and chest armor, including Ashcleaver's awakened forms. The four Manifestations add burning fissures, spectral echoes, stone plates or living growth. Character → Gear offers a rotating preview and item comparisons; inspecting is free, and explicit Equip/Unequip actions require Torren. Ground drops have recognizable item shapes and six rarity markers. See [visible progression](docs/visible_progression.md) for scope and diagnostics.
+Solo characters now display equipped weapons, off-hand items, helmets and chest armor, including Ashcleaver's awakened forms. The four Manifestations add burning fissures, spectral echoes, stone plates or living growth. Press **I** for a body-shaped equipment layout and inventory grid: drag gear onto a compatible slot to equip it, or back into inventory to unequip it. Clicking inspects and compares items; changing equipment requires Torren. Ground drops have recognizable item shapes and six rarity markers. See [equipment controls](docs/gear_drag.md) and [visible progression](docs/visible_progression.md).
 
 Divine Anatomy now has a clickable six-slot body map, fragment cards and a character preview. Inspect Resonance, combinations and Manifestation changes before applying an implant at Mara; the Bell Saint's Heart of Serath adds a visible chest crest immediately. Open **J → Anatomy**. See [Divine Anatomy](docs/anatomy.md) for the first-upgrade flow and controls.
 
@@ -46,7 +46,7 @@ Act II contains an ordered tracking hunt, Act III a timed Resonance Storm, and A
 | Pause / advance one paused tick | P / period |
 | Save / load | F5 / F9 |
 | Save and verify recent replay | F6 |
-| Character, equipment, crafting / settings | C or I / Escape |
+| Character and crafting / inventory and equipment / settings | C / I / Escape |
 | Cycle target / camera zoom | Tab / mouse wheel |
 | Interact / journey map, journal and services | Click a visible target or F nearby / J |
 | Fractures, God Hunts, expedition progress | B |

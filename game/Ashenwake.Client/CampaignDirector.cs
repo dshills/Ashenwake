@@ -65,7 +65,7 @@ public partial class CampaignDirector : Node3D
             _sandbox.SaveOverride = () => Safely(Save); _sandbox.LoadOverride = () => Safely(Load); _sandbox.ReplayOverride = () => Safely(VerifyReplay);
             _stage = new CampaignStage(); AddChild(_stage);
             _campaign = new CampaignHud(); _sandbox.AddOverlay(_campaign);
-            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = _character.Toggle;
+            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = _character.ToggleInventory;
             _campaign.ActRequested += act => Apply(() => _session.EnterAct(act));
             _campaign.HubRequested += () => Apply(_session.ReturnToHub);
             _campaign.ContinueRequested += () => Apply(_session.AdvanceEncounter);

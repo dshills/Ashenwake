@@ -47,11 +47,16 @@ public partial class AppearanceSmoke : Node3D
             _hud.UnequipRequested += slot => { Require(_session.Unequip(slot)); _unequips++; Refresh(); };
             _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(true); Refresh();
             await EquipmentFlow();
+            await DragDropFlow();
             await DungeonFlow();
             await Gallery();
             Finish(true, "");
         }
-        catch (Exception ex) { GD.PushError(ex.ToString()); Finish(false, ex.Message); }
+        catch (Exception ex)
+        {
+            try { await Capture("appearance-failure.png"); } catch (Exception captureError) { GD.PushError(captureError.Message); }
+            GD.PushError(ex.ToString()); Finish(false, ex.Message);
+        }
     }
 
     private void Refresh()
@@ -294,7 +299,7 @@ public partial class AppearanceSmoke : Node3D
     {
         await Frames();
         if (!OS.GetCmdlineUserArgs().Contains("--capture-appearance") || DisplayServer.GetName() == "headless") return;
-        await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+        RenderingServer.ForceDraw(false); RenderingServer.ForceSync();
         using var image = GetViewport().GetTexture().GetImage();
         Check("capture_" + name, image.GetWidth() > 0 && image.SavePng(Path.Combine(_output, name)) == Error.Ok); _captures.Add(name);
     }
@@ -309,8 +314,9 @@ public partial class AppearanceSmoke : Node3D
             checks = _checks,
             captures = _captures,
             commands = _commands,
+            dragGestures = _dragGestures,
             error,
-            scope = "Appearance geometry, cosmetic preview isolation, explicit permanent equipment, pause, real fragment manifestation, dungeon loot pickup, save and replay. Galleries show gameplay assets."
+            scope = "Appearance geometry, cosmetic preview isolation, explicit permanent equipment, native viewport drag/drop, Torren and compatibility gating, cancellation and stale payload rejection, pause, real fragment manifestation, dungeon loot pickup, save and replay. The two-handed branch loads the maintained completed-campaign archive with its matching historical content and legally retrains at Mara; it does not grant an item or rerun that campaign. Each branch uses an isolated save/profile ledger. Galleries show gameplay assets."
         };
         if (_writeReport) System.IO.File.WriteAllText(Path.Combine(_output, "appearance-smoke.json"), JsonData.Write(report));
         GD.Print(JsonData.Write(report)); GetTree().Quit(passed ? 0 : 1);

@@ -54,6 +54,7 @@ public partial class MouseActionsSmoke : Node
             if (_sandbox.IsPaused) await ClickButton("Resume playing");
             await CloseJourney();
             Ticks(2);
+            await InventoryRouting();
             await Ground(new(-5000, 5000)); await WalkUntilStopped();
             Check("distant_hub_checkpoint_is_reached_by_real_mouse_movement", CorePosition.DistanceSquared(Player, Session.Interactions.Single(i => i.ActionId == "npc.mara").Position) > 6000L * 6000);
             await KeyPress(Key.F5);
@@ -74,6 +75,34 @@ public partial class MouseActionsSmoke : Node
             try { await Capture("mouse-actions-failure.png"); } catch (Exception captureError) { GD.PushError(captureError.Message); }
             GD.PushError(ex.ToString()); Finish(false, ex.Message);
         }
+    }
+
+    private async Task InventoryRouting()
+    {
+        var character = Field<ProductionHud>(_director, "_character");
+        var panel = Field<PanelContainer>(character, "_panel");
+        var loadout = Descendants(character).OfType<GearLoadout>().Single();
+        string hash = Session.StateHash;
+        int history = Session.CaptureReplay().Frames.Length;
+        var equipment = Session.Capture().Campaign.Production.Progression.Character.Equipment.ToArray();
+        long[] owned = Session.Capture().Campaign.Production.Progression.Character.Items.Select(item => item.Id).ToArray();
+
+        await KeyPress(Key.I);
+        Check("shipping_inventory_key_opens_gear_grid", panel.IsVisibleInTree() && Field<string>(character, "_tab") == "Gear" && loadout.IsVisibleInTree() &&
+            Descendants(loadout).OfType<GearDragCard>().Count(card => card.Name.ToString().StartsWith("GearEquipment", StringComparison.Ordinal)) == Enum.GetValues<EquipmentSlot>().Length);
+        await KeyPress(Key.I);
+        Check("shipping_second_inventory_key_closes_gear", !panel.IsVisibleInTree() && !loadout.IsVisibleInTree());
+
+        await KeyPress(Key.C);
+        var characterTab = Descendants(character).OfType<Button>().Single(button => button.Text == "Character" && button.IsVisibleInTree());
+        await Click(characterTab.GetGlobalRect().GetCenter());
+        Check("shipping_character_tab_checkpoint_is_open", panel.IsVisibleInTree() && Field<string>(character, "_tab") == "Character" && !loadout.IsVisibleInTree());
+        await KeyPress(Key.I);
+        Check("shipping_inventory_key_switches_character_tab_to_gear", panel.IsVisibleInTree() && Field<string>(character, "_tab") == "Gear" && loadout.IsVisibleInTree());
+        await KeyPress(Key.I);
+        var state = Session.Capture().Campaign.Production.Progression.Character;
+        Check("shipping_inventory_routing_preserves_owned_equipment_and_history", !panel.IsVisibleInTree() && Session.StateHash == hash &&
+            Session.CaptureReplay().Frames.Length == history && state.Equipment.SequenceEqual(equipment) && state.Items.Select(item => item.Id).SequenceEqual(owned));
     }
 
     private async Task MaraInteraction()

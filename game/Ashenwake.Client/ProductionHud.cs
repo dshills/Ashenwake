@@ -28,6 +28,7 @@ public partial class ProductionHud : Control
     private BoxContainer _body = null!;
     private ScrollContainer _scroll = null!;
     private CharacterPreview _preview = null!;
+    private GearLoadout _gearLoadout = null!;
     private CharacterAppearance? _appearance;
     private EquipmentSlot _gearSlot = EquipmentSlot.MainHand;
     private long _gearItemId;
@@ -84,24 +85,38 @@ public partial class ProductionHud : Control
         _notice = Label("", 12); column.AddChild(_notice);
         _body = new BoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill }; _body.AddThemeConstantOverride("separation", 16); column.AddChild(_body);
         _preview = new CharacterPreview { Visible = false }; _body.AddChild(_preview);
+        var gearColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        gearColumn.AddThemeConstantOverride("separation", 8); _body.AddChild(gearColumn);
+        _gearLoadout = new GearLoadout { Visible = false }; gearColumn.AddChild(_gearLoadout);
+        _gearLoadout.CanEquip = (id, slot) => CanChangeGear && _state.Character.Items.FirstOrDefault(i => i.Id == id) is { } item &&
+            Compatible(item, slot) && EquipmentConflict(item, slot).Length == 0;
+        _gearLoadout.InspectRequested += (slot, id) => { _gearSlot = slot; _gearItemId = id; _gearInspecting = true; Rebuild(true); };
+        _gearLoadout.EquipRequested += (id, slot) => { _gearSlot = slot; _gearInspecting = false; EquipRequested?.Invoke(id, slot); };
+        _gearLoadout.UnequipRequested += slot => { _gearSlot = slot; _gearInspecting = false; UnequipRequested?.Invoke(slot); };
         _scroll = new ScrollContainer
         {
             CustomMinimumSize = new(429, 319),
             SizeFlagsVertical = SizeFlags.ExpandFill,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
-        }; _body.AddChild(_scroll);
+        }; gearColumn.AddChild(_scroll);
         _rows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; _scroll.AddChild(_rows);
         var close = new Button { Text = "Close character" }; close.Pressed += Toggle; column.AddChild(close);
         _confirmation = new ConfirmationDialog { Title = "Confirm permanent crafting", OkButtonText = "Commit craft", CancelButtonText = "Keep current item" };
         _confirmation.Confirmed += () => { if (_pendingCraft is not null) CraftRequested?.Invoke(_pendingCraft with { ConfirmPermanent = true }); _pendingCraft = null; };
         _confirmation.Canceled += () => _pendingCraft = null; AddChild(_confirmation);
         GetViewport().SizeChanged += LayoutPanel;
-        VisibilityChanged += () => { if (!IsVisibleInTree()) _gearInspecting = false; };
+        VisibilityChanged += () => { if (!IsVisibleInTree()) { _gearInspecting = false; _gearLoadout.CancelDrag(); } };
     }
 
     public override void _ExitTree() { GetViewport().SizeChanged -= LayoutPanel; }
     public void Toggle() { _panel.Visible = !_panel.Visible; if (_panel.Visible) { Rebuild(true); _firstTab.GrabFocus(); } else _gearInspecting = false; }
+    public void ToggleInventory()
+    {
+        _gearLoadout.CancelDrag();
+        if (_panel.Visible && _tab == "Gear") { Toggle(); return; }
+        _tab = "Gear"; _panel.Visible = true; Rebuild(true); _tabs["Gear"].GrabFocus();
+    }
     public bool PresentInteraction(string message)
     {
         string specialist;
@@ -162,19 +177,21 @@ public partial class ProductionHud : Control
     private void LayoutPanel()
     {
         if (_preview is null) return;
-        bool showPreview = _tab is "Character" or "Gear";
+        bool gear = _tab == "Gear";
+        bool showPreview = _tab == "Character" || gear && GetViewportRect().Size.X >= 1020;
         bool compact = GetViewportRect().Size.X < 820;
         _preview.Visible = showPreview;
+        _gearLoadout.Visible = gear;
         _body.Vertical = compact && showPreview;
         var viewport = GetViewportRect().Size;
-        float height = Math.Min(showPreview && compact ? 660 : showPreview ? 560 : 419, viewport.Y - 44);
+        float height = Math.Min(gear ? 690 : showPreview && compact ? 660 : showPreview ? 560 : 419, viewport.Y - 44);
         float bodyHeight = Math.Max(100, height - 140);
-        float scrollHeight = compact && showPreview ? Math.Min(190, bodyHeight * .4f) : Math.Min(319, bodyHeight);
-        _scroll.CustomMinimumSize = new(compact ? 300 : 429, scrollHeight);
+        float scrollHeight = gear ? Math.Clamp(bodyHeight - 310, 85, 150) : compact && showPreview ? Math.Min(190, bodyHeight * .4f) : Math.Min(319, bodyHeight);
+        _scroll.CustomMinimumSize = new(gear ? 540 : compact ? 300 : 429, scrollHeight);
         _preview.SetCompact(compact, compact && showPreview ? bodyHeight - scrollHeight - 16 : bodyHeight);
         // Lift the panel at shorter viewport heights instead of letting the preview's minimum size push Close below the screen.
         _panel.Position = new(22, Math.Max(22, Math.Min(compact && showPreview ? 98 : 201, viewport.Y - height - 22)));
-        _panel.Size = new(Math.Min(showPreview && !compact ? 755 : 455, viewport.X - 44),
+        _panel.Size = new(Math.Min(gear ? 980 : showPreview && !compact ? 755 : 455, viewport.X - 44),
             height);
     }
     private void Character()
@@ -215,8 +232,9 @@ public partial class ProductionHud : Control
 
     private void Gear()
     {
-        _rows.AddChild(Label(Catalog.Format("production.equipment") + " · 12 PERMANENT SLOTS", 16));
-        _rows.AddChild(Label("Inspect an item to compare its stats and appearance. Approach Torren to equip it.", 12));
+        _gearLoadout.SetView(_state, _content, _revision, CanChangeGear);
+        _rows.AddChild(Label(CanChangeGear ? "Drag inventory gear onto a compatible slot. Drag equipped gear back to inventory to unequip. Click to compare below." :
+            "Inspect your gear anywhere. Visit Torren in Greyhaven to equip or unequip, including by dragging.", 12));
         var slots = new OptionButton { Name = "GearSlot" };
         foreach (var slot in Enum.GetValues<EquipmentSlot>())
         {
@@ -271,7 +289,7 @@ public partial class ProductionHud : Control
             else EquipRequested?.Invoke(_gearItemId, _gearSlot);
         });
         equip.Name = candidate is null ? "UnequipItem" : "EquipItem";
-        equip.Disabled = !At("service.torren") || _gearItemId == currentId || conflict.Length > 0;
+        equip.Disabled = !CanChangeGear || _gearItemId == currentId || conflict.Length > 0;
         if (conflict.Length > 0) _rows.AddChild(Label(conflict, 12));
         if (!At("service.torren")) _rows.AddChild(Label("Inspect anywhere. Stand near Torren in Greyhaven to equip or unequip.", 12));
         if (_gearItemId != currentId)
@@ -292,13 +310,15 @@ public partial class ProductionHud : Control
         return definition.Slots.Contains(slot) && (definition.Disciplines.Length == 0 || definition.Disciplines.Contains(_view.Discipline));
     }
 
-    private string EquipmentConflict(PermanentItem? candidate)
+    private bool CanChangeGear => At("service.torren") && _combat.Actors.Any(a => a.Id == 1 && a.Health > 0);
+
+    private string EquipmentConflict(PermanentItem? candidate, EquipmentSlot? target = null)
     {
         if (candidate is null) return "";
         var definition = _content.Items.Single(i => i.Id == candidate.DefinitionId);
         if (definition.Hands == 2 && _state.Character.Equipment.ContainsKey(EquipmentSlot.OffHand))
             return "This weapon needs both hands. Unequip the off hand first; the preview shows the required empty off hand.";
-        if (_gearSlot == EquipmentSlot.OffHand && _state.Character.Equipment.TryGetValue(EquipmentSlot.MainHand, out long mainId))
+        if ((target ?? _gearSlot) == EquipmentSlot.OffHand && _state.Character.Equipment.TryGetValue(EquipmentSlot.MainHand, out long mainId))
         {
             var main = _state.Character.Items.Single(i => i.Id == mainId);
             if (_content.Items.Single(i => i.Id == main.DefinitionId).Hands == 2)
