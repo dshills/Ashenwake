@@ -53,6 +53,12 @@ public partial class JourneySmoke : Node
             Check("greyhaven_has_direct_first_destination", NextStep().Visible && NextStep().Text.StartsWith("Travel to Act 1", StringComparison.Ordinal));
             Check("greyhaven_environment_is_visible", VisibleArchitecture("GreyhavenArchitecture") is not null && VisibleArchitecture("GreyMarchArchitecture") is null);
             ObserveEnvironment("greyhaven", "GreyhavenArchitecture");
+            string beforeAnatomy = _session.StateHash;
+            await Click("Anatomy");
+            Check("anatomy_body_map_has_six_slots_without_changing_state", Descendants(_hud).OfType<Button>().Count(b => b.Name.ToString().StartsWith("AnatomySlot", StringComparison.Ordinal)) == 6 && _session.StateHash == beforeAnatomy && _sandbox.IsPaused);
+            await Capture("greyhaven-anatomy.png");
+            await Click("Map");
+            Check("leaving_anatomy_releases_only_its_modal_pause", !_sandbox.IsPaused && _session.StateHash == beforeAnatomy);
             await Click("Close"); await CheckAtmosphere(); await Capture("greyhaven-environment.png"); await Click("Journey map & anatomy");
             await ClickNode(NextStep());
             Check("map_starts_first_encounter", _session.ActiveEncounterId == "campaign.road" && !VisibleLabel("EDRATH ·"));
@@ -121,7 +127,7 @@ public partial class JourneySmoke : Node
             ObserveEnvironment("sanctum_unbound", "GreyMarchArchitecture");
             await Capture("bell-saint-unbound.png");
             await FightUntil(() => _session.EncounterCleared);
-            Check("boss_victory_points_to_next_region", NextStep().Text == "Review rewards & choose the next region" &&
+            Check("boss_victory_points_to_heart_reward", NextStep().Text == "Review rewards & inspect the heart" &&
                 VisibleLabel($"{_session.Combat.View.Loot.Count} dropped"));
             Check("real_combat_events_drive_attack_impact_and_fall", new[] { "attack", "windup", "impact", "death" }.All(_feedbackWitnesses.Contains));
             Check("bell_victory_has_visible_defeat_sequence", _feedbackWitnesses.Contains("boss_defeat"));
@@ -183,7 +189,7 @@ public partial class JourneySmoke : Node
     private async Task CheckAtmosphere()
     {
         var motes = Descendants(_sandbox).OfType<MultiMeshInstance3D>().Single(n => n.Name == "AmbientMotes");
-        var environment = Descendants(_sandbox).OfType<WorldEnvironment>().Single().Environment;
+        var environment = _sandbox.GetChildren().OfType<WorldEnvironment>().Single().Environment;
         var effects = Descendants(_sandbox).OfType<CheckButton>().Single(b => b.Text == "Reduced visual effects");
         bool originalReducedEffects = effects.ButtonPressed;
         if (originalReducedEffects)

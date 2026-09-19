@@ -329,7 +329,11 @@ public partial class ProductionHud : Control
             var candidate = _state.Character.Items.FirstOrDefault(i => i.Id == _gearItemId);
             if (candidate is not null && _content.Items.Single(i => i.Id == candidate.DefinitionId).Hands == 2) equipment.Remove(EquipmentSlot.OffHand);
             var previewState = _state with { Character = _state.Character with { Equipment = equipment } };
-            shown = CharacterAppearance.FromProgression(previewState) with { ManifestationMask = _appearance.ManifestationMask };
+            shown = CharacterAppearance.FromProgression(previewState) with
+            {
+                ManifestationMask = _appearance.ManifestationMask,
+                AnatomyMask = _appearance.AnatomyMask
+            };
         }
         _preview.SetAppearance(shown);
         _preview.SetCaption(inspecting ? $"Previewing {_gearSlot} · not equipped" : "Equipped appearance · drag to rotate");

@@ -12,6 +12,8 @@ Enemies have compact health bars. The selected or hovered enemy's exact health a
 
 Solo characters now display equipped weapons, off-hand items, helmets and chest armor, including Ashcleaver's awakened forms. The four Manifestations add burning fissures, spectral echoes, stone plates or living growth. Character → Gear offers a rotating preview and item comparisons; inspecting is free, and explicit Equip/Unequip actions require Torren. Ground drops have recognizable item shapes and six rarity markers. See [visible progression](docs/visible_progression.md) for scope and diagnostics.
 
+Divine Anatomy now has a clickable six-slot body map, fragment cards and a character preview. Inspect Resonance, combinations and Manifestation changes before applying an implant at Mara; the Bell Saint's Heart of Serath adds a visible chest crest immediately. Open **J → Anatomy**. See [Divine Anatomy](docs/anatomy.md) for the first-upgrade flow and controls.
+
 ## Start here
 
 Requires Git/Git LFS, Python 3, `curl`, `unzip`, `ripgrep`, and **Go 1.27.1**. The bootstrap installs **.NET SDK 8.0.425** and **Godot 4.6.2 Mono** inside ignored `.tools/`; it does not replace the system Godot. Supported bootstrap hosts are macOS Apple Silicon and Linux x86_64.

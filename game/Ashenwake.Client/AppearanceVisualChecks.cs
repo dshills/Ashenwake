@@ -11,11 +11,14 @@ public static class AppearanceVisualChecks
     private static readonly string[] Rarities = ["Common", "Tempered", "Rare", "Relic", "Legendary", "Godwrought"];
     private static readonly (int Bit, string Name)[] Manifestations =
     [(1, "ManifestationBurning"), (2, "ManifestationShadow"), (4, "ManifestationStone"), (8, "ManifestationRenewal")];
+    private static readonly (int Bit, string Name)[] Anatomy =
+    [(1, "AnatomyEyes"), (2, "AnatomyHeart"), (4, "AnatomySpine"), (8, "AnatomyArmsLeft"), (8, "AnatomyArmsRight")];
 
     public static void Run(Action<bool, string> require)
     {
         CheckEquipment(require);
         CheckManifestations(require);
+        CheckAnatomy(require);
         CheckLoot(require);
         require(CharacterVisual.CachedEquipmentResourceCount <= 160 && CharacterVisual.CachedResourceCounts.Models <= 96 &&
             CharacterVisual.CachedResourceCounts.Materials <= 256, "appearance_character_caches_are_bounded");
@@ -144,6 +147,77 @@ public static class AppearanceVisualChecks
             require(CosmeticOnly(first), "appearance_mutations_are_cosmetic");
         }
         finally { first.Free(); second.Free(); }
+    }
+
+    private static void CheckAnatomy(Action<bool, string> require)
+    {
+        require(CharacterAppearance.AnatomyFragments(null) == 0 && CharacterAppearance.AnatomyFragments(["fragment.unknown"]) == 0 &&
+            CharacterAppearance.AnatomyFragments(["fragment.orrun_bone", "fragment.eye_vael", "fragment.heart_serath", "fragment.nerve_ilyra", "fragment.eye_vael"]) == 15,
+            "appearance_anatomy_identity_uses_known_equipped_fragment_set");
+        foreach (string discipline in Disciplines)
+        {
+            var empty = Equipped(discipline);
+            var implanted = empty with { AnatomyMask = 15 };
+            var bare = Hero(empty); var all = Hero(implanted); var heart = Hero(empty with { AnatomyMask = 2 });
+            try
+            {
+                require(all.AppearanceKey == implanted.Key && all.AppearanceKey != bare.AppearanceKey && Anatomy.All(m => HasGeometry(Module(all, m.Name))) &&
+                    Anatomy.All(m => Module(bare, m.Name) is null), "appearance_" + discipline + "_implants_change_identity_and_geometry");
+                require(HasGeometry(Module(heart, "AnatomyHeart")) && Anatomy.Where(m => m.Bit != 2).All(m => Module(heart, m.Name) is null) &&
+                    Manifestations.All(m => Module(heart, m.Name) is null) && GeometryExtent(Module(heart, "AnatomyHeart")!, minimumZ: true) < -.54f,
+                    "appearance_" + discipline + "_first_heart_crest_is_outside_armor_before_manifestations");
+                require(CosmeticOnly(all) && CosmeticOnly(heart), "appearance_" + discipline + "_implants_are_cosmetic_only");
+                foreach (int bit in new[] { 1, 2, 4, 8 })
+                {
+                    var removed = Hero(implanted with { AnatomyMask = 15 & ~bit });
+                    try
+                    {
+                        require(removed.AppearanceKey != all.AppearanceKey && Anatomy.All(m => (m.Bit & bit) != 0 ? Module(removed, m.Name) is null : HasGeometry(Module(removed, m.Name))) &&
+                            Slots.All(s => HasGeometry(Module(removed, "Equipment" + s))),
+                            "appearance_" + discipline + "_remove_anatomy_" + bit + "_preserves_other_implants_and_gear");
+                    }
+                    finally { removed.Free(); }
+                }
+            }
+            finally { bare.Free(); all.Free(); heart.Free(); }
+        }
+        var first = Hero(Equipped() with { AnatomyMask = 15 });
+        var second = Hero(Equipped() with { AnatomyMask = 15 });
+        try
+        {
+            require(Anatomy.All(m => MeshIdentities(Module(first, m.Name)!).SequenceEqual(MeshIdentities(Module(second, m.Name)!))) &&
+                Anatomy.Select(m => Geometry(Module(first, m.Name)!)).Distinct().Count() == Anatomy.Length,
+                "appearance_anatomy_modules_are_distinct_and_share_cached_geometry");
+            require(GeometryExtent(Module(first, "AnatomyEyes")!, minimumZ: true) < -.32f &&
+                GeometryExtent(Module(first, "AnatomySpine")!, minimumZ: false) > .58f &&
+                GeometryExtent(Module(first, "AnatomyArmsRight")!, minimumZ: true) < -.23f,
+                "appearance_eye_spine_and_arm_marks_extend_past_clothing");
+            var meshes = MeshIdentities(first); var cache = CharacterVisual.CachedEquipmentResourceCount;
+            var materialState = MaterialState(first); var root = first.Transform;
+            first.SetReducedEffects(true);
+            for (int tick = 0; tick < 60; tick++) first.Animate(1.0 / 60, new(1, 0, 0));
+            require(meshes.SequenceEqual(MeshIdentities(first)) && cache == CharacterVisual.CachedEquipmentResourceCount &&
+                SameMaterials(materialState, MaterialState(first)) && root.IsEqualApprox(first.Transform),
+                "appearance_implants_do_not_add_animation_resources_or_change_root_motion");
+        }
+        finally { first.Free(); second.Free(); }
+    }
+
+    private static float GeometryExtent(Node node, bool minimumZ)
+    {
+        float result = minimumZ ? float.PositiveInfinity : float.NegativeInfinity;
+        void Visit(Node current, Transform3D parent)
+        {
+            var transform = current is Node3D spatial ? parent * spatial.Transform : parent;
+            if (current is MeshInstance3D mesh)
+                foreach (var vertex in mesh.Mesh.GetFaces())
+                {
+                    float z = (transform * vertex).Z;
+                    result = minimumZ ? Math.Min(result, z) : Math.Max(result, z);
+                }
+            foreach (Node child in current.GetChildren()) Visit(child, transform);
+        }
+        Visit(node, Transform3D.Identity); return result;
     }
 
     private static void CheckLoot(Action<bool, string> require)

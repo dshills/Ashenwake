@@ -63,7 +63,8 @@ public partial class AppearanceSmoke : Node3D
             (int)Math.Sqrt(CorePosition.DistanceSquared(i.Position, player.Position)), i.Range)).ToArray();
         _hud.SetView(_session.ProgressionView, snapshot.Progression, _session.Content.Capture(), _session.Combat.View,
             interactions, world.RoomId == "room.greyhaven", snapshot.OperationSequence, _session.Combat.ProgressionBuild.UnlockedMutations);
-        _hud.SetAppearance(CharacterAppearance.FromProgression(snapshot.Progression, world.ActiveManifestations));
+        _hud.SetAppearance(CharacterAppearance.FromProgression(snapshot.Progression, world.ActiveManifestations,
+            snapshot.Expedition.Adventure.Anatomy.Values));
         _sandbox.SetManifestationPresentation(world.ActiveManifestations);
         _stage.ShowRoom(world.RoomId, world.BellPhase, _room, world.ActiveManifestations,
             _session.Interactions.ToDictionary(i => i.ActionId, i => i.Position), snapshot.Expedition.Adventure.DestroyedAnchors, _session.ProgressionView.HubStage);
@@ -104,6 +105,7 @@ public partial class AppearanceSmoke : Node3D
         equip.EmitSignal(Button.SignalName.Pressed); await Frames();
         Check("equipping_ashcleaver_updates_both_models", _equips == 1 && _sandbox.CurrentAppearance.MainHand.DefinitionId == "item.ashcleaver" && preview.AppearanceKey == _sandbox.CurrentAppearance.Key);
         await Capture("equipment-ashcleaver-equipped.png");
+        await AnatomyEvolutionPreview();
         var window = GetWindow();
         window.ContentScaleSize = new(1280, 720); window.Size = new(1280, 720); await Frames(5);
         var close = Descendants(_hud).OfType<Button>().Single(b => b.Text == "Close character");
@@ -124,6 +126,39 @@ public partial class AppearanceSmoke : Node3D
         _hud.PresentInteraction("ServiceOpened:service.torren"); SelectSlot(EquipmentSlot.MainHand); SelectItem(0); await Frames();
         Check("inspection_away_from_torren_cannot_commit", Find<Button>("UnequipItem").Disabled);
         _hud.Toggle();
+    }
+
+    private async Task AnatomyEvolutionPreview()
+    {
+        // Use the real equipped-item fixture and vary only the cosmetic evolution metadata supplied to the UI.
+        // This is a presentation contract check, not a claim that this fresh character earned an awakening.
+        var snapshot = _session.Capture(); var combat = _session.Combat.View;
+        string hash = _session.StateHash; int operations = _session.CaptureReplay().Frames.Length;
+        var workbench = new AnatomyWorkbench { Position = new(20, 20), Size = new(1000, 680) };
+        _sandbox.AddOverlay(workbench);
+        void Press(string name) => Descendants(workbench).OfType<Button>().Single(b => b.Name == name).EmitSignal(Button.SignalName.Pressed);
+        try
+        {
+            foreach (string evolution in new[] { "Awakened", "Serath", "Orrun" })
+            {
+                workbench.SetView(_session.AdventureContent, snapshot.Expedition.Adventure, combat, _session.View.ActiveManifestations,
+                    inHub: true, canApply: false, canReturn: false, groundLoot: 0, ashcleaverEvolution: evolution);
+                var installed = CharacterAppearance.FromCombat(combat, _session.View.ActiveManifestations, evolution);
+                Press("AnatomyCharacterView"); await Frames();
+                Check("anatomy_preview_preserves_" + evolution.ToLowerInvariant() + "_equipped_weapon", workbench.PreviewAppearanceKey == installed.Key);
+                Press("AnatomyBodyView"); Press("AnatomySlotEyes"); Press("AnatomyEmptySlot"); await Frames();
+                var removed = installed with { AnatomyMask = installed.AnatomyMask & ~1 };
+                Check("anatomy_removal_preview_preserves_" + evolution.ToLowerInvariant() + "_weapon", workbench.Inspecting && workbench.PreviewAppearanceKey == removed.Key);
+                Press("AnatomyReset"); await Frames();
+                Check("anatomy_reset_preserves_" + evolution.ToLowerInvariant() + "_weapon", !workbench.Inspecting && workbench.PreviewAppearanceKey == installed.Key);
+            }
+            Check("anatomy_evolution_inspection_never_changes_core_or_history", _session.StateHash == hash && _session.CaptureReplay().Frames.Length == operations);
+            workbench.Hide(); await Frames();
+            var preview = Descendants(workbench).OfType<CharacterPreview>().Single();
+            Check("anatomy_evolution_preview_stops_rendering_when_hidden", !preview.Rendering && !preview.IsProcessing());
+        }
+        finally { workbench.GetParent().RemoveChild(workbench); workbench.QueueFree(); }
+        await Frames();
     }
 
     private async Task DungeonFlow()
@@ -170,7 +205,8 @@ public partial class AppearanceSmoke : Node3D
         ProductionSaveStore.Write(save, Read("combat"), AdventureContent.Parse(Read("adventure")), ProgressionContent.Parse(Read("progression")), _session.Capture());
         var restored = ProductionSaveStore.Load(save, Read("combat"), AdventureContent.Parse(Read("adventure")), ProgressionContent.Parse(Read("progression"))).Session;
         Check("save_reload_preserves_state_and_appearance", restored.StateHash == _session.StateHash &&
-            CharacterAppearance.FromProgression(restored.Capture().Progression, restored.View.ActiveManifestations).Key == _sandbox.CurrentAppearance.Key);
+            CharacterAppearance.FromProgression(restored.Capture().Progression, restored.View.ActiveManifestations,
+                restored.Capture().Expedition.Adventure.Anatomy.Values).Key == _sandbox.CurrentAppearance.Key);
         var replay = ProductionReplayRunner.Run(Read("combat"), AdventureContent.Parse(Read("adventure")), ProgressionContent.Parse(Read("progression")), _session.CaptureReplay());
         Check("equipment_and_dungeon_replay_match", replay.Success);
     }

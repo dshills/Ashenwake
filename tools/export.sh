@@ -49,6 +49,12 @@ mkdir -p "$mouse_actions_output"
 python3 tools/check-godot-log.py "$mouse_actions_output/smoke.log"
 rg -q 'MouseActionsClientSmokePassed' "$mouse_actions_output/smoke.log"
 
+anatomy_output="$package_output/anatomy-client"
+mkdir -p "$anatomy_output"
+"$binary" --headless --quit-after 12000 --log-file "$anatomy_output/smoke.log" -- --anatomy-smoke --discipline=Vanguard --output="$anatomy_output"
+python3 tools/check-godot-log.py "$anatomy_output/smoke.log"
+rg -q 'AnatomyClientSmokePassed' "$anatomy_output/smoke.log"
+
 interaction_output="$package_output/interaction-client"
 mkdir -p "$interaction_output"
 "$binary" --headless --quit-after 600 --log-file "$interaction_output/smoke.log" -- --interaction-smoke --output="$interaction_output"

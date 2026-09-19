@@ -200,7 +200,7 @@ public partial class CinderSmoke : Node
         // are real viewport inputs testing floor picking and the ring; traversal is checked
         // separately by CheckMouseRoutes against the authoritative room geometry.
         string hash = _session.StateHash;
-        var camera = Descendants(_sandbox).OfType<Camera3D>().Single();
+        var camera = _sandbox.GetChildren().OfType<Camera3D>().Single();
         var player = _session.Combat.View.Actors.Single(a => a.Id == 1).Position;
         var target = new CorePosition(player.X, player.Z + 2000);
         var screen = camera.UnprojectPosition(new(target.X * .001f, 0, target.Z * .001f));
@@ -402,7 +402,7 @@ public partial class CinderSmoke : Node
     private async Task CheckAtmosphere()
     {
         var motes = Descendants(_sandbox).OfType<MultiMeshInstance3D>().Single(n => n.Name == "AmbientMotes");
-        var environment = Descendants(_sandbox).OfType<WorldEnvironment>().Single().Environment;
+        var environment = _sandbox.GetChildren().OfType<WorldEnvironment>().Single().Environment;
         var audio = Descendants(_sandbox).OfType<AudioStreamPlayer>().Single(n => n.Name == "RegionalAmbience");
         Check("ambient_audio_respects_master_volume", audio.Bus == "Master" && audio.VolumeDb <= -20);
         Check("fog_begins_behind_nearby_combat", environment.FogEnabled && environment.FogDepthBegin >= 35 && environment.FogDepthEnd > environment.FogDepthBegin);

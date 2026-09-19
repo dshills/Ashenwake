@@ -11,9 +11,25 @@ public sealed record ItemAppearance(string DefinitionId = "", string Rarity = "C
 }
 
 public sealed record CharacterAppearance(string Discipline, ItemAppearance MainHand, ItemAppearance OffHand,
-    ItemAppearance Head, ItemAppearance Chest, int ManifestationMask = 0)
+    ItemAppearance Head, ItemAppearance Chest, int ManifestationMask = 0, int AnatomyMask = 0)
 {
-    public string Key => $"{Discipline}|{MainHand.Key}|{OffHand.Key}|{Head.Key}|{Chest.Key}|{ManifestationMask & 15}";
+    public string Key => $"{Discipline}|{MainHand.Key}|{OffHand.Key}|{Head.Key}|{Chest.Key}|{ManifestationMask & 15}|{AnatomyMask & 15}";
+
+    public static int AnatomyFragments(IEnumerable<string>? ids)
+    {
+        int mask = 0;
+        if (ids is not null)
+            foreach (string id in ids)
+                mask |= id switch
+                {
+                    "fragment.eye_vael" => 1,
+                    "fragment.heart_serath" => 2,
+                    "fragment.nerve_ilyra" => 4,
+                    "fragment.orrun_bone" => 8,
+                    _ => 0
+                };
+        return mask;
+    }
 
     public static int ManifestationBit(string id) => id switch
     {
@@ -39,10 +55,12 @@ public sealed record CharacterAppearance(string Discipline, ItemAppearance MainH
             return item is null ? ItemAppearance.Empty : new(item.DefinitionId, item.Rarity,
                 item.DefinitionId == "item.ashcleaver" ? ashcleaverEvolution : "");
         }
-        return new(view.Discipline, At("MainHand"), At("OffHand"), At("Head"), At("Chest"), Manifestations(manifestations));
+        return new(view.Discipline, At("MainHand"), At("OffHand"), At("Head"), At("Chest"), Manifestations(manifestations),
+            AnatomyFragments(view.Fragments.Where(f => f.Equipped).Select(f => f.Id)));
     }
 
-    public static CharacterAppearance FromProgression(ProgressionSnapshot state, IReadOnlyList<string>? manifestations = null)
+    public static CharacterAppearance FromProgression(ProgressionSnapshot state, IReadOnlyList<string>? manifestations = null,
+        IEnumerable<string>? fragments = null)
     {
         ItemAppearance At(EquipmentSlot slot)
         {
@@ -51,6 +69,7 @@ public sealed record CharacterAppearance(string Discipline, ItemAppearance MainH
             return item is null ? ItemAppearance.Empty : new(item.DefinitionId, item.Rarity.ToString(),
                 item.DefinitionId == "item.ashcleaver" ? item.Evolution.Length > 0 ? item.Evolution : item.Awakened ? "Awakened" : "" : "");
         }
-        return new(state.Character.Discipline, At(EquipmentSlot.MainHand), At(EquipmentSlot.OffHand), At(EquipmentSlot.Head), At(EquipmentSlot.Chest), Manifestations(manifestations));
+        return new(state.Character.Discipline, At(EquipmentSlot.MainHand), At(EquipmentSlot.OffHand), At(EquipmentSlot.Head), At(EquipmentSlot.Chest),
+            Manifestations(manifestations), AnatomyFragments(fragments));
     }
 }

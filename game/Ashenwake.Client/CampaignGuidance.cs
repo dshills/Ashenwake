@@ -7,7 +7,7 @@ namespace Ashenwake.Client;
 /// <summary>Contextual directions derived from authoritative campaign and combat projections.</summary>
 public partial class CampaignHud
 {
-    private enum NextAction { Map, Story, Continue, Travel, FinishExploration, Interaction, Hub }
+    private enum NextAction { Map, Story, Continue, Travel, FinishExploration, Interaction, Hub, Anatomy }
     private Button _nextStep = null!;
     private string _nextTab = "Map", _nextInteraction = "";
     private int _nextAct;
@@ -53,6 +53,7 @@ public partial class CampaignHud
             case NextAction.FinishExploration: SetOpen(false); LeaveExplorationRequested?.Invoke(); break;
             case NextAction.Interaction: RequestInteraction(_nextInteraction); break;
             case NextAction.Hub: SetOpen(false); HubRequested?.Invoke(); break;
+            case NextAction.Anatomy: OpenAnatomyReward(); break;
             default: OpenTab("Map"); break;
         }
     }
@@ -73,7 +74,14 @@ public partial class CampaignHud
         SetNextStep(NextAction.Map, "Open the Journey map");
         if (_state.InHub)
         {
-            if (NextAvailableAct() is { } act)
+            if (FirstHeartAvailable)
+            {
+                _objective.Text = "The Heart of Serath is yours. Visit Mara to inspect and implant your first boss reward.";
+                _nextInteraction = "service.mara";
+                bool near = _interactions.Any(i => i.Id == _nextInteraction && i.Distance <= i.Range);
+                SetNextStep(near ? NextAction.Anatomy : NextAction.Interaction, near ? "Inspect the Heart of Serath" : "Bring the Heart of Serath to Mara");
+            }
+            else if (NextAvailableAct() is { } act)
             {
                 _nextAct = act.Number;
                 _objective.Text = _maraDialogue.Length > 0 && !_state.CompletedActs.Contains(1)
@@ -132,8 +140,10 @@ public partial class CampaignHud
         }
         else if (_state.CompletedActs.Contains(_state.CurrentAct))
         {
-            _objective.Text = loot + "Region complete. A new route is open.";
-            if (_combat.Loot.Count == 0 && NextAvailableAct() is { } act)
+            _objective.Text = loot + (FirstHeartAvailable ? "Region complete. Heart of Serath secured. Inspect it and visit Mara for your first boss implant." : "Region complete. A new route is open.");
+            if (FirstHeartAvailable)
+                SetNextStep(_combat.Loot.Count > 0 ? NextAction.Map : NextAction.Anatomy, _combat.Loot.Count > 0 ? "Review rewards & inspect the heart" : "Inspect the Heart of Serath");
+            else if (_combat.Loot.Count == 0 && NextAvailableAct() is { } act)
             { _nextAct = act.Number; SetNextStep(NextAction.Travel, $"Travel to Act {act.Number} · {act.Name}"); }
             else SetNextStep(NextAction.Map, "Review rewards & choose the next region");
         }

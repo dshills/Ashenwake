@@ -21,9 +21,15 @@ public partial class CampaignHud : Control
     private AdventureDefinition _anatomyContent = null!;
     private CombatView _combat = null!;
     private IReadOnlyList<InteractionDisplay> _interactions = [];
-    private IReadOnlyDictionary<string, string> _fragmentDescriptions = new Dictionary<string, string>();
     private Label _headline = null!, _objective = null!, _notice = null!;
     private PanelContainer _panel = null!;
+    private ScrollContainer _journeyScroll = null!;
+    private AnatomyWorkbench _anatomyWorkbench = null!;
+    private AdventureContent? _previewContent;
+    private AdventureDefinition? _previewDefinition;
+    private ColorRect _anatomyBackdrop = null!;
+    private Sandbox? _anatomySandbox;
+    private bool _anatomyPaused;
     private VBoxContainer _rows = null!, _objectiveRows = null!;
     private Button _firstTab = null!;
     private readonly Dictionary<string, Button> _tabButtons = [];
@@ -44,7 +50,9 @@ public partial class CampaignHud : Control
         _notice = Label("", 11); _notice.MaxLinesVisible = 2; _notice.Visible = false; _objectiveRows.AddChild(_notice);
         var toggle = new Button { Text = "Journey map & anatomy [J]", Position = new(921, 22), Size = new(326, 35) };
         toggle.Pressed += Toggle; AddChild(toggle);
-        _panel = Panel(new(876, 140), new(371, 482)); var column = new VBoxContainer(); _panel.AddChild(column);
+        _anatomyBackdrop = new ColorRect { Color = new(0, 0, 0, .62f), MouseFilter = MouseFilterEnum.Stop, MouseForcePassScrollEvents = false, Visible = false };
+        _anatomyBackdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); AddChild(_anatomyBackdrop);
+        _panel = Panel(new(876, 140), new(371, 482)); _panel.Name = "CampaignPanel"; var column = new VBoxContainer(); _panel.AddChild(column);
         var tabs = new HBoxContainer(); column.AddChild(tabs);
         foreach (string tab in new[] { "Map", "Story", "Anatomy", "Journal" })
         {
@@ -53,8 +61,13 @@ public partial class CampaignHud : Control
             _tabButtons.Add(tab, button);
             if (tab == "Map") _firstTab = button;
         }
-        var scroll = new ScrollContainer { CustomMinimumSize = new(339, 353), SizeFlagsVertical = SizeFlags.ExpandFill }; column.AddChild(scroll);
-        _rows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; scroll.AddChild(_rows);
+        _journeyScroll = new ScrollContainer { CustomMinimumSize = new(339, 353), SizeFlagsVertical = SizeFlags.ExpandFill }; column.AddChild(_journeyScroll);
+        _rows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; _journeyScroll.AddChild(_rows);
+        _anatomyWorkbench = new AnatomyWorkbench { Visible = false }; column.AddChild(_anatomyWorkbench);
+        _anatomyWorkbench.ImplantRequested += (slot, id) => ImplantRequested?.Invoke(slot, id);
+        _anatomyWorkbench.ManifestationRequested += id => ManifestationRequested?.Invoke(id);
+        _anatomyWorkbench.VisitMaraRequested += () => RequestInteraction("service.mara");
+        _anatomyWorkbench.ReturnRequested += () => { if (_combat.Loot.Count > 0) OpenTab("Map"); else { SetOpen(false); HubRequested?.Invoke(); } };
         var footer = new HBoxContainer(); column.AddChild(footer);
         foreach (var (text, action) in new[] { ("Save", (Action)(() => SaveRequested?.Invoke())), ("Load", (Action)(() => LoadRequested?.Invoke())), ("Close", (Action)Toggle) })
         { var button = new Button { Text = text, SizeFlagsHorizontal = SizeFlags.ExpandFill }; button.Pressed += action; footer.AddChild(button); }
@@ -62,6 +75,10 @@ public partial class CampaignHud : Control
         _choiceDialog.Confirmed += () => ChoiceRequested?.Invoke(_pendingChoice, _pendingOutcome); AddChild(_choiceDialog);
         BuildNextStep();
         _panel.Visible = false;
+        for (Node? ancestor = GetParent(); ancestor is not null; ancestor = ancestor.GetParent())
+            if (ancestor is Sandbox sandbox) { _anatomySandbox = sandbox; break; }
+        _panel.VisibilityChanged += UpdateAnatomyModal;
+        VisibilityChanged += UpdateAnatomyModal;
     }
     public void Toggle() => SetOpen(!_panel.Visible);
     public void SetOpen(bool open)
@@ -82,10 +99,11 @@ public partial class CampaignHud : Control
         }
         else if (message == "ServiceOpened:service.mara") _tab = "Anatomy";
         else return false;
-        RefreshNextStep(); Visible = true; _panel.Visible = true; Rebuild(true); FocusCurrentTab(); return true;
+        RefreshNextStep(); Visible = true; _panel.Visible = true; Rebuild(true); FocusCurrentTab();
+        if (message == "ServiceOpened:service.mara" && FirstHeartAvailable) _anatomyWorkbench.InspectReward();
+        return true;
     }
     public void Notice(string message) { _notice.Text = message; _notice.TooltipText = message; _notice.Visible = message.Length > 0; }
-    public void SetFragmentDescriptions(IReadOnlyDictionary<string, string> descriptions) => _fragmentDescriptions = descriptions;
     public void SetView(CampaignView view, CampaignState state, CampaignDefinition content, AdventureView anatomyView,
         AdventureState anatomy, AdventureDefinition anatomyContent, CombatView combat, IReadOnlyList<InteractionDisplay> interactions, long revision)
     {
@@ -110,16 +128,18 @@ public partial class CampaignHud : Control
     }
     private void Rebuild(bool force)
     {
+        UpdateAnatomyLayout();
         if (_view is null || !_panel.Visible) return;
         int mask = 0; for (int i = 0; i < _interactions.Count; i++) if (_interactions[i].Distance <= _interactions[i].Range) mask |= 1 << i;
         var key = (_revision, _tab, _view.Act, _state.InHub, _engaged, mask, (_state.Exploration?.RemainingTicks ?? 0) / 30, _combat.Loot.Count);
         if (!force && _rendered == key) return; _rendered = key;
         foreach (var child in _rows.GetChildren()) { _rows.RemoveChild(child); child.QueueFree(); }
-        switch (_tab) { case "Map": Map(); break; case "Story": Story(); break; case "Anatomy": Anatomy(); break; default: Journal(); break; }
+        switch (_tab) { case "Map": Map(); break; case "Story": Story(); break; case "Anatomy": RefreshAnatomy(); break; default: Journal(); break; }
     }
     private void Map()
     {
         _rows.AddChild(Label("EDRATH · REGIONS & ANCHORS", 17));
+        AnatomyRewardMapAction();
         if (_state.InHub)
         {
             if (_maraDialogue.Length > 0)
@@ -194,30 +214,6 @@ public partial class CampaignHud : Control
                     });
                     button.Disabled = _state.InHub || _engaged || !_state.CompletedEncounters.Contains(choice.RequiredEncounter) || _state.Exploration is not null;
                 }
-        }
-    }
-    private void Anatomy()
-    {
-        bool atMara = _state.InHub && _interactions.Any(i => i.Id == "service.mara" && i.Distance <= i.Range);
-        _rows.AddChild(Label($"DIVINE ANATOMY · {_anatomyView.Resonance} RESONANCE", 16));
-        _rows.AddChild(Label(atMara ? "Choose a compatible fragment that you own." : "Approach Mara in Greyhaven to change implants and Manifestations.", 12));
-        foreach (string slot in new[] { "Mind", "Eyes", "Heart", "Spine", "Arms", "Legs" })
-        {
-            _rows.AddChild(Label(slot, 13)); var choice = new OptionButton { Disabled = !atMara }; choice.AddItem("Empty"); choice.SetItemMetadata(0, ""); int selected = 0;
-            foreach (var fragment in _anatomyContent.Fragments.Where(f => f.Slot == slot && _anatomy.OwnedFragments.Contains(f.Id)))
-            {
-                int index = choice.ItemCount; choice.AddItem($"{Readable(fragment.Id)} · {fragment.Resonance} R"); choice.SetItemMetadata(index, fragment.Id);
-                choice.SetItemTooltip(index, _fragmentDescriptions.GetValueOrDefault(fragment.Id, "")); if (_anatomy.Anatomy.GetValueOrDefault(slot) == fragment.Id) selected = index;
-            }
-            choice.Select(selected); choice.ItemSelected += index => { string id = choice.GetItemMetadata((int)index).AsString(); ImplantRequested?.Invoke(slot, id.Length == 0 ? null : id); }; _rows.AddChild(choice);
-            if (_anatomy.Anatomy.TryGetValue(slot, out string? id)) _rows.AddChild(Label(_fragmentDescriptions.GetValueOrDefault(id, ""), 12));
-        }
-        _rows.AddChild(new HSeparator()); _rows.AddChild(Label("MANIFESTATIONS · reversible choices", 14));
-        foreach (var manifestation in _anatomyContent.Manifestations)
-        {
-            Button((_anatomy.Manifestations.GetValueOrDefault(manifestation.Threshold) == manifestation.Id ? "◆ " : "") + $"{Readable(manifestation.Id)} · {manifestation.Threshold} R",
-                () => ManifestationRequested?.Invoke(manifestation.Id)).Disabled = !atMara || _anatomyView.Resonance < manifestation.Threshold;
-            _rows.AddChild(Label("Benefit: " + manifestation.Benefit + "\nCost: " + manifestation.Complication, 12));
         }
     }
     private void Journal()

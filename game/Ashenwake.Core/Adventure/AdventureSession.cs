@@ -50,7 +50,7 @@ public sealed record AdventureView(string RoomId, string RoomName, string Object
     int Materials, int Expedition, int Victories, string[] Discoveries);
 
 /// <summary>Logical world state. All mutations validate a private candidate before replacing the live state.</summary>
-public sealed class AdventureSession
+public sealed partial class AdventureSession
 {
     private readonly AdventureContent content;
     private AdventureState state;
@@ -207,21 +207,25 @@ public sealed class AdventureSession
     }
 
     public AdventureResult InstallFragment(string slot, string? fragmentId) => Change((next, events) =>
+        ApplyFragment(next, events, slot, fragmentId, requireHub: true));
+    private string? ApplyFragment(AdventureState next, List<string> events, string slot, string? fragmentId, bool requireHub)
     {
-        if (next.RoomId != Definitions.Hub) return "Change Divine Anatomy in Greyhaven.";
+        if (requireHub && next.RoomId != Definitions.Hub) return "Change Divine Anatomy in Greyhaven.";
         if (!new[] { "Mind", "Eyes", "Heart", "Spine", "Arms", "Legs" }.Contains(slot)) return "Unknown anatomy slot.";
         if (fragmentId is null) { next.Anatomy.Remove(slot); events.Add("FragmentRemoved:" + slot); return null; }
         var fragment = Definitions.Fragments.FirstOrDefault(f => f.Id == fragmentId);
         if (fragment is null || fragment.Slot != slot || !next.OwnedFragments.Contains(fragmentId)) return "Fragment is unowned or incompatible with this slot.";
         next.Anatomy[slot] = fragmentId; events.Add("FragmentInstalled:" + fragmentId); return null;
-    });
+    }
     public AdventureResult SelectManifestation(string manifestationId) => Change((next, events) =>
+        ApplyManifestation(next, events, manifestationId, requireHub: true));
+    private string? ApplyManifestation(AdventureState next, List<string> events, string manifestationId, bool requireHub)
     {
         var definition = Definitions.Manifestations.FirstOrDefault(m => m.Id == manifestationId);
-        if (next.RoomId != Definitions.Hub || definition is null || ResonanceOf(next) < definition.Threshold) return "Manifestation is unavailable.";
+        if ((requireHub && next.RoomId != Definitions.Hub) || definition is null || ResonanceOf(next) < definition.Threshold) return "Manifestation is unavailable.";
         // One reversible choice per threshold. Removing anatomy suppresses it without forgetting the choice.
         next.Manifestations[definition.Threshold] = manifestationId; events.Add("ManifestationSelected:" + manifestationId); return null;
-    });
+    }
     public AdventureResult RecordBurningKill(long killSequence, string itemInstanceId) => Change((next, events) =>
     {
         var item = next.Godwrought.FirstOrDefault(i => i.InstanceId == itemInstanceId);

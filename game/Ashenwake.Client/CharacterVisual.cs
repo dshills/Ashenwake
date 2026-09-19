@@ -35,6 +35,7 @@ public partial class CharacterVisual : Node3D
         {
             visual.BuildEquipment(visual._appearance);
             visual.BuildManifestations(visual._appearance.ManifestationMask);
+            visual.BuildAnatomy(visual._appearance.AnatomyMask);
             visual.CaptureRigBounds();
         }
         return visual;

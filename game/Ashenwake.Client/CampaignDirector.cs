@@ -65,7 +65,6 @@ public partial class CampaignDirector : Node3D
             _sandbox.SaveOverride = () => Safely(Save); _sandbox.LoadOverride = () => Safely(Load); _sandbox.ReplayOverride = () => Safely(VerifyReplay);
             _stage = new CampaignStage(); AddChild(_stage);
             _campaign = new CampaignHud(); _sandbox.AddOverlay(_campaign);
-            _campaign.SetFragmentDescriptions(_combat.Fragments.ToDictionary(f => f.Id, f => f.Description));
             _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = _character.Toggle;
             _campaign.ActRequested += act => Apply(() => _session.EnterAct(act));
             _campaign.HubRequested += () => Apply(_session.ReturnToHub);
@@ -219,7 +218,8 @@ public partial class CampaignDirector : Node3D
         _campaign.SetView(_session.View, snapshot.Campaign, _definition, _session.Production.View, snapshot.Production.Expedition.Adventure, _anatomyDefinition, combat, interactions, _revision);
         _character.SetView(_session.Production.ProgressionView, snapshot.Production.Progression, _productionDefinition, combat, interactions, _session.InHub, _revision, _session.Combat.ProgressionBuild.UnlockedMutations);
         var manifestations = _session.Production.View.ActiveManifestations;
-        _character.SetAppearance(CharacterAppearance.FromProgression(snapshot.Production.Progression, manifestations));
+        _character.SetAppearance(CharacterAppearance.FromProgression(snapshot.Production.Progression, manifestations,
+            snapshot.Production.Expedition.Adventure.Anatomy.Values));
         bool bellDefeated = !_session.InHub && _session.ActiveEncounterId == "campaign.bell_saint" &&
             (_session.EncounterCleared || combat.Actors.Any(actor => actor.DefinitionId == "boss.bell_saint" && actor.Health <= 0));
         _stage.Show(snapshot.Campaign, _session.View, _combat.Room, _session.Interactions, manifestations, _session.Production.ProgressionView.HubStage, player.Position, combat.BossPhase, bellDefeated, combat, _session.ActiveEncounterId);
@@ -229,7 +229,7 @@ public partial class CampaignDirector : Node3D
             _session.EncounterCleared && _campaign.CanRequestNextStep, _campaign.NextStepLabel);
         if (wayForward is not null) mouseTargets.Add(wayForward);
         _sandbox.SetWorldInteractions(mouseTargets, Interact);
-        _sandbox.SetManifestationPresentation(manifestations); _sandbox.SetWorldSubtitle($"CAMPAIGN / {_session.View.Region.ToUpperInvariant()}");
+        _sandbox.SetManifestationPresentation(manifestations, snapshot.Production.Expedition.Adventure.Anatomy.Values); _sandbox.SetWorldSubtitle($"CAMPAIGN / {_session.View.Region.ToUpperInvariant()}");
         if (_captureCampaign && DisplayServer.GetName() != "headless" && !_session.InHub &&
             combat.CampaignHazards is { Count: > 0 } && _capturedActs.Add(snapshot.Campaign.CurrentAct))
         {
@@ -247,7 +247,7 @@ public partial class CampaignDirector : Node3D
     private void Load()
     {
         var result = CampaignRuntimeSaveStore.Load(Path.Combine(_output, "campaign.save.json"), _combatJson, _adventure, _progression, _content);
-        _session = result.Session; CacheDefinitions(); _classSelection.Visible = false; _classBackdrop.Visible = false; _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(false); _revision++; Refresh();
+        _session = result.Session; CacheDefinitions(); _classSelection.Visible = false; _classBackdrop.Visible = false; _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(false); _revision++; Refresh(); _campaign.AnatomySessionRestored();
         Notice(result.RecoveredBackup ? "Recovered the previous valid campaign save." : "Campaign loaded.");
     }
     private void VerifyReplay() { VerifyAndWrite(_output); Notice("Campaign combat, choices, exploration and permanent actions replay verified."); }

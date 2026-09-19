@@ -17,11 +17,14 @@ public partial class Sandbox
         _playerAppearance = CharacterAppearance.FromCombat(_view, _manifestations, evolution);
     }
 
-    public void SetManifestationPresentation(IReadOnlyList<string> ids)
+    public void SetManifestationPresentation(IReadOnlyList<string> ids, IEnumerable<string>? fragments = null)
     {
         _manifestations = ids;
         int mask = CharacterAppearance.Manifestations(ids);
-        if (_manifestationMask == mask) return;
+        int anatomy = fragments is null ? _playerAppearance?.AnatomyMask ?? 0 : CharacterAppearance.AnatomyFragments(fragments);
+        // A service can update the existing CombatSession while the world is paused, without changing forms.
+        // Refresh its projection immediately when an implant's cosmetic identity changes.
+        if (_manifestationMask == mask && (_playerAppearance?.AnatomyMask ?? 0) == anatomy) return;
         _manifestationMask = mask;
         if (_session is null) return;
         _view = _session.View; SynchronizeWorld();

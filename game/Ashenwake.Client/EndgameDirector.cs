@@ -78,7 +78,6 @@ public partial class EndgameDirector : Node3D
             _sandbox.SaveOverride = () => Safely(Save); _sandbox.LoadOverride = () => Safely(Load); _sandbox.ReplayOverride = () => Safely(VerifyReplay);
             _stage = new CampaignStage(); AddChild(_stage); _effects = new EndgamePresentation(); AddChild(_effects); _effects.AttachOverlay(_sandbox);
             _campaignHud = new CampaignHud(); _sandbox.AddOverlay(_campaignHud);
-            _campaignHud.SetFragmentDescriptions(_combat.Fragments.ToDictionary(f => f.Id, f => f.Description));
             _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = _character.Toggle;
             _board = new EndgameHud(); _sandbox.AddOverlay(_board);
             WireCampaign(); WireCharacter(); WireBoard(); BuildClassSelection(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); Refresh();
@@ -313,7 +312,8 @@ public partial class EndgameDirector : Node3D
         }
         _board.SetView(_cachedDisplay);
         var manifestations = _session.Production.View.ActiveManifestations;
-        _character.SetAppearance(CharacterAppearance.FromProgression(campaign.Production.Progression, manifestations));
+        _character.SetAppearance(CharacterAppearance.FromProgression(campaign.Production.Progression, manifestations,
+            campaign.Production.Expedition.Adventure.Anatomy.Values));
         if (combat.Endgame is { } active)
         {
             int act = Array.FindIndex(_campaignDefinition.Acts, a => a.Id == snapshot.Manifest?.Region) + 1; if (act == 0) act = 1;
@@ -345,7 +345,7 @@ public partial class EndgameDirector : Node3D
         if (wayForward is not null) mouseTargets.Add(wayForward);
         _sandbox.SetWorldInteractions(mouseTargets, Interact);
         _sandbox.SetMechanismVisuals(_effects.GetMechanismVisual);
-        _sandbox.SetManifestationPresentation(manifestations);
+        _sandbox.SetManifestationPresentation(manifestations, campaign.Production.Expedition.Adventure.Anatomy.Values);
         _sandbox.SetWorldSubtitle(combat.Endgame is null ? $"CAMPAIGN / {_session.Campaign.View.Region.ToUpperInvariant()}" : $"{view.Run?.Kind.ToUpperInvariant()} / {view.Run?.Name.ToUpperInvariant()}");
         UpdatePanelVisibility();
         RefreshExperiment();
@@ -455,7 +455,7 @@ public partial class EndgameDirector : Node3D
     {
         if (!retainExperiment) _experiment = null;
         _session = session; CacheDefinitions(); _classSelection.Visible = false; _classBackdrop.Visible = false;
-        _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(false); _revision++; Refresh();
+        _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(false); _revision++; Refresh(); _campaignHud.AnatomySessionRestored();
     }
     private void Import(string path)
     {
