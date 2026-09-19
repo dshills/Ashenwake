@@ -74,7 +74,7 @@ public partial class ProductionDirector : Node3D
             _character.RespecRequested += () => Apply(_session.Respec);
             _character.EquipRequested += (id, slot) => Apply(() => _session.Equip(id, slot));
             _character.UnequipRequested += slot => Apply(() => _session.Unequip(slot));
-            _character.CraftRequested += request => Apply(() => _session.Craft(request));
+            _character.CraftRequested += request => Apply(() => _session.Craft(request), reportCraft: true);
             _character.MutationRequested += (skill, mutation) => Apply(() => _session.SetMutation(skill, mutation));
             _character.ServiceRequested += id => Apply(() => _session.Interact(id));
             BuildClassSelection(); Refresh();
@@ -154,15 +154,16 @@ public partial class ProductionDirector : Node3D
         }
         catch (Exception ex) { Fail(ex); return []; }
     }
-    private void Apply(Func<ProductionResult> action)
+    private void Apply(Func<ProductionResult> action, bool reportCraft = false)
     {
         Safely(() =>
         {
             var result = action();
-            if (!result.Success) { _journey.Notice(result.Reason); _character.Notice(result.Reason); return; }
+            if (!result.Success) { _journey.Notice(result.Reason); _character.Notice(result.Reason); if (reportCraft) _character.ReportCraftResult(false, result.Reason); return; }
             _revision++; Consume(result.WorldEvents);
             if (!ReferenceEquals(_sandbox.Session, _session.Combat)) _sandbox.SetSession(_session.Combat);
             Refresh();
+            if (reportCraft) _character.ReportCraftResult(true, "");
         });
     }
     private void Consume(IReadOnlyList<string> events)

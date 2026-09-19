@@ -193,10 +193,12 @@ public partial class EndgameDirector : Node3D
     {
         Safely(() =>
         {
-            var result = ExecuteActive(command); if (!result.Success) { Notice(result.Reason); return; }
+            bool reportCraft = command.Production?.Action == ProductionAction.Craft;
+            var result = ExecuteActive(command); if (!result.Success) { Notice(result.Reason); if (reportCraft) _character.ReportCraftResult(false, result.Reason); return; }
             _revision++; Observe(result);
             if (!ReferenceEquals(_sandbox.Session, _session.Combat)) _sandbox.AdoptSession(_session.Combat);
             Refresh();
+            if (reportCraft) _character.ReportCraftResult(true, "");
         });
     }
     private IReadOnlyList<CombatEvent> Advance(CombatCommand[] commands)
@@ -302,7 +304,6 @@ public partial class EndgameDirector : Node3D
         var snapshot = _session.Capture(); var campaign = snapshot.Campaign; var combat = _session.Combat.View; var player = combat.Actors.Single(a => a.Id == 1);
         var interactions = _session.Interactions.Select(i => new InteractionDisplay(i.ActionId, i.Name, (int)Math.Sqrt(CorePosition.DistanceSquared(i.Position, player.Position)), i.Range)).ToArray();
         _campaignHud.SetView(_session.Campaign.View, campaign.Campaign, _campaignDefinition, _session.Production.View, campaign.Production.Expedition.Adventure, _anatomyDefinition, combat, interactions, _revision);
-        _character.SetEndgameMaterials(true, _session.View.Catalysts);
         _character.SetView(_session.Production.ProgressionView, campaign.Production.Progression, _productionDefinition, combat, interactions, _session.InHub, _revision, _session.Combat.ProgressionBuild.UnlockedMutations);
         var view = _session.View;
         var displayKey = (_revision, combat.Loot.Count, AtGate());

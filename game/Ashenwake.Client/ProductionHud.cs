@@ -25,6 +25,8 @@ public partial class ProductionHud : Control
     private IReadOnlyList<InteractionDisplay> _interactions = [];
     private IReadOnlyList<string>? _unlockedMutations;
     private PanelContainer _panel = null!;
+    private ColorRect _craftingBackdrop = null!;
+    private int _craftingSiblingIndex = -1;
     private BoxContainer _body = null!;
     private ScrollContainer _scroll = null!;
     private CharacterPreview _preview = null!;
@@ -41,15 +43,8 @@ public partial class ProductionHud : Control
     private long _revision, _renderedRevision = -1;
     private int _rangeMask, _renderedRangeMask = -1;
     private bool _inTown;
-    private long _craftItem;
+    private CraftingWorkbench _craftingWorkbench = null!;
     private CraftingService _service = CraftingService.Tempering;
-    private ConfirmationDialog _confirmation = null!;
-    private CraftingRequest? _pendingCraft;
-    private bool _endgameCrafting;
-    private IReadOnlyDictionary<string, int> _catalysts = new Dictionary<string, int>();
-    private string _craftCatalyst = "", _craftLineage = "Serath";
-    public void SetEndgameMaterials(bool enabled, IReadOnlyDictionary<string, int> catalysts)
-    { _endgameCrafting = enabled; _catalysts = catalysts; }
 
     public override void _Ready()
     {
@@ -58,6 +53,8 @@ public partial class ProductionHud : Control
         _summary = Label("", 13); _summary.Position = new(603, 23); _summary.Size = new(305, 36); AddChild(_summary);
         var toggle = new Button { Text = Catalog.Format("production.title") + " [C]", Position = new(601, 61), Size = new(266, 32), AutowrapMode = TextServer.AutowrapMode.WordSmart };
         toggle.Pressed += Toggle; AddChild(toggle);
+        _craftingBackdrop = new ColorRect { Name = "CraftingBackdrop", Color = new(0, 0, 0, .28f), MouseFilter = MouseFilterEnum.Stop, MouseForcePassScrollEvents = false, Visible = false };
+        _craftingBackdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); AddChild(_craftingBackdrop);
         _panel = new PanelContainer { Position = new(22, 201), Size = new(455, 419), Visible = false };
         _panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
         {
@@ -100,12 +97,14 @@ public partial class ProductionHud : Control
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
         }; gearColumn.AddChild(_scroll);
         _rows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; _scroll.AddChild(_rows);
+        _craftingWorkbench = new CraftingWorkbench { Visible = false }; gearColumn.AddChild(_craftingWorkbench);
+        _craftingWorkbench.CraftRequested += request => CraftRequested?.Invoke(request);
+        _craftingWorkbench.CloseRequested += () => { _panel.Hide(); _gearInspecting = false; };
+        _craftingWorkbench.MinimumSizeChanged += () => Callable.From(LayoutPanel).CallDeferred();
         var close = new Button { Text = "Close character" }; close.Pressed += Toggle; column.AddChild(close);
-        _confirmation = new ConfirmationDialog { Title = "Confirm permanent crafting", OkButtonText = "Commit craft", CancelButtonText = "Keep current item" };
-        _confirmation.Confirmed += () => { if (_pendingCraft is not null) CraftRequested?.Invoke(_pendingCraft with { ConfirmPermanent = true }); _pendingCraft = null; };
-        _confirmation.Canceled += () => _pendingCraft = null; AddChild(_confirmation);
         GetViewport().SizeChanged += LayoutPanel;
-        VisibilityChanged += () => { if (!IsVisibleInTree()) { _gearInspecting = false; _gearLoadout.CancelDrag(); } };
+        _panel.VisibilityChanged += UpdateCraftModal;
+        VisibilityChanged += () => { if (!IsVisibleInTree()) { _gearInspecting = false; _gearLoadout.CancelDrag(); _craftingWorkbench.CancelInteraction(); } UpdateCraftModal(); };
     }
 
     public override void _ExitTree() { GetViewport().SizeChanged -= LayoutPanel; }
@@ -135,9 +134,12 @@ public partial class ProductionHud : Control
                 _tab = "Craft"; _service = CraftingService.Engraving; specialist = "Greyhaven workshops · engrave a learned property."; break;
             default: return false;
         }
-        Visible = true; _panel.Visible = true; Notice(specialist); Rebuild(true); _tabs[_tab].GrabFocus(); return true;
+        Visible = true; _panel.Visible = true; Notice(specialist); Rebuild(true);
+        if (_tab == "Craft") _craftingWorkbench.SelectService(_service);
+        _tabs[_tab].GrabFocus(); return true;
     }
     public void Notice(string message) => _notice.Text = message;
+    public void ReportCraftResult(bool success, string reason) => _craftingWorkbench.ReportResult(success, reason);
     public void SetAppearance(CharacterAppearance appearance)
     {
         if (_appearance?.Key == appearance.Key) return;
@@ -155,6 +157,7 @@ public partial class ProductionHud : Control
         _summary.Text = Catalog.Format("production.level", new Dictionary<string, string> { ["level"] = view.Level.ToString(), ["discipline"] = view.Discipline }) +
             $"\nXP {view.Experience:N0}/{view.NextLevelExperience:N0}  ·  " + Catalog.Format("production.materials", count: view.Materials);
         _gearLoadout.SynchronizeSearchPause();
+        _craftingWorkbench.SynchronizePause();
         Rebuild(false);
     }
     private void Rebuild(bool force)
@@ -172,27 +175,42 @@ public partial class ProductionHud : Control
             case "Profile": Profile(); break;
         }
         UpdatePreview();
+        if (_tab == "Craft") Callable.From(LayoutPanel).CallDeferred();
     }
 
     private void LayoutPanel()
     {
-        if (_preview is null) return;
-        bool gear = _tab == "Gear";
+        if (_preview is null || !IsInsideTree() || IsQueuedForDeletion()) return;
+        bool gear = _tab == "Gear", craft = _tab == "Craft";
         bool showPreview = _tab == "Character" || gear && GetViewportRect().Size.X >= 1020;
         bool compact = GetViewportRect().Size.X < 820;
         _preview.Visible = showPreview;
         _gearLoadout.Visible = gear;
+        _craftingWorkbench.Visible = craft;
+        _notice.Visible = !craft;
+        _scroll.Visible = !craft;
         _body.Vertical = compact && showPreview;
         var viewport = GetViewportRect().Size;
-        float height = Math.Min(gear ? 690 : showPreview && compact ? 660 : showPreview ? 560 : 419, viewport.Y - 44);
+        float height = Math.Min(gear || craft ? 690 : showPreview && compact ? 660 : showPreview ? 560 : 419, viewport.Y - 44);
         float bodyHeight = Math.Max(100, height - 140);
         float scrollHeight = gear ? Math.Clamp(bodyHeight - 360, 85, 150) : compact && showPreview ? Math.Min(190, bodyHeight * .4f) : Math.Min(319, bodyHeight);
         _scroll.CustomMinimumSize = new(gear ? 540 : compact ? 300 : 429, scrollHeight);
         _preview.SetCompact(compact, compact && showPreview ? bodyHeight - scrollHeight - 16 : bodyHeight);
         // Lift the panel at shorter viewport heights instead of letting the preview's minimum size push Close below the screen.
         _panel.Position = new(22, Math.Max(22, Math.Min(compact && showPreview ? 98 : 201, viewport.Y - height - 22)));
-        _panel.Size = new(Math.Min(gear ? 980 : showPreview && !compact ? 755 : 455, viewport.X - 44),
+        _panel.Size = new(Math.Min(craft ? 1060 : gear ? 980 : showPreview && !compact ? 755 : 455, viewport.X - 44),
             height);
+        UpdateCraftModal();
+    }
+    private void UpdateCraftModal()
+    {
+        if (_craftingBackdrop is null || _panel is null || !IsInsideTree()) return;
+        bool open = IsVisibleInTree() && _panel.Visible && _tab == "Craft";
+        _craftingBackdrop.Visible = open; _panel.MouseForcePassScrollEvents = !open;
+        if (open && _craftingSiblingIndex < 0)
+        { _craftingSiblingIndex = GetIndex(); GetParent().MoveChild(this, GetParent().GetChildCount() - 1); }
+        else if (!open && _craftingSiblingIndex >= 0)
+        { GetParent().MoveChild(this, Math.Min(_craftingSiblingIndex, GetParent().GetChildCount() - 1)); _craftingSiblingIndex = -1; }
     }
     private void Character()
     {
@@ -394,93 +412,7 @@ public partial class ProductionHud : Control
 
     private void Craft()
     {
-        _rows.AddChild(Label(Catalog.Format("production.crafting"), 16));
-        var services = new OptionButton();
-        foreach (var service in Enum.GetValues<CraftingService>()) services.AddItem($"{service} · {_content.CraftingCosts[service]} materials{(_view.Services.Contains(service) ? "" : " · LOCKED")}", (int)service);
-        services.Select((int)_service); services.ItemSelected += index => { _service = (CraftingService)services.GetItemId((int)index); Rebuild(true); }; _rows.AddChild(services);
-        if (!_view.Services.Contains(_service))
-        {
-            var objective = _content.Objectives.First(o => o.Service == _service.ToString());
-            _rows.AddChild(Label("Speak with Greyhaven's specialists and complete their prerequisites to reopen this workshop.\n" + _content.Strings[objective.JournalKey], 12));
-            return;
-        }
-        if (!_inTown) { _rows.AddChild(Label("Return to Greyhaven to craft.", 12)); return; }
-        PermanentItem? selected = null;
-        if (_service != CraftingService.Purification)
-        {
-            _rows.AddChild(Label("Choose an item instance", 13));
-            var items = new OptionButton(); int current = 0;
-            if (_state.Character.Items.Length == 0) { _rows.AddChild(Label("No items are available.", 12)); return; }
-            foreach (var item in _state.Character.Items)
-            {
-                int index = items.ItemCount; items.AddItem($"#{item.Id} {Readable(item.DefinitionId)} · {item.Rarity}"); items.SetItemMetadata(index, item.Id);
-                if (item.Id == _craftItem) current = index;
-            }
-            items.Select(current); _craftItem = items.GetItemMetadata(current).AsInt64(); selected = _state.Character.Items.Single(i => i.Id == _craftItem);
-            items.ItemSelected += index => { _craftItem = items.GetItemMetadata((int)index).AsInt64(); Rebuild(true); }; _rows.AddChild(items);
-            _rows.AddChild(Label(string.Join(" · ", selected.Affixes.Select(p => $"{Readable(p.Key)} {p.Value}")), 12));
-        }
-        OptionButton? existing = null, replacement = null, property = null, fragment = null, lineage = null;
-        if (_service is CraftingService.Tempering or CraftingService.Rebinding)
-        {
-            IEnumerable<string> affixes = selected!.Affixes.Keys;
-            if (_service == CraftingService.Tempering && selected.Rarity == ItemRarity.Godwrought && !selected.Affixes.ContainsKey("affix.damage"))
-                affixes = affixes.Append("affix.damage");
-            existing = Choice("Affix to improve", affixes);
-            if (_service == CraftingService.Rebinding)
-            {
-                var definition = _content.Items.Single(i => i.Id == selected.DefinitionId);
-                replacement = Choice("Replacement affix", _content.Affixes.Where(a => definition.Slots.All(a.Slots.Contains) && !selected.Affixes.ContainsKey(a.Id)).Select(a => a.Id));
-            }
-        }
-        if (_service == CraftingService.Engraving) property = Choice("Learned property", _state.Character.PropertyLibrary.Where(id => !id.StartsWith("evolution.", StringComparison.Ordinal)));
-        if (_service == CraftingService.Purification) fragment = Choice("Unpurified fragment", _state.Character.OwnedFragments.Where(id => !_state.Character.PurifiedFragments.Contains(id)));
-        if (_service == CraftingService.DivineGrafting)
-        {
-            lineage = Choice("Permanent evolution", new[] { "Serath", "Orrun" });
-            lineage.Select(_craftLineage == "Orrun" ? 1 : 0);
-            lineage.ItemSelected += index => { _craftLineage = index == 1 ? "Orrun" : "Serath"; Rebuild(true); };
-            _rows.AddChild(Label($"Burning kills: {selected!.BurningKills}/{GodwroughtProgress.AwakeningKills} · current evolution: {(selected.Evolution.Length == 0 ? "none" : selected.Evolution)}", 12));
-            _rows.AddChild(Label(_craftLineage == "Serath" ? "Serath raises burning victims as temporary flaming revenants. It also retains its direct-hit healing benefit." : "Orrun replaces the awakened flame wave with an igniting molten seismic attack. It also retains its defense and on-hit barrier benefits.", 12));
-        }
-        if (_service == CraftingService.Tempering && selected!.Rarity == ItemRarity.Godwrought && _endgameCrafting)
-        {
-            _rows.AddChild(Label("Payment · +2 damage, up to the existing +10 cap", 13));
-            var payment = new OptionButton(); payment.AddItem($"{_content.CraftingCosts[_service]} common materials"); payment.SetItemMetadata(0, "");
-            foreach (var pair in _catalysts.Where(p => p.Value > 0))
-            { int index = payment.ItemCount; payment.AddItem($"1 {Readable(pair.Key)} · owned {pair.Value}"); payment.SetItemMetadata(index, pair.Key); if (_craftCatalyst == pair.Key) payment.Select(index); }
-            _craftCatalyst = payment.GetItemMetadata(payment.Selected).AsString();
-            payment.ItemSelected += index => { _craftCatalyst = payment.GetItemMetadata((int)index).AsString(); Rebuild(true); }; _rows.AddChild(payment);
-            _rows.AddChild(Label("Selecting a named catalyst replaces this Tempering craft's common-material fee. No automatic substitution occurs.", 12));
-        }
-        else _craftCatalyst = "";
-        if (_service == CraftingService.Extraction) _rows.AddChild(Label("Extraction permanently destroys a Legendary item and learns its exceptional property.", 12));
-        if (_service == CraftingService.DivineGrafting) _rows.AddChild(Label("An awakened Ashcleaver and the matching lineage fragment are required. This evolution is permanent.", 12));
-        string catalystId = _service == CraftingService.DivineGrafting && _endgameCrafting
-            ? _craftLineage == "Serath" ? "material.serath_memory" : "material.orrun_oath" : _craftCatalyst;
-        int materialCost = _service == CraftingService.Tempering && catalystId.Length > 0 ? 0 : _content.CraftingCosts[_service];
-        string paymentText = $"{materialCost} common materials" + (catalystId.Length == 0 ? "" : $" + 1 {Readable(catalystId)}");
-        if (catalystId.Length > 0) _rows.AddChild(Label($"Catalyst: {Readable(catalystId)} · owned {_catalysts.GetValueOrDefault(catalystId)}", 12));
-        var craft = Button($"{_service} · spend {paymentText}", () =>
-        {
-            string Value(OptionButton? control) => control is null || control.ItemCount == 0 ? "" : control.GetItemMetadata(control.Selected).AsString();
-            var request = new CraftingRequest(Guid.NewGuid().ToString("N"), _service, selected?.Id ?? 0,
-                Value(existing), Value(replacement), Value(property), Value(lineage), Value(fragment), CatalystId: catalystId.Length == 0 ? null : catalystId);
-            if (_service is CraftingService.Extraction or CraftingService.DivineGrafting)
-            {
-                _pendingCraft = request;
-                _confirmation.DialogText = _service == CraftingService.Extraction
-                    ? $"Permanently destroy #{selected!.Id} {Readable(selected.DefinitionId)} and spend {_content.CraftingCosts[_service]} materials to learn its property?"
-                    : Catalog.Format("production.confirm_graft", new Dictionary<string, string> { ["item"] = "#" + selected!.Id, ["branch"] = request.Lineage }) + "\n\nCost: " + paymentText + ". The other evolution branch will be unavailable for this item.";
-                _confirmation.PopupCentered(new(510, 200));
-            }
-            else CraftRequested?.Invoke(request);
-        });
-        string specialist = _service switch { CraftingService.Tempering => "service.torren", CraftingService.Rebinding => "npc.oris", CraftingService.Engraving => "hub.workshops", CraftingService.Extraction => "npc.kesh", CraftingService.Purification => "npc.cael", _ => "service.mara" };
-        craft.Disabled = !At(specialist) || _view.Materials < materialCost || catalystId.Length > 0 && _catalysts.GetValueOrDefault(catalystId) == 0 ||
-            _service == CraftingService.DivineGrafting && (selected!.DefinitionId != "item.ashcleaver" || !selected.Awakened || selected.Evolution.Length > 0 ||
-                !_state.Character.OwnedFragments.Contains(_craftLineage == "Serath" ? "fragment.heart_serath" : "fragment.orrun_bone")) || new[] { existing, replacement, property, fragment, lineage }.Any(c => c is not null && c.ItemCount == 0);
-        if (!At(specialist)) _rows.AddChild(Label("Approach this workshop's specialist to commit the craft.", 12));
+        _craftingWorkbench.SetView(_state, _content, _inTown, _combat.Actors.Any(a => a.Id == 1 && a.Health > 0), _interactions);
     }
     private void Town()
     {
@@ -506,12 +438,6 @@ public partial class ProductionHud : Control
         foreach (string discovery in _state.Profile.Discoveries) _rows.AddChild(Label(Readable(discovery), 12));
         _rows.AddChild(new HSeparator()); _rows.AddChild(Label("PROGRESSION JOURNAL", 14));
         foreach (string entry in _view.Journal) _rows.AddChild(Label(entry, 12));
-    }
-    private OptionButton Choice(string label, IEnumerable<string> ids)
-    {
-        _rows.AddChild(Label(label, 13)); var control = new OptionButton();
-        foreach (string id in ids) { int index = control.ItemCount; control.AddItem(Readable(id)); control.SetItemMetadata(index, id); }
-        _rows.AddChild(control); return control;
     }
     private bool At(string action) => _inTown && _interactions.Any(i => i.Id == action && i.Distance <= i.Range);
     private Button Button(string text, Action action)

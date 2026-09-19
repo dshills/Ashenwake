@@ -49,8 +49,8 @@ func click(button):
 
 func selected_service(character, expected):
     for node in nodes(character):
-        if node is OptionButton and node.is_visible_in_tree() and node.item_count > 0:
-            if node.get_item_text(node.selected).begins_with(expected + " ·"): return true
+        if node is Button and node.is_visible_in_tree() and node.name == "CraftService" + expected:
+            if node.text.begins_with("◆ "): return true
     return false
 
 func saved_progression():

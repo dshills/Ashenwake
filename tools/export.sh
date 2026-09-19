@@ -115,6 +115,12 @@ mkdir -p "$appearance_output"
 python3 tools/check-godot-log.py "$appearance_output/smoke.log"
 rg -q 'AppearanceClientSmokePassed' "$appearance_output/smoke.log"
 
+crafting_output="$package_output/crafting-client"
+mkdir -p "$crafting_output"
+"$binary" --headless --quit-after 9000 --log-file "$crafting_output/smoke.log" -- --crafting-smoke --output="$crafting_output"
+python3 tools/check-godot-log.py "$crafting_output/smoke.log"
+rg -q 'CraftingClientSmokePassed' "$crafting_output/smoke.log"
+
 experiment_output="$package_output/experiment-client"
 mkdir -p "$experiment_output"
 "$binary" --headless --quit-after 12000 --log-file "$experiment_output/smoke.log" -- --echoes-smoke --output="$experiment_output"

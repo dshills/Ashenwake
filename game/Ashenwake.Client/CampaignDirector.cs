@@ -120,15 +120,16 @@ public partial class CampaignDirector : Node3D
         if (_session.InHub) Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.Interact, id)));
         else Apply(() => _session.TrackClue(id));
     }
-    private void Permanent(ProductionCommand command) => Apply(() => _session.ExecuteProduction(command));
-    private void Apply(Func<CampaignRuntimeResult> action)
+    private void Permanent(ProductionCommand command) => Apply(() => _session.ExecuteProduction(command), reportCraft: command.Action == ProductionAction.Craft);
+    private void Apply(Func<CampaignRuntimeResult> action, bool reportCraft = false)
     {
         Safely(() =>
         {
-            var result = action(); if (!result.Success) { Notice(result.Reason); return; }
+            var result = action(); if (!result.Success) { Notice(result.Reason); if (reportCraft) _character.ReportCraftResult(false, result.Reason); return; }
             _revision++; Consume(result.WorldEvents);
             if (!ReferenceEquals(_sandbox.Session, _session.Combat)) _sandbox.AdoptSession(_session.Combat);
             Refresh();
+            if (reportCraft) _character.ReportCraftResult(true, "");
         });
     }
     private IReadOnlyList<CombatEvent> Advance(CombatCommand[] commands)
