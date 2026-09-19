@@ -121,6 +121,12 @@ mkdir -p "$crafting_output"
 python3 tools/check-godot-log.py "$crafting_output/smoke.log"
 rg -q 'CraftingClientSmokePassed' "$crafting_output/smoke.log"
 
+skills_output="$package_output/skills-client"
+mkdir -p "$skills_output"
+"$binary" --headless --quit-after 18000 --log-file "$skills_output/smoke.log" -- --skills-smoke --output="$skills_output"
+python3 tools/check-godot-log.py "$skills_output/smoke.log"
+rg -q 'SkillsClientSmokePassed' "$skills_output/smoke.log"
+
 experiment_output="$package_output/experiment-client"
 mkdir -p "$experiment_output"
 "$binary" --headless --quit-after 12000 --log-file "$experiment_output/smoke.log" -- --echoes-smoke --output="$experiment_output"

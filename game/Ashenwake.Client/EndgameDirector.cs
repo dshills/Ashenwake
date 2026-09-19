@@ -194,11 +194,13 @@ public partial class EndgameDirector : Node3D
         Safely(() =>
         {
             bool reportCraft = command.Production?.Action == ProductionAction.Craft;
-            var result = ExecuteActive(command); if (!result.Success) { Notice(result.Reason); if (reportCraft) _character.ReportCraftResult(false, result.Reason); return; }
+            bool reportBuild = command.Production?.Action is ProductionAction.Passive or ProductionAction.Respec or ProductionAction.Mutation;
+            var result = ExecuteActive(command); if (!result.Success) { Notice(result.Reason); if (reportCraft) _character.ReportCraftResult(false, result.Reason); if (reportBuild) _character.ReportBuildResult(false, result.Reason); return; }
             _revision++; Observe(result);
             if (!ReferenceEquals(_sandbox.Session, _session.Combat)) _sandbox.AdoptSession(_session.Combat);
             Refresh();
             if (reportCraft) _character.ReportCraftResult(true, "");
+            if (reportBuild) _character.ReportBuildResult(true, "");
         });
     }
     private IReadOnlyList<CombatEvent> Advance(CombatCommand[] commands)

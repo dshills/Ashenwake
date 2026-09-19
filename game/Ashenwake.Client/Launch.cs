@@ -16,6 +16,7 @@ public partial class Launch : Node
             arguments.Contains("--spine-smoke") ? "res://SpineSmoke.tscn" :
             arguments.Contains("--cinder-smoke") ? "res://CinderSmoke.tscn" :
             arguments.Contains("--verdant-smoke") ? "res://VerdantSmoke.tscn" :
+            arguments.Contains("--skills-smoke") ? "res://SkillsSmoke.tscn" :
             arguments.Contains("--crafting-smoke") ? "res://CraftingSmoke.tscn" :
             arguments.Contains("--appearance-smoke") ? "res://AppearanceSmoke.tscn" :
             arguments.Contains("--combat-feedback-smoke") ? "res://CombatFeedbackSmoke.tscn" :

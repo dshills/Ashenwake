@@ -44,7 +44,7 @@ public sealed partial class CombatSession
     private bool MutationUnlocked(string id) => _state.ProgressionBuild.UnlockedMutations is null || _state.ProgressionBuild.UnlockedMutations.Contains(id);
     private bool IsUltimate(CombatSkill skill) => skill.Id is "skill.cataclysm" or "skill.shadow_execution" or "skill.starfall" or "skill.procession" or "skill.primal_awakening";
     private bool SkillAvailable(CombatSkill skill) => skill.Discipline == Discipline && (!IsUltimate(skill) || _state.ProgressionBuild.UltimateUnlocked);
-    private int GenerationAmount(int amount) => Math.Min(100, amount + (amount > 0 ? _state.ProgressionBuild.ResourceBonus / 10 : 0));
+    private int GenerationAmount(int amount) => Math.Min(100, amount + (amount > 0 ? PassiveEffects.GenerationBonus(_state.ProgressionBuild.ResourceBonus) : 0));
     private bool CanPay(CombatSkill skill, int cost)
     {
         if (Discipline == "Arcanist" && skill.ResourceMode == "Heat") return _state.Momentum + cost <= 100;

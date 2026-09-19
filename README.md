@@ -16,6 +16,8 @@ Divine Anatomy now has a clickable six-slot body map, fragment cards and a chara
 
 Open **C → Craft** for the visual crafting workbench. Six service cards, a searchable equipment tray and a drag target replace the old item dropdown. Inspect exact before/after stats, material costs, catalyst balances and permanent outcomes before applying a craft at its specialist. Extraction and Divine Grafting require confirmation. See [crafting workbench controls](docs/crafting_workbench.md).
 
+Open **C → Skills** for ability cards, mastery progress and mutation comparisons. Preview Offense, Defense and Resource investments before spending points at Mara; passive refunds show the exact fee and effects removed. The combat bar uses the same ability icons with cooldown progress, resource-shortfall and Heat-cap feedback. See [Skills & Mastery](docs/skills_mastery.md).
+
 ## Start here
 
 Requires Git/Git LFS, Python 3, `curl`, `unzip`, `ripgrep`, and **Go 1.27.1**. The bootstrap installs **.NET SDK 8.0.425** and **Godot 4.6.2 Mono** inside ignored `.tools/`; it does not replace the system Godot. Supported bootstrap hosts are macOS Apple Silicon and Linux x86_64.

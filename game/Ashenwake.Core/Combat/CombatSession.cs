@@ -369,14 +369,14 @@ public sealed partial class CombatSession
             _state.Rng = _state.Rng with { Combat = rng };
         }
         bool physical = hit.Family is DamageFamily.PhysicalSlash or DamageFamily.PhysicalPierce or DamageFamily.PhysicalCrush;
-        int defense = physical ? target.Armor + (target.Id == 1 ? Equipped.Sum(i => i.Armor) + _state.ProgressionBuild.Armor + _state.ProgressionBuild.Defense * 100 + _state.SeismicCharge * 10 : 0) : target.Resistance;
+        int defense = physical ? target.Armor + (target.Id == 1 ? Equipped.Sum(i => i.Armor) + _state.ProgressionBuild.Armor + PassiveEffects.DefenseArmor(_state.ProgressionBuild.Defense) + _state.SeismicCharge * 10 : 0) : target.Resistance;
         defense += CampaignDefenseBonus(target) + EndgameResistanceAdjustment(target, hit.Family);
         if (target.Id == 1 && HasManifestation("manifestation.stone_memory") && _state.MemoryUntilTick > Tick && _state.MemoryAttackId == hit.ContentId) defense += _state.MemoryStacks * 1000;
         if (target.Id == 1 && AshcleaverActive && _state.Build.AshcleaverEvolution == "Orrun") defense += 500;
         if (target.Id == 1 && Discipline == "Warden" && _state.ThreatFamily == hit.Family && _state.ThreatUntil > Tick) defense += _state.ThreatStacks * 500;
         if (target.Id == 1 && Player.Pending?.SkillId == "skill.shield_breaker" && Mutation("skill.shield_breaker")?.Id == "mutation.orruns_patience") defense += 1500;
         int bonus = hit.OwnerId == 1 && source?.Id == 1 && !hit.Dot && !hit.Reflected ? Equipped.Sum(i => i.Damage) + _state.ProgressionBuild.FlatDamage + (AshcleaverActive ? _state.Build.TemperLevel * 2 : 0) : 0;
-        int increased = hit.OwnerId == 1 ? _state.ProgressionBuild.Offense * 200 + (Discipline == "Arcanist" ? _state.Momentum * 40 : 0) : 0;
+        int increased = hit.OwnerId == 1 ? PassiveEffects.OffenseBasisPoints(_state.ProgressionBuild.Offense) + (Discipline == "Arcanist" ? _state.Momentum * 40 : 0) : 0;
         increased += CampaignDamageBonus(source) + EndgameDamageBonus(hit);
         if (StormOvercharged && hit.OwnerId == 1 && hit.Depth > 0) increased += 2500;
         if (source?.Statuses.Any(s => s.Id == "Cursed") == true) increased -= 2000;

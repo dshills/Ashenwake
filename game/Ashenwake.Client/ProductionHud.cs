@@ -44,6 +44,7 @@ public partial class ProductionHud : Control
     private int _rangeMask, _renderedRangeMask = -1;
     private bool _inTown;
     private CraftingWorkbench _craftingWorkbench = null!;
+    private SkillsPanel _skillsPanel = null!;
     private CraftingService _service = CraftingService.Tempering;
 
     public override void _Ready()
@@ -72,7 +73,7 @@ public partial class ProductionHud : Control
         AddChild(_panel);
         var column = new VBoxContainer(); _panel.AddChild(column);
         var tabs = new HBoxContainer(); column.AddChild(tabs);
-        foreach (string tab in new[] { "Character", "Gear", "Craft", "Town", "Profile" })
+        foreach (string tab in new[] { "Character", "Skills", "Gear", "Craft", "Town", "Profile" })
         {
             var button = new Button { Text = tab, SizeFlagsHorizontal = SizeFlags.ExpandFill };
             _tabs.Add(tab, button);
@@ -101,10 +102,22 @@ public partial class ProductionHud : Control
         _craftingWorkbench.CraftRequested += request => CraftRequested?.Invoke(request);
         _craftingWorkbench.CloseRequested += () => { _panel.Hide(); _gearInspecting = false; };
         _craftingWorkbench.MinimumSizeChanged += () => Callable.From(LayoutPanel).CallDeferred();
+        _skillsPanel = new SkillsPanel { Visible = false }; gearColumn.AddChild(_skillsPanel);
+        _skillsPanel.BuildRequested += request =>
+        {
+            switch (request.Action)
+            {
+                case ProgressionBuildAction.AllocatePassive: PassiveRequested?.Invoke(request.Id); break;
+                case ProgressionBuildAction.Respec: RespecRequested?.Invoke(); break;
+                case ProgressionBuildAction.SelectMutation: MutationRequested?.Invoke(request.Id, request.Value); break;
+            }
+        };
+        _skillsPanel.CloseRequested += () => { _panel.Hide(); _gearInspecting = false; };
+        _skillsPanel.MinimumSizeChanged += () => Callable.From(LayoutPanel).CallDeferred();
         var close = new Button { Text = "Close character" }; close.Pressed += Toggle; column.AddChild(close);
         GetViewport().SizeChanged += LayoutPanel;
         _panel.VisibilityChanged += UpdateCraftModal;
-        VisibilityChanged += () => { if (!IsVisibleInTree()) { _gearInspecting = false; _gearLoadout.CancelDrag(); _craftingWorkbench.CancelInteraction(); } UpdateCraftModal(); };
+        VisibilityChanged += () => { if (!IsVisibleInTree()) { _gearInspecting = false; _gearLoadout.CancelDrag(); _craftingWorkbench.CancelInteraction(); _skillsPanel.CancelInteraction(); } UpdateCraftModal(); };
     }
 
     public override void _ExitTree() { GetViewport().SizeChanged -= LayoutPanel; }
@@ -140,6 +153,7 @@ public partial class ProductionHud : Control
     }
     public void Notice(string message) => _notice.Text = message;
     public void ReportCraftResult(bool success, string reason) => _craftingWorkbench.ReportResult(success, reason);
+    public void ReportBuildResult(bool success, string reason) => _skillsPanel.ReportResult(success, reason);
     public void SetAppearance(CharacterAppearance appearance)
     {
         if (_appearance?.Key == appearance.Key) return;
@@ -158,6 +172,7 @@ public partial class ProductionHud : Control
             $"\nXP {view.Experience:N0}/{view.NextLevelExperience:N0}  ·  " + Catalog.Format("production.materials", count: view.Materials);
         _gearLoadout.SynchronizeSearchPause();
         _craftingWorkbench.SynchronizePause();
+        _skillsPanel.SynchronizePause();
         Rebuild(false);
     }
     private void Rebuild(bool force)
@@ -169,43 +184,46 @@ public partial class ProductionHud : Control
         switch (_tab)
         {
             case "Character": Character(); break;
+            case "Skills": _skillsPanel.SetView(_state, _content, _view, _combat, _inTown, _interactions); break;
             case "Gear": Gear(); break;
             case "Craft": Craft(); break;
             case "Town": Town(); break;
             case "Profile": Profile(); break;
         }
         UpdatePreview();
-        if (_tab == "Craft") Callable.From(LayoutPanel).CallDeferred();
+        if (_tab is "Craft" or "Skills") Callable.From(LayoutPanel).CallDeferred();
     }
 
     private void LayoutPanel()
     {
         if (_preview is null || !IsInsideTree() || IsQueuedForDeletion()) return;
-        bool gear = _tab == "Gear", craft = _tab == "Craft";
+        bool gear = _tab == "Gear", craft = _tab == "Craft", skills = _tab == "Skills";
+        bool wide = craft || skills;
         bool showPreview = _tab == "Character" || gear && GetViewportRect().Size.X >= 1020;
         bool compact = GetViewportRect().Size.X < 820;
         _preview.Visible = showPreview;
         _gearLoadout.Visible = gear;
         _craftingWorkbench.Visible = craft;
-        _notice.Visible = !craft;
-        _scroll.Visible = !craft;
+        _skillsPanel.Visible = skills;
+        _notice.Visible = !wide;
+        _scroll.Visible = !wide;
         _body.Vertical = compact && showPreview;
         var viewport = GetViewportRect().Size;
-        float height = Math.Min(gear || craft ? 690 : showPreview && compact ? 660 : showPreview ? 560 : 419, viewport.Y - 44);
+        float height = Math.Min(gear || wide ? 690 : showPreview && compact ? 660 : showPreview ? 560 : 419, viewport.Y - 44);
         float bodyHeight = Math.Max(100, height - 140);
         float scrollHeight = gear ? Math.Clamp(bodyHeight - 360, 85, 150) : compact && showPreview ? Math.Min(190, bodyHeight * .4f) : Math.Min(319, bodyHeight);
         _scroll.CustomMinimumSize = new(gear ? 540 : compact ? 300 : 429, scrollHeight);
         _preview.SetCompact(compact, compact && showPreview ? bodyHeight - scrollHeight - 16 : bodyHeight);
         // Lift the panel at shorter viewport heights instead of letting the preview's minimum size push Close below the screen.
         _panel.Position = new(22, Math.Max(22, Math.Min(compact && showPreview ? 98 : 201, viewport.Y - height - 22)));
-        _panel.Size = new(Math.Min(craft ? 1060 : gear ? 980 : showPreview && !compact ? 755 : 455, viewport.X - 44),
+        _panel.Size = new(Math.Min(wide ? 1060 : gear ? 980 : showPreview && !compact ? 755 : 455, viewport.X - 44),
             height);
         UpdateCraftModal();
     }
     private void UpdateCraftModal()
     {
         if (_craftingBackdrop is null || _panel is null || !IsInsideTree()) return;
-        bool open = IsVisibleInTree() && _panel.Visible && _tab == "Craft";
+        bool open = IsVisibleInTree() && _panel.Visible && (_tab is "Craft" or "Skills");
         _craftingBackdrop.Visible = open; _panel.MouseForcePassScrollEvents = !open;
         if (open && _craftingSiblingIndex < 0)
         { _craftingSiblingIndex = GetIndex(); GetParent().MoveChild(this, GetParent().GetChildCount() - 1); }
@@ -224,28 +242,8 @@ public partial class ProductionHud : Control
         }
         if (_view.Level < 5) _rows.AddChild(Label("Retraining unlocks at level 5. Defeat enemies and complete expeditions to earn experience.", 12));
         _rows.AddChild(new HSeparator());
-        _rows.AddChild(Label($"PASSIVES · {_view.AvailablePassivePoints} points available", 14));
-        foreach (string passive in new[] { "Offense", "Defense", "Resource" })
-        {
-            int rank = _state.Character.Passives.GetValueOrDefault(passive);
-            Button($"{passive} · rank {rank} · allocate one point", () => PassiveRequested?.Invoke(passive)).Disabled = !At("service.mara") || _view.AvailablePassivePoints == 0;
-        }
-        Button(Catalog.Format("production.respec", count: _content.RespecCost), () => RespecRequested?.Invoke()).Disabled = !At("service.mara") || _state.Character.Passives.Count == 0 || _view.Materials < _content.RespecCost;
-        _rows.AddChild(new HSeparator()); _rows.AddChild(Label(Catalog.Format("production.mastery"), 14));
-        foreach (var skill in _combat.Skills)
-        {
-            _rows.AddChild(Label(skill.Name, 14));
-            int mastery = _state.Character.Mastery.GetValueOrDefault(skill.Id);
-            _rows.AddChild(Label($"{skill.Shape} · mastery {mastery}/100 · {(skill.ResourceMode == "Heat" ? "builds" : "cost")} {skill.Cost} {_view.Resource}" + (skill.Available ? "" : " · LOCKED"), 12));
-            foreach (var mutation in _combat.Mutations.Where(m => m.SkillId == skill.Id))
-            {
-                var button = Button((skill.Mutation == mutation.Id ? "◆ " : "") + mutation.Name, () => MutationRequested?.Invoke(skill.Id, mutation.Id));
-                button.Disabled = !At("service.mara") || (_unlockedMutations is not null && !_unlockedMutations.Contains(mutation.Id)); button.TooltipText = mutation.Description;
-                _rows.AddChild(Label(mutation.Description, 12));
-            }
-            if (skill.Mutation.Length > 0) Button("Restore unmutated " + skill.Name, () => MutationRequested?.Invoke(skill.Id, "")).Disabled = !At("service.mara");
-        }
-        _rows.AddChild(Label(_view.UltimateSkills.Length == 0 ? "Discipline ultimates unlock at level 10." : "Unlocked ultimates: " + string.Join(", ", _view.UltimateSkills.Select(Readable)), 12));
+        _rows.AddChild(Label($"{_view.AvailablePassivePoints} unspent passive points · inspect abilities, mastery and mutations in Skills.", 13));
+        Button("Open Skills & Mastery", () => { _tab = "Skills"; Rebuild(true); _tabs["Skills"].GrabFocus(); });
     }
 
     private void Gear()

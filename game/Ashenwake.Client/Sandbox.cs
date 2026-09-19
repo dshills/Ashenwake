@@ -367,8 +367,9 @@ public partial class Sandbox : Node3D
         for (int i = 0; i < 6; i++)
         {
             int index = i;
-            var button = ButtonAt($"{i + 1}", new(32 + i * 156, 697), new(148, 54), () => { if (!_clock.Paused) Cast(index); });
-            button.AddThemeFontSizeOverride("font_size", 13); _skillButtons.Add(button);
+            var button = new SkillButton { Name = "HotbarSkill" + (i + 1), Text = $"{i + 1}", Position = new(32 + i * 156, 697), Size = new(148, 54) };
+            button.Pressed += () => { if (!_clock.Paused) Cast(index); };
+            _hud.AddChild(button); _skillButtons.Add(button);
         }
         _navigationNotice = LabelAt("", new(32, 615), 13, new("ecd4ac"));
         LabelAt("CLICK Move / attack / interact / collect · WASD Move · SHIFT+CLICK Stand & attack · RIGHT CLICK Secondary · X Stop · 1–6 Skills · SPACE Dodge · Q Potion · F/E Interact / loot", new(32, 765), 11, new("abc0cb"));
@@ -530,13 +531,8 @@ public partial class Sandbox : Node3D
         for (int i = 0; i < _view.Skills.Count && i < _skillButtons.Count; i++)
         {
             var skill = _view.Skills[i];
-            bool insufficient = skill.ResourceMode == "Heat" ? _view.Resource + skill.Cost > _view.MaxResource : skill.Cost > _view.Resource;
-            string state = !skill.Available ? "Locked" : skill.RemainingTicks > 0 ? $"{skill.RemainingTicks / 30d:F1}s" :
-                skill.ResourceMode == "Heat" ? $"+{skill.Cost} {_view.ResourceName}" : skill.Cost > 0 ? $"{skill.Cost} {_view.ResourceName}" : $"+{skill.Generate} {_view.ResourceName}";
-            _skillButtons[i].Text = $"{_keys[$"skill{i + 1}"].ToString().Replace("Key", "", StringComparison.Ordinal)}  {skill.Name}\n{state}";
-            _skillButtons[i].Disabled = !skill.Available;
-            _skillButtons[i].Modulate = skill.RemainingTicks > 0 || insufficient ? new Color(.65f, .7f, .75f) : Colors.White;
-            _skillButtons[i].TooltipText = skill.Mutation == "mutation.orruns_patience" ? "Hold 2 / right click to charge; release to strike." : $"{skill.Shape} · {skill.Mutation}";
+            ((SkillButton)_skillButtons[i]).SetSkill(skill, _view.Discipline, _view.ResourceName, _view.Resource, _view.MaxResource,
+                _keys[$"skill{i + 1}"].ToString().Replace("Key", "", StringComparison.Ordinal));
         }
         if (_inventoryPanel.Visible) RefreshInventory();
     }
