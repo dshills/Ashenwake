@@ -11,6 +11,13 @@ public partial class Sandbox
         public required string VisualKey { get; init; }
         public required MeshInstance3D Tell { get; init; }
         public required Label3D Label { get; init; }
+        public required Node3D HealthBar { get; init; }
+        public required Sprite3D HealthFill { get; init; }
+        public required Sprite3D HealthTrack { get; init; }
+        public bool Enemy { get; set; }
+        public string Name { get; set; } = "";
+        public string HealthDetail { get; set; } = "";
+        public string ConditionDetail { get; set; } = "";
         public Vector3 Previous { get; set; }
         public Vector3 Current { get; set; }
         public int Health { get; set; }
@@ -101,7 +108,7 @@ public partial class Sandbox
     }
 
     private void SynchronizeActor(int id, string name, string role, int x, int z, int health, int maxHealth,
-        string status, bool telegraph, bool allied, string definitionId, string state, bool windingUp)
+        string status, bool telegraph, bool allied, string definitionId, string state, bool windingUp, string? mechanic = null)
     {
         Vector3 target = PositionOf(x, z);
         if (definitionId is "boss.bell_saint" && _view.BossPhase >= 3) definitionId = "enemy.bell_beast";
@@ -129,17 +136,31 @@ public partial class Sandbox
             {
                 Position = Vector3.Up * (body.Height + .4f),
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-                FontSize = 64,
-                PixelSize = .008f,
+                FontSize = 40,
+                PixelSize = .011f,
                 VerticalAlignment = VerticalAlignment.Bottom,
                 Modulate = color,
-                OutlineSize = 6,
+                OutlineSize = 8,
                 NoDepthTest = true,
                 Shaded = false
             };
             root.AddChild(label);
             var tell = Disc(1.15f, new Color(1, .22f, .08f, .38f), root);
-            actor = new() { Root = root, Body = body, VisualKey = visualKey, Tell = tell, Label = label, Previous = target, Current = target, Health = health };
+            var bar = CreateCombatHealthBar(root, color);
+            actor = new()
+            {
+                Root = root,
+                Body = body,
+                VisualKey = visualKey,
+                Tell = tell,
+                Label = label,
+                HealthBar = bar.Root,
+                HealthTrack = bar.Track,
+                HealthFill = bar.Fill,
+                Previous = target,
+                Current = target,
+                Health = health
+            };
             _actors[id] = actor;
         }
         actor.Previous = actor.Current; actor.Current = target;
@@ -147,10 +168,9 @@ public partial class Sandbox
         if (actor.Health > 0 && health <= 0) actor.Body.React("death");
         actor.Health = health;
         actor.Root.Visible = health > 0 || actor.Body.IsDying && !actor.Body.DeathFinished;
-        actor.Label.Position = Vector3.Up * (actor.Body.Height + (role == "bellsaint" && _view.BossPhase == 2 ? 1.2f : .4f));
-        actor.Label.Text = id == 1 ? $"UNBOUND  {health}/{maxHealth}" : $"{name.ToUpperInvariant()}\n{health}/{maxHealth}{(status.Length > 0 ? "\n" + status : "")}";
+        actor.Label.Position = Vector3.Up * (actor.Body.Height + (role == "bellsaint" && _view.BossPhase == 2 ? 1.2f : .52f));
+        SynchronizeCombatReadability(actor, id, name, health, maxHealth, status, telegraph, allied, mechanic);
         actor.Tell.Visible = telegraph && health > 0;
-        if (telegraph) actor.Label.Text += "\n⚠ ATTACK INCOMING";
     }
 
     private void AnimatePresentation(double delta, double alpha, int selected)
@@ -163,10 +183,9 @@ public partial class Sandbox
                 facing = opponent.Current - pair.Value.Current;
             pair.Value.Body.SetReducedEffects(_reduceEffects);
             pair.Value.Body.Animate(delta, pair.Value.Current - pair.Value.Previous, pair.Value.Windup, pair.Value.State, IsPaused, facing);
-            // Keep the selected role/status readable even when several melee actors overlap.
             pair.Value.Root.Visible = pair.Value.AuthoredVisible && (pair.Value.Health > 0 || pair.Value.Body.IsDying && !pair.Value.Body.DeathFinished);
-            pair.Value.Label.Visible = pair.Value.Health > 0 && (pair.Key == selected || _mechanicLabels.Contains(pair.Key));
         }
+        UpdateCombatReadability(selected);
         foreach (var loot in _lootVisuals.Values) loot.Animate(delta, IsPaused, _reduceEffects);
         _targetMarker.Visible = selected > 0 && _actors.TryGetValue(selected, out var target) && target.Root.Visible && target.Health > 0;
         if (_targetMarker.Visible) _targetMarker.Position = _actors[selected].Root.Position + Vector3.Up * .04f;
@@ -355,6 +374,7 @@ public partial class Sandbox
     private void ClearPresentation()
     {
         ResetMouseMovement();
+        ClearCombatReadability();
         ClearLootVisuals();
         foreach (var actor in _actors.Values) { RemoveChild(actor.Root); actor.Root.QueueFree(); }
         _actors.Clear();

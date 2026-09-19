@@ -183,6 +183,112 @@ public sealed class ClickMovePlannerTests
         Assert.Equal(detours, leftStraightLine);
     }
 
+    [Theory]
+    [InlineData(4500, -3700)]
+    [InlineData(10900, 9000)]
+    public void ApproachWithActualDigitalMovementStopsInsideCorePickupRange(int x, int z)
+    {
+        var state = EmptyArena(new(-4500, -3700)).Capture();
+        var target = new Position(x, z);
+        long id = state.NextObjectId++;
+        state.Loot.Add(new(id, target, new(id, "item.cinder_edge", "Cinder Edge", "MainHand", "Common", 2, 0, 3000)));
+        var session = CombatSession.Restore(Content(), state);
+        var planner = new ClickMovePlanner(Room());
+        string before = session.StateHash;
+        Assert.True(planner.TrySetApproach(Player(session), target, CombatSession.PickupRange));
+        Assert.Equal(before, session.StateHash);
+        Assert.NotNull(planner.Destination);
+
+        Follow(session, planner);
+
+        Assert.Null(planner.Destination);
+        Assert.True(Position.DistanceSquared(Player(session), target) <= (long)CombatSession.PickupRange * CombatSession.PickupRange);
+        var arrived = Player(session);
+        Assert.Equal(default, planner.NextDirection(arrived));
+        var events = session.Step([new(CombatCommandKind.Move), new(CombatCommandKind.Pickup, ItemId: id)]);
+        Assert.Contains(events, e => e.Kind == "LootPickedUp");
+        Assert.DoesNotContain(session.View.Loot, drop => drop.Id == id);
+        Assert.Contains(session.View.Inventory, item => item.Id == id);
+        Assert.Equal(arrived, Player(session));
+    }
+
+    [Fact]
+    public void ApproachCanReachAnActionTargetInsideSolidGeometryWithoutEnteringIt()
+    {
+        var session = EmptyArena(new(-4500, 3700));
+        var target = new Position(0, 3700);
+        const int interactionRange = 1200;
+        var spatial = new SpatialWorld(Room());
+        Assert.False(spatial.CanOccupy(target, CombatSession.ActorRadius));
+        var planner = new ClickMovePlanner(Room());
+        Assert.False(planner.TrySetDestination(Player(session), target));
+        Assert.True(planner.TrySetApproach(Player(session), target, interactionRange));
+
+        var visited = Follow(session, planner);
+
+        Assert.NotEmpty(visited);
+        Assert.Null(planner.Destination);
+        Assert.All(visited, p => Assert.True(spatial.CanOccupy(p, CombatSession.ActorRadius)));
+        Assert.True(Position.DistanceSquared(Player(session), target) <= (long)interactionRange * interactionRange);
+    }
+
+    [Fact]
+    public void ApproachStopsInRangeOfALivingTargetWithoutCollidingWithItsBody()
+    {
+        var state = CombatSession.Create(Content()).Capture();
+        state.Actors.RemoveAll(a => a.Id > 2);
+        state.Actors[0].Position = new(-2500, 0);
+        var target = new Position(0, 0);
+        state.Actors[1].Position = target;
+        state.Actors[1].Statuses.Add(new() { Id = "Frozen", SourceId = 1, OwnerId = 1, ActionId = 1, ExpiresTick = 1000 });
+        state.NextActionId = Math.Max(2, state.NextActionId);
+        var session = CombatSession.Restore(Content(), state);
+        var planner = new ClickMovePlanner(Room());
+        const int interactionRange = 900;
+        Assert.False(planner.TrySetDestination(Player(session), target, Bodies(session)));
+        Assert.True(planner.TrySetApproach(Player(session), target, interactionRange, Bodies(session)));
+
+        var visited = Follow(session, planner);
+
+        Assert.Null(planner.Destination);
+        Assert.All(visited, p => Assert.True(Position.DistanceSquared(p, target) >= 4L * CombatSession.ActorRadius * CombatSession.ActorRadius));
+        Assert.True(Position.DistanceSquared(Player(session), target) <= (long)interactionRange * interactionRange);
+        Assert.Equal(target, session.View.Actors.Single(a => a.Id == 2).Position);
+    }
+
+    [Fact]
+    public void UnreachableApproachRejectsAndClearsAnExistingDestination()
+    {
+        var room = Room() with { Obstacles = [new(-300, -10000, 300, 10000)] };
+        var planner = new ClickMovePlanner(room);
+        var from = new Position(-4500, 0);
+        Assert.True(planner.TrySetDestination(from, new(-3000, 0)));
+
+        Assert.False(planner.TrySetApproach(from, new(4500, 0), CombatSession.PickupRange));
+
+        Assert.Null(planner.Destination);
+        Assert.Equal(default, planner.NextDirection(from));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(CombatSession.PickupRange)]
+    public void AlreadyInActionRangeCancelsPriorDestinationWithoutStartingAnother(int distance)
+    {
+        var session = EmptyArena(new(-4500, 0));
+        var from = Player(session);
+        var planner = new ClickMovePlanner(Room());
+        Assert.True(planner.TrySetDestination(from, new(4500, 0)));
+
+        Assert.True(planner.TrySetApproach(from, new(from.X + distance, from.Z), CombatSession.PickupRange));
+
+        Assert.Null(planner.Destination);
+        var direction = planner.NextDirection(from);
+        Assert.Equal(default, direction);
+        session.Step([new(CombatCommandKind.Move, X: direction.X, Z: direction.Z)]);
+        Assert.Equal(from, Player(session));
+    }
+
     private static List<Position> Follow(CombatSession session, ClickMovePlanner planner)
     {
         List<Position> positions = [];

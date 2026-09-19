@@ -50,10 +50,11 @@ public partial class JourneySmoke : Node
             _hud.ChoiceRequested += (id, value) => Execute(new(CampaignRuntimeAction.Choose, Id: id, Value: value));
             _hud.HubRequested += () => Execute(new(CampaignRuntimeAction.ReturnToHub));
             Refresh(); await Settle();
+            Check("greyhaven_has_direct_first_destination", NextStep().Visible && NextStep().Text.StartsWith("Travel to Act 1", StringComparison.Ordinal));
             Check("greyhaven_environment_is_visible", VisibleArchitecture("GreyhavenArchitecture") is not null && VisibleArchitecture("GreyMarchArchitecture") is null);
             ObserveEnvironment("greyhaven", "GreyhavenArchitecture");
             await Click("Close"); await CheckAtmosphere(); await Capture("greyhaven-environment.png"); await Click("Journey map & anatomy");
-            await Click("Act 1 ·");
+            await ClickNode(NextStep());
             Check("map_starts_first_encounter", _session.ActiveEncounterId == "campaign.road" && !VisibleLabel("EDRATH ·"));
             var roadArchitecture = VisibleArchitecture("GreyMarchArchitecture");
             Check("road_replaces_hub_environment", roadArchitecture is not null && VisibleArchitecture("GreyhavenArchitecture") is null);
@@ -64,7 +65,15 @@ public partial class JourneySmoke : Node
             await FightUntil(() => _session.EncounterCleared);
             Check("clear_prompts_loot_and_next_step", NextStep().Visible && _session.Combat.View.Loot.Count > 0 && VisibleLabel($"{_session.Combat.View.Loot.Count} dropped"));
             await Capture("first-encounter-cleared.png");
+            string reviewHash = _session.StateHash;
+            var forward = _stage.PresentWayForward(_session.Room, _hud.CanRequestNextStep, _hud.NextStepLabel);
+            _hud.RequestNextStep(); await Settle();
+            Check("way_forward_reuses_reward_review_without_travel", forward is { Id: "journey.next", Range: 1800, Visual: not null } &&
+                new Ashenwake.Core.Simulation.SpatialWorld(_session.Room).CanOccupy(forward.Position, CombatSession.ActorRadius) &&
+                forward.Name.EndsWith(_hud.NextStepLabel, StringComparison.Ordinal) && _session.StateHash == reviewHash && VisibleLabel("EDRATH ·"));
+            _stage.PresentWayForward(_session.Room, false, ""); _hud.SetOpen(false); await Settle();
             await ClickNode(NextStep());
+            Check("reward_review_preserves_room_and_ground_loot", _session.StateHash == reviewHash && _session.ActiveEncounterId == "campaign.road");
             var continueButton = FindButton("Continue onward");
             Check("continue_is_visible_without_scrolling", continueButton.GetGlobalRect().Position.Y < 350 && continueButton.Text.Contains("uncollected drops", StringComparison.Ordinal));
             await ClickNode(continueButton);
@@ -77,6 +86,7 @@ public partial class JourneySmoke : Node
             await FightUntil(() => _session.EncounterCleared);
             Check("choice_is_explained_before_boss", NextStep().Text.StartsWith("Choose", StringComparison.Ordinal));
             await ClickNode(NextStep());
+            Check("choice_guidance_focuses_story_tab", GetViewport().GuiGetFocusOwner() is Button { Text: "Story" });
             var choice = _campaign.Capture().Choices.Single(c => c.Act == 1);
             await Click(choice.Outcomes[0].Text);
             var confirmation = Descendants(this).OfType<ConfirmationDialog>().Single();
@@ -85,7 +95,15 @@ public partial class JourneySmoke : Node
             foreach (bool pressed in new[] { true, false })
             { confirmation.PushInput(new InputEventKey { Keycode = Key.Enter, PhysicalKeycode = Key.Enter, Pressed = pressed }, true); await Settle(); }
             Check("story_choice_commits_through_confirmation", _session.Capture().Campaign.Choices.GetValueOrDefault(choice.Id) == choice.Outcomes[0].Id);
-            await ClickNode(NextStep()); await Click("Continue onward");
+            Check("confirmed_choice_points_to_rewards_and_boss", NextStep().Text == "Review rewards & continue" && VisibleLabel($"{_session.Combat.View.Loot.Count} dropped"));
+            await Click("Close"); await CollectLoot();
+            Check("collecting_last_drop_exposes_direct_continue", _session.Combat.View.Loot.Count == 0 && NextStep().Text == "Continue onward");
+            await Capture("monastery-rewards-collected.png");
+            NextStep().GrabFocus();
+            foreach (bool pressed in new[] { true, false })
+                GetViewport().PushInput(new InputEventKey { Keycode = Key.Enter, PhysicalKeycode = Key.Enter, Pressed = pressed }, true);
+            await Settle();
+            Check("primary_continue_supports_keyboard_activation", _session.ActiveEncounterId == "campaign.bell_saint");
             Check("continue_enters_bell_saint", _session.ActiveEncounterId == "campaign.bell_saint");
             var sanctuaryArchitecture = VisibleArchitecture("GreyMarchArchitecture");
             Check("sanctuary_replaces_monastery_environment", sanctuaryArchitecture is not null && sanctuaryArchitecture.GetInstanceId() != monasteryArchitectureId);
@@ -103,7 +121,8 @@ public partial class JourneySmoke : Node
             ObserveEnvironment("sanctum_unbound", "GreyMarchArchitecture");
             await Capture("bell-saint-unbound.png");
             await FightUntil(() => _session.EncounterCleared);
-            Check("boss_victory_points_to_next_region", NextStep().Text.StartsWith("Region complete", StringComparison.Ordinal));
+            Check("boss_victory_points_to_next_region", NextStep().Text == "Review rewards & choose the next region" &&
+                VisibleLabel($"{_session.Combat.View.Loot.Count} dropped"));
             Check("real_combat_events_drive_attack_impact_and_fall", new[] { "attack", "windup", "impact", "death" }.All(_feedbackWitnesses.Contains));
             Check("bell_victory_has_visible_defeat_sequence", _feedbackWitnesses.Contains("boss_defeat"));
             Check("campaign_hazards_keep_windup_and_release_animation", _feedbackWitnesses.Contains("hazard_windup") && _feedbackWitnesses.Contains("hazard_attack"));
@@ -209,6 +228,21 @@ public partial class JourneySmoke : Node
             if (i % 60 == 0) { _revision++; Refresh(); await Settle(); }
         }
         if (!complete()) throw new InvalidDataException("Journey combat route exceeded its bound.");
+        _revision++; Refresh(); await Settle();
+    }
+    private async Task CollectLoot()
+    {
+        for (int i = 0; i < 2400 && _session.Combat.View.Loot.Count > 0; i++)
+        {
+            var view = _session.Combat.View; var player = view.Actors.Single(a => a.Id == 1);
+            var loot = view.Loot.OrderBy(l => Ashenwake.Core.Simulation.Position.DistanceSquared(player.Position, l.Position)).First();
+            var direction = CombatProductionSmoke.MovementDirection(player.Position, loot.Position, _session.Room);
+            var result = _session.Step(new(CombatCommandKind.Move, X: direction.X, Z: direction.Z), new(CombatCommandKind.Pickup, ItemId: loot.Id));
+            if (!result.Success) throw new InvalidDataException(result.Reason);
+            _sandbox.PresentCombatEvents(result.CombatEvents, _session.Combat);
+            if (i % 60 == 0) { _revision++; Refresh(); await Settle(); }
+        }
+        Check("objective_transition_uses_real_collected_rewards", _session.Combat.View.Loot.Count == 0);
         _revision++; Refresh(); await Settle();
     }
     private async Task ObserveCombatFeedback(IReadOnlyList<CombatEvent> events)

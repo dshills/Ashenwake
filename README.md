@@ -8,6 +8,8 @@ Heroes, Greyhaven specialists, and enemies now use articulated low-poly models w
 
 Combat now includes discipline-specific attacks, enemy anticipation and recovery, dodge and hit reactions, and visible defeat clips. Short weapon/spell effects and sixteen synthesized sound cues follow Core combat events. The Bell Saint sanctuary swings, sheds broken links, and settles after victory. See [combat feedback](docs/combat_feedback.md) for scope, accessibility behavior, and diagnostics.
 
+Enemies have compact health bars. The selected or hovered enemy's exact health and conditions appear in one detail card, while required boss and seal instructions remain overhead. The objective card and a clickable **WAY FORWARD** marker after cleared campaign encounters offer the same contextual next action; remaining ground loot stays behind an explicit reward/travel review, and permanent story choices still require confirmation. See [mouse actions verification](docs/mouse_actions_verification.md).
+
 Solo characters now display equipped weapons, off-hand items, helmets and chest armor, including Ashcleaver's awakened forms. The four Manifestations add burning fissures, spectral echoes, stone plates or living growth. Character → Gear offers a rotating preview and item comparisons; inspecting is free, and explicit Equip/Unequip actions require Torren. Ground drops have recognizable item shapes and six rarity markers. See [visible progression](docs/visible_progression.md) for scope and diagnostics.
 
 ## Start here
@@ -27,7 +29,7 @@ Run `source tools/env.sh` in Bash; it configures the local tools without changin
 
 ## Play the campaign
 
-Choose a discipline, approach Mara, and press F to show her conversation and the Journey map. Click **Act 1 · The Grey March** on the map to leave Greyhaven. J or the **Journey map & anatomy [J]** button opens or closes the map; F interacts with nearby people and mechanisms. Mara's conversation also offers **Divine Anatomy** for implants. Defeat the actual encounter, collect its loot, and continue to the next objective. Resolve each region's choice before confronting its boss. In the Bell Saint's second phase, attack both ritual anchors to remove its protection. Return to Greyhaven for services and anatomy changes; deaths restore the current anchor while earned progression and choices persist. The map offers unlocked acts and the Story and Journal tabs expose choices, discoveries, and delayed consequences.
+Choose a discipline and click Mara to approach and open her conversation and the Journey map. F still interacts when nearby. Click **Act 1 · The Grey March** on the map to leave Greyhaven. J or the **Journey map & anatomy [J]** button opens or closes the map; F interacts with nearby people and mechanisms. Mara's conversation also offers **Divine Anatomy** for implants. Defeat the actual encounter, collect its loot, and continue to the next objective. Resolve each region's choice before confronting its boss. In the Bell Saint's second phase, attack both ritual anchors to remove its protection. Return to Greyhaven for services and anatomy changes; deaths restore the current anchor while earned progression and choices persist. The map offers unlocked acts and the Story and Journal tabs expose choices, discoveries, and delayed consequences.
 
 Act II contains an ordered tracking hunt, Act III a timed Resonance Storm, and Act IV a Divine Memory with reversed fault warnings. These temporary contexts clean up on expiry, departure, victory, or death. Both final story outcomes unlock the Fracture gate in eastern Greyhaven. Press B to inspect Sigils, four-room routes, rules, hunt gates, and rewards. Sigils are consumed on entry; three attempts and explicit retry/abandon controls make failures recoverable. A free tier-one recovery Sigil is available when no unconsumed Sigils remain. Cleared tiers unlock four distinct God Hunts and an optional secret reconstruction. Their catalysts support permanent Godwrought choices and crafting.
 
@@ -37,14 +39,14 @@ Act II contains an ordered tracking hunt, Act III a timed Resonance Storm, and A
 | Primary / secondary attack | Left-click enemy; Shift + left-click to stand and attack / right-click |
 | Six abilities / stop movement | 1–6 / X |
 | Dodge / potion | Space / Q |
-| Collect nearby loot | E |
+| Collect a selected drop / nearby loot | Click the drop / E |
 | Reset the diagnostic arena | R in Sandbox |
 | Pause / advance one paused tick | P / period |
 | Save / load | F5 / F9 |
 | Save and verify recent replay | F6 |
 | Character, equipment, crafting / settings | C or I / Escape |
 | Cycle target / camera zoom | Tab / mouse wheel |
-| Interact / journey map, journal and services | F / J |
+| Interact / journey map, journal and services | Click a visible target or F nearby / J |
 | Fractures, God Hunts, expedition progress | B |
 | Echoes board / bind an offered nearby memory | H |
 | Reveal all ground loot | Hold Alt |
@@ -54,7 +56,7 @@ After a fight, the objective explains any remaining ground loot and a **next ste
 
 Press **P** for a visible pause menu with Resume and Settings. Closing settings, loot inspection, or Echoes preserves a manual pause or a pause caused by focus loss; choose Resume when ready. Opening a modal cannot be used to bypass its pause with P.
 
-Click-to-move routes around obstacles and living actors in solo and co-op. A mint ring marks the destination; menus, attacks, scene changes and interruptions cancel the route. Click once to travel, then use **F** near people or mechanisms and **E** near loot. See [mouse movement](docs/mouse_movement.md) for controls and verification.
+Click-to-move routes around obstacles and living actors in solo and co-op. A mint ring marks the destination; menus, attacks, scene changes and interruptions cancel the route. In solo, click a visible person, clue or available mechanism to approach and interact; click a visible drop to approach and collect that item. Hover names the action. **F** and **E** still work nearby. See [mouse movement](docs/mouse_movement.md) for controls and verification.
 
 Build Momentum, Exposure, Instability, Remains, or Adaptation through your discipline's actions; the skill bar shows costs and heat generation. Ultimates unlock at level 10; retraining unlocks at level 5 and costs five materials. Master skills to select mutations, and spend level-earned passive points near Mara. Equipment has twelve slots, with affixes and hand/discipline restrictions. Rescue the specialists through dungeon objectives and restore their workshops to unlock all six crafting services. Destructive extraction and permanent grafts require confirmation. The prototype grants an unawakened Ashcleaver; its canonical awakening requirement remains 1,000 burning-enemy kills.
 

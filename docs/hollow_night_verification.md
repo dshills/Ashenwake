@@ -34,7 +34,7 @@ Audio checks establish a bounded cue cache, distinct non-silent/unclipped loops,
 
 Prism's initial Gemini review `8c76d2f4ba44d02b6322ea6bfa1b7bfb` reported two high findings: the rig and actor label independently repeated the Core's shield rule. Both were addressed by the authoritative `Shielded` projection and its damage/restore regression test.
 
-Follow-up review is pending explicit approval to send the staged source diff to Gemini. Automatic approval review rejected the unredacted attempt and a second attempt with default secret redaction enabled, requiring payload/destination approval despite the user's standing Prism authorization. No blocked follow-up upload was executed.
+Follow-up review `209ab42db4f7e5955812609bbd5a5ba5` completed on 2026-09-19 with secret redaction enabled. It reported one medium and four low notes, with no actionable defect. The cache note assumes a runtime resource-reload path that the client does not support; the bounded three-cue cache deliberately retains and reuses its live streams across travel. The mesh note assumes simultaneous Breach Heart instances in endgame arenas, but this rig exists only in its campaign encounter and requires independent animated materials. The remaining notes concern the deliberate inclusion of opt-in exact-package diagnostics, diagnostic-only pose comparisons and System.IO reports written to explicit host filesystem paths. These do not identify a current gameplay, portability or lifecycle failure. Reports and finding-by-finding dispositions remain under `artifacts/hollow-night/`.
 
 ## Package verification
 

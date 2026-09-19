@@ -12,6 +12,7 @@ public partial class EndgamePresentation : Node3D
     private readonly Dictionary<int, Node3D> _mechanisms = [];
     private string _context = "";
     private Label? _rules;
+    public Node3D? GetMechanismVisual(int id) => _mechanisms.GetValueOrDefault(id);
     public void AttachOverlay(Sandbox sandbox)
     {
         _rules = new Label { Position = new(32, 204), Size = new(540, 83), MouseFilter = Control.MouseFilterEnum.Ignore, AutowrapMode = TextServer.AutowrapMode.WordSmart };

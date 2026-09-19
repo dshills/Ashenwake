@@ -43,6 +43,12 @@ mkdir -p "$mouse_output"
 python3 tools/check-godot-log.py "$mouse_output/smoke.log"
 rg -q 'MouseMovementClientSmokePassed' "$mouse_output/smoke.log"
 
+mouse_actions_output="$package_output/mouse-actions-client"
+mkdir -p "$mouse_actions_output"
+"$binary" --headless --quit-after 7200 --log-file "$mouse_actions_output/smoke.log" -- --mouse-actions-smoke --discipline=Vanguard --output="$mouse_actions_output"
+python3 tools/check-godot-log.py "$mouse_actions_output/smoke.log"
+rg -q 'MouseActionsClientSmokePassed' "$mouse_actions_output/smoke.log"
+
 interaction_output="$package_output/interaction-client"
 mkdir -p "$interaction_output"
 "$binary" --headless --quit-after 600 --log-file "$interaction_output/smoke.log" -- --interaction-smoke --output="$interaction_output"

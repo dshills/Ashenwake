@@ -24,8 +24,9 @@ public partial class CampaignHud : Control
     private IReadOnlyDictionary<string, string> _fragmentDescriptions = new Dictionary<string, string>();
     private Label _headline = null!, _objective = null!, _notice = null!;
     private PanelContainer _panel = null!;
-    private VBoxContainer _rows = null!;
+    private VBoxContainer _rows = null!, _objectiveRows = null!;
     private Button _firstTab = null!;
+    private readonly Dictionary<string, Button> _tabButtons = [];
     private ConfirmationDialog _choiceDialog = null!;
     private string _pendingChoice = "", _pendingOutcome = "", _tab = "Map", _revealedChoice = "";
     private string _maraDialogue = "";
@@ -36,10 +37,11 @@ public partial class CampaignHud : Control
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Ignore; SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        var objective = Panel(new(22, 88), new(565, 104)); var headline = new VBoxContainer(); objective.AddChild(headline);
-        _headline = Label("", 16); headline.AddChild(_headline);
-        _objective = Label("", 12); headline.AddChild(_objective);
-        _notice = Label("", 12); _notice.MaxLinesVisible = 2; headline.AddChild(_notice);
+        var objective = Panel(new(22, 88), new(565, 104)); _objectiveRows = new VBoxContainer(); objective.AddChild(_objectiveRows);
+        _objectiveRows.AddThemeConstantOverride("separation", 6);
+        _headline = Label("", 14); _objectiveRows.AddChild(_headline);
+        _objective = Label("", 14); _objectiveRows.AddChild(_objective);
+        _notice = Label("", 11); _notice.MaxLinesVisible = 2; _notice.Visible = false; _objectiveRows.AddChild(_notice);
         var toggle = new Button { Text = "Journey map & anatomy [J]", Position = new(921, 22), Size = new(326, 35) };
         toggle.Pressed += Toggle; AddChild(toggle);
         _panel = Panel(new(876, 140), new(371, 482)); var column = new VBoxContainer(); _panel.AddChild(column);
@@ -48,6 +50,7 @@ public partial class CampaignHud : Control
         {
             var button = new Button { Text = tab, SizeFlagsHorizontal = SizeFlags.ExpandFill };
             button.AddThemeFontSizeOverride("font_size", 12); button.Pressed += () => { _tab = tab; Rebuild(true); }; tabs.AddChild(button);
+            _tabButtons.Add(tab, button);
             if (tab == "Map") _firstTab = button;
         }
         var scroll = new ScrollContainer { CustomMinimumSize = new(339, 353), SizeFlagsVertical = SizeFlags.ExpandFill }; column.AddChild(scroll);
@@ -60,11 +63,12 @@ public partial class CampaignHud : Control
         BuildNextStep();
         _panel.Visible = false;
     }
-    public void Toggle()
+    public void Toggle() => SetOpen(!_panel.Visible);
+    public void SetOpen(bool open)
     {
-        _panel.Visible = !_panel.Visible;
+        _panel.Visible = open;
         if (_panel.Visible)
-        { if (!_state.InHub && !_engaged) _tab = _nextTab; Rebuild(true); _firstTab.GrabFocus(); }
+        { if (!_state.InHub && !_engaged) _tab = _nextTab; Rebuild(true); FocusCurrentTab(); }
     }
     public bool PresentInteraction(string message)
     {
@@ -74,13 +78,13 @@ public partial class CampaignHud : Control
                 ? "Mara: The wound will hold. Find the Bell Saint beneath Last Mercy. Bring back what it guards."
                 : "Mara: A heart that remembers the dead. Implant it, and see what answers your call.";
             _tab = "Map";
-            Notice("Mara has spoken. Choose an act on the Journey map to leave Greyhaven.");
+            Notice("Mara's lead is recorded. Choose your next destination below.");
         }
         else if (message == "ServiceOpened:service.mara") _tab = "Anatomy";
         else return false;
-        Visible = true; _panel.Visible = true; Rebuild(true); _firstTab.GrabFocus(); return true;
+        RefreshNextStep(); Visible = true; _panel.Visible = true; Rebuild(true); FocusCurrentTab(); return true;
     }
-    public void Notice(string message) { _notice.Text = message; _notice.TooltipText = message; }
+    public void Notice(string message) { _notice.Text = message; _notice.TooltipText = message; _notice.Visible = message.Length > 0; }
     public void SetFragmentDescriptions(IReadOnlyDictionary<string, string> descriptions) => _fragmentDescriptions = descriptions;
     public void SetView(CampaignView view, CampaignState state, CampaignDefinition content, AdventureView anatomyView,
         AdventureState anatomy, AdventureDefinition anatomyContent, CombatView combat, IReadOnlyList<InteractionDisplay> interactions, long revision)
@@ -93,14 +97,15 @@ public partial class CampaignHud : Control
         _engaged = combat.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0);
         bool activeBoss = combat.Actors.Any(a => a.Health > 0 && a.DefinitionId.StartsWith("boss.", StringComparison.Ordinal));
         _headline.Text = $"{view.Region.ToUpperInvariant()} · ACT {view.Act}" + (activeBoss && combat.BossPhase > 0 ? $" · PHASE {combat.BossPhase}" : "");
-        RefreshNextStep();
         if (!state.InHub) _maraDialogue = "";
+        RefreshNextStep();
         if (changed) _panel.Visible = state.InHub || endingArrived;
         else if (enteredCombat) _panel.Visible = false;
         if (endingArrived) _tab = "Story";
         string ready = !_state.InHub && !_engaged && _state.Exploration is null
             ? _content.Choices.FirstOrDefault(c => c.Act == state.CurrentAct && state.CompletedEncounters.Contains(c.RequiredEncounter) && !state.Choices.ContainsKey(c.Id))?.Id ?? "" : "";
-        if (ready.Length > 0 && ready != _revealedChoice) { _revealedChoice = ready; _tab = "Story"; _panel.Visible = true; changed = true; }
+        if (ready.Length > 0 && ready != _revealedChoice) { _tab = "Story"; _panel.Visible = true; changed = true; }
+        _revealedChoice = ready;
         Rebuild(changed);
     }
     private void Rebuild(bool force)
@@ -120,8 +125,8 @@ public partial class CampaignHud : Control
             if (_maraDialogue.Length > 0)
             {
                 _rows.AddChild(Label(_maraDialogue, 13));
-                Button("Mara · Divine Anatomy", () => InteractionRequested?.Invoke("service.mara")).Disabled =
-                    !_interactions.Any(i => i.Id == "service.mara" && i.Distance <= i.Range);
+                var mara = _interactions.FirstOrDefault(i => i.Id == "service.mara");
+                if (mara is not null) Button(mara.Distance <= mara.Range ? "Mara · Divine Anatomy" : "Walk to Mara · Divine Anatomy", () => RequestInteraction(mara.Id));
             }
             _rows.AddChild(Label("Leave Greyhaven: choose an unlocked act below.", 13));
         }
@@ -155,7 +160,7 @@ public partial class CampaignHud : Control
         }
         if (_interactions.Count > 0) { _rows.AddChild(new HSeparator()); _rows.AddChild(Label("NEARBY PEOPLE & LANDMARKS", 14)); }
         foreach (var interaction in _interactions)
-            Button(interaction.Name + (interaction.Distance <= interaction.Range ? " [F]" : " · approach marker"), () => InteractionRequested?.Invoke(interaction.Id)).Disabled = interaction.Distance > interaction.Range;
+            Button(interaction.Distance <= interaction.Range ? interaction.Name + " [F]" : "Walk to " + interaction.Name, () => RequestInteraction(interaction.Id));
         if (_state.InHub) foreach (string reaction in _view.HubReactions) _rows.AddChild(Label(reaction, 12));
     }
     private void Story()

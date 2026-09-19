@@ -69,6 +69,7 @@ public partial class Sandbox : Node3D
             BuildArena(_content.Room.HalfWidth, _content.Room.HalfDepth);
             foreach (var obstacle in _content.Room.Obstacles) AddObstacle(obstacle.MinX, obstacle.MinZ, obstacle.MaxX, obstacle.MaxZ);
             BuildHud();
+            InitializeWorldPointer();
             SetSession(CombatSession.Create(_contentJson, 42, Argument("--preset=") ?? "standard"));
             InitializeReleaseSupport();
             Message("Vanguard · build Momentum with Cleave, spend it to control the pack.");
@@ -127,7 +128,7 @@ public partial class Sandbox : Node3D
             bool showAllLootHeld = Input.IsActionPressed("aw_showloot");
             if (showAllLootHeld != _showAllLootHeld)
             { _showAllLootHeld = showAllLootHeld; SynchronizeLootVisuals(); _lootSignature = ""; }
-            AnimatePresentation(delta, _clock.Alpha, _target); UpdateEnvironmentAtmosphere(delta); UpdateNavigationNotice(delta); RefreshHud(); RefreshLootInspector();
+            AnimatePresentation(delta, _clock.Alpha, _target); UpdateEnvironmentAtmosphere(delta); UpdateNavigationNotice(delta); UpdateWorldHover(delta); RefreshHud(); RefreshLootInspector();
             _frames++; Sample(_frameCosts, Stopwatch.GetElapsedTime(watch).TotalMilliseconds);
             if (_frames > 10) Sample(_frameIntervals, delta * 1000);
             if (_capturePath is not null && _frames == 30 && DisplayServer.GetName() != "headless")
@@ -142,7 +143,8 @@ public partial class Sandbox : Node3D
 
     public override void _Input(InputEvent input)
     {
-        if (!_smoke && _clickMove?.Destination is not null && (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left or MouseButton.Right } ||
+        ObserveWorldPointer(input);
+        if (!_smoke && (_clickMove?.Destination is not null || PendingWorldActionId is not null) && (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left or MouseButton.Right } ||
             NavigationInterruptActions.Any(a => input.IsActionPressed(a))))
             CancelMouseMovement(true);
         if (_smoke || _awaitingKey is null || input is not InputEventKey { Pressed: true, Echo: false } key) return;
@@ -187,7 +189,12 @@ public partial class Sandbox : Node3D
                 if (!_clock.Paused && mouse.ButtonIndex is MouseButton.Left or MouseButton.Right)
                 {
                     bool enemy = SelectAt(mouse.Position);
-                    if (mouse.ButtonIndex == MouseButton.Left && !mouse.ShiftPressed && !enemy) BeginMouseMovement(mouse.Position);
+                    if (mouse.ButtonIndex == MouseButton.Left && !mouse.ShiftPressed && !enemy)
+                    {
+                        var action = PickWorldAction(mouse.Position);
+                        if (action is null) BeginMouseMovement(mouse.Position);
+                        else BeginWorldAction(action.Action);
+                    }
                     else Cast(mouse.ButtonIndex == MouseButton.Left ? 0 : 1);
                     GetViewport().SetInputAsHandled(); return;
                 }
@@ -232,6 +239,7 @@ public partial class Sandbox : Node3D
         _lastTickBytes = GC.GetAllocatedBytesForCurrentThread() - before; Sample(_tickCosts, _lastTickCost);
         PresentCombatEventsCore(events, CrossedCombatBoundary(advancedSession, _session));
         CombatAdvanced?.Invoke(events);
+        CompleteMouseInteraction(events);
     }
 
     private void SynchronizeWorld()
@@ -271,7 +279,7 @@ public partial class Sandbox : Node3D
             SynchronizeActor(actor.Id, name, role.ToLowerInvariant(), actor.Position.X, actor.Position.Z,
                 actor.Health, actor.MaxHealth, string.Join(" / ", conditions),
                 actor.TelegraphTicks > 0 && actor.TelegraphRadius == 0, actor.Faction != CombatFaction.Enemy,
-                actor.DefinitionId, actor.State, actor.TelegraphTicks > 0 || hazard is not null || actor.State.EndsWith("Windup", StringComparison.Ordinal));
+                actor.DefinitionId, actor.State, actor.TelegraphTicks > 0 || hazard is not null || actor.State.EndsWith("Windup", StringComparison.Ordinal), mechanic);
             _actors[actor.Id].AuthoredVisible = actor.Visible;
             _actors[actor.Id].Root.Visible &= actor.Visible;
             var aim = actor.TelegraphPosition ?? (hazard is null ? null : hazard.Kind == "Circle" ? hazard.Position : hazard.End);
@@ -306,6 +314,7 @@ public partial class Sandbox : Node3D
     private void Enqueue(CombatCommand command) => _pending.Add(command);
     private void PickupNearest()
     {
+        CancelMouseMovement(true);
         var player = _view.Actors.Single(a => a.Id == 1);
         var loot = _view.Loot.Where(IsLootVisible).OrderBy(l => DistanceSquared(l.Position, player.Position)).ThenBy(l => l.Id).FirstOrDefault();
         if (loot is not null) Enqueue(new(CombatCommandKind.Pickup, ItemId: loot.Id));
@@ -362,7 +371,7 @@ public partial class Sandbox : Node3D
             button.AddThemeFontSizeOverride("font_size", 13); _skillButtons.Add(button);
         }
         _navigationNotice = LabelAt("", new(32, 615), 13, new("ecd4ac"));
-        LabelAt("CLICK ground / WASD  Move · CLICK foe  Attack · SHIFT+CLICK  Stand & attack · RIGHT CLICK  Secondary · X Stop · 1–6 Skills · SPACE Dodge · Q Potion · E Loot", new(32, 765), 11, new("abc0cb"));
+        LabelAt("CLICK Move / attack / interact / collect · WASD Move · SHIFT+CLICK Stand & attack · RIGHT CLICK Secondary · X Stop · 1–6 Skills · SPACE Dodge · Q Potion · F/E Interact / loot", new(32, 765), 11, new("abc0cb"));
         _sandboxControls.Add(ButtonAt("Reset [R]", new(985, 697), new(122, 54), () => Reset(_view.Preset)));
         ButtonAt("Pause [P]", new(1118, 697), new(129, 54), ToggleManualPause);
         BuildInventory(); BuildSettings();

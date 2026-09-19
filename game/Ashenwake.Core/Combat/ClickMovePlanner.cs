@@ -100,6 +100,26 @@ public sealed class ClickMovePlanner
         return direction;
     }
 
+    /// <summary>Choose a reachable approach inside an authoritative action radius. This is input intent only.</summary>
+    public bool TrySetApproach(Position from, Position target, int range, IReadOnlyList<Position>? occupied = null)
+    {
+        Cancel();
+        if (range <= ArrivalTolerance || range > 100000) return false;
+        if (Position.DistanceSquared(from, target) <= (long)range * range) return true;
+        int radius = Math.Max(0, range - ArrivalTolerance - 150);
+        double angle = Math.Atan2(from.Z - target.Z, from.X - target.X);
+        var candidates = Enumerable.Range(0, 16).Select(i =>
+        {
+            double bearing = angle + i * Math.PI / 8;
+            return new Position(target.X + (int)Math.Round(Math.Cos(bearing) * radius), target.Z + (int)Math.Round(Math.Sin(bearing) * radius));
+        }).Append(target).OrderBy(p => Position.DistanceSquared(from, p)).ThenBy(p => p.X).ThenBy(p => p.Z);
+        foreach (var candidate in candidates)
+            if (TrySetDestination(from, candidate, occupied) &&
+                Position.DistanceSquared(Destination ?? from, target) <= (long)(range - ArrivalTolerance) * (range - ArrivalTolerance)) return true;
+        Cancel();
+        return false;
+    }
+
     public void Cancel()
     {
         Destination = null;

@@ -7,7 +7,7 @@ namespace Ashenwake.Client;
 /// <summary>Mouse destinations are input intent. Core still owns every movement, collision and replay command.</summary>
 public partial class Sandbox
 {
-    private static readonly string[] NavigationInterruptActions = ["aw_inventory", "aw_settings", "aw_journey", "aw_endgame", "aw_character", "aw_interact"];
+    private static readonly string[] NavigationInterruptActions = ["aw_inventory", "aw_settings", "aw_journey", "aw_endgame", "aw_character", "aw_interact", "aw_pickup", "aw_corpse", "aw_echo"];
     private ClickMovePlanner? _clickMove;
     private MeshInstance3D? _moveDestination;
     private Label? _navigationNotice;
@@ -48,12 +48,13 @@ public partial class Sandbox
         var player = view.Actors.Single(a => a.Id == 1);
         if (player.Health <= 0) { CancelMouseMovement(false); x = z = 0; }
         else if (x != 0 || z != 0) CancelMouseMovement(false);
-        else if (_clickMove?.Destination is not null)
+        else
         {
             // Do not count a root, stun or ongoing cast as failed navigation. The simulation
             // decides when movement is legal; no destination is stored in canonical state.
             bool held = player.TelegraphTicks > 0 || player.Statuses.Any(s => s.RemainingTicks > 0 && s.Id is "Rooted" or "Frozen" or "Staggered" or "Terrified");
-            if (!held)
+            UpdateWorldAction(player, held);
+            if (!held && _clickMove?.Destination is not null)
             {
                 var occupied = view.Actors.Where(a => a.Id != 1 && a.Health > 0).Select(a => a.Position).ToArray();
                 var direction = _clickMove.NextDirection(player.Position, occupied);
@@ -67,8 +68,9 @@ public partial class Sandbox
 
     private void CancelMouseMovement(bool stop)
     {
-        bool active = _clickMove?.Destination is not null;
+        bool active = _clickMove?.Destination is not null || PendingWorldActionId is not null;
         _clickMove?.Cancel();
+        ClearWorldAction();
         if (_moveDestination is not null) _moveDestination.Visible = false;
         if (stop && active)
         {
@@ -80,6 +82,7 @@ public partial class Sandbox
     private void ResetMouseMovement()
     {
         CancelMouseMovement(false); _clickMove = null;
+        ResetWorldHover();
         if (_navigationNotice is not null) _navigationNotice.Text = "";
         _navigationNoticeAge = 0;
     }
@@ -116,6 +119,13 @@ public partial class Sandbox
     private bool MouseHitsBody(ActorPresentation actor, Vector2 point)
     {
         if (!actor.Root.IsVisibleInTree()) return false;
+        // Reject distant screen positions before inspecting articulated meshes on hover.
+        // This deliberately generous box includes weapon swings and boss silhouettes.
+        float reach = Math.Max(3, actor.Body.Height);
+        var broad = new Aabb(actor.Root.GlobalPosition + new Vector3(-reach, -1, -reach), new(reach * 2, reach * 2 + 1, reach * 2));
+        var screenBounds = new Rect2(_camera.UnprojectPosition(broad.Position), Vector2.Zero);
+        for (int i = 0; i < 8; i++) screenBounds = screenBounds.Expand(_camera.UnprojectPosition(broad.GetEndpoint(i)));
+        if (!screenBounds.HasPoint(point)) return false;
         return Meshes(actor.Body).Any(mesh =>
         {
             if (!mesh.IsVisibleInTree() || mesh.Mesh is null) return false;

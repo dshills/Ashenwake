@@ -16,6 +16,8 @@ public partial class AdventureStage : Node3D
     private Node3D _interactionRoot = null!;
     private BellSanctuaryVisual? _bell;
 
+    public Node3D? GetInteractionVisual(string id) => _points.GetValueOrDefault(id);
+
     public override void _Ready()
     {
         for (Node? parent = GetParent(); parent is not null && _sandbox is null; parent = parent.GetParent())

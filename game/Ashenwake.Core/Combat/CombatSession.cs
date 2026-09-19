@@ -5,6 +5,7 @@ namespace Ashenwake.Core.Combat;
 
 public sealed partial class CombatSession
 {
+    public const int PickupRange = 2200;
     public const int ActorRadius = 280;
     public const int MaxActors = 160;
     public const int MaxSummons = 8;
@@ -182,7 +183,7 @@ public sealed partial class CombatSession
                 int healed = Math.Min(HealingAmount(HasManifestation("manifestation.burning_blood") ? (Purified("fragment.eye_vael") ? 105 : 90) : 120), Player.MaxHealth - Player.Health); Player.Health += healed; Emit("Healed", 1, 1, healed, "potion"); break;
             case CombatCommandKind.Pickup:
                 var loot = _state.Loot.FirstOrDefault(l => l.Id == command.ItemId);
-                if (loot is null || Position.DistanceSquared(Player.Position, loot.Position) > 2200L * 2200 || _state.Inventory.Count >= 512) { Reject(command, "loot_unavailable"); break; }
+                if (loot is null || Position.DistanceSquared(Player.Position, loot.Position) > (long)PickupRange * PickupRange || _state.Inventory.Count >= 512) { Reject(command, "loot_unavailable"); break; }
                 _state.Loot.Remove(loot); _state.Inventory.Add(loot.Item); Emit("LootPickedUp", 1, amount: (int)loot.Id, content: loot.Item.DefinitionId); break;
             case CombatCommandKind.Equip:
                 var item = _state.Inventory.FirstOrDefault(i => i.Id == command.ItemId);

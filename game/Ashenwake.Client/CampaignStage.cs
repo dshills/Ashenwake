@@ -24,6 +24,8 @@ public partial class CampaignStage : Node3D
     private Vector3? _lastTrailPoint;
     public string PresentedEncounter { get; private set; } = "";
     private Sandbox? _sandbox;
+
+    public Node3D? GetInteractionVisual(string id) => _hub.Visible ? _hub.GetInteractionVisual(id) : _markers.GetValueOrDefault(id);
     public override void _Ready()
     {
         _hub = new AdventureStage(); AddChild(_hub); _region = new Node3D(); AddChild(_region);

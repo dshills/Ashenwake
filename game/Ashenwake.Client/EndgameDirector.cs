@@ -89,7 +89,7 @@ public partial class EndgameDirector : Node3D
             else if (OS.GetCmdlineUserArgs().Contains("--continue")) Load();
             else if (!_smoke && !_echoesSmoke && Argument("--discipline=") is null)
             { _classSelection.Visible = true; _classBackdrop.Visible = true; _sandbox.SetPaused(true); _classSelection.GetChild<VBoxContainer>(0).GetChildren().OfType<Button>().First().GrabFocus(); }
-            Notice("F: interact · J: campaign/map · B: expeditions · C or I: character");
+            Notice("Click a person to approach and interact · J: journey · B: expeditions · C or I: character");
             ConfigureExperimentStart();
         }
         catch (Exception ex) { Fail(ex); }
@@ -110,7 +110,7 @@ public partial class EndgameDirector : Node3D
         _campaignHud.ChoiceRequested += (id, value) => Campaign(new(CampaignRuntimeAction.Choose, Id: id, Value: value));
         _campaignHud.ExplorationRequested += id => Campaign(new(CampaignRuntimeAction.BeginExploration, Id: id));
         _campaignHud.LeaveExplorationRequested += () => Campaign(new(CampaignRuntimeAction.LeaveExploration));
-        _campaignHud.InteractionRequested += Interact;
+        _campaignHud.InteractionRequested += id => { UpdatePanelVisibility(); _sandbox.RequestWorldInteraction(id); };
         _campaignHud.ImplantRequested += (slot, id) => Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.InstallFragment, slot, id ?? "")));
         _campaignHud.ManifestationRequested += id => Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.Manifestation, id)));
         _campaignHud.SaveRequested += () => Safely(Save); _campaignHud.LoadRequested += () => Safely(Load);
@@ -182,7 +182,12 @@ public partial class EndgameDirector : Node3D
     private void ReturnHub()
     { if (_session.Combat.View.Endgame is null) Campaign(new(CampaignRuntimeAction.ReturnToHub)); else Apply(new(EndgameRuntimeAction.ReturnToHub)); }
     private void Interact(string id)
-    { if (id == "endgame.gate") { _board.SetOpen(true); return; } if (_session.InHub) Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.Interact, id))); else Campaign(new(CampaignRuntimeAction.TrackClue, Id: id)); }
+    {
+        if (id == "journey.next") { _campaignHud.RequestNextStep(); return; }
+        if (id == "endgame.gate") { _board.SetOpen(true); return; }
+        if (_session.InHub) Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.Interact, id)));
+        else Campaign(new(CampaignRuntimeAction.TrackClue, Id: id));
+    }
     private void Campaign(CampaignRuntimeCommand command) => Apply(new(EndgameRuntimeAction.Campaign, Campaign: command));
     private void Permanent(ProductionCommand command) => Apply(new(EndgameRuntimeAction.Production, Production: command));
     private void Apply(EndgameRuntimeCommand command)
@@ -334,6 +339,12 @@ public partial class EndgameDirector : Node3D
             };
         _sandbox.PresentAuthoredRoom(_session.Room, context, style);
         _effects.Show(combat.Endgame, player.Position, _board.IsOpen);
+        var mouseTargets = _session.Interactions.Select(i => new WorldInteractionTarget(i.ActionId, i.Name, i.Position, i.Range, _stage.GetInteractionVisual(i.ActionId))).ToList();
+        var wayForward = _stage.PresentWayForward(_session.Room, !_session.InHub && combat.Endgame is null && campaign.Campaign.Exploration is null &&
+            _session.EncounterCleared && _campaignHud.CanRequestNextStep, _campaignHud.NextStepLabel);
+        if (wayForward is not null) mouseTargets.Add(wayForward);
+        _sandbox.SetWorldInteractions(mouseTargets, Interact);
+        _sandbox.SetMechanismVisuals(_effects.GetMechanismVisual);
         _sandbox.SetManifestationPresentation(manifestations);
         _sandbox.SetWorldSubtitle(combat.Endgame is null ? $"CAMPAIGN / {_session.Campaign.View.Region.ToUpperInvariant()}" : $"{view.Run?.Kind.ToUpperInvariant()} / {view.Run?.Name.ToUpperInvariant()}");
         UpdatePanelVisibility();

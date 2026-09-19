@@ -73,7 +73,7 @@ public partial class CampaignDirector : Node3D
             _campaign.ChoiceRequested += (choice, outcome) => Apply(() => _session.Choose(choice, outcome));
             _campaign.ExplorationRequested += id => Apply(() => _session.BeginExploration(id));
             _campaign.LeaveExplorationRequested += () => Apply(_session.LeaveExploration);
-            _campaign.InteractionRequested += Interact;
+            _campaign.InteractionRequested += id => _sandbox.RequestWorldInteraction(id);
             _campaign.ImplantRequested += (slot, id) => Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.InstallFragment, slot, id ?? "")));
             _campaign.ManifestationRequested += id => Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.Manifestation, id)));
             _campaign.SaveRequested += () => Safely(Save); _campaign.LoadRequested += () => Safely(Load);
@@ -117,6 +117,7 @@ public partial class CampaignDirector : Node3D
     }
     private void Interact(string id)
     {
+        if (id == "journey.next") { _campaign.RequestNextStep(); return; }
         if (_session.InHub) Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.Interact, id)));
         else Apply(() => _session.TrackClue(id));
     }
@@ -223,6 +224,11 @@ public partial class CampaignDirector : Node3D
             (_session.EncounterCleared || combat.Actors.Any(actor => actor.DefinitionId == "boss.bell_saint" && actor.Health <= 0));
         _stage.Show(snapshot.Campaign, _session.View, _combat.Room, _session.Interactions, manifestations, _session.Production.ProgressionView.HubStage, player.Position, combat.BossPhase, bellDefeated, combat, _session.ActiveEncounterId);
         _sandbox.PresentAuthoredRoom(_session.Room, $"campaign:{_session.ActiveEncounterId}:{snapshot.Campaign.Deaths}", EnvironmentGround.Style(_session.InHub, _session.ActiveEncounterId, snapshot.Campaign.Exploration?.Id, snapshot.Campaign.CurrentAct));
+        var mouseTargets = _session.Interactions.Select(i => new WorldInteractionTarget(i.ActionId, i.Name, i.Position, i.Range, _stage.GetInteractionVisual(i.ActionId))).ToList();
+        var wayForward = _stage.PresentWayForward(_session.Room, !_session.InHub && snapshot.Campaign.Exploration is null &&
+            _session.EncounterCleared && _campaign.CanRequestNextStep, _campaign.NextStepLabel);
+        if (wayForward is not null) mouseTargets.Add(wayForward);
+        _sandbox.SetWorldInteractions(mouseTargets, Interact);
         _sandbox.SetManifestationPresentation(manifestations); _sandbox.SetWorldSubtitle($"CAMPAIGN / {_session.View.Region.ToUpperInvariant()}");
         if (_captureCampaign && DisplayServer.GetName() != "headless" && !_session.InHub &&
             combat.CampaignHazards is { Count: > 0 } && _capturedActs.Add(snapshot.Campaign.CurrentAct))

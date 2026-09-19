@@ -40,6 +40,7 @@ public partial class Sandbox
 
     public override void _ExitTree()
     {
+        ReleaseWorldPointer();
         if (!_releaseEnabled) return;
         CombatAdvanced -= RecordDiagnostics;
         Input.JoyConnectionChanged -= ControllerConnectionChanged;
