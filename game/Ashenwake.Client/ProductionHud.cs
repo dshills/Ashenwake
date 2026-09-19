@@ -88,8 +88,7 @@ public partial class ProductionHud : Control
         var gearColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         gearColumn.AddThemeConstantOverride("separation", 8); _body.AddChild(gearColumn);
         _gearLoadout = new GearLoadout { Visible = false }; gearColumn.AddChild(_gearLoadout);
-        _gearLoadout.CanEquip = (id, slot) => CanChangeGear && _state.Character.Items.FirstOrDefault(i => i.Id == id) is { } item &&
-            Compatible(item, slot) && EquipmentConflict(item, slot).Length == 0;
+        _gearLoadout.EquipBlockedReason = GearRestriction;
         _gearLoadout.InspectRequested += (slot, id) => { _gearSlot = slot; _gearItemId = id; _gearInspecting = true; Rebuild(true); };
         _gearLoadout.EquipRequested += (id, slot) => { _gearSlot = slot; _gearInspecting = false; EquipRequested?.Invoke(id, slot); };
         _gearLoadout.UnequipRequested += slot => { _gearSlot = slot; _gearInspecting = false; UnequipRequested?.Invoke(slot); };
@@ -155,6 +154,7 @@ public partial class ProductionHud : Control
         for (int i = 0; i < interactions.Count; i++) if (interactions[i].Distance <= interactions[i].Range) _rangeMask |= 1 << i;
         _summary.Text = Catalog.Format("production.level", new Dictionary<string, string> { ["level"] = view.Level.ToString(), ["discipline"] = view.Discipline }) +
             $"\nXP {view.Experience:N0}/{view.NextLevelExperience:N0}  ·  " + Catalog.Format("production.materials", count: view.Materials);
+        _gearLoadout.SynchronizeSearchPause();
         Rebuild(false);
     }
     private void Rebuild(bool force)
@@ -186,7 +186,7 @@ public partial class ProductionHud : Control
         var viewport = GetViewportRect().Size;
         float height = Math.Min(gear ? 690 : showPreview && compact ? 660 : showPreview ? 560 : 419, viewport.Y - 44);
         float bodyHeight = Math.Max(100, height - 140);
-        float scrollHeight = gear ? Math.Clamp(bodyHeight - 310, 85, 150) : compact && showPreview ? Math.Min(190, bodyHeight * .4f) : Math.Min(319, bodyHeight);
+        float scrollHeight = gear ? Math.Clamp(bodyHeight - 360, 85, 150) : compact && showPreview ? Math.Min(190, bodyHeight * .4f) : Math.Min(319, bodyHeight);
         _scroll.CustomMinimumSize = new(gear ? 540 : compact ? 300 : 429, scrollHeight);
         _preview.SetCompact(compact, compact && showPreview ? bodyHeight - scrollHeight - 16 : bodyHeight);
         // Lift the panel at shorter viewport heights instead of letting the preview's minimum size push Close below the screen.
@@ -232,6 +232,7 @@ public partial class ProductionHud : Control
 
     private void Gear()
     {
+        _gearLoadout.ComparisonSlot = _gearSlot;
         _gearLoadout.SetView(_state, _content, _revision, CanChangeGear);
         _rows.AddChild(Label(CanChangeGear ? "Drag inventory gear onto a compatible slot. Drag equipped gear back to inventory to unequip. Click to compare below." :
             "Inspect your gear anywhere. Visit Torren in Greyhaven to equip or unequip, including by dragging.", 12));
@@ -312,12 +313,26 @@ public partial class ProductionHud : Control
 
     private bool CanChangeGear => At("service.torren") && _combat.Actors.Any(a => a.Id == 1 && a.Health > 0);
 
+    private string GearRestriction(long id, EquipmentSlot slot)
+    {
+        if (!_combat.Actors.Any(a => a.Id == 1 && a.Health > 0)) return "Cannot change equipment while defeated.";
+        if (!At("service.torren")) return "Visit Torren in Greyhaven to change equipment.";
+        var item = _state.Character.Items.FirstOrDefault(i => i.Id == id);
+        if (item is null) return "This item is no longer available.";
+        var definition = _content.Items.Single(d => d.Id == item.DefinitionId);
+        string slotName = slot switch { EquipmentSlot.MainHand => "weapon", EquipmentSlot.OffHand => "off-hand", EquipmentSlot.Ring1 or EquipmentSlot.Ring2 => "ring", _ => slot.ToString().ToLowerInvariant() };
+        if (!definition.Slots.Contains(slot)) return $"This item does not fit the {slotName} slot.";
+        if (definition.Disciplines.Length > 0 && !definition.Disciplines.Contains(_view.Discipline))
+            return $"Requires {string.Join(" / ", definition.Disciplines)}. Your discipline is {_view.Discipline}.";
+        return EquipmentConflict(item, slot);
+    }
+
     private string EquipmentConflict(PermanentItem? candidate, EquipmentSlot? target = null)
     {
         if (candidate is null) return "";
         var definition = _content.Items.Single(i => i.Id == candidate.DefinitionId);
         if (definition.Hands == 2 && _state.Character.Equipment.ContainsKey(EquipmentSlot.OffHand))
-            return "This weapon needs both hands. Unequip the off hand first; the preview shows the required empty off hand.";
+            return "This weapon needs both hands. Unequip the off hand first.";
         if ((target ?? _gearSlot) == EquipmentSlot.OffHand && _state.Character.Equipment.TryGetValue(EquipmentSlot.MainHand, out long mainId))
         {
             var main = _state.Character.Items.Single(i => i.Id == mainId);

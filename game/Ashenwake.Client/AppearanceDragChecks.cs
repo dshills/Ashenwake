@@ -23,6 +23,7 @@ public partial class AppearanceSmoke
         var slots = EquipmentCardIds();
         Check("drag_board_has_twelve_cached_equipment_slots", slots.Count == 12);
         CheckInventoryProjection("initial");
+        await InventoryPresentationChecks();
         string inspectionHash = _session.StateHash, inspectionWorld = _sandbox.CurrentAppearance.Key;
         int inspectionEquips = _equips, inspectionUnequips = _unequips;
         await ClickGearControl(Find<Control>("GearInventoryItem" + _initialMainHand));
@@ -41,7 +42,7 @@ public partial class AppearanceSmoke
                 !HasEquipmentModule(Find<CharacterPreview>("CharacterPreview"), slot) && ModelsAgree());
             CheckOwnedItems(inventory, "remove_" + slot.ToString().ToLowerInvariant());
             CheckInventoryProjection("remove_" + slot.ToString().ToLowerInvariant());
-            if (slot == EquipmentSlot.Head) await Capture("drag-helmet-in-backpack.png");
+            if (slot == EquipmentSlot.Head) { InventoryEmptySlotCheck(); await Capture("drag-helmet-in-backpack.png"); }
 
             await DragCard("GearInventoryItem" + id, "GearEquipment" + slot);
             Check("drag_reequips_" + slot.ToString().ToLowerInvariant() + "_once", EquipmentId(slot) == id && _equips == equips + 1 && _unequips == unequips + 1);
@@ -119,12 +120,17 @@ public partial class AppearanceSmoke
             var fixtureCampaign = CampaignContent.Parse(Read("campaign-phase4"));
             string fixture = Read("phase4-campaign-complete");
             _session = CampaignRuntimeSaveStore.Read(fixtureCombat, fixtureAdventure, fixtureProgression, fixtureCampaign, fixture).Production;
+            long staff = _session.Capture().Progression.Character.Items.First(i => i.DefinitionId == "item.greatstaff").Id;
+            WalkTo("service.torren"); Refresh(); _hud.PresentInteraction("ServiceOpened:service.torren"); await Frames();
+            Check("drag_wrong_discipline_uses_earned_staff_before_retrain", _session.ProgressionView.Discipline == "Vanguard");
+            await RejectDrag("GearInventoryItem" + staff, "GearEquipmentMainHand", "wrong_discipline");
+            _hud.Toggle();
             WalkTo("service.mara"); Require(_session.Retrain("Arcanist")); _commands++;
             WalkTo("service.torren"); Refresh(); _hud.PresentInteraction("ServiceOpened:service.torren"); await Frames();
             var inventory = OwnedItemIds();
-            long staff = _session.Capture().Progression.Character.Items.First(i => i.DefinitionId == "item.greatstaff").Id;
             long offHand = EquipmentId(EquipmentSlot.OffHand), mainHand = EquipmentId(EquipmentSlot.MainHand);
             Check("drag_two_handed_fixture_is_a_legitimate_arcanist", _session.ProgressionView.Discipline == "Arcanist" && offHand > 0 && staff > 0);
+            await ArchivedInventoryChecks();
             await RejectDrag("GearInventoryItem" + staff, "GearEquipmentMainHand", "two_handed_with_offhand");
             await DragCard("GearEquipmentOffHand", "GearBackpack");
             await DragCard("GearInventoryItem" + staff, "GearEquipmentMainHand");
@@ -169,8 +175,9 @@ public partial class AppearanceSmoke
     {
         string hash = _session.StateHash;
         int equips = _equips, unequips = _unequips, operations = _session.CaptureReplay().Frames.Length;
-        await DragCard(sourceName, targetName, requireStarted: false);
+        await DragCard(sourceName, targetName);
         Check("drag_rejects_" + name + "_without_transaction", _session.StateHash == hash && _session.CaptureReplay().Frames.Length == operations && _equips == equips && _unequips == unequips);
+        await InventoryRejectedDropFeedback(name, targetName);
     }
 
     private async Task CancelDrag(string sourceName, bool escape, string name)
@@ -332,7 +339,7 @@ public partial class AppearanceSmoke
     {
         var state = _session.Capture().Progression.Character;
         var expected = state.Items.Where(i => !state.Equipment.Values.Contains(i.Id)).Select(i => "GearInventoryItem" + i.Id).ToHashSet();
-        var actual = Descendants(Find<Control>("GearLoadout")).Where(n => n.Name.ToString().StartsWith("GearInventoryItem", StringComparison.Ordinal)).Select(n => n.Name.ToString()).ToArray();
+        var actual = Descendants(Find<Control>("GearLoadout")).OfType<Control>().Where(n => n.Visible && n.Name.ToString().StartsWith("GearInventoryItem", StringComparison.Ordinal)).Select(n => n.Name.ToString()).ToArray();
         Check("drag_backpack_contains_only_unequipped_items_" + suffix, expected.SetEquals(actual) && actual.Length == expected.Count);
     }
 }

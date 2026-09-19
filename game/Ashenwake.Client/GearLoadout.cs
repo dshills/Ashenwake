@@ -9,7 +9,8 @@ public partial class GearLoadout : HBoxContainer
     public event Action<EquipmentSlot, long>? InspectRequested;
     public event Action<long, EquipmentSlot>? EquipRequested;
     public event Action<EquipmentSlot>? UnequipRequested;
-    public Func<long, EquipmentSlot, bool>? CanEquip { get; set; }
+    public Func<long, EquipmentSlot, string>? EquipBlockedReason { get; set; }
+    public EquipmentSlot ComparisonSlot { get; set; } = EquipmentSlot.MainHand;
     private readonly Dictionary<EquipmentSlot, GearDragCard> _slots = [];
     private readonly Dictionary<long, GearDragCard> _items = [];
     private ProgressionSnapshot? _state;
@@ -25,7 +26,7 @@ public partial class GearLoadout : HBoxContainer
 
     public override void _Ready()
     {
-        Name = "GearLoadout"; CustomMinimumSize = new(540, 290);
+        Name = "GearLoadout"; CustomMinimumSize = new(540, 340);
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
         AddThemeConstantOverride("separation", 12);
         var equipment = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -40,15 +41,19 @@ public partial class GearLoadout : HBoxContainer
         foreach (var bodySlot in bodySlots)
         {
             if (bodySlot is not { } slot) { grid.AddChild(new Control { MouseFilter = MouseFilterEnum.Ignore }); continue; }
-            var card = Card("GearEquipment" + slot); card.CustomMinimumSize = new(76, 44);
+            var card = Card("GearEquipment" + slot); card.CustomMinimumSize = new(76, 56);
             card.DragDataRequested = () => DragData(_state?.Character.Equipment.GetValueOrDefault(slot) ?? 0, slot.ToString());
             card.CanReceive = data => CanEquipDrop(data, slot);
             card.Receive = data => EquipDrop(data, slot);
+            WirePresentation(card, () => _state?.Character.Items.FirstOrDefault(i => i.Id == _state.Character.Equipment.GetValueOrDefault(slot)), () => slot);
+            card.DragHover = data => PresentDropReason(card, DropReason(data, slot));
             card.Pressed += () => InspectRequested?.Invoke(slot, _state?.Character.Equipment.GetValueOrDefault(slot) ?? 0);
             _slots.Add(slot, card); grid.AddChild(card);
         }
-        var bag = Card("GearBackpack"); bag.CustomMinimumSize = new(268, 290);
+        var bag = Card("GearBackpack"); bag.CustomMinimumSize = new(268, 340);
         bag.CanReceive = CanUnequipDrop; bag.Receive = UnequipDrop;
+        bag.DragHover = data => PresentDropReason(bag, DropReason(data, null));
+        bag.MouseExited += () => ClearFeedbackFrom(bag);
         bag.TooltipText = "Drop an equipped item anywhere in this inventory panel to unequip it. Nothing is discarded.";
         AddChild(bag);
         var contents = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
@@ -56,6 +61,7 @@ public partial class GearLoadout : HBoxContainer
         contents.OffsetLeft = 7; contents.OffsetRight = -7; contents.OffsetTop = 5; contents.OffsetBottom = -5;
         _inventoryTitle = Caption("INVENTORY · drop here to unequip");
         _inventoryTitle.CustomMinimumSize = new(0, 28); contents.AddChild(_inventoryTitle);
+        BuildFilters(contents);
         var scroll = new ScrollContainer
         {
             Name = "GearBackpackScroll",
@@ -67,11 +73,12 @@ public partial class GearLoadout : HBoxContainer
         contents.AddChild(scroll);
         _inventory = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Pass };
         _inventory.AddThemeConstantOverride("h_separation", 5); _inventory.AddThemeConstantOverride("v_separation", 5); scroll.AddChild(_inventory);
-        _empty = Caption("Your backpack is empty.\nDrag equipped gear here to remove it.");
+        _empty = Caption("Your backpack is empty.\nDrag equipped gear here to remove it."); _empty.Name = "GearEmptyState";
         contents.AddChild(_empty);
+        BuildOverlays();
         for (Node? ancestor = GetParent(); ancestor is not null; ancestor = ancestor.GetParent())
             if (ancestor is Sandbox sandbox) { _sandbox = sandbox; break; }
-        VisibilityChanged += () => { if (!IsVisibleInTree()) CancelDrag(); };
+        VisibilityChanged += () => { if (!IsVisibleInTree()) { CancelDrag(); _search.ReleaseFocus(); ReleaseSearchPause(); } };
     }
 
     public void SetView(ProgressionSnapshot state, ProgressionDefinition content, long revision, bool canEdit)
@@ -89,11 +96,14 @@ public partial class GearLoadout : HBoxContainer
     public void CancelDrag()
     {
         _epoch++;
+        HidePresentation();
         if (IsInsideTree() && Owns(GetViewport().GuiGetDragData())) GetViewport().GuiCancelDrag();
     }
 
     public override void _Input(InputEvent input)
     {
+        if (input is InputEventMouseMotion motion) _pointer = motion.Position;
+        else if (input is InputEventMouseButton button) _pointer = button.Position;
         if (!Owns(GetViewport().GuiGetDragData())) return;
         if (input.IsActionPressed("ui_cancel")) { CancelDrag(); GetViewport().SetInputAsHandled(); }
         else if (input is InputEventKey or InputEventJoypadButton)
@@ -121,7 +131,7 @@ public partial class GearLoadout : HBoxContainer
     {
         if (what == NotificationApplicationFocusOut && IsInsideTree()) CancelDrag();
         if (what == NotificationDragBegin && IsInsideTree() && Owns(GetViewport().GuiGetDragData()))
-        { _dragPaused = true; _sandbox?.SetModalPaused("equipment-drag", true); }
+        { HidePresentation(); _dragPaused = true; _sandbox?.SetModalPaused("equipment-drag", true); }
         if (what == NotificationDragEnd)
         {
             ReleaseDragPause();
@@ -129,7 +139,7 @@ public partial class GearLoadout : HBoxContainer
         }
     }
 
-    public override void _ExitTree() { CancelDrag(); ReleaseDragPause(); }
+    public override void _ExitTree() { CancelDrag(); ReleaseDragPause(); ReleaseSearchPause(); }
     private void ReleaseDragPause()
     {
         if (!_dragPaused) return;
@@ -139,7 +149,7 @@ public partial class GearLoadout : HBoxContainer
 
     private Variant DragData(long id, string from)
     {
-        if (!_canEdit || id == 0 || _state is null || !_state.Character.Items.Any(i => i.Id == id)) return default;
+        if (id == 0 || _state is null || !_state.Character.Items.Any(i => i.Id == id)) return default;
         return new Godot.Collections.Dictionary
         {
             ["owner"] = GetInstanceId().ToString(),
@@ -155,7 +165,7 @@ public partial class GearLoadout : HBoxContainer
     private bool ReadDrag(Variant data, out long id, out EquipmentSlot? from)
     {
         id = 0; from = null;
-        if (!IsVisibleInTree() || !_canEdit || _state is null || !Owns(data)) return false;
+        if (!IsVisibleInTree() || _state is null || !Owns(data)) return false;
         var values = data.AsGodotDictionary();
         if (!values.TryGetValue("epoch", out var epoch) || epoch.VariantType != Variant.Type.Int || epoch.AsInt64() != _epoch ||
             !values.TryGetValue("item", out var item) || item.VariantType != Variant.Type.Int ||
@@ -167,9 +177,8 @@ public partial class GearLoadout : HBoxContainer
         from = slot; return true;
     }
 
-    private bool CanEquipDrop(Variant data, EquipmentSlot slot) => ReadDrag(data, out long id, out _) &&
-        _state!.Character.Equipment.GetValueOrDefault(slot) != id && CanEquip?.Invoke(id, slot) == true;
-    private bool CanUnequipDrop(Variant data) => ReadDrag(data, out _, out var from) && from is not null;
+    private bool CanEquipDrop(Variant data, EquipmentSlot slot) => Owns(data) && DropReason(data, slot).Length == 0;
+    private bool CanUnequipDrop(Variant data) => Owns(data) && DropReason(data, null).Length == 0;
     private void EquipDrop(Variant data, EquipmentSlot slot)
     {
         if (!CanEquipDrop(data, slot) || !ReadDrag(data, out long id, out _)) return;
@@ -177,7 +186,7 @@ public partial class GearLoadout : HBoxContainer
     }
     private void UnequipDrop(Variant data)
     {
-        if (!ReadDrag(data, out _, out var from) || from is null) return;
+        if (!CanUnequipDrop(data) || !ReadDrag(data, out _, out var from) || from is null) return;
         _epoch++; UnequipRequested?.Invoke(from.Value);
     }
 
@@ -185,13 +194,14 @@ public partial class GearLoadout : HBoxContainer
     {
         if (!_dirty || _state is null || !IsInsideTree() || IsQueuedForDeletion()) return;
         _dirty = false;
+        HideComparison();
         foreach (var (slot, card) in _slots)
         {
             var item = _state.Character.Items.FirstOrDefault(i => i.Id == _state.Character.Equipment.GetValueOrDefault(slot));
             card.Text = SlotName(slot) + "\n" + (item is null ? "Empty" : ItemName(item));
             card.DragLabel = SlotName(slot) + " · " + (item is null ? "Empty" : ItemName(item));
-            card.TooltipText = item is null ? "Drop compatible gear here." : ItemTip(item) + "\nDrag to inventory to unequip; click to inspect.";
-            card.AddThemeColorOverride("font_color", item is null ? new("7e939d") : RarityColor(item.Rarity));
+            card.TooltipText = item is null ? "Empty " + SlotName(slot) + " slot · drop compatible gear here." : "";
+            card.SetItemVisual(item?.DefinitionId ?? "", slot, _state.Character.Discipline, item?.Rarity);
         }
         var backpack = _state.Character.Items.Where(i => !_state.Character.Equipment.Values.Contains(i.Id)).OrderBy(i => i.Id).ToArray();
         var ids = backpack.Select(i => i.Id).ToHashSet();
@@ -203,31 +213,27 @@ public partial class GearLoadout : HBoxContainer
             if (!_items.TryGetValue(item.Id, out var card))
             {
                 long id = item.Id;
-                card = Card("GearInventoryItem" + id); card.CustomMinimumSize = new(114, 57); card.MouseForcePassScrollEvents = true;
+                card = Card("GearInventoryItem" + id); card.CustomMinimumSize = new(114, 64); card.MouseForcePassScrollEvents = true;
                 card.DragDataRequested = () => DragData(id, "");
                 card.CanReceive = CanUnequipDrop; card.Receive = UnequipDrop;
+                card.DragHover = data => PresentDropReason(card, DropReason(data, null));
+                WirePresentation(card, () => _state.Character.Items.FirstOrDefault(i => i.Id == id), () => PreferredSlot(_state.Character.Items.Single(i => i.Id == id)));
                 card.Pressed += () =>
                 {
                     var owned = _state.Character.Items.FirstOrDefault(i => i.Id == id);
-                    if (owned is not null) InspectRequested?.Invoke(_content.Items.Single(d => d.Id == owned.DefinitionId).Slots[0], id);
+                    if (owned is not null) InspectRequested?.Invoke(PreferredSlot(owned), id);
                 };
                 _items.Add(id, card); _inventory.AddChild(card);
             }
-            _inventory.MoveChild(card, index);
             card.Text = ItemName(item) + "\n" + item.Rarity; card.DragLabel = card.Text;
-            card.TooltipText = ItemTip(item) + "\nDrag onto a compatible equipment slot; click to compare.";
-            card.AddThemeColorOverride("font_color", RarityColor(item.Rarity));
+            card.TooltipText = "";
+            card.SetItemVisual(item.DefinitionId, _content.Items.Single(d => d.Id == item.DefinitionId).Slots[0], _state.Character.Discipline, item.Rarity);
         }
-        _empty.Visible = backpack.Length == 0;
-        _inventoryTitle.Text = $"INVENTORY · {backpack.Length} {(backpack.Length == 1 ? "item" : "items")} · drop to unequip";
+        ApplyProjection();
     }
 
-    private string ItemTip(PermanentItem item) => $"{ItemName(item)} · {item.Rarity} · #{item.Id}\n" +
-        string.Join(", ", _content.Items.Single(d => d.Id == item.DefinitionId).Slots.Select(SlotName)) +
-        (_canEdit ? "" : "\nVisit Torren in Greyhaven to change equipment.");
     private static string ItemName(PermanentItem item) => System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(item.DefinitionId.Split('.').Last().Replace('_', ' '));
     private static string SlotName(EquipmentSlot slot) => slot switch { EquipmentSlot.MainHand => "Weapon", EquipmentSlot.OffHand => "Off hand", EquipmentSlot.Ring1 => "Ring 1", EquipmentSlot.Ring2 => "Ring 2", _ => slot.ToString() };
-    private static Color RarityColor(ItemRarity rarity) => rarity switch { ItemRarity.Godwrought => new("efbf78"), ItemRarity.Legendary => new("e9a38c"), ItemRarity.Rare => new("c4abeb"), ItemRarity.Tempered => new("83d6c5"), _ => new("d3dfe5") };
     private static Label Caption(string text)
     {
         var label = new Label { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, MouseFilter = MouseFilterEnum.Ignore };

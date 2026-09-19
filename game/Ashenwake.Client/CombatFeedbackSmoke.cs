@@ -38,6 +38,7 @@ public partial class CombatFeedbackSmoke : Node3D
             await HeroGallery();
             await MonsterGallery();
             await BellGallery();
+            await ReleaseGallery();
             Finish(true, "");
         }
         catch (Exception ex) { GD.PushError(ex.ToString()); Finish(false, ex.Message); }
@@ -281,6 +282,17 @@ public partial class CombatFeedbackSmoke : Node3D
         var image = GetViewport().GetTexture().GetImage();
         Check("capture_" + filename, image.GetWidth() > 0 && image.GetHeight() > 0 && image.SavePng(Path.Combine(_output, filename)) == Error.Ok);
         _captures.Add(filename);
+    }
+    private async Task ReleaseGallery()
+    {
+        // Release diagnostic meshes while Godot is still processing frames. Otherwise
+        // Mono can finalize the short-lived galleries during native renderer shutdown.
+        foreach (var child in GetChildren()) child.QueueFree();
+        _gallery = null!; _camera = null!; _heading = null!; _caption = null!;
+        for (int i = 0; i < 2; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        GC.Collect();
+        // Let native deferred disposal run without blocking the engine's main thread.
+        for (int i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
     }
     private static void Advance(CharacterVisual visual, double seconds, bool paused = false, bool windup = false, string state = "")
     { for (int i = 0; i < (int)Math.Ceiling(seconds * 60); i++) visual.Animate(1.0 / 60, Vector3.Zero, windup, state, paused, new Vector3(.22f, 0, -1)); }

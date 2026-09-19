@@ -1,3 +1,4 @@
+using Ashenwake.Core.Progression;
 using Godot;
 
 namespace Ashenwake.Client;
@@ -8,9 +9,50 @@ public partial class GearDragCard : Button
     public Func<Variant>? DragDataRequested { get; set; }
     public Func<Variant, bool>? CanReceive { get; set; }
     public Action<Variant>? Receive { get; set; }
+    public Action<Variant>? DragHover { get; set; }
     public string DragLabel { get; set; } = "";
     private Color _normalModulate;
     private bool _dragHighlighted;
+    private GearItemIcon? _icon;
+    private string _visualKey = "";
+
+    public void SetItemVisual(string definitionId, EquipmentSlot slot, string discipline, ItemRarity? rarity)
+    {
+        string key = $"{definitionId}/{slot}/{discipline}/{rarity}";
+        if (_visualKey == key) return;
+        _visualKey = key;
+        if (_icon is null)
+        {
+            _icon = new GearItemIcon { Name = "GearItemIcon", MouseFilter = MouseFilterEnum.Ignore };
+            AddChild(_icon); _icon.AnchorTop = .5f; _icon.AnchorBottom = .5f;
+            _icon.OffsetLeft = 5; _icon.OffsetRight = 37; _icon.OffsetTop = -16; _icon.OffsetBottom = 16;
+        }
+        _icon.Configure(definitionId, slot, discipline, rarity);
+        Color color = rarity is null ? new("607580") : LootVisual.RarityColor(rarity.ToString()!);
+        AddThemeColorOverride("font_color", rarity is null ? new("92a4ad") : color.Lightened(.15f));
+        var normal = new StyleBoxFlat
+        {
+            BgColor = new Color("14232c").Lerp(color, .06f),
+            BorderColor = color.Darkened(.28f),
+            BorderWidthLeft = 2,
+            BorderWidthRight = 1,
+            BorderWidthTop = 1,
+            BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 4,
+            CornerRadiusTopRight = 4,
+            CornerRadiusBottomLeft = 4,
+            CornerRadiusBottomRight = 4,
+            ContentMarginLeft = 41,
+            ContentMarginRight = 5,
+            ContentMarginTop = 4,
+            ContentMarginBottom = 4
+        };
+        AddThemeStyleboxOverride("normal", normal);
+        var hover = (StyleBoxFlat)normal.Duplicate(); hover.BorderColor = color.Lightened(.35f); hover.BgColor = normal.BgColor.Lightened(.08f);
+        AddThemeStyleboxOverride("hover", hover);
+        var pressed = (StyleBoxFlat)normal.Duplicate(); pressed.BgColor = normal.BgColor.Lightened(.14f);
+        AddThemeStyleboxOverride("pressed", pressed);
+    }
 
     public override Variant _GetDragData(Vector2 atPosition)
     {
@@ -61,7 +103,11 @@ public partial class GearDragCard : Button
     }
 
     public override bool _CanDropData(Vector2 atPosition, Variant data)
-        => CanUseCard() && data.VariantType != Variant.Type.Nil && CanReceive?.Invoke(data) == true;
+    {
+        if (!CanUseCard() || data.VariantType == Variant.Type.Nil) return false;
+        DragHover?.Invoke(data);
+        return CanReceive?.Invoke(data) == true;
+    }
 
     public override void _DropData(Vector2 atPosition, Variant data)
     {
@@ -76,7 +122,7 @@ public partial class GearDragCard : Button
         {
             RestoreDragColor();
             Variant data = GetViewport().GuiGetDragData();
-            if (!_CanDropData(Vector2.Zero, data) || !CanUseCard()) return;
+            if (CanReceive?.Invoke(data) != true || !CanUseCard()) return;
             _normalModulate = SelfModulate;
             _dragHighlighted = true;
             SelfModulate = _normalModulate.Lerp(new Color("a6efcd"), .65f);
