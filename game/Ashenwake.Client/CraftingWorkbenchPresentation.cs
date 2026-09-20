@@ -37,7 +37,7 @@ public partial class CraftingWorkbench
         }
         else if (current is not null)
         {
-            Line($"{Readable(current.DefinitionId)} · {current.Rarity} · #{current.Id}", LootVisual.RarityColor(current.Rarity.ToString()), 13);
+            Line($"{EquipmentNames.For(current.DefinitionId)} · {current.Rarity} · #{current.Id}", LootVisual.RarityColor(current.Rarity.ToString()), 13);
             Line("Item totals include base values and rolled affixes.", PreviewMuted);
             foreach (var stat in ItemStatRows(current, preview.Success ? projected : null))
                 Line(stat.Text, stat.Delta is null ? PreviewNeutral : ChangeColor(stat.Delta.Value));
@@ -106,7 +106,7 @@ public partial class CraftingWorkbench
         var previous = before.Items.ToDictionary(item => item.Id);
         var current = after.Items.ToDictionary(item => item.Id);
         foreach (var item in before.Items.Where(item => !current.ContainsKey(item.Id)))
-            changes.Add($"Destroyed {Readable(item.DefinitionId)} #{item.Id}.");
+            changes.Add($"Destroyed {EquipmentNames.For(item.DefinitionId)} #{item.Id}.");
         foreach (var slot in before.Equipment.Where(pair => !after.Equipment.TryGetValue(pair.Key, out long id) || id != pair.Value))
             changes.Add("Equipment removed: " + SlotLabel(slot.Key) + ".");
         foreach (string property in after.PropertyLibrary.Except(before.PropertyLibrary, StringComparer.Ordinal))
@@ -115,7 +115,7 @@ public partial class CraftingWorkbench
         {
             if (!previous.TryGetValue(item.Id, out var old))
             {
-                changes.Add($"Added {Readable(item.DefinitionId)} #{item.Id}.");
+                changes.Add($"Added {EquipmentNames.For(item.DefinitionId)} #{item.Id}.");
                 continue;
             }
             foreach (var stat in ItemStatRows(old, item).Where(row => row.Delta is not (null or 0))) changes.Add(stat.Text + ".");

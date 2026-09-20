@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Ashenwake.Core.Authoring;
 using Ashenwake.Core.Combat;
 using Ashenwake.Core.Content;
 using Ashenwake.Core.Serialization;
@@ -14,7 +15,13 @@ internal static class SandboxCommands
         if (args[1] is "validate" or "compile")
         {
             var session = CombatSession.Create(content);
-            if (args[1] == "compile") AtomicFile.Write("game/Ashenwake.Client/combat.json", content);
+            if (args[1] == "compile")
+            {
+                string names = File.ReadAllText("content/text.en.json");
+                TextCatalog.Parse(names).RequireKeys(CombatContent.Parse(content).Items.Select(item => "equipment." + item.Id[5..]));
+                AtomicFile.Write("game/Ashenwake.Client/combat.json", content);
+                AtomicFile.Write("game/Ashenwake.Client/text.en.json", names);
+            }
             Console.WriteLine(JsonData.Write(new { kind = "SandboxContentValidated", session.View.ContentVersion, session.Capture().ContentHash }));
             return 0;
         }

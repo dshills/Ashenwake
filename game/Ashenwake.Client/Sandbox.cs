@@ -517,7 +517,7 @@ public partial class Sandbox : Node3D
         foreach (var item in _view.Inventory)
         {
             bool equipped = _view.Equipment.TryGetValue(item.Slot, out long selected) && selected == item.Id;
-            var button = AddButton(_inventoryRows, $"{(equipped ? "◆ " : "")}#{item.Id} {item.Name} · {item.Rarity}", () =>
+            var button = AddButton(_inventoryRows, $"{(equipped ? "◆ " : "")}#{item.Id} {EquipmentNames.For(item)} · {item.Rarity}", () =>
             { CompareItem(item); ApplyWhilePaused(new(CombatCommandKind.Equip, ItemId: item.Id)); });
             button.AddThemeFontSizeOverride("font_size", 12);
             button.MouseEntered += () => CompareItem(item);
@@ -546,7 +546,7 @@ public partial class Sandbox : Node3D
     private void CompareItem(CombatItem item)
     {
         var current = _view.Equipment.TryGetValue(item.Slot, out long id) ? _view.Inventory.FirstOrDefault(i => i.Id == id) : null;
-        _comparison.Text = $"{item.Slot} · {item.Name} · click to equip\n" +
+        _comparison.Text = $"{item.Slot} · {EquipmentNames.For(item)} · click to equip\n" +
             $"Damage {item.Damage} ({item.Damage - (current?.Damage ?? 0):+0;-0;0})  Armor {item.Armor} ({item.Armor - (current?.Armor ?? 0):+0;-0;0})\n" +
             $"Critical {item.CriticalBasisPoints / 100d:F1}% ({(item.CriticalBasisPoints - (current?.CriticalBasisPoints ?? 0)) / 100d:+0.0;-0.0;0.0}%)";
     }

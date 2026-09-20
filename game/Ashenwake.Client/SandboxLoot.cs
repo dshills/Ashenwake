@@ -63,7 +63,7 @@ public partial class Sandbox
         foreach (var child in _lootRows.GetChildren()) { _lootRows.RemoveChild(child); child.QueueFree(); }
         foreach (var drop in drops)
         {
-            var button = AddButton(_lootRows, $"{drop.Item.Name} · {drop.Item.Rarity} · {Math.Sqrt(DistanceSquared(drop.Position, player.Position)) * .001:F1}m", () => { _inspectedLoot = drop.Id; _lootSignature = ""; SynchronizeLootVisuals(); RefreshLootInspector(); });
+            var button = AddButton(_lootRows, $"{EquipmentNames.For(drop.Item)} · {drop.Item.Rarity} · {Math.Sqrt(DistanceSquared(drop.Position, player.Position)) * .001:F1}m", () => { _inspectedLoot = drop.Id; _lootSignature = ""; SynchronizeLootVisuals(); RefreshLootInspector(); });
             button.AddThemeFontSizeOverride("font_size", 12);
         }
         if (drops.Length == 0) _lootRows.AddChild(TextLabel(_view.Loot.Count > 0 ? "Your filter hides these drops. Enable Inspect all drops to reveal them." : "No ground loot in this arena.", 12));
@@ -71,6 +71,6 @@ public partial class Sandbox
         if (selected is null) { _lootDescription.Text = $"{_view.Loot.Count} ground drops. Nothing is destroyed by the filter."; return; }
         var item = selected.Item;
         _view.Equipment.TryGetValue(item.Slot, out long equippedId); var equipped = _view.Inventory.FirstOrDefault(i => i.Id == equippedId);
-        _lootDescription.Text = $"{item.Name} · {item.Slot}\nDamage {item.Damage} ({item.Damage - (equipped?.Damage ?? 0):+0;-0;0}) · Armor {item.Armor} ({item.Armor - (equipped?.Armor ?? 0):+0;-0;0})\nCritical {item.CriticalBasisPoints / 100d:F1}% ({(item.CriticalBasisPoints - (equipped?.CriticalBasisPoints ?? 0)) / 100d:+0.0;-0.0;0.0}%)";
+        _lootDescription.Text = $"{EquipmentNames.For(item)} · {item.Slot}\nDamage {item.Damage} ({item.Damage - (equipped?.Damage ?? 0):+0;-0;0}) · Armor {item.Armor} ({item.Armor - (equipped?.Armor ?? 0):+0;-0;0})\nCritical {item.CriticalBasisPoints / 100d:F1}% ({(item.CriticalBasisPoints - (equipped?.CriticalBasisPoints ?? 0)) / 100d:+0.0;-0.0;0.0}%)";
     }
 }

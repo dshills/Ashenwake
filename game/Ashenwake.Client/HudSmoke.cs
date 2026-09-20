@@ -375,7 +375,7 @@ public partial class HudSmoke : Node3D
         foreach (var picked in events.Where(e => e.Kind == "LootPickedUp" && e.ActorId == 1))
         {
             var item = _session.Combat.View.Inventory.Single(i => i.Id == picked.Amount);
-            if (!notices.Any(n => n.Kind == "Loot" && n.DefinitionId == item.DefinitionId && n.Rarity == item.Rarity && n.Title == item.Name))
+            if (!notices.Any(n => n.Kind == "Loot" && n.DefinitionId == item.DefinitionId && n.Rarity == item.Rarity && n.Title == EquipmentNames.For(item)))
                 throw new InvalidDataException("Actual loot pickup lacks its item name and rarity notice.");
         }
     }

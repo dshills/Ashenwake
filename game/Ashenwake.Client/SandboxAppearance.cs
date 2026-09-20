@@ -67,7 +67,7 @@ public partial class Sandbox
         if (nearest is not null)
         {
             _nearbyLootLabel.Position = PositionOf(nearest.Position.X, nearest.Position.Z) + Vector3.Up * .8f;
-            _nearbyLootLabel.Text = $"{nearest.Item.Name} · {nearest.Item.Rarity}";
+            _nearbyLootLabel.Text = $"{EquipmentNames.For(nearest.Item)} · {nearest.Item.Rarity}";
             _nearbyLootLabel.Modulate = LootVisual.RarityColor(nearest.Item.Rarity);
         }
     }

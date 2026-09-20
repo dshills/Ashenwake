@@ -63,7 +63,7 @@ public partial class Sandbox
         if (action.Kind == WorldActionKind.Loot)
         {
             var drop = _session.View.Loot.FirstOrDefault(l => l.Id == action.ItemId && IsLootVisible(l));
-            return drop is null ? null : new(action, drop.Item.Name, drop.Position, CombatSession.PickupRange, _lootVisuals.GetValueOrDefault(drop.Id));
+            return drop is null ? null : new(action, EquipmentNames.For(drop.Item), drop.Position, CombatSession.PickupRange, _lootVisuals.GetValueOrDefault(drop.Id));
         }
         var mechanism = _session.View.Endgame?.Mechanisms.FirstOrDefault(m => m.Id == action.MechanismId && m.Available);
         return mechanism is null ? null : new(action, mechanism.Prompt, mechanism.Position, mechanism.Radius, _mechanismVisual?.Invoke(mechanism.Id));
@@ -151,7 +151,7 @@ public partial class Sandbox
         // Target only the visible item or rarity marker; filtered drops never consume a floor click.
         foreach (var drop in _view.Loot.Where(IsLootVisible))
             if (_lootVisuals.TryGetValue(drop.Id, out var visual) && MouseHitsNode(visual, screen))
-                candidates.Add(new(new(WorldActionKind.Loot, "loot:" + drop.Id, ItemId: drop.Id), drop.Item.Name, drop.Position, CombatSession.PickupRange, visual));
+                candidates.Add(new(new(WorldActionKind.Loot, "loot:" + drop.Id, ItemId: drop.Id), EquipmentNames.For(drop.Item), drop.Position, CombatSession.PickupRange, visual));
         return candidates.OrderBy(t => _camera.UnprojectPosition(PositionOf(t.Position.X, t.Position.Z) + Vector3.Up * .4f).DistanceSquaredTo(screen))
             .ThenBy(t => t.Action.Kind).ThenBy(t => t.Action.Id, StringComparer.Ordinal).FirstOrDefault();
     }

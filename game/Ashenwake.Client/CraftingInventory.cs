@@ -300,7 +300,7 @@ public partial class CraftingInventory : VBoxContainer
         _ => 2
     };
 
-    private static string ItemName(PermanentItem item) => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(item.DefinitionId.Split('.').Last().Replace('_', ' '));
+    private static string ItemName(PermanentItem item) => EquipmentNames.For(item.DefinitionId);
 
     private static Label Caption(string text)
     {

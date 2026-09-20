@@ -217,7 +217,7 @@ public partial class AppearanceSmoke
     private long[] VisibleInventoryIdsInOrder() => InventoryCards().Where(card => card.Visible).Select(InventoryCardId).ToArray();
     private static int InventoryType(ProductionItemDefinition definition) => definition.Slots.Any(slot => slot is EquipmentSlot.MainHand or EquipmentSlot.OffHand) ? 1 :
         definition.Slots.Any(slot => slot is EquipmentSlot.Amulet or EquipmentSlot.Ring1 or EquipmentSlot.Ring2) ? 3 : 2;
-    private static string FriendlyItemName(PermanentItem item) => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(item.DefinitionId.Split('.').Last().Replace('_', ' '));
+    private static string FriendlyItemName(PermanentItem item) => EquipmentNames.For(item.DefinitionId);
     private static int ItemDamageForComparison(PermanentItem? item) => (item?.BaseDamage ?? 0) + (item?.Affixes.GetValueOrDefault("affix.damage") ?? 0);
     private static int ItemArmorForComparison(PermanentItem? item) => (item?.BaseArmor ?? 0) + (item?.Affixes.GetValueOrDefault("affix.armor") ?? 0);
 }

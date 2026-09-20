@@ -232,7 +232,7 @@ public partial class GearLoadout : HBoxContainer
         ApplyProjection();
     }
 
-    private static string ItemName(PermanentItem item) => System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(item.DefinitionId.Split('.').Last().Replace('_', ' '));
+    private static string ItemName(PermanentItem item) => EquipmentNames.For(item.DefinitionId);
     private static string SlotName(EquipmentSlot slot) => slot switch { EquipmentSlot.MainHand => "Weapon", EquipmentSlot.OffHand => "Off hand", EquipmentSlot.Ring1 => "Ring 1", EquipmentSlot.Ring2 => "Ring 2", _ => slot.ToString() };
     private static Label Caption(string text)
     {

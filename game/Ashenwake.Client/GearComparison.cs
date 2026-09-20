@@ -130,7 +130,7 @@ public partial class GearComparison : PanelContainer
     private static bool HasAwakening(PermanentItem? item) => item?.DefinitionId == "item.ashcleaver" && item.Rarity == ItemRarity.Godwrought;
     private static string AwakeningText(PermanentItem? item) => HasAwakening(item)
         ? $"{(item!.Awakened ? "Awakened" : "Dormant")} · {item.BurningKills}/{GodwroughtProgress.AwakeningKills} burning kills" : "Awakening: none";
-    private static string ItemName(PermanentItem item) => Readable(item.DefinitionId);
+    private static string ItemName(PermanentItem item) => EquipmentNames.For(item.DefinitionId);
     private static string OptionalName(string? id) => string.IsNullOrEmpty(id) ? "none" : Readable(id);
     private static string Readable(string id) => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(id.Split('.').Last().Replace('_', ' '));
     private static string SlotName(EquipmentSlot slot) => slot switch { EquipmentSlot.MainHand => "Main hand", EquipmentSlot.OffHand => "Off hand", EquipmentSlot.Ring1 => "Ring 1", EquipmentSlot.Ring2 => "Ring 2", _ => slot.ToString() };

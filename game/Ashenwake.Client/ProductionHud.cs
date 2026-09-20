@@ -263,7 +263,7 @@ public partial class ProductionHud : Control
         {
             long equippedId = _state.Character.Equipment.GetValueOrDefault(slot);
             var equippedItem = _state.Character.Items.FirstOrDefault(i => i.Id == equippedId);
-            slots.AddItem($"{slot} · {(equippedItem is null ? "Empty" : Readable(equippedItem.DefinitionId))}", (int)slot);
+            slots.AddItem($"{slot} · {(equippedItem is null ? "Empty" : EquipmentNames.For(equippedItem.DefinitionId))}", (int)slot);
         }
         slots.Select((int)_gearSlot);
         slots.ItemSelected += index => { _gearSlot = (EquipmentSlot)slots.GetItemId((int)index); _gearInspecting = false; Rebuild(true); };
@@ -277,7 +277,7 @@ public partial class ProductionHud : Control
         foreach (var item in _state.Character.Items.Where(i => Compatible(i, _gearSlot) || i.Id == _gearItemId))
         {
             int index = choice.ItemCount;
-            choice.AddItem($"#{item.Id} {Readable(item.DefinitionId)} · {item.Rarity}"); choice.SetItemMetadata(index, item.Id);
+            choice.AddItem($"#{item.Id} {EquipmentNames.For(item.DefinitionId)} · {item.Rarity}"); choice.SetItemMetadata(index, item.Id);
             choice.SetItemTooltip(index, DescribeItem(item, _gearSlot));
             if (_gearItemId == item.Id) choice.Select(index);
         }
@@ -397,7 +397,7 @@ public partial class ProductionHud : Control
         _preview.SetCaption(inspecting ? $"Previewing {_gearSlot} · not equipped" : "Equipped appearance · drag to rotate");
     }
 
-    private static string ItemTitle(PermanentItem? item) => item is null ? "Empty" : $"#{item.Id} {Readable(item.DefinitionId)} · {item.Rarity}";
+    private static string ItemTitle(PermanentItem? item) => item is null ? "Empty" : $"#{item.Id} {EquipmentNames.For(item.DefinitionId)} · {item.Rarity}";
     private static string OptionalName(string? id) => string.IsNullOrEmpty(id) ? "none" : Readable(id);
     private static int ItemDamage(PermanentItem? item) => (item?.BaseDamage ?? 0) + (item?.Affixes.GetValueOrDefault("affix.damage") ?? 0);
     private static int ItemArmor(PermanentItem? item) => (item?.BaseArmor ?? 0) + (item?.Affixes.GetValueOrDefault("affix.armor") ?? 0);

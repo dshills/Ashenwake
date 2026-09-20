@@ -96,7 +96,7 @@ public partial class CombatRewardFeed : Control
         {
             Kind = "Loot",
             Key = "loot:" + item.DefinitionId + "/" + item.Rarity,
-            Title = item.Name,
+            Title = EquipmentNames.For(item),
             Detail = item.Rarity + " · Collected",
             ItemId = item.Id,
             DefinitionId = item.DefinitionId,

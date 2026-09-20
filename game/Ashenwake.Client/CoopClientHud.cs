@@ -47,7 +47,18 @@ public partial class CoopClient
         header.Text = new[] { "OSSUARY APPROACH", "CLOISTER OF LAST MERCY", "THE BELL SAINT · FIRST RINGING", "THE BELL SAINT · RITUAL ANCHORS", "THE BELL SAINT · FINAL TOLL" }[view.EncounterIndex] +
             $"  ·  {view.EncounterIndex + 1}/5  ·  Attempt {view.Attempt + 1}" + (view.Completed ? "\nEXPEDITION COMPLETE" : view.AwaitingRetry ? "\nParty defeated. Both players must ready to retry." : view.Cleared ? "\nArea cleared. Both players must ready to continue." : "");
         party.Text = string.Join('\n', view.Players.Select(p =>
-        { var actor = view.Actors.Single(a => a.PlayerId == p.Id); return $"PLAYER {p.Id}{(p.Id == peer.Id ? " · YOU" : "")}  ·  {p.Loadout}\nHealth {actor.Health}/{actor.MaxHealth}  ·  Barrier {actor.Barrier}  ·  {(p.Connected ? p.Ready ? "READY" : "Connected" : "Disconnected")}"; }));
+        {
+            var actor = view.Actors.Single(a => a.PlayerId == p.Id);
+            // The coop.1 protocol supplies these fixed preset titles, not item IDs.
+            // Preserve unknown server descriptions instead of guessing their equipment.
+            string loadout = p.Loadout switch
+            {
+                "Ash axe Vanguard" => EquipmentNames.For("item.ash_axe") + " · Vanguard",
+                "Oath hammer Vanguard" => EquipmentNames.For("item.oath_hammer") + " · Vanguard",
+                _ => p.Loadout
+            };
+            return $"PLAYER {p.Id}{(p.Id == peer.Id ? " · YOU" : "")}  ·  {loadout}\nHealth {actor.Health}/{actor.MaxHealth}  ·  Barrier {actor.Barrier}  ·  {(p.Connected ? p.Ready ? "READY" : "Connected" : "Disconnected")}";
+        }));
         var selected = view.Actors.FirstOrDefault(a => a.Id == target && a.Health > 0);
         string counterplay = view.Actors.Any(a => a.Shielded) ? "Destroy both ritual anchors to break the Saint's shield." :
             view.EncounterIndex == 4 && !view.Cleared ? "Break the bells. Leave the marked circles before the final toll." :
@@ -64,7 +75,7 @@ public partial class CoopClient
         ready.Text = own.Ready ? "Ready · waiting for teammate" : view.AwaitingRetry ? "Ready to retry [E]" : view.Completed ? "Expedition completed" : "Ready for next encounter [E]";
         ready.Disabled = !peer.Transport.Connected || own.Ready || view.Completed || !view.Cleared && !view.AwaitingRetry;
         var receipts = view.Rewards.Where(r => r.PlayerId == peer.Id).ToArray();
-        rewards.Text = receipts.Length == 0 ? "No rewards yet. Clear an encounter together." : string.Join("\n\n", receipts.Select(r => $"{r.Item.Name} · {r.Item.Rarity}\n+{r.Experience} XP · +{r.Ash} ash"));
+        rewards.Text = receipts.Length == 0 ? "No rewards yet. Clear an encounter together." : string.Join("\n\n", receipts.Select(r => $"{EquipmentNames.For(r.Item)} · {r.Item.Rarity}\n+{r.Experience} XP · +{r.Ash} ash"));
     }
     private static LineEdit Field(VBoxContainer parent, string label, string placeholder)
     { parent.AddChild(new Label { Text = label }); var field = new LineEdit { PlaceholderText = placeholder, CustomMinimumSize = new(0, 32), MaxLength = 8192 }; parent.AddChild(field); return field; }
