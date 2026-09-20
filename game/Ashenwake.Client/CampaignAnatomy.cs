@@ -17,6 +17,7 @@ public partial class CampaignHud
 
     public void AnatomySessionRestored()
     {
+        CancelJourneyConfirmations();
         RefreshAnatomy(); _anatomyWorkbench.DiscardInspection();
         // SetSession resets Sandbox pause owners. Reacquire this visible modal's owner,
         // even when a save restores byte-identical anatomy and the panel stayed open.
@@ -28,7 +29,7 @@ public partial class CampaignHud
 
     public override void _Input(InputEvent input)
     {
-        if (_tab != "Anatomy" || !_panel.Visible || !IsVisibleInTree()) return;
+        if (!_panel.Visible || !IsVisibleInTree() || _choiceDialog.Visible || _travelDialog.Visible) return;
         if (input.IsActionPressed("ui_cancel")) { SetOpen(false); GetViewport().SetInputAsHandled(); }
         else if (new[] { "aw_inventory", "aw_character", "aw_endgame", "aw_experiment" }.Any(action => InputMap.HasAction(action) && input.IsActionPressed(action))) SetOpen(false);
         else if (input is InputEventKey or InputEventJoypadButton &&
@@ -39,12 +40,15 @@ public partial class CampaignHud
     public override void _UnhandledInput(InputEvent input)
     {
         // A navigation key that no UI control accepted must not reach world shortcuts.
-        if (_tab == "Anatomy" && _panel.Visible && IsVisibleInTree() && input is InputEventKey or InputEventJoypadButton &&
+        if (_panel.Visible && IsVisibleInTree() && !_choiceDialog.Visible && !_travelDialog.Visible && input is InputEventKey or InputEventJoypadButton &&
             !new[] { "aw_save", "aw_load", "aw_journey" }.Any(action => input.IsAction(action))) GetViewport().SetInputAsHandled();
     }
 
     public override void _ExitTree()
     {
+        CancelJourneyConfirmations();
+        if (_journeyPaused && _anatomySandbox is not null && GodotObject.IsInstanceValid(_anatomySandbox))
+            _anatomySandbox.SetModalPaused("journey-panel", false);
         if (_anatomyPaused && _anatomySandbox is not null && GodotObject.IsInstanceValid(_anatomySandbox))
             _anatomySandbox.SetModalPaused("divine-anatomy", false);
     }
@@ -72,8 +76,10 @@ public partial class CampaignHud
             _journeyScroll.Visible = !anatomy; _anatomyWorkbench.Visible = anatomy;
             if (anatomy) _anatomyWorkbench.SetAvailableHeight(Math.Min(690, viewport.Y - 44) - 100);
         }
-        Vector2 size = anatomy ? new(Math.Min(980, viewport.X - 44), Math.Min(690, viewport.Y - 44)) : new(371, 482);
-        Vector2 position = anatomy ? (viewport - size) / 2 : new(876, 140);
+        _journeyBody.Visible = !anatomy;
+        _regionColumn.Visible = _tab == "Map";
+        Vector2 size = new(Math.Min(anatomy ? 980 : 1060, viewport.X - 44), Math.Min(690, viewport.Y - 44));
+        Vector2 position = (viewport - size) / 2;
         // Containers can temporarily enlarge the panel while swapping the diagram and preview.
         // Restore the requested bounds after that layout settles, without reapplying child minimum sizes.
         if (_panel.Position != position) _panel.Position = position;
@@ -84,7 +90,7 @@ public partial class CampaignHud
     private void UpdateAnatomyModal()
     {
         if (_anatomyBackdrop is null || _panel is null) return;
-        bool open = IsVisibleInTree() && _panel.Visible && _tab == "Anatomy";
+        bool open = IsVisibleInTree() && _panel.Visible;
         _anatomyBackdrop.Visible = open;
         _panel.MouseForcePassScrollEvents = !open;
         if (open && _anatomySiblingIndex < 0)
@@ -97,8 +103,11 @@ public partial class CampaignHud
             GetParent().MoveChild(this, Math.Min(_anatomySiblingIndex, GetParent().GetChildCount() - 1));
             _anatomySiblingIndex = -1;
         }
-        if (_anatomyPaused == open) return;
-        _anatomyPaused = open; _anatomySandbox?.SetModalPaused("divine-anatomy", open);
+        SynchronizeJourneySession();
+        bool anatomyOpen = open && _tab == "Anatomy";
+        if (!open) CancelJourneyConfirmations();
+        if (_anatomyPaused == anatomyOpen) return;
+        _anatomyPaused = anatomyOpen; _anatomySandbox?.SetModalPaused("divine-anatomy", anatomyOpen);
     }
 
     private void AnatomyRewardMapAction()

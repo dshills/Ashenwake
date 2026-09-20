@@ -22,6 +22,7 @@ public partial class JourneySmoke : Node
     private ProgressionContent _progression = null!;
     private readonly Dictionary<string, bool> _checks = [];
     private readonly List<string> _skippedChecks = [];
+    private readonly List<string> _captures = [];
     private readonly List<EnvironmentEvidence> _environments = [];
     private long _revision;
     private readonly Dictionary<string, int> _combatEvents = new(StringComparer.Ordinal);
@@ -38,6 +39,7 @@ public partial class JourneySmoke : Node
             _output = args.FirstOrDefault(a => a.StartsWith("--output=", StringComparison.Ordinal))?[9..] ?? "";
             if (!args.Contains("--journey-smoke") || _output.Length == 0) throw new InvalidDataException("Journey smoke requires --journey-smoke --output=<isolated-directory>.");
             Directory.CreateDirectory(_output); Engine.MaxFps = 60;
+            GetWindow().Size = GetWindow().ContentScaleSize = new(1280, 800);
             _combatJson = CampaignCombatContent.Parse(Read("combat"), Read("campaign-combat")).CombatJson;
             _campaign = CampaignContent.Parse(Read("campaign")); _adventure = AdventureContent.Parse(Read("adventure")); _progression = ProgressionContent.Parse(Read("progression"));
             _session = CampaignRuntimeSession.Create(_combatJson, _adventure, _progression, _campaign);
@@ -53,14 +55,17 @@ public partial class JourneySmoke : Node
             Check("greyhaven_has_direct_first_destination", NextStep().Visible && NextStep().Text.StartsWith("Travel to Act 1", StringComparison.Ordinal));
             Check("greyhaven_environment_is_visible", VisibleArchitecture("GreyhavenArchitecture") is not null && VisibleArchitecture("GreyMarchArchitecture") is null);
             ObserveEnvironment("greyhaven", "GreyhavenArchitecture");
+            await CheckJourneyOpening();
             string beforeAnatomy = _session.StateHash;
             await Click("Anatomy");
             Check("anatomy_body_map_has_six_slots_without_changing_state", Descendants(_hud).OfType<Button>().Count(b => b.Name.ToString().StartsWith("AnatomySlot", StringComparison.Ordinal)) == 6 && _session.StateHash == beforeAnatomy && _sandbox.IsPaused);
             await Capture("greyhaven-anatomy.png");
             await Click("Map");
-            Check("leaving_anatomy_releases_only_its_modal_pause", !_sandbox.IsPaused && _session.StateHash == beforeAnatomy);
+            Check("leaving_anatomy_transfers_to_journey_modal_pause", _sandbox.IsPaused && JourneyPauseOwners.Contains("journey-panel") &&
+                !JourneyPauseOwners.Contains("divine-anatomy") && _session.StateHash == beforeAnatomy);
             await Click("Close"); await CheckAtmosphere(); await Capture("greyhaven-environment.png"); await Click("Journey map & anatomy");
-            await ClickNode(NextStep());
+            await ClickNode(JourneyControl<Button>("JourneyRegion1"));
+            await ClickNode(JourneyControl<Button>("JourneyTravel"));
             Check("map_starts_first_encounter", _session.ActiveEncounterId == "campaign.road" && !VisibleLabel("EDRATH ·"));
             var roadArchitecture = VisibleArchitecture("GreyMarchArchitecture");
             Check("road_replaces_hub_environment", roadArchitecture is not null && VisibleArchitecture("GreyhavenArchitecture") is null);
@@ -81,8 +86,9 @@ public partial class JourneySmoke : Node
             await ClickNode(NextStep());
             Check("reward_review_preserves_room_and_ground_loot", _session.StateHash == reviewHash && _session.ActiveEncounterId == "campaign.road");
             var continueButton = FindButton("Continue onward");
-            Check("continue_is_visible_without_scrolling", continueButton.GetGlobalRect().Position.Y < 350 && continueButton.Text.Contains("uncollected drops", StringComparison.Ordinal));
-            await ClickNode(continueButton);
+            Check("continue_is_visible_without_scrolling", GetViewport().GetVisibleRect().Encloses(continueButton.GetGlobalRect()) &&
+                continueButton.IsVisibleInTree() && continueButton.Text.Contains("uncollected drops", StringComparison.Ordinal));
+            await CheckRoadTravelConfirmation();
             Check("continue_enters_monastery_and_closes_map", _session.ActiveEncounterId == "campaign.monastery" && !VisibleLabel("EDRATH ·"));
             var monasteryArchitecture = VisibleArchitecture("GreyMarchArchitecture");
             Check("monastery_replaces_road_environment", monasteryArchitecture is not null && monasteryArchitecture.GetInstanceId() != roadArchitectureId);
@@ -91,17 +97,20 @@ public partial class JourneySmoke : Node
             await Capture("monastery-environment.png");
             await FightUntil(() => _session.EncounterCleared);
             Check("choice_is_explained_before_boss", NextStep().Text.StartsWith("Choose", StringComparison.Ordinal));
+            _hud.SetOpen(false); await Settle();
             await ClickNode(NextStep());
             Check("choice_guidance_focuses_story_tab", GetViewport().GuiGetFocusOwner() is Button { Text: "Story" });
             var choice = _campaign.Capture().Choices.Single(c => c.Act == 1);
             await Click(choice.Outcomes[0].Text);
-            var confirmation = Descendants(this).OfType<ConfirmationDialog>().Single();
+            var confirmation = JourneyControl<ConfirmationDialog>("JourneyChoiceConfirmation");
             Check("story_choice_requires_confirmation", confirmation.Visible);
-            confirmation.GetOkButton().GrabFocus();
-            foreach (bool pressed in new[] { true, false })
-            { confirmation.PushInput(new InputEventKey { Keycode = Key.Enter, PhysicalKeycode = Key.Enter, Pressed = pressed }, true); await Settle(); }
+            await CheckStoryChoiceCancellation(choice.Outcomes[0].Text, confirmation);
+            // The native choice control opens the real dialog. Its public signal exercises
+            // the transaction boundary without depending on OS popup keyboard routing.
+            confirmation.EmitSignal(ConfirmationDialog.SignalName.Confirmed); confirmation.Hide(); await Settle();
             Check("story_choice_commits_through_confirmation", _session.Capture().Campaign.Choices.GetValueOrDefault(choice.Id) == choice.Outcomes[0].Id);
             Check("confirmed_choice_points_to_rewards_and_boss", NextStep().Text == "Review rewards & continue" && VisibleLabel($"{_session.Combat.View.Loot.Count} dropped"));
+            await CheckEarnedJourneyJournal(choice.Id, choice.Outcomes[0].Id);
             await Click("Close"); await CollectLoot();
             Check("collecting_last_drop_exposes_direct_continue", _session.Combat.View.Loot.Count == 0 && NextStep().Text == "Continue onward");
             await Capture("monastery-rewards-collected.png");
@@ -139,10 +148,11 @@ public partial class JourneySmoke : Node
             Check("opening_decorations_preserve_authoritative_collision", _environments.All(e => e.CosmeticOnly));
             Check("opening_ground_stays_below_combat_tells", _environments.All(e => e.GroundMeshes > 0 && e.GroundTop is { } top && float.IsFinite(top) && top < .04f));
             Check("opening_architecture_has_bounded_material_batches", _environments.All(e => e.ArchitectureMeshes > 0 && e.ArchitectureMaterials is > 0 and <= 32));
-            await Click("Travel to Act 2 ·");
+            await CheckCompletedJourneyMap();
             Check("next_region_button_enters_act_two", _session.Capture().Campaign.CurrentAct == 2 && !_session.InHub);
             var replay = CampaignRuntimeReplayRunner.Run(_combatJson, _adventure, _progression, _campaign, _session.CaptureReplay());
             Check("navigation_and_combat_replay", replay.Success);
+            await CheckJourneySaveReplay();
             CheckReplacedSession();
             Finish(true, "");
         }
@@ -151,7 +161,7 @@ public partial class JourneySmoke : Node
 
     private static string Read(string name) => FileAccess.GetFileAsString("res://" + name + ".json");
     private void Execute(CampaignRuntimeCommand command)
-    { var result = _session.Execute(command); if (!result.Success) throw new InvalidDataException(result.Reason); _revision++; Refresh(); }
+    { _navigationRequests++; var result = _session.Execute(command); if (!result.Success) throw new InvalidDataException(result.Reason); _revision++; Refresh(); }
     private void Refresh()
     {
         var snapshot = _session.Capture(); var player = _session.Combat.View.Actors.Single(a => a.Id == 1);
@@ -377,8 +387,12 @@ public partial class JourneySmoke : Node
     private async Task Capture(string filename)
     {
         if (!OS.GetCmdlineUserArgs().Contains("--capture-journey") || DisplayServer.GetName() == "headless") return;
-        await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
-        GetViewport().GetTexture().GetImage().SavePng(Path.Combine(_output, filename));
+        // An occluded native window may skip automatic draws; explicitly render this diagnostic capture.
+        await Settle(); RenderingServer.ForceDraw(false); RenderingServer.ForceSync();
+        using var image = GetViewport().GetTexture().GetImage();
+        var result = image.SavePng(Path.Combine(_output, filename));
+        if (result != Error.Ok) throw new IOException("Could not capture journey view: " + result);
+        if (!_captures.Contains(filename)) _captures.Add(filename);
     }
     private void Check(string name, bool passed) { _checks[name] = passed; if (!passed) throw new InvalidDataException("Journey check failed: " + name); }
     private void Finish(bool passed, string error)
@@ -392,8 +406,11 @@ public partial class JourneySmoke : Node
             environments = _environments,
             combatEvents = _combatEvents,
             feedbackWitnesses = _feedbackWitnesses.Order().ToArray(),
+            captures = _captures,
+            navigationRequests = _navigationRequests,
+            replaySegments = _journeyReplaySegments,
             error,
-            scope = "Real Core combat commands generate encounter states; viewport input exercises HUD navigation and story confirmation. Production stage builders and authored floors are inspected across Greyhaven and all three opening encounters. Each real combat event is delivered once to the presentation adapter; corresponding attack, windup, impact, death, and sanctuary defeat visuals are observed without altering Core commands."
+            scope = "Real Core combat commands earn the opening encounters, choice, discoveries, rewards, and second region. Viewport input exercises map selection, travel, journal categories, and native controls. Real controls open loot and story dialogs; public Confirmed/Canceled signals exercise their transaction boundaries independently of OS popup input. Save/load checks use isolated on-disk archives; captured replay segments are verified before and after restoration. Production stage builders, authored floors, and real combat event animations are observed without fabricated progression."
         };
         if (_output.Length > 0) System.IO.File.WriteAllText(Path.Combine(_output, "journey-review.json"), JsonData.Write(report));
         GD.Print(JsonData.Write(report)); GetTree().Quit(passed ? 0 : 1);

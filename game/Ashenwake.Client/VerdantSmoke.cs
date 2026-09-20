@@ -142,6 +142,8 @@ public partial class VerdantSmoke : Node
         _sandbox.SetWorldSubtitle($"CAMPAIGN / {_session.View.Region.ToUpperInvariant()}");
         _hud.SetView(_session.View, snapshot.Campaign, _campaign.Capture(), _session.Production.View, snapshot.Production.Expedition.Adventure,
             _session.Production.AdventureContent.Capture(), _session.Combat.View, interactions, ++_revision);
+        // This public-command environment diagnostic observes the world, with menus closed.
+        _hud.SetOpen(false);
     }
 
     private async Task ObserveState()

@@ -166,6 +166,9 @@ public partial class HollowSmoke : Node
         _sandbox.SetWorldSubtitle($"CAMPAIGN / {_session.View.Region.ToUpperInvariant()}");
         _hud.SetView(_session.View, snapshot.Campaign, _campaign.Capture(), _session.Production.View, snapshot.Production.Expedition.Adventure,
             _session.Production.AdventureContent.Capture(), _session.Combat.View, interactions, ++_revision);
+        // Keep the earned ending open until its native presentation check has observed it.
+        // Other public-command environment checks observe the world with menus closed.
+        if (_session.View.Ending is null || _endingObserved) _hud.SetOpen(false);
     }
 
     private async Task ObserveState()

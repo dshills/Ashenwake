@@ -88,6 +88,7 @@ public partial class EndgameDirector
     private void ShowExperimentPanel()
     {
         if (_classSelection.Visible) return;
+        _campaignHud.SetOpen(false);
         _sandbox.SetModalPaused("echoes", true);
         _echoesPanel.Visible = _echoesBackdrop.Visible = true;
         foreach (var child in _echoesRows.GetChildren()) { _echoesRows.RemoveChild(child); child.QueueFree(); }

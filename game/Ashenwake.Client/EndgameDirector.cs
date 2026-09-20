@@ -82,12 +82,12 @@ public partial class EndgameDirector : Node3D
             _board = new EndgameHud(); _sandbox.AddOverlay(_board);
             WireCampaign(); WireCharacter(); WireBoard(); BuildClassSelection(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); Refresh();
             if (_smoke) VerifyMigrationFixture();
-            if (OS.GetCmdlineUserArgs().Contains("--show-character")) _character.Toggle();
+            if (OS.GetCmdlineUserArgs().Contains("--show-character")) { _campaignHud.SetOpen(false); _character.Toggle(); }
             string? import = Argument("--import-campaign=");
             if (import is not null) Import(import);
             else if (OS.GetCmdlineUserArgs().Contains("--continue")) Load();
             else if (!_smoke && !_echoesSmoke && Argument("--discipline=") is null)
-            { _classSelection.Visible = true; _classBackdrop.Visible = true; _sandbox.SetPaused(true); _classSelection.GetChild<VBoxContainer>(0).GetChildren().OfType<Button>().First().GrabFocus(); }
+            { _campaignHud.SetOpen(false); _classSelection.Visible = true; _classBackdrop.Visible = true; _sandbox.SetPaused(true); _classSelection.GetChild<VBoxContainer>(0).GetChildren().OfType<Button>().First().GrabFocus(); }
             Notice("Click a person to approach and interact · J: journey · B: expeditions · C or I: character");
             ConfigureExperimentStart();
         }
@@ -306,6 +306,7 @@ public partial class EndgameDirector : Node3D
         var snapshot = _session.Capture(); var campaign = snapshot.Campaign; var combat = _session.Combat.View; var player = combat.Actors.Single(a => a.Id == 1);
         var interactions = _session.Interactions.Select(i => new InteractionDisplay(i.ActionId, i.Name, (int)Math.Sqrt(CorePosition.DistanceSquared(i.Position, player.Position)), i.Range)).ToArray();
         _campaignHud.SetView(_session.Campaign.View, campaign.Campaign, _campaignDefinition, _session.Production.View, campaign.Production.Expedition.Adventure, _anatomyDefinition, combat, interactions, _revision);
+        if (_smoke || _echoesSmoke) _campaignHud.SetOpen(false);
         _character.SetView(_session.Production.ProgressionView, campaign.Production.Progression, _productionDefinition, combat, interactions, _session.InHub, _revision, _session.Combat.ProgressionBuild.UnlockedMutations);
         var view = _session.View;
         var displayKey = (_revision, combat.Loot.Count, AtGate());

@@ -56,13 +56,12 @@ public partial class CampaignHud : Control
         var tabs = new HBoxContainer(); column.AddChild(tabs);
         foreach (string tab in new[] { "Map", "Story", "Anatomy", "Journal" })
         {
-            var button = new Button { Text = tab, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            button.AddThemeFontSizeOverride("font_size", 12); button.Pressed += () => { _tab = tab; Rebuild(true); }; tabs.AddChild(button);
+            var button = new Button { Text = tab, SizeFlagsHorizontal = SizeFlags.ExpandFill, ToggleMode = true };
+            button.AddThemeFontSizeOverride("font_size", 12); button.Pressed += () => { CancelJourneyConfirmations(); _tab = tab; _journeyScroll.ScrollVertical = 0; Rebuild(true); }; tabs.AddChild(button);
             _tabButtons.Add(tab, button);
             if (tab == "Map") _firstTab = button;
         }
-        _journeyScroll = new ScrollContainer { CustomMinimumSize = new(339, 353), SizeFlagsVertical = SizeFlags.ExpandFill }; column.AddChild(_journeyScroll);
-        _rows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; _journeyScroll.AddChild(_rows);
+        BuildJourneyBody(column);
         _anatomyWorkbench = new AnatomyWorkbench { Visible = false }; column.AddChild(_anatomyWorkbench);
         _anatomyWorkbench.ImplantRequested += (slot, id) => ImplantRequested?.Invoke(slot, id);
         _anatomyWorkbench.ManifestationRequested += id => ManifestationRequested?.Invoke(id);
@@ -71,8 +70,9 @@ public partial class CampaignHud : Control
         var footer = new HBoxContainer(); column.AddChild(footer);
         foreach (var (text, action) in new[] { ("Save", (Action)(() => SaveRequested?.Invoke())), ("Load", (Action)(() => LoadRequested?.Invoke())), ("Close", (Action)Toggle) })
         { var button = new Button { Text = text, SizeFlagsHorizontal = SizeFlags.ExpandFill }; button.Pressed += action; footer.AddChild(button); }
-        _choiceDialog = new ConfirmationDialog { Title = "Commit this decision", OkButtonText = "Choose this future", CancelButtonText = "Consider the options" };
-        _choiceDialog.Confirmed += () => ChoiceRequested?.Invoke(_pendingChoice, _pendingOutcome); AddChild(_choiceDialog);
+        _choiceDialog = new ConfirmationDialog { Name = "JourneyChoiceConfirmation", DialogAutowrap = true, Title = "Commit this decision", OkButtonText = "Choose this future", CancelButtonText = "Consider the options" };
+        _choiceDialog.Confirmed += ConfirmJourneyChoice; _choiceDialog.Canceled += CancelJourneyConfirmations; AddChild(_choiceDialog);
+        BuildTravelConfirmation();
         BuildNextStep();
         _panel.Visible = false;
         for (Node? ancestor = GetParent(); ancestor is not null; ancestor = ancestor.GetParent())
@@ -83,6 +83,7 @@ public partial class CampaignHud : Control
     public void Toggle() => SetOpen(!_panel.Visible);
     public void SetOpen(bool open)
     {
+        if (!open) CancelJourneyConfirmations();
         _panel.Visible = open;
         if (_panel.Visible)
         { if (!_state.InHub && !_engaged) _tab = _nextTab; Rebuild(true); FocusCurrentTab(); }
@@ -107,11 +108,15 @@ public partial class CampaignHud : Control
     public void SetView(CampaignView view, CampaignState state, CampaignDefinition content, AdventureView anatomyView,
         AdventureState anatomy, AdventureDefinition anatomyContent, CombatView combat, IReadOnlyList<InteractionDisplay> interactions, long revision)
     {
+        if (_view is not null && (_revision != revision || _state.CurrentAct != state.CurrentAct || _state.InHub != state.InHub || _combat.Loot.Count != combat.Loot.Count)) CancelJourneyConfirmations();
+        bool locationChanged = _view is null || _state.CurrentAct != state.CurrentAct || _state.InHub != state.InHub;
         bool enteredCombat = combat.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0) && !_engaged;
         bool changed = _view is null || _view.Region != view.Region || _view.Ending is null && view.Ending is not null;
         bool endingArrived = _view?.Ending is null && view.Ending is not null;
         _view = view; _state = state; _content = content; _anatomyView = anatomyView; _anatomy = anatomy; _anatomyContent = anatomyContent;
         _combat = combat; _interactions = interactions; _revision = revision;
+        if (locationChanged) _selectedJourneyRegion = state.InHub ? 0 : state.CurrentAct;
+        SynchronizeJourneySession();
         _engaged = combat.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0);
         bool activeBoss = combat.Actors.Any(a => a.Health > 0 && a.DefinitionId.StartsWith("boss.", StringComparison.Ordinal));
         _headline.Text = $"{view.Region.ToUpperInvariant()} · ACT {view.Act}" + (activeBoss && combat.BossPhase > 0 ? $" · PHASE {combat.BossPhase}" : "");
@@ -129,59 +134,13 @@ public partial class CampaignHud : Control
     private void Rebuild(bool force)
     {
         UpdateAnatomyLayout();
+        foreach (var tab in _tabButtons) tab.Value.SetPressedNoSignal(tab.Key == _tab);
         if (_view is null || !_panel.Visible) return;
         int mask = 0; for (int i = 0; i < _interactions.Count; i++) if (_interactions[i].Distance <= _interactions[i].Range) mask |= 1 << i;
         var key = (_revision, _tab, _view.Act, _state.InHub, _engaged, mask, (_state.Exploration?.RemainingTicks ?? 0) / 30, _combat.Loot.Count);
         if (!force && _rendered == key) return; _rendered = key;
         foreach (var child in _rows.GetChildren()) { _rows.RemoveChild(child); child.QueueFree(); }
         switch (_tab) { case "Map": Map(); break; case "Story": Story(); break; case "Anatomy": RefreshAnatomy(); break; default: Journal(); break; }
-    }
-    private void Map()
-    {
-        _rows.AddChild(Label("EDRATH · REGIONS & ANCHORS", 17));
-        AnatomyRewardMapAction();
-        if (_state.InHub)
-        {
-            if (_maraDialogue.Length > 0)
-            {
-                _rows.AddChild(Label(_maraDialogue, 13));
-                var mara = _interactions.FirstOrDefault(i => i.Id == "service.mara");
-                if (mara is not null) Button(mara.Distance <= mara.Range ? "Mara · Divine Anatomy" : "Walk to Mara · Divine Anatomy", () => RequestInteraction(mara.Id));
-            }
-            _rows.AddChild(Label("Leave Greyhaven: choose an unlocked act below.", 13));
-        }
-        _rows.AddChild(Label($"Anchor: {Readable(_view.Anchor)} · deaths {_state.Deaths}", 12));
-        if (!_state.InHub) MapNextStep();
-        foreach (var act in _content.Acts)
-        {
-            bool unlocked = _view.AvailableActs.Contains(act.Number);
-            Button($"{(_state.CompletedActs.Contains(act.Number) ? "✓" : !unlocked ? "○" : "●")} Act {act.Number} · {act.Name}", () => ActRequested?.Invoke(act.Number)).Disabled = !unlocked || _engaged || _state.Exploration is not null;
-            if (act.Number == _view.Act && !_state.InHub)
-                foreach (var encounter in act.Encounters)
-                    _rows.AddChild(Label(($"{(_state.CompletedEncounters.Contains(encounter.Id) ? "✓" : encounter.Id == _view.EncounterId ? "→" : "○")} ") + Readable(encounter.Id), 12));
-        }
-        if (!_state.InHub)
-        {
-            string droppedLoot = _combat.Loot.Count > 0 ? $" · leave {_combat.Loot.Count} uncollected drops" : "";
-            _rows.AddChild(new HSeparator()); _rows.AddChild(Label("EXPLORATION", 14));
-            foreach (var exploration in _content.Exploration.Where(e => e.Act == _view.Act))
-                Button((_state.CompletedExploration.Contains(exploration.Id) ? "✓ " : "") + exploration.Name + " · " + exploration.Kind + droppedLoot,
-                    () => ExplorationRequested?.Invoke(exploration.Id)).Disabled = _engaged || _state.Exploration is not null || _state.CompletedExploration.Contains(exploration.Id);
-            if (_state.Exploration is { } active)
-            {
-                var definition = _content.Exploration.Single(e => e.Id == active.Id);
-                _rows.AddChild(Label(definition.Name + (active.RemainingTicks > 0 ? $" · {active.RemainingTicks / 30d:F0}s remaining" : ""), 14));
-                foreach (var clue in definition.Clues.Select((id, index) => (id, index)))
-                    _rows.AddChild(Label((clue.index < active.TrackedClues ? "✓ " : "○ ") + Readable(clue.id), 12));
-                foreach (string rule in _view.ExplorationRules) _rows.AddChild(Label(Readable(rule), 12));
-                bool won = !_engaged && (definition.Kind != "Hunt" || active.TrackedClues == definition.Clues.Length);
-                Button((won ? "Finish exploration" : "Leave exploration") + droppedLoot, () => LeaveExplorationRequested?.Invoke());
-            }
-        }
-        if (_interactions.Count > 0) { _rows.AddChild(new HSeparator()); _rows.AddChild(Label("NEARBY PEOPLE & LANDMARKS", 14)); }
-        foreach (var interaction in _interactions)
-            Button(interaction.Distance <= interaction.Range ? interaction.Name + " [F]" : "Walk to " + interaction.Name, () => RequestInteraction(interaction.Id));
-        if (_state.InHub) foreach (string reaction in _view.HubReactions) _rows.AddChild(Label(reaction, 12));
     }
     private void Story()
     {
@@ -193,7 +152,7 @@ public partial class CampaignHud : Control
             _rows.AddChild(Label("Allies: " + string.Join(", ", ending.Alliances), 12));
             _rows.AddChild(Label("Surviving leaders: " + string.Join(", ", ending.SurvivingLeaders), 12));
             _rows.AddChild(Label(ending.FracturesUnlocked ? "RESONANCE FRACTURES UNLOCKED" : "Campaign complete", 15));
-            Button("Return to the people of Greyhaven", () => HubRequested?.Invoke()).Disabled = _state.InHub || _engaged;
+            Button("Return to the people of Greyhaven", () => RequestJourneyTravel(new(JourneyTravelKind.Hub))).Disabled = _state.InHub || _engaged;
             return;
         }
         _rows.AddChild(Label(_view.Region.ToUpperInvariant(), 17)); _rows.AddChild(Label(_view.Revelation, 13));
@@ -208,6 +167,7 @@ public partial class CampaignHud : Control
                 {
                     var button = Button(outcome.Text, () =>
                     {
+                        CancelJourneyConfirmations(); _confirmationRevision = _revision;
                         _pendingChoice = choice.Id; _pendingOutcome = outcome.Id;
                         _choiceDialog.DialogText = choice.Prompt + "\n\n" + outcome.Text + "\n\nThis decision is permanent for this campaign. Its consequences can arrive in later acts.";
                         _choiceDialog.PopupCentered(new(560, 260));
@@ -215,18 +175,6 @@ public partial class CampaignHud : Control
                     button.Disabled = _state.InHub || _engaged || !_state.CompletedEncounters.Contains(choice.RequiredEncounter) || _state.Exploration is not null;
                 }
         }
-    }
-    private void Journal()
-    {
-        _rows.AddChild(Label("THE JOURNEY REMEMBERED", 17));
-        foreach (var act in _content.Acts.Where(a => a.Number <= _state.HighestActVisited))
-        { _rows.AddChild(Label(act.Name, 15)); _rows.AddChild(Label(act.Revelation, 13)); }
-        _rows.AddChild(new HSeparator()); _rows.AddChild(Label("GREYHAVEN'S PEOPLE", 15));
-        foreach (string resident in _view.Residents) _rows.AddChild(Label("✓ " + resident, 13));
-        foreach (string reaction in _view.HubReactions) _rows.AddChild(Label(reaction, 12));
-        if (_view.PendingConsequences.Length > 0) _rows.AddChild(Label("Some consequences of your decisions are still unfolding beyond this region.", 12));
-        _rows.AddChild(new HSeparator()); _rows.AddChild(Label("DISCOVERIES", 15));
-        foreach (string discovery in _state.Discoveries) _rows.AddChild(Label(Readable(discovery), 12));
     }
     private Button Button(string text, Action action)
     { var button = new Button { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart }; button.AddThemeFontSizeOverride("font_size", 12); button.Pressed += action; _rows.AddChild(button); return button; }

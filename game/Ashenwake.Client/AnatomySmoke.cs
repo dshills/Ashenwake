@@ -55,8 +55,8 @@ public partial class AnatomySmoke : Node
             _sandbox.AdvanceOverride = commands => { _inputCommands.AddRange(commands); return advance(commands); };
             if (DisplayServer.GetName() != "headless") GetWindow().GrabFocus();
             await Frames(8);
-            if (_sandbox.IsPaused) await ClickText("Resume playing");
             await CloseJourney();
+            if (_sandbox.IsPaused) await ClickText("Resume playing");
             await EarnHeart();
             await InspectRewardAway();
             await ReachMara();
@@ -146,6 +146,10 @@ public partial class AnatomySmoke : Node
         Check("closing_inspection_disables_its_render_viewport", !Preview.Rendering && !Preview.IsProcessing());
         await Capture("anatomy-ground-reward-review.png");
         await ClickTextPrefix("Return to Greyhaven");
+        var departure = Descendants(_hud).OfType<ConfirmationDialog>().Single(d => d.Name == "JourneyTravelConfirmation");
+        Check("anatomy_return_requires_explicit_loot_departure", departure.Visible && !Session.InHub && hash == Session.StateHash);
+        // The native map action opens the dialog; its public signal verifies the departure boundary.
+        departure.EmitSignal(ConfirmationDialog.SignalName.Confirmed); departure.Hide(); await Frames();
         Check("explicit_return_reaches_greyhaven_with_heart_owned", Session.InHub && Anatomy.OwnedFragments.Contains("fragment.heart_serath") && !Anatomy.Anatomy.ContainsKey("Heart"));
     }
 

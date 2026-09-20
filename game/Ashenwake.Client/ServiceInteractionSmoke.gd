@@ -26,6 +26,11 @@ func button_containing(text):
         if node is Button and text in node.text and node.is_visible_in_tree(): return node
     return null
 
+func journey_is_open():
+    for node in nodes(self):
+        if node.name == "CampaignPanel" and node is Control: return node.is_visible_in_tree()
+    return false
+
 func settle():
     for i in range(3): await get_tree().process_frame
 
@@ -62,7 +67,9 @@ func run():
     add_child(load("res://Endgame.tscn").instantiate())
     await settle()
     await click(button_containing("Vanguard ·"))
-    await key(KEY_J)
+    checks["discipline_selection_accepts_mouse"] = button_containing("Vanguard ·") == null
+    checks["journey_starts_closed_after_discipline_selection"] = not journey_is_open()
+    if journey_is_open(): await key(KEY_J)
     var character
     for node in nodes(self):
         if node.get_script() != null and node.get_script().resource_path.ends_with("/ProductionHud.cs"):
@@ -100,7 +107,7 @@ func run():
     finish()
 
 func finish():
-    var passed = checks.size() == 19
+    var passed = checks.size() == 21
     for value in checks.values(): passed = passed and value
     var report = {"kind": "ServiceInteractionClientSmokePassed" if passed else "ServiceInteractionClientSmokeFailed", "passed": passed, "checks": checks, "scope": "Successful ServiceOpened presentation fixtures exercise actual Godot HUD routing and focus. No rescue route, crafting action, or specialist unlock is simulated; permanent progression must remain unchanged."}
     var file = FileAccess.open(output.path_join("service-interaction-review.json"), FileAccess.WRITE)

@@ -33,7 +33,7 @@ public partial class CampaignHud
     }
 
     private void OpenTab(string tab)
-    { _tab = tab; Visible = true; _panel.Visible = true; Rebuild(true); FocusCurrentTab(); }
+    { CancelJourneyConfirmations(); _tab = tab; Visible = true; _panel.Visible = true; Rebuild(true); FocusCurrentTab(); }
 
     private void FocusCurrentTab() => _tabButtons.GetValueOrDefault(_tab, _firstTab).GrabFocus();
 
@@ -48,11 +48,11 @@ public partial class CampaignHud
         switch (_nextAction)
         {
             case NextAction.Story: OpenTab("Story"); break;
-            case NextAction.Continue: SetOpen(false); ContinueRequested?.Invoke(); break;
-            case NextAction.Travel: SetOpen(false); ActRequested?.Invoke(_nextAct); break;
-            case NextAction.FinishExploration: SetOpen(false); LeaveExplorationRequested?.Invoke(); break;
+            case NextAction.Continue: RequestJourneyTravel(new(JourneyTravelKind.Continue)); break;
+            case NextAction.Travel: RequestJourneyTravel(new(JourneyTravelKind.Act, _nextAct)); break;
+            case NextAction.FinishExploration: RequestJourneyTravel(new(JourneyTravelKind.LeaveExploration)); break;
             case NextAction.Interaction: RequestInteraction(_nextInteraction); break;
-            case NextAction.Hub: SetOpen(false); HubRequested?.Invoke(); break;
+            case NextAction.Hub: RequestJourneyTravel(new(JourneyTravelKind.Hub)); break;
             case NextAction.Anatomy: OpenAnatomyReward(); break;
             default: OpenTab("Map"); break;
         }
@@ -166,14 +166,14 @@ public partial class CampaignHud
         {
             if (ChoicePending) Button("Resolve the region's choice", () => OpenTab("Story")).Disabled = _engaged;
             else if (_view.EncounterId is not null)
-                Button("Continue onward" + droppedLoot, () => ContinueRequested?.Invoke()).Disabled = _engaged;
+                Button("Continue onward" + droppedLoot, () => RequestJourneyTravel(new(JourneyTravelKind.Continue))).Disabled = _engaged;
             else
             {
                 var nextAct = _content.Acts.FirstOrDefault(a => a.Number > _state.CurrentAct && _view.AvailableActs.Contains(a.Number));
-                if (nextAct is not null) Button($"Travel to Act {nextAct.Number} · {nextAct.Name}" + droppedLoot, () => ActRequested?.Invoke(nextAct.Number)).Disabled = _engaged;
+                if (nextAct is not null) Button($"Travel to Act {nextAct.Number} · {nextAct.Name}" + droppedLoot, () => RequestJourneyTravel(new(JourneyTravelKind.Act, nextAct.Number))).Disabled = _engaged;
             }
         }
-        Button("Return to Greyhaven" + droppedLoot, () => HubRequested?.Invoke());
+        Button("Return to Greyhaven" + droppedLoot, () => RequestJourneyTravel(new(JourneyTravelKind.Hub)));
         if (_engaged) _rows.AddChild(Label("Clear the encounter to continue. Returning to Greyhaven leaves this fight and any ground loot behind.", 12));
         else if (_combat.Loot.Count == 0) _rows.AddChild(Label("Your earned progression is preserved when you travel.", 12));
         _rows.AddChild(new HSeparator());

@@ -85,9 +85,9 @@ public partial class CampaignDirector : Node3D
             _character.MutationRequested += (skill, mutation) => Permanent(new(ProductionAction.Mutation, Id: skill, Value: mutation));
             _character.ServiceRequested += Interact;
             BuildClassSelection(); Refresh();
-            if (OS.GetCmdlineUserArgs().Contains("--show-character")) _character.Toggle();
+            if (OS.GetCmdlineUserArgs().Contains("--show-character")) { _campaign.SetOpen(false); _character.Toggle(); }
             if (!_smoke && Argument("--discipline=") is null)
-            { _classSelection.Visible = true; _classBackdrop.Visible = true; _sandbox.SetPaused(true); _classSelection.GetChild<VBoxContainer>(0).GetChildren().OfType<Button>().First().GrabFocus(); }
+            { _campaign.SetOpen(false); _classSelection.Visible = true; _classBackdrop.Visible = true; _sandbox.SetPaused(true); _classSelection.GetChild<VBoxContainer>(0).GetChildren().OfType<Button>().First().GrabFocus(); }
             Notice("F: interact · J: campaign/map · C or I: character · V: corpse · G: captured echo");
         }
         catch (Exception ex) { Fail(ex); }
@@ -218,6 +218,7 @@ public partial class CampaignDirector : Node3D
         var snapshot = _session.Capture(); var combat = _session.Combat.View; var player = combat.Actors.Single(a => a.Id == 1);
         var interactions = _session.Interactions.Select(i => new InteractionDisplay(i.ActionId, i.Name, (int)Math.Sqrt(CorePosition.DistanceSquared(i.Position, player.Position)), i.Range)).ToArray();
         _campaign.SetView(_session.View, snapshot.Campaign, _definition, _session.Production.View, snapshot.Production.Expedition.Adventure, _anatomyDefinition, combat, interactions, _revision);
+        if (_smoke) _campaign.SetOpen(false);
         _character.SetView(_session.Production.ProgressionView, snapshot.Production.Progression, _productionDefinition, combat, interactions, _session.InHub, _revision, _session.Combat.ProgressionBuild.UnlockedMutations);
         var manifestations = _session.Production.View.ActiveManifestations;
         _character.SetAppearance(CharacterAppearance.FromProgression(snapshot.Production.Progression, manifestations,

@@ -51,8 +51,8 @@ public partial class MouseActionsSmoke : Node
             _sandbox.AdvanceOverride = commands => { _commands.AddRange(commands); var events = advance(commands); _events.AddRange(events); return events; };
             if (DisplayServer.GetName() != "headless") GetWindow().GrabFocus();
             await Frames(8);
-            if (_sandbox.IsPaused) await ClickButton("Resume playing");
             await CloseJourney();
+            if (_sandbox.IsPaused) await ClickButton("Resume playing");
             Ticks(2);
             await InventoryRouting();
             await Ground(new(-5000, 5000)); await WalkUntilStopped();

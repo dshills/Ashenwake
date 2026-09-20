@@ -26,6 +26,18 @@ func button_containing(text):
         if node is Button and text in node.text and node.is_visible_in_tree(): return node
     return null
 
+func button_named(name):
+    for node in nodes(self):
+        if node is Button and node.name == name and node.is_visible_in_tree(): return node
+    return null
+
+func journey_close_button():
+    for panel in nodes(self):
+        if panel.name != "CampaignPanel": continue
+        for node in nodes(panel):
+            if node is Button and node.text == "Close" and node.is_visible_in_tree(): return node
+    return null
+
 func visible_label(prefix):
     for node in nodes(self):
         if node is Label and node.text.begins_with(prefix) and node.is_visible_in_tree(): return true
@@ -68,6 +80,9 @@ func run():
     await settle()
     await click(button_containing("Vanguard ·"))
     checks["discipline_selection_accepts_mouse"] = not visible_label("CHOOSE YOUR FIRST DISCIPLINE")
+    checks["journey_starts_closed_after_discipline_selection"] = not visible_label("EDRATH · REGIONS")
+    await key(KEY_J)
+    checks["journey_key_opens_map"] = visible_label("EDRATH · REGIONS")
     await key(KEY_J)
     checks["journey_key_closes_map"] = not visible_label("EDRATH · REGIONS")
     var resident = null
@@ -98,10 +113,10 @@ func run():
     var fractures = button_containing("[B]")
     var echoes = button_containing("[H]")
     checks["navigation_buttons_do_not_overlap"] = not journey.get_global_rect().intersects(echoes.get_global_rect()) and not journey.get_global_rect().intersects(fractures.get_global_rect()) and not fractures.get_global_rect().intersects(echoes.get_global_rect())
-    # Open the map before checking its toggle even if the interaction check failed.
+    # The modal has its own Close button; the top navigation toggle sits behind its backdrop.
     if not visible_label("EDRATH · REGIONS"): await key(KEY_J)
-    await click(journey)
-    checks["journey_button_is_clickable"] = not visible_label("EDRATH · REGIONS")
+    await click(journey_close_button())
+    checks["journey_close_button_is_clickable"] = not visible_label("EDRATH · REGIONS")
     # Esc closes an accidentally opened Echoes panel on the old, overlapping layout.
     if visible_label("ECHOES: BORROWED MEMORY"): await key(KEY_ESCAPE)
     if not visible_label("EDRATH · REGIONS"): await key(KEY_J)
@@ -111,7 +126,8 @@ func run():
     if "--capture-interaction" in OS.get_cmdline_user_args() and DisplayServer.get_name() != "headless":
         await RenderingServer.frame_post_draw
         get_viewport().get_texture().get_image().save_png(output.path_join("mara-map.png"))
-    await click(button_containing("Act 1 ·"))
+    await click(button_named("JourneyRegion1"))
+    await click(button_named("JourneyTravel"))
     await key(KEY_F5)
     var path = output.path_join("endgame.save.json")
     checks["campaign_entry_saves"] = FileAccess.file_exists(path)
@@ -140,7 +156,7 @@ func run():
     await click(button_containing("Resume playing"))
     for i in range(12): await get_tree().process_frame
     checks["echoes_requires_explicit_resume"] = await saved_tick() > paused_tick
-    var passed = checks.size() == 17
+    var passed = checks.size() == 19
     for value in checks.values(): passed = passed and value
     var report = {"kind": "InteractionClientSmokePassed" if passed else "InteractionClientSmokeFailed", "passed": passed, "checks": checks}
     var file = FileAccess.open(output.path_join("interaction-review.json"), FileAccess.WRITE)
