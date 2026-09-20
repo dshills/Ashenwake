@@ -60,11 +60,7 @@ public partial class EndgameDirector
         _echoesBoard.ContinueRequested += () => Safely(() =>
         {
             if (_experiment is not null || !_session.InHub || TryEchoesSelection() is null) return;
-            // Resolve the destination before saving/switching, so an invalid Echoes archive cannot discard the current character.
-            string name = TryEchoesSelection()!;
-            var loaded = ExperimentSaveStore.Load(Path.Combine(_output, name), _combatJson, _adventure, _progression, _campaign, _endgame, _experimentContent);
-            Save(); CloseExperimentPanel(); _experiment = loaded.Session; _echoesSaveName = name;
-            Adopt(_experiment.Endgame, true); Notice("Continued the separate Echoes character. Your original character was saved.");
+            PlayCharacter(TryEchoesSelection()!);
         });
         _echoesBoard.ReturnRequested += () => Safely(ExitExperiment);
         _echoesBoard.OpenChanged += isOpen =>
@@ -116,8 +112,10 @@ public partial class EndgameDirector
         if (_experiment is null)
         {
             Save();
-            _experiment = ExperimentRuntimeSession.FromEndgame(_combatJson, _adventure, _progression, _campaign, _endgame, _experimentContent, _session.Capture());
-            _echoesSaveName = "echoes." + Guid.NewGuid().ToString("N") + ".save.json";
+            var experiment = ExperimentRuntimeSession.FromEndgame(_combatJson, _adventure, _progression, _campaign, _endgame, _experimentContent, _session.Capture());
+            string filename = "echoes." + Guid.NewGuid().ToString("N") + ".save.json";
+            AtomicFile.Write(Path.Combine(_output, filename + ".origin"), _saveName);
+            _echoesSaveName = filename; _echoesOriginalSaveName = _saveName; _experiment = experiment;
         }
         CloseExperimentPanel(); ApplyExperiment(new(ExperimentAction.StartContract, sigil, Choice: choice)); SaveExperiment();
     }
@@ -146,7 +144,7 @@ public partial class EndgameDirector
         var progression = _session.Production.ProgressionView;
         _echoesBoard.SetView(new(_cachedDisplay, view, _experimentRules, _experimentContent.AcceptingEntries,
             _hasEchoesSelection, mind?.Name ?? "Mind socket empty", mind?.Description ?? "No owned Mind effect is installed.",
-            $"{progression.Discipline} · Level {progression.Level}", _revision));
+            $"{progression.Discipline} · Level {progression.Level}", _revision, _echoesOriginalSaveName.Length > 0));
         _memoryPresentation.Show(memory);
         string source = "";
         if (memory is { SourceActorId: > 0 } && view?.Run is { } run)
@@ -188,10 +186,17 @@ public partial class EndgameDirector
     {
         try
         {
-            string pointer = Path.Combine(_output, "current-echoes.txt"); if (!File.Exists(pointer) || new FileInfo(pointer).Length > 256) return null;
-            string name = File.ReadAllText(pointer).Trim();
-            return name.StartsWith("echoes.", StringComparison.Ordinal) && name.EndsWith(".save.json", StringComparison.Ordinal) && name.Length <= 128 && name.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-') &&
-                (File.Exists(Path.Combine(_output, name)) || File.Exists(Path.Combine(_output, name + ".bak"))) ? name : null;
+            bool Matches(string name) => ClientCharacterCatalog.IsEchoesFilename(name) && OriginalForEchoes(name) == _saveName &&
+                (File.Exists(Path.Combine(_output, name)) || File.Exists(Path.Combine(_output, name + ".bak")));
+            string selected = ReadCharacterPointer("current-echoes.txt");
+            if (Matches(selected)) return selected;
+            if (!Directory.Exists(_output)) return null;
+            // A different original may have been played most recently. Find this
+            // character's own linked journey without adopting another hero's Echoes.
+            return Directory.EnumerateFiles(_output, "echoes.*.save.json*")
+                .Select(Path.GetFileName).OfType<string>().Select(name => name.EndsWith(".bak", StringComparison.Ordinal) ? name[..^4] : name)
+                .Where(ClientCharacterCatalog.IsEchoesFilename).Distinct(StringComparer.Ordinal).Take(ClientCharacterCatalog.MaximumSlots)
+                .Where(Matches).OrderByDescending(name => File.GetLastWriteTimeUtc(Path.Combine(_output, name))).ThenBy(name => name, StringComparer.Ordinal).FirstOrDefault();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
     }
@@ -199,20 +204,24 @@ public partial class EndgameDirector
     {
         if (_experiment is null) return false;
         ExperimentSaveStore.Write(EchoesPath, _combatJson, _adventure, _progression, _campaign, _endgame, _experimentContent, _experiment.Capture());
-        AtomicFile.Write(Path.Combine(_output, "current-echoes.txt"), _echoesSaveName); _hasEchoesSelection = true; Notice("Echoes character and contract saved separately. Your original character is preserved."); return true;
+        PublishCharacterSelection(_echoesSaveName); _hasEchoesSelection = true; Notice("Echoes character and contract saved separately. Your original character is preserved."); return true;
     }
     private void LoadExperiment()
     {
         string name = _experiment is not null ? _echoesSaveName : TryEchoesSelection() ?? throw new InvalidDataException("No valid Echoes save selection is available.");
         var loaded = ExperimentSaveStore.Load(Path.Combine(_output, name), _combatJson, _adventure, _progression, _campaign, _endgame, _experimentContent);
+        _echoesOriginalSaveName = OriginalForEchoes(name);
+        if (_echoesOriginalSaveName.Length > 0) _saveName = _echoesOriginalSaveName;
         CloseExperimentPanel(); _experiment = loaded.Session; _echoesSaveName = name; Adopt(_experiment.Endgame, true);
         Notice(loaded.RecoveredBackup ? "Recovered the previous valid Echoes character and contract." : "Echoes character, choices and contract loaded.");
     }
     private void ExitExperiment()
     {
         if (!_session.InHub) throw new InvalidDataException("Return to Greyhaven before switching characters.");
-        var original = EndgameRuntimeSaveStore.Load(SavePath, _combatJson, _adventure, _progression, _campaign, _endgame).Session;
-        SaveExperiment(); CloseExperimentPanel(); Adopt(original);
+        if (_echoesOriginalSaveName.Length == 0) throw new InvalidDataException("This Echoes archive has no linked original. Use Save & main menu to choose another character.");
+        var original = EndgameRuntimeSaveStore.Load(Path.Combine(_output, _echoesOriginalSaveName), _combatJson, _adventure, _progression, _campaign, _endgame).Session;
+        SaveExperiment(); PublishCharacterSelection(_echoesOriginalSaveName); _saveName = _echoesOriginalSaveName;
+        CloseExperimentPanel(); Adopt(original);
         Notice("Original character restored. Continue the separate Echoes character from its panel whenever you choose.");
     }
     private void VerifyExperiment(string directory)
@@ -245,7 +254,9 @@ public partial class EndgameDirector
         var imported = EndgameRuntimeMigration.ImportPhaseFour(source, _previousCombatJson, _combatJson, _adventure, _progression, _campaign, _endgame);
         Adopt(imported); Save(); _echoesOriginal = File.ReadAllText(SavePath);
         _experiment = ExperimentRuntimeSession.FromEndgame(_combatJson, _adventure, _progression, _campaign, _endgame, _experimentContent, imported.Capture());
-        _echoesSaveName = "echoes.smoke.save.json"; _session = _experiment.Endgame; _sandbox.AutomaticStep = true; _sandbox.SetPaused(false);
+        _echoesSaveName = "echoes.validation.save.json"; _echoesOriginalSaveName = _saveName;
+        AtomicFile.Write(Path.Combine(_output, _echoesSaveName + ".origin"), _saveName);
+        _session = _experiment.Endgame; _sandbox.AutomaticStep = true; _sandbox.SetPaused(false);
     }
     private IReadOnlyList<CombatEvent> AdvanceExperimentSmoke()
     {

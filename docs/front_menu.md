@@ -1,0 +1,15 @@
+# Main menu and characters
+
+Ordinary launch opens the main menu with **Continue**, **New Character**, **Characters**, **Settings**, and **Quit**. Continue identifies the saved discipline, level, location, and original/Echoes mode. A missing or unavailable save cannot be continued.
+
+New Character presents all five disciplines with a rotating character preview, playstyle, resource guidance, and the actual available starting abilities. Selecting a discipline only changes the preview. **Begin** writes and validates a new `endgame.character-<id>.save.json` slot before entering Greyhaven; it never reuses another character's destination.
+
+Characters shows validated saves and backup-only slots from the current save folder, including appearance, level, location, saved time, and a separate Echoes label. Select a card, then **Play** to continue it. Browsing does not switch sessions or rewrite archives. Damaged and incompatible saves remain visible with an explanation; a valid backup is explicitly identified. Future-version saves are preserved rather than replaced by older backups.
+
+During play, press **P** and choose **Save & main menu** to browse or create another character, or **Save & quit** to exit. The menu can resume the character already open. Returning to the menu, creating another character, switching characters, quitting, and closing the window save active progress first. A failed save keeps the active character open and explains the failure. Settings opened from the main menu block gameplay save/load/replay and ground-loot actions, and returning from Settings keeps the menu paused.
+
+Ordinary and Echoes archives retain their existing Core schemas. `current-character.txt` selects the last played journey; the existing original and Echoes selectors remain compatible. An Echoes `.origin` sidecar records its original save destination, so changing the selected original cannot send an Echoes character back to a different hero. The previously selected legacy original/Echoes pair is retained when introducing new slots. Unlinked Echoes archives can still be played; choose another character through the main menu when no original link exists. Shared profile discoveries retain the existing Core merge policy; equipment and character progress remain separate.
+
+Discovery is limited to 128 slot cards per scan and always includes the selected Continue target. Every possible archive/profile read is size-checked before loading; the catalog uses Core checksum, version, content and state validation. The directory is scanned only when refreshing the menu, never during ordinary combat. No deletion or automatic archive conversion is offered. Legacy Phase 4 import remains in Characters and preserves its source.
+
+The real startup diagnostic is `--front-menu-smoke --output=<fresh-directory>` without `--discipline`. Add `--capture-front-menu` for rendered screenshots. Explicit diagnostic entry points and `--discipline` retain their existing behavior. `tools/export.sh` includes the new menu route and the existing interaction/Echoes regressions.

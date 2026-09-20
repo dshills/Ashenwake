@@ -306,16 +306,16 @@ public partial class EchoesScreenSmoke : Node3D
 
     private async Task FailedCharacterSwitch()
     {
-        // Only the director's destination filename is changed, within this fresh artifact directory.
-        // A directory occupying the save filename provokes a real filesystem failure before a swap.
-        // Neither the character nor either valid archive is edited to manufacture the failure.
-        string previous = Field<string>(_director, "_saveName");
-        string blocked = Path.Combine(_output, "blocked.save.json"); Directory.CreateDirectory(blocked);
+        // Keep the actual character identity and its Echoes link. Preserve the original
+        // bytes in a sibling while a directory blocks publication to this same slot.
+        string blocked = Path.Combine(_output, Field<string>(_director, "_saveName"));
+        string held = blocked + ".held";
+        if (!System.IO.File.Exists(blocked + ".bak")) System.IO.File.Copy(blocked, blocked + ".bak");
+        System.IO.File.Move(blocked, held); Directory.CreateDirectory(blocked);
         string hash = Session.StateHash; string pointer = System.IO.File.ReadAllText(Path.Combine(_output, "current-save.txt"));
         string notice = Find<Label>("EchoesNotice").Text;
         try
         {
-            SetField(_director, "_saveName", "blocked.save.json");
             await Click("EchoesContinue");
             Check("failed_original_save_cannot_switch_or_lose_current_character", Experiment is null && Session.StateHash == hash && _board.IsOpen &&
                 System.IO.File.ReadAllText(Path.Combine(_output, "current-save.txt")) == pointer);
@@ -323,7 +323,7 @@ public partial class EchoesScreenSmoke : Node3D
             Check("failed_character_switch_displays_error_inside_current_modal", error.IsVisibleInTree() && error.Text.Length > 0 && error.Text != notice);
             await Capture("echoes-switch-save-failure.png");
         }
-        finally { SetField(_director, "_saveName", previous); Directory.Delete(blocked); }
+        finally { Directory.Delete(blocked); System.IO.File.Move(held, blocked); }
         AssertOriginal("failed_character_switch_leaves_original_archive_intact");
     }
 

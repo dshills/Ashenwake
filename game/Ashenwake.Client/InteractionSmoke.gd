@@ -73,7 +73,8 @@ func click(button):
 
 func saved_tick():
     await key(KEY_F5)
-    return JSON.parse_string(FileAccess.get_file_as_string(output.path_join("endgame.save.json"))).state.tick
+    var filename = FileAccess.get_file_as_string(output.path_join("current-save.txt")).strip_edges()
+    return JSON.parse_string(FileAccess.get_file_as_string(output.path_join(filename))).state.tick
 
 func expedition_is_open():
     for node in nodes(self):
@@ -175,8 +176,10 @@ func check_combat_hud_layout():
 func run():
     add_child(load("res://Endgame.tscn").instantiate())
     await settle()
-    await click(button_containing("Vanguard ·"))
-    checks["discipline_selection_accepts_mouse"] = not visible_label("CHOOSE YOUR FIRST DISCIPLINE")
+    await click(button_named("FrontNew"))
+    await click(button_named("FrontDisciplineVanguard"))
+    await click(button_named("FrontBegin"))
+    checks["discipline_selection_accepts_mouse"] = button_named("FrontBegin") == null and FileAccess.file_exists(output.path_join("current-save.txt"))
     checks["journey_starts_closed_after_discipline_selection"] = not visible_label("EDRATH · REGIONS")
     await check_combat_hud_layout()
     await key(KEY_J)
@@ -231,7 +234,8 @@ func run():
     await click(button_named("JourneyRegion1"))
     await click(button_named("JourneyTravel"))
     await key(KEY_F5)
-    var path = output.path_join("endgame.save.json")
+    var filename = FileAccess.get_file_as_string(output.path_join("current-save.txt")).strip_edges()
+    var path = output.path_join(filename)
     checks["campaign_entry_saves"] = FileAccess.file_exists(path)
     if FileAccess.file_exists(path):
         var saved = JSON.parse_string(FileAccess.get_file_as_string(path))

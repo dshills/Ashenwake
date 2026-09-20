@@ -7,7 +7,7 @@ func _ready():
     Engine.max_fps = 60
     for arg in OS.get_cmdline_user_args():
         if arg.begins_with("--output="): output = arg.trim_prefix("--output=")
-    if "--service-interaction-smoke" not in OS.get_cmdline_user_args() or output.is_empty() or FileAccess.file_exists(output.path_join("endgame.save.json")):
+    if "--service-interaction-smoke" not in OS.get_cmdline_user_args() or output.is_empty() or FileAccess.file_exists(output.path_join("current-save.txt")):
         push_error("Service interaction smoke requires --service-interaction-smoke --output=<fresh-isolated-directory>.")
         get_tree().quit(2)
         return
@@ -24,6 +24,11 @@ func nodes(node):
 func button_containing(text):
     for node in nodes(self):
         if node is Button and text in node.text and node.is_visible_in_tree(): return node
+    return null
+
+func button_named(name):
+    for node in nodes(self):
+        if node is Button and node.name == name and node.is_visible_in_tree(): return node
     return null
 
 func journey_is_open():
@@ -59,15 +64,18 @@ func selected_service(character, expected):
     return false
 
 func saved_progression():
-    var path = output.path_join("endgame.save.json")
+    var filename = FileAccess.get_file_as_string(output.path_join("current-save.txt")).strip_edges()
+    var path = output.path_join(filename)
     if not FileAccess.file_exists(path): return null
     return JSON.parse_string(FileAccess.get_file_as_string(path)).state.campaign.production.progression
 
 func run():
     add_child(load("res://Endgame.tscn").instantiate())
     await settle()
-    await click(button_containing("Vanguard ·"))
-    checks["discipline_selection_accepts_mouse"] = button_containing("Vanguard ·") == null
+    await click(button_named("FrontNew"))
+    await click(button_named("FrontDisciplineVanguard"))
+    await click(button_named("FrontBegin"))
+    checks["discipline_selection_accepts_mouse"] = button_named("FrontBegin") == null and FileAccess.file_exists(output.path_join("current-save.txt"))
     checks["journey_starts_closed_after_discipline_selection"] = not journey_is_open()
     if journey_is_open(): await key(KEY_J)
     var character

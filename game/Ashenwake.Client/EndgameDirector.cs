@@ -35,7 +35,6 @@ public partial class EndgameDirector : Node3D
     private CombatContent _combat = null!;
     private TextCatalog _text = null!;
     private PanelContainer _classSelection = null!;
-    private ColorRect _classBackdrop = null!;
     private FileDialog _importDialog = null!;
     private string _combatJson = "", _previousCombatJson = "", _output = "", _saveName = "endgame.save.json", _selectionNotice = "";
     private long _revision, _steps, _drillRun, _drillTick;
@@ -69,7 +68,16 @@ public partial class EndgameDirector : Node3D
             _session = Fresh(Argument("--discipline=") ?? "Vanguard");
             string profile = EndgameRuntimeSaveStore.ProfilePath(SavePath);
             if (!_smoke && (File.Exists(profile) || File.Exists(profile + ".bak")))
-                _session = Fresh(Argument("--discipline=") ?? "Vanguard", LocalProfileStore.Load(profile, _session.Production.Content).Profile);
+            {
+                try
+                {
+                    ClientCharacterCatalog.Preflight(profile); ClientCharacterCatalog.Preflight(profile + ".bak");
+                    _session = Fresh(Argument("--discipline=") ?? "Vanguard", LocalProfileStore.Load(profile, _session.Production.Content).Profile);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Text.Json.JsonException)
+                { _selectionNotice = "The local profile could not be loaded. Existing files are preserved; character cards show which saves can be continued."; }
+            }
+            _hasActiveCharacter = !OS.GetCmdlineUserArgs().Contains("--continue") && (_smoke || Argument("--discipline=") is not null || OS.GetCmdlineUserArgs().Contains("--echoes-smoke"));
             CacheDefinitions();
             _sandbox = new Sandbox { ContentJsonOverride = _combatJson }; AddChild(_sandbox); _sandbox.EnableCampaign(); _sandbox.SetSession(_session.Combat);
             _sandbox.AutomaticStep = _smoke; _sandbox.AdvanceOverride = Advance; _sandbox.SessionOverride = () => _session.Combat;
@@ -80,15 +88,16 @@ public partial class EndgameDirector : Node3D
             _campaignHud = new CampaignHud(); _sandbox.AddOverlay(_campaignHud);
             _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = _character.ToggleInventory;
             _board = new EndgameHud(); _sandbox.AddOverlay(_board);
-            WireCampaign(); WireCharacter(); WireBoard(); BuildClassSelection(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); Refresh();
+            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeFrontMenu(); Refresh();
             if (_smoke) VerifyMigrationFixture();
             if (OS.GetCmdlineUserArgs().Contains("--show-character")) { _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Toggle(); }
             string? import = Argument("--import-campaign=");
             if (import is not null) Import(import);
-            else if (OS.GetCmdlineUserArgs().Contains("--continue")) Load();
+            else if (OS.GetCmdlineUserArgs().Contains("--continue"))
+            { ShowFrontMenu(); Safely(() => PlayCharacter(ReadCharacterPointer("current-character.txt") is { Length: > 0 } recent ? recent : _saveName)); }
             else if (!_smoke && !_echoesSmoke && Argument("--discipline=") is null)
-            { _campaignHud.SetOpen(false); _classSelection.Visible = true; _classBackdrop.Visible = true; _sandbox.SetPaused(true); _classSelection.GetChild<VBoxContainer>(0).GetChildren().OfType<Button>().First().GrabFocus(); }
-            Notice("Click a person to approach and interact · J: journey · B: expeditions · C or I: character");
+            { ShowFrontMenu(); if (_selectionNotice.Length > 0) _frontMenu.Notice(_selectionNotice); }
+            if (_hasActiveCharacter && !_frontMenu.IsOpen) Notice("Click a person to approach and interact · J: journey · B: expeditions · C or I: character");
             ConfigureExperimentStart();
         }
         catch (Exception ex) { Fail(ex); }
@@ -147,6 +156,8 @@ public partial class EndgameDirector : Node3D
     }
     public override void _Input(InputEvent input)
     {
+        if (BlockFrontMenuInput(input)) return;
+        if (_frontMenu?.IsOpen == true) return;
         if (BlockExperimentPanelInput(input)) return;
         if (_importDialog is { Visible: true } || _classSelection is not { Visible: true } || input is not (InputEventKey or InputEventJoypadButton)) return;
         if (!new[] { "ui_up", "ui_down", "ui_left", "ui_right", "ui_accept", "ui_focus_next", "ui_focus_prev" }.Any(action => input.IsAction(action))) GetViewport().SetInputAsHandled();
@@ -406,7 +417,7 @@ public partial class EndgameDirector : Node3D
     private string Region(string id) => _campaignDefinition.Acts.FirstOrDefault(a => a.Id == id)?.Name ?? Readable(id);
     private string RuleName(string id) => _endgameDefinition.Modifiers.FirstOrDefault(m => m.Id == id || m.Rule == id)?.Name ?? Readable(id);
     private void Notice(string message)
-    { _board.Notice(message); _campaignHud.Notice(message); _character.Notice(message); if (_echoesBoard?.IsOpen == true) _echoesBoard.Notice(message); }
+    { _board.Notice(message); _campaignHud.Notice(message); _character.Notice(message); if (_echoesBoard?.IsOpen == true) _echoesBoard.Notice(message); if (_frontMenu?.IsOpen == true) _frontMenu.Notice(message); }
     private string? PlayerNotice(string message)
     {
         string[] parts = message.Split(':'); string value = parts.Length > 1 ? parts[1] : "";
@@ -454,7 +465,13 @@ public partial class EndgameDirector : Node3D
         };
     }
     private void Save()
-    { if (SaveExperiment()) return; EndgameRuntimeSaveStore.Write(SavePath, _combatJson, _adventure, _progression, _campaign, _endgame, _session.Capture()); AtomicFile.Write(Path.Combine(_output, "current-save.txt"), _saveName); Notice("Campaign, expedition, character and profile saved together."); }
+    {
+        if (!_hasActiveCharacter) return;
+        PreserveLegacyEchoesLink();
+        if (SaveExperiment()) return;
+        EndgameRuntimeSaveStore.Write(SavePath, _combatJson, _adventure, _progression, _campaign, _endgame, _session.Capture());
+        PublishCharacterSelection(_saveName); Notice("Campaign, expedition, character and profile saved together.");
+    }
     private void Load()
     {
         if (_experiment is not null) { LoadExperiment(); return; }
@@ -467,17 +484,20 @@ public partial class EndgameDirector : Node3D
         _echoesBoard?.SessionRestored();
         _memorySourceKey = default; _memorySourceName = ""; _memoryNoticeStatus = "";
         if (!retainExperiment) _experiment = null;
-        _session = session; CacheDefinitions(); _classSelection.Visible = false; _classBackdrop.Visible = false;
+        _frontMenu?.SetOpen(false); _hasActiveCharacter = true;
+        _session = session; CacheDefinitions(); _classSelection.Visible = false;
         _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(false); _revision++; Refresh(); _campaignHud.AnatomySessionRestored(); _board.SessionRestored();
     }
     private void Import(string path)
     {
         if (Path.GetFullPath(path) == Path.GetFullPath(SavePath)) throw new InvalidDataException("Select a Phase 4 campaign source; the endgame save uses a separate destination.");
         var imported = EndgameRuntimeMigration.ImportPhaseFour(File.ReadAllText(path), _previousCombatJson, _combatJson, _adventure, _progression, _campaign, _endgame);
+        if (_hasActiveCharacter) Save();
+        PreserveLegacyEchoesLink();
         string destinationName = File.Exists(SavePath) || File.Exists(SavePath + ".bak") ? "endgame.imported-" + Guid.NewGuid().ToString("N") + ".save.json" : _saveName;
         string destination = Path.Combine(_output, destinationName);
         EndgameRuntimeSaveStore.Write(destination, _combatJson, _adventure, _progression, _campaign, _endgame, imported.Capture());
-        _saveName = destinationName; AtomicFile.Write(Path.Combine(_output, "current-save.txt"), _saveName);
+        PublishCharacterSelection(destinationName); _saveName = destinationName;
         Adopt(EndgameRuntimeSaveStore.Load(destination, _combatJson, _adventure, _progression, _campaign, _endgame).Session);
         Notice("Campaign imported into a separate endgame save. Existing characters and the source archive are preserved.");
     }
@@ -488,7 +508,7 @@ public partial class EndgameDirector : Node3D
         var replay = session.CaptureReplay(); var result = EndgameRuntimeReplayRunner.Run(_combatJson, _adventure, _progression, _campaign, _endgame, replay);
         if (!result.Success) throw new InvalidDataException("Endgame replay diverged: " + result.Detail);
         AtomicFile.Write(Path.Combine(directory, "endgame.awendgame"), JsonData.Write(replay));
-        string savePath = Path.Combine(directory, "endgame.save.json");
+        string savePath = Path.Combine(directory, !_smoke && Path.GetFullPath(directory) == Path.GetFullPath(_output) ? "endgame.checkpoint.save.json" : "endgame.save.json");
         EndgameRuntimeSaveStore.Write(savePath, _combatJson, _adventure, _progression, _campaign, _endgame, session.Capture());
         var restored = EndgameRuntimeSaveStore.Load(savePath, _combatJson, _adventure, _progression, _campaign, _endgame).Session;
         if (restored.StateHash != session.StateHash) throw new InvalidDataException("Endgame save round trip changed authoritative state.");
@@ -566,25 +586,6 @@ public partial class EndgameDirector : Node3D
         }
         finally { _board.SetOpen(wasOpen); _capturing = false; }
     }
-    private void BuildClassSelection()
-    {
-        _classBackdrop = new ColorRect { Color = new Color(0, 0, 0, .45f), MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
-        _classBackdrop.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect); _sandbox.AddOverlay(_classBackdrop);
-        _classSelection = new PanelContainer { Position = new(334, 176), Size = new(612, 441), Visible = false };
-        _classSelection.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color("101b27"), BorderColor = new Color("8a9b9a"), BorderWidthBottom = 2, BorderWidthLeft = 2, BorderWidthRight = 2, BorderWidthTop = 2, ContentMarginLeft = 20, ContentMarginRight = 20, ContentMarginTop = 16, ContentMarginBottom = 16 });
-        _sandbox.AddOverlay(_classSelection); var column = new VBoxContainer(); _classSelection.AddChild(column);
-        var title = new Label { Text = "CHOOSE YOUR FIRST DISCIPLINE" }; title.AddThemeFontSizeOverride("font_size", 21); column.AddChild(title);
-        column.AddChild(new Label { Text = "Begin the campaign; continue your character into Fractures and God Hunts.", AutowrapMode = TextServer.AutowrapMode.WordSmart });
-        foreach (var discipline in _productionDefinition.Disciplines)
-        {
-            var button = new Button { Text = $"{discipline.Id} · {discipline.Resource}", CustomMinimumSize = new(0, 40) };
-            button.Pressed += () => Adopt(Fresh(discipline.Id, _session.Capture().Campaign.Production.Progression.Profile)); column.AddChild(button);
-        }
-        var load = new Button { Text = "Continue saved character", Disabled = !File.Exists(SavePath) && !File.Exists(SavePath + ".bak") };
-        load.Pressed += () => Safely(Load); column.AddChild(load);
-        if (_selectionNotice.Length > 0) column.AddChild(new Label { Text = _selectionNotice, AutowrapMode = TextServer.AutowrapMode.WordSmart });
-        var import = new Button { Text = "Import a Phase 4 campaign save" }; import.Pressed += () => _importDialog.PopupCentered(new(860, 560)); column.AddChild(import);
-    }
     private void BuildImportDialog()
     {
         _importDialog = new FileDialog { Title = "Import a campaign save · source remains unchanged", FileMode = FileDialog.FileModeEnum.OpenFile, Access = FileDialog.AccessEnum.Filesystem, Filters = ["*.json ; Campaign save"] };
@@ -592,7 +593,16 @@ public partial class EndgameDirector : Node3D
     }
     private static string Readable(string value) => string.Join(' ', value.Split('.').Skip(1).DefaultIfEmpty(value)).Replace('_', ' ');
     private static string? Argument(string prefix) => OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith(prefix, StringComparison.Ordinal))?[prefix.Length..];
-    private void Safely(Action action) { try { action(); } catch (Exception ex) { Notice(ex.Message); GD.PushWarning(ex.Message); } }
+    private void Safely(Action action)
+    {
+        try { action(); }
+        catch (Exception ex)
+        {
+            string message = ex is SaveCompatibilityException ? ex.Message : ex is IOException or UnauthorizedAccessException
+                ? "Character files could not be accessed. Check your save folder and try again." : ex.Message;
+            Notice(message); _sandbox?.FrontMenuFailure(message); GD.PushWarning(ex.Message);
+        }
+    }
     private void Fail(Exception ex)
     {
         _finished = true;

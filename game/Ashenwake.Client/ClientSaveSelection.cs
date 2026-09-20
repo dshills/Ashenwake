@@ -26,9 +26,9 @@ internal static class ClientSaveSelection
                 return (fallback, unavailable ? "The recent character selection was unavailable. Continue loads the default saved character; all archives are preserved." : "");
             if (Directory.Exists(directory))
             {
-                string? candidate = Directory.EnumerateFiles(directory, "endgame*.save.json*").Take(128)
+                string? candidate = Directory.EnumerateFiles(directory, "endgame*.save.json*")
                     .Select(Path.GetFileName).Where(n => n is not null).Select(n => n!.EndsWith(".bak", StringComparison.Ordinal) ? n[..^4] : n)
-                    .Where(Valid).Order(StringComparer.Ordinal).FirstOrDefault();
+                    .Where(Valid).Distinct(StringComparer.Ordinal).Take(ClientCharacterCatalog.MaximumSlots).Order(StringComparer.Ordinal).FirstOrDefault();
                 if (candidate is not null) return (candidate, "Recovered a saved character selection. Continue loads " + candidate + "; all archives are preserved.");
             }
         }
@@ -36,6 +36,5 @@ internal static class ClientSaveSelection
         { return (fallback, "The recent character selection could not be read. The default slot remains available; existing archives have not been changed."); }
         return (fallback, unavailable ? "The recent character selection is missing or invalid. Existing archives have not been changed." : "");
     }
-    private static bool Valid(string filename) => filename.Length <= 240 && filename == Path.GetFileName(filename) &&
-        filename.StartsWith("endgame.", StringComparison.Ordinal) && filename.EndsWith(".save.json", StringComparison.Ordinal);
+    private static bool Valid(string filename) => ClientCharacterCatalog.IsValidFilename(filename) && !ClientCharacterCatalog.IsEchoesFilename(filename);
 }

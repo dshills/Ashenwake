@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 namespace Ashenwake.Client;
 
 public sealed record EchoesBoardView(EndgameDisplay Expedition, ExperimentView? Experiment, ExperimentRules Rules,
-    bool AcceptingEntries, bool CanContinue, string MindName, string MindDescription, string Character, long Revision);
+    bool AcceptingEntries, bool CanContinue, string MindName, string MindDescription, string Character, long Revision, bool CanReturn = true);
 
 /// <summary>Read-only contract selection and history; the director executes all archive and gameplay actions.</summary>
 public partial class EchoesBoard : Control
@@ -26,7 +26,7 @@ public partial class EchoesBoard : Control
     private EchoesBoardView? _view;
     private string _tab = "Contract";
     private long _selectedSigil;
-    private (long Revision, bool Gate, string Tab, long Sigil, bool Continue, bool Admission, bool Hub, bool Unlocked, bool Alive, bool Echoes)? _rendered;
+    private (long Revision, bool Gate, string Tab, long Sigil, bool Continue, bool Admission, bool Hub, bool Unlocked, bool Alive, bool Echoes, bool Return)? _rendered;
     private Vector2 _viewport = new(-1, -1);
     private int _oldSibling = -1;
     private static readonly Color Mint = new("add7ca"), Blue = new("accdf0"), Bone = new("e9ddc4"), Gold = new("efd08b");
@@ -103,7 +103,7 @@ public partial class EchoesBoard : Control
     {
         if (_view is null) return;
         var key = (_view.Revision, _view.Expedition.AtGate, _tab, _selectedSigil, _view.CanContinue, _view.AcceptingEntries,
-            _view.Expedition.InHub, _view.Expedition.Unlocked, _view.Expedition.Alive, _view.Experiment is not null);
+            _view.Expedition.InHub, _view.Expedition.Unlocked, _view.Expedition.Alive, _view.Experiment is not null, _view.CanReturn);
         if (!force && _rendered == key) return;
         _rendered = key;
         foreach (var child in _body.GetChildren()) { _body.RemoveChild(child); child.QueueFree(); }
@@ -218,8 +218,8 @@ public partial class EchoesBoard : Control
         {
             _body.AddChild(ActionButton("EchoesSave", "Save Echoes character", () => SaveRequested?.Invoke()));
             var back = ActionButton("EchoesReturn", "Save Echoes & return to original character", () => ReturnRequested?.Invoke());
-            back.Disabled = !view.Expedition.InHub; _body.AddChild(back);
-            _body.AddChild(Text(view.Expedition.InHub ? "You can continue this saved Echoes character from the Echoes screen later." : "Return becomes available in Greyhaven. Finish or abandon the active expedition first.", 13, Gold));
+            back.Disabled = !view.Expedition.InHub || !view.CanReturn; _body.AddChild(back);
+            _body.AddChild(Text(!view.CanReturn ? "This archive has no linked original. Save & main menu lets you choose another character." : view.Expedition.InHub ? "You can continue this saved Echoes character from the Echoes screen later." : "Return becomes available in Greyhaven. Finish or abandon the active expedition first.", 13, Gold));
         }
         else
         {

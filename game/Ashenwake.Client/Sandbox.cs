@@ -175,6 +175,11 @@ public partial class Sandbox : Node3D
     public override void _UnhandledInput(InputEvent input)
     {
         if (_smoke || _session is null) return;
+        if (FrontSettingsVisible)
+        {
+            if (input.IsActionPressed("aw_settings")) TogglePanel(_settingsPanel);
+            GetViewport().SetInputAsHandled(); return;
+        }
         try
         {
             if (input.IsActionPressed("aw_inventory")) { ShowInventory(); return; }
@@ -499,6 +504,7 @@ public partial class Sandbox : Node3D
         if (_lootPanel is not null) _lootPanel.Visible = false;
         panel.Visible = open; ChangePause(open);
         if (open) FocusFirstAction(panel); else FocusResumeOrRelease();
+        RestoreFrontSettingsActions();
         RefreshHud();
     }
     private void ApplyWhilePaused(CombatCommand command)
