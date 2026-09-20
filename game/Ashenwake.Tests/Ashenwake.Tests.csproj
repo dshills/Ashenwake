@@ -9,6 +9,10 @@
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
     <ProjectReference Include="../Ashenwake.Core/Ashenwake.Core.csproj" />
+    <Compile Include="../Ashenwake.Client/ClientCharacterCatalog.cs" Link="Client/ClientCharacterCatalog.cs" />
+    <Compile Include="../Ashenwake.Client/ClientCharacterCatalogCache.cs" Link="Client/ClientCharacterCatalogCache.cs" />
+    <Compile Include="../Ashenwake.Client/CharacterAppearance.cs" Link="Client/CharacterAppearance.cs" />
+    <Compile Include="../Ashenwake.Client/FrontMenuModels.cs" Link="Client/FrontMenuModels.cs" />
     <None Include="../../content/phase0.json" Link="phase0.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/combat.json" Link="combat.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/adventure.json" Link="adventure.json" CopyToOutputDirectory="PreserveNewest" />

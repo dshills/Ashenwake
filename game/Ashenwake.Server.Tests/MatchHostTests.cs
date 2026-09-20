@@ -119,6 +119,41 @@ public sealed class MatchHostTests
         socket.Abort(); await serving.WaitAsync(TimeSpan.FromSeconds(2));
     }
     [Fact]
+    public async Task Restored_started_match_resumes_with_only_one_returning_player()
+    {
+        await using var fixture = await ServerFixture.Create();
+        var core = CoopCombatSession.Create(ServerFixture.Content, matchId: fixture.Allocation.AllocationId);
+        for (int tick = 0; tick < 5; tick++) core.Step();
+        fixture.CompletedSnapshot(core.Capture());
+        await using var host = await fixture.Host(); using var socket = new TestSocket();
+        var serving = host.Serve(socket, fixture.Join(1), CancellationToken.None);
+        var joined = await socket.Frames.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Equal(5, joined.View.Tick); Assert.False(joined.View.Completed);
+        await Until(() => fixture.Allocation.Revision >= 1);
+        var saved = JsonData.Read<CoopSnapshot>(fixture.Allocation.Snapshot.GetRawText());
+        Assert.True(saved.Tick > joined.View.Tick);
+        Assert.Equal(1, host.ConnectedPeers);
+        Assert.True(saved.Players.Single(p => p.Id == 1).Connected);
+        Assert.False(saved.Players.Single(p => p.Id == 2).Connected);
+        socket.Abort(); await serving.WaitAsync(TimeSpan.FromSeconds(2));
+    }
+    [Fact]
+    public async Task Restored_unstarted_match_waits_for_both_players_before_advancing()
+    {
+        await using var fixture = await ServerFixture.Create();
+        fixture.CompletedSnapshot(CoopCombatSession.Create(ServerFixture.Content, matchId: fixture.Allocation.AllocationId).Capture());
+        await using var host = await fixture.Host(); using var first = new TestSocket(); using var second = new TestSocket();
+        var one = host.Serve(first, fixture.Join(1), CancellationToken.None);
+        await first.SendStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await Until(() => fixture.Allocation.Revision >= 1);
+        Assert.Equal(0, JsonData.Read<CoopSnapshot>(fixture.Allocation.Snapshot.GetRawText()).Tick);
+        while (first.Frames.Reader.TryRead(out var frame)) Assert.Equal(0, frame.View.Tick);
+        var two = host.Serve(second, fixture.Join(2), CancellationToken.None);
+        await Until(() => fixture.Allocation.Revision >= 2);
+        Assert.True(JsonData.Read<CoopSnapshot>(fixture.Allocation.Snapshot.GetRawText()).Tick > 0);
+        first.Abort(); second.Abort(); await Task.WhenAll(one, two).WaitAsync(TimeSpan.FromSeconds(2));
+    }
+    [Fact]
     public async Task Retained_personal_rewards_survive_slot_changes_and_idle_checkpoints()
     {
         await using var fixture = await ServerFixture.Create();

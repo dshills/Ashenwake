@@ -10,7 +10,7 @@ using Ashenwake.Core.Serialization;
 namespace Ashenwake.Client;
 
 /// <summary>Read-only, validated character previews. Launching a character must load its archive again.</summary>
-public sealed class ClientCharacterCatalog
+public sealed partial class ClientCharacterCatalog
 {
     public const int MaximumSlots = 128;
     public const long MaximumArchiveBytes = 96L * 1024 * 1024;
@@ -35,28 +35,38 @@ public sealed class ClientCharacterCatalog
 
     public CharacterSlot[] Scan(string directory)
     {
-        LimitReached = false;
+        var (names, limit) = SlotNames(directory, CancellationToken.None);
+        LimitReached = limit;
+        return SortSlots(names.Select(name => Inspect(directory, name)));
+    }
+
+    private static (HashSet<string> Names, bool Limit) SlotNames(string directory, CancellationToken cancellation)
+    {
+        cancellation.ThrowIfCancellationRequested();
         if (!Directory.Exists(directory))
         {
             // A genuinely absent directory is a fresh installation. Existing files or
             // inaccessible directory entries should reach the caller's menu notice.
             try { _ = File.GetAttributes(directory); }
-            catch (DirectoryNotFoundException) { return []; }
-            catch (FileNotFoundException) { return []; }
+            catch (DirectoryNotFoundException) { return ([], false); }
+            catch (FileNotFoundException) { return ([], false); }
             throw new IOException("The character save directory is unavailable.");
         }
 
         var names = new HashSet<string>(StringComparer.Ordinal);
         foreach (string path in Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly))
         {
+            cancellation.ThrowIfCancellationRequested();
             string name = Path.GetFileName(path);
             if (name.EndsWith(".bak", StringComparison.Ordinal)) name = name[..^4];
             if (!IsValidFilename(name) || !names.Add(name)) continue;
-            if (names.Count > MaximumSlots) { names.Remove(name); LimitReached = true; break; }
+            if (names.Count > MaximumSlots) { names.Remove(name); return (names, true); }
         }
-        return names.Select(name => Inspect(directory, name)).OrderByDescending(slot => slot.SavedUtc)
-            .ThenBy(slot => slot.Filename, StringComparer.Ordinal).ToArray();
+        return (names, false);
     }
+
+    private static CharacterSlot[] SortSlots(IEnumerable<CharacterSlot> slots) => slots.OrderByDescending(slot => slot.SavedUtc)
+        .ThenBy(slot => slot.Filename, StringComparer.Ordinal).ToArray();
 
     public CharacterSlot Inspect(string directory, string filename)
     {

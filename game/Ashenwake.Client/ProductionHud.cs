@@ -15,6 +15,7 @@ public partial class ProductionHud : Control
     public event Action? RespecRequested;
     public event Action<long, EquipmentSlot>? EquipRequested;
     public event Action<EquipmentSlot>? UnequipRequested;
+    public event Action<long>? DiscardRequested;
     public event Action<CraftingRequest>? CraftRequested;
     public event Action<string, string>? MutationRequested;
     public event Action<string>? ServiceRequested;
@@ -115,13 +116,14 @@ public partial class ProductionHud : Control
         };
         _skillsPanel.CloseRequested += () => { _panel.Hide(); _gearInspecting = false; };
         _skillsPanel.MinimumSizeChanged += () => Callable.From(LayoutPanel).CallDeferred();
+        BuildDiscardConfirmation();
         var close = new Button { Text = "Close character" }; close.Pressed += Toggle; column.AddChild(close);
         GetViewport().SizeChanged += LayoutPanel;
-        _panel.VisibilityChanged += UpdateCraftModal;
-        VisibilityChanged += () => { if (!IsVisibleInTree()) { _gearInspecting = false; _gearLoadout.CancelDrag(); _craftingWorkbench.CancelInteraction(); _skillsPanel.CancelInteraction(); } UpdateCraftModal(); };
+        _panel.VisibilityChanged += () => { if (!_panel.Visible) CancelDiscard(); UpdateCraftModal(); };
+        VisibilityChanged += () => { if (!IsVisibleInTree()) { CancelDiscard(); _gearInspecting = false; _gearLoadout.CancelDrag(); _craftingWorkbench.CancelInteraction(); _skillsPanel.CancelInteraction(); } UpdateCraftModal(); };
     }
 
-    public override void _ExitTree() { GetViewport().SizeChanged -= LayoutPanel; }
+    public override void _ExitTree() { CancelDiscard(); GetViewport().SizeChanged -= LayoutPanel; }
     public void Toggle() { _panel.Visible = !_panel.Visible; if (_panel.Visible) { Rebuild(true); _firstTab.GrabFocus(); } else _gearInspecting = false; }
     public void Close() { _panel.Hide(); _gearInspecting = false; }
     public void ToggleInventory()
@@ -166,7 +168,8 @@ public partial class ProductionHud : Control
         IReadOnlyList<InteractionDisplay> interactions, bool inTown, long revision, IReadOnlyList<string>? unlockedMutations)
     {
         _view = view; _state = state; _content = content; _combat = combat; _interactions = interactions; _inTown = inTown; _revision = revision;
-        if (_gearInspecting && _gearItemId != 0 && !state.Character.Items.Any(i => i.Id == _gearItemId && Compatible(i, _gearSlot))) _gearInspecting = false;
+        if (_gearInspecting && _gearItemId != 0 && !state.Character.Items.Any(i => i.Id == _gearItemId)) _gearInspecting = false;
+        SynchronizeDiscard();
         _unlockedMutations = unlockedMutations;
         _rangeMask = 0;
         for (int i = 0; i < interactions.Count; i++) if (interactions[i].Distance <= interactions[i].Range) _rangeMask |= 1 << i;
@@ -179,6 +182,7 @@ public partial class ProductionHud : Control
     }
     private void Rebuild(bool force)
     {
+        if (_tab != "Gear") CancelDiscard();
         if (_view is null || !_panel.Visible || (!force && _renderedRevision == _revision && _renderedRangeMask == _rangeMask)) return;
         _renderedRevision = _revision; _renderedRangeMask = _rangeMask;
         LayoutPanel();
@@ -270,7 +274,7 @@ public partial class ProductionHud : Control
         var candidate = _state.Character.Items.FirstOrDefault(i => i.Id == _gearItemId);
         var choice = new OptionButton { Name = "GearItem" };
         choice.AddItem("Empty · preview unequipped slot"); choice.SetItemMetadata(0, 0L);
-        foreach (var item in _state.Character.Items.Where(i => Compatible(i, _gearSlot)))
+        foreach (var item in _state.Character.Items.Where(i => Compatible(i, _gearSlot) || i.Id == _gearItemId))
         {
             int index = choice.ItemCount;
             choice.AddItem($"#{item.Id} {Readable(item.DefinitionId)} · {item.Rarity}"); choice.SetItemMetadata(index, item.Id);
@@ -301,7 +305,7 @@ public partial class ProductionHud : Control
             if (candidate.Rarity == ItemRarity.Godwrought)
                 _rows.AddChild(Label($"Burning kills {candidate.BurningKills}/{GodwroughtProgress.AwakeningKills} · {(candidate.Evolution.Length > 0 ? candidate.Evolution : candidate.Awakened ? "Awakened" : "Dormant")}", 12));
         }
-        string conflict = EquipmentConflict(candidate);
+        string conflict = candidate is null ? "" : GearRestriction(candidate.Id, _gearSlot);
         var equip = Button(candidate is null ? $"Unequip {_gearSlot}" : $"Equip selected {_gearSlot}", () =>
         {
             if (_gearItemId == 0) UnequipRequested?.Invoke(_gearSlot);
@@ -316,6 +320,7 @@ public partial class ProductionHud : Control
             var reset = Button("Show equipped item", () => { _gearInspecting = false; Rebuild(true); });
             reset.Name = "ResetGearPreview";
         }
+        AddDiscardControls(candidate);
         if (_gearSlot is not (EquipmentSlot.MainHand or EquipmentSlot.OffHand or EquipmentSlot.Head or EquipmentSlot.Chest))
             _rows.AddChild(Label("This slot changes stats. The model displays your weapon, off hand, helmet and chest armor.", 12));
         _rows.AddChild(new HSeparator()); _rows.AddChild(Label("PERMANENT BONUSES · EQUIPMENT + PASSIVES", 14));
@@ -374,7 +379,7 @@ public partial class ProductionHud : Control
         CharacterAppearance shown = _appearance;
         bool inspecting = _tab == "Gear" && _gearInspecting && _state is not null &&
             _gearItemId != _state.Character.Equipment.GetValueOrDefault(_gearSlot);
-        if (inspecting && _state is not null)
+        if (inspecting && _state is not null && (_gearItemId == 0 || _state.Character.Items.Any(i => i.Id == _gearItemId && Compatible(i, _gearSlot))))
         {
             var equipment = new SortedDictionary<EquipmentSlot, long>(_state.Character.Equipment);
             foreach (var occupied in equipment.Where(p => p.Value == _gearItemId).Select(p => p.Key).ToArray()) equipment.Remove(occupied);

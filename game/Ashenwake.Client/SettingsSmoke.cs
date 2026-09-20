@@ -281,7 +281,7 @@ public partial class SettingsSmoke : Node3D
 
     private async Task StartDirector()
     {
-        _director = new EndgameDirector(); AddChild(_director); _director.SetProcess(false);
+        _director = new EndgameDirector(); AddChild(_director);
         _sandbox = Field<Sandbox>(_director, "_sandbox"); _sandbox.SetProcess(false); _sandbox.AutomaticStep = true;
         await Frames(8);
     }

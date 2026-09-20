@@ -204,6 +204,20 @@ public sealed class PhaseZeroTests
     }
 
     [Fact]
+    public void FixedClockStopsImmediatelyWhenCallbackPausesAndResumesWithoutDebt()
+    {
+        var clock = new FixedStepClock(); int steps = 0;
+        Assert.Equal(1, clock.Advance(.5, () => { steps++; clock.Paused = true; }));
+        Assert.Equal(1, steps);
+        Assert.Equal(0, clock.Alpha);
+        Assert.Equal(0, clock.Advance(1, () => steps++));
+        clock.Paused = false;
+        Assert.Equal(0, clock.Advance(0, () => steps++));
+        Assert.Equal(1, clock.Advance(FixedStepClock.SecondsPerTick, () => steps++));
+        Assert.Equal(2, steps);
+    }
+
+    [Fact]
     public void SnapshotsCannotMutateWorldAndCoreDoesNotReferenceGodot()
     {
         var world = new SimulationWorld(Content());

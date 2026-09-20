@@ -74,6 +74,7 @@ public partial class ProductionDirector : Node3D
             _character.RespecRequested += () => Apply(_session.Respec, reportBuild: true);
             _character.EquipRequested += (id, slot) => Apply(() => _session.Equip(id, slot));
             _character.UnequipRequested += slot => Apply(() => _session.Unequip(slot));
+            _character.DiscardRequested += id => Apply(() => _session.Discard(id, confirmPermanent: true));
             _character.CraftRequested += request => Apply(() => _session.Craft(request), reportCraft: true);
             _character.MutationRequested += (skill, mutation) => Apply(() => _session.SetMutation(skill, mutation), reportBuild: true);
             _character.ServiceRequested += id => Apply(() => _session.Interact(id));

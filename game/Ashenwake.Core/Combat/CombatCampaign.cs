@@ -76,7 +76,7 @@ public sealed partial class CombatSession
                 {
                     if (target.Id == 1 && target.InvulnerableUntil <= Tick && campaign.SuppressionReadyTick <= Tick && _state.Fragments.Count > 0)
                     {
-                        campaign.SuppressedFragmentId = _state.Fragments.Values.Order().First(); campaign.SuppressedUntil = Tick + 75; campaign.SuppressionReadyTick = Tick + 225;
+                        campaign.SuppressedFragmentId = _state.Fragments.Values.Order(StringComparer.Ordinal).First(); campaign.SuppressedUntil = Tick + 75; campaign.SuppressionReadyTick = Tick + 225;
                         Emit("FragmentSuppressed", source.Id, 1, 75, campaign.SuppressedFragmentId, hazard.ActionId);
                     }
                 }

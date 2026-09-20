@@ -7,9 +7,10 @@ using Ashenwake.Core.Simulation;
 
 namespace Ashenwake.Core.Production;
 
-public enum ProductionAction { Expedition, Equip, Unequip, Craft, Passive, Respec, Retrain, Mutation }
+public enum ProductionAction { Expedition, Equip, Unequip, Craft, Passive, Respec, Retrain, Mutation, Discard }
 public sealed record ProductionCommand(ProductionAction Action, ExpeditionCommand? Expedition = null, long ItemId = 0,
-    EquipmentSlot Slot = EquipmentSlot.MainHand, string Id = "", string Value = "", CraftingRequest? Crafting = null);
+    EquipmentSlot Slot = EquipmentSlot.MainHand, string Id = "", string Value = "", CraftingRequest? Crafting = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool ConfirmPermanent = false);
 public sealed record ProductionResult(bool Success, string Reason, CombatEvent[] CombatEvents, string[] WorldEvents);
 public sealed record ProductionSnapshot
 {
@@ -92,6 +93,7 @@ public sealed partial class ProductionSession
     public ProductionResult SelectManifestation(string id) => Execute(new(ProductionAction.Expedition, new(ExpeditionAction.Manifestation, id)));
     public ProductionResult Equip(long itemId, EquipmentSlot slot) => Execute(new(ProductionAction.Equip, ItemId: itemId, Slot: slot));
     public ProductionResult Unequip(EquipmentSlot slot) => Execute(new(ProductionAction.Unequip, Slot: slot));
+    public ProductionResult Discard(long itemId, bool confirmPermanent = false) => Execute(new(ProductionAction.Discard, ItemId: itemId, ConfirmPermanent: confirmPermanent));
     public ProductionResult Craft(CraftingRequest request) => Execute(new(ProductionAction.Craft, Crafting: request));
     public ProductionResult AllocatePassive(string id) => Execute(new(ProductionAction.Passive, Id: id));
     public ProductionResult Respec() => Execute(new(ProductionAction.Respec));
@@ -173,6 +175,10 @@ public sealed partial class ProductionSession
             case ProductionAction.Unequip:
                 if (!Near("service.torren")) return new(false, "Visit Torren to unequip items.", [], []);
                 result = progression.Unequip(operation, command.Slot); break;
+            case ProductionAction.Discard:
+                if (!Near("service.torren")) return new(false, "Visit Torren to discard items.", [], []);
+                if (!Combat.View.Actors.Any(actor => actor.Id == 1 && actor.Health > 0)) return new(false, "Cannot discard equipment while defeated.", [], []);
+                result = progression.Discard(operation, command.ItemId, command.ConfirmPermanent); break;
             case ProductionAction.Craft:
                 if (command.Crafting is null) return new(false, "Choose a crafting recipe.", [], []);
                 string service = command.Crafting.Service switch { CraftingService.Tempering => "service.torren", CraftingService.Rebinding => "npc.oris", CraftingService.Engraving => "hub.workshops", CraftingService.Extraction => "npc.kesh", CraftingService.Purification => "npc.cael", _ => "service.mara" };
@@ -326,6 +332,9 @@ public sealed partial class ProductionSession
         combat.Mutations.Clear(); foreach (var pair in canonical.SelectedMutations) combat.Mutations[pair.Key] = pair.Value;
         combat.NextObjectId = Math.Max(combat.NextObjectId, canonical.NextItemId);
         var mapping = new SortedDictionary<string, long>(StringComparer.Ordinal);
+        var ownedGodwrought = canonical.Items.Where(item => item.DefinitionId == "item.ashcleaver")
+            .Select(item => item.LegacyInstanceId == "" ? "ashcleaver.production." + item.Id : item.LegacyInstanceId).ToHashSet(StringComparer.Ordinal);
+        world.Godwrought = world.Godwrought.Where(item => ownedGodwrought.Contains(item.InstanceId)).ToArray();
         foreach (var item in canonical.Items.Where(i => i.DefinitionId == "item.ashcleaver"))
         {
             string id = item.LegacyInstanceId == "" ? "ashcleaver.production." + item.Id : item.LegacyInstanceId;
@@ -341,7 +350,7 @@ public sealed partial class ProductionSession
         var view = progression.View; var state = progression.CharacterState;
         var properties = state.Equipment.Values.Select(id => state.Items.Single(i => i.Id == id)).SelectMany(item =>
             new[] { Content.Data.Items.Single(d => d.Id == item.DefinitionId).Property, item.Engraving }).ToHashSet();
-        string[] unlocked = Content.Data.Skills.Where(s => state.UnlockedDisciplines.Contains(s.Discipline) && state.Mastery.GetValueOrDefault(s.Id) >= 100).SelectMany(s => s.Mutations).Distinct().Order().ToArray();
+        string[] unlocked = Content.Data.Skills.Where(s => state.UnlockedDisciplines.Contains(s.Discipline) && state.Mastery.GetValueOrDefault(s.Id) >= 100).SelectMany(s => s.Mutations).Distinct().Order(StringComparer.Ordinal).ToArray();
         return new(view.Discipline, view.Level, state.Passives.GetValueOrDefault("Offense"), state.Passives.GetValueOrDefault("Defense"),
             Math.Min(1000, view.Stats.GetValueOrDefault("affix.resource") + state.Passives.GetValueOrDefault("Resource")), Math.Min(2000, view.Stats.GetValueOrDefault("affix.damage")),
             Math.Min(10000, view.Stats.GetValueOrDefault("affix.armor")), Math.Min(7500, view.Stats.GetValueOrDefault("affix.critical")),

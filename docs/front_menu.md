@@ -12,4 +12,6 @@ Ordinary and Echoes archives retain their existing Core schemas. `current-charac
 
 Discovery is limited to 128 slot cards per scan and always includes the selected Continue target. Every possible archive/profile read is size-checked before loading; the catalog uses Core checksum, version, content and state validation. The directory is scanned only when refreshing the menu, never during ordinary combat. No deletion or automatic archive conversion is offered. Legacy Phase 4 import remains in Characters and preserves its source.
 
+The menu opens immediately while a background worker checks saved characters. Previously validated cards are cached for unchanged primary, backup, and shared-profile files; the menu shows **Checking saved characters…** during refresh. New Character and Settings remain usable. Closing or refreshing the menu cancels its pending result, and completion preserves keyboard focus, including focus in Settings. Cached cards are advisory: choosing a character validates its archive afresh before loading.
+
 The real startup diagnostic is `--front-menu-smoke --output=<fresh-directory>` without `--discipline`. Add `--capture-front-menu` for rendered screenshots. Explicit diagnostic entry points and `--discipline` retain their existing behavior. `tools/export.sh` includes the new menu route and the existing interaction/Echoes regressions.

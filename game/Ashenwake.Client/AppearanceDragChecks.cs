@@ -124,6 +124,7 @@ public partial class AppearanceSmoke
             WalkTo("service.torren"); Refresh(); _hud.PresentInteraction("ServiceOpened:service.torren"); await Frames();
             Check("drag_wrong_discipline_uses_earned_staff_before_retrain", _session.ProgressionView.Discipline == "Vanguard");
             await RejectDrag("GearInventoryItem" + staff, "GearEquipmentMainHand", "wrong_discipline");
+            await IncompatibleDiscardInspection(staff);
             _hud.Toggle();
             WalkTo("service.mara"); Require(_session.Retrain("Arcanist")); _commands++;
             WalkTo("service.torren"); Refresh(); _hud.PresentInteraction("ServiceOpened:service.torren"); await Frames();

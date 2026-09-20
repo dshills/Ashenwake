@@ -81,7 +81,7 @@ public sealed class CampaignRuntimeSession
     public static ProgressionContent ResolvePolicy(ProgressionContent policy, CampaignContent campaign)
     {
         var definition = policy.Capture();
-        return ProgressionContent.Create(definition with { DiscoveryIds = definition.DiscoveryIds.Concat(campaign.Data.Acts.Select(a => "discovery." + a.Id)).Concat(campaign.Data.Exploration.Select(e => e.Discovery)).Distinct().Order().ToArray() });
+        return ProgressionContent.Create(definition with { DiscoveryIds = definition.DiscoveryIds.Concat(campaign.Data.Acts.Select(a => "discovery." + a.Id)).Concat(campaign.Data.Exploration.Select(e => e.Discovery)).Distinct().Order(StringComparer.Ordinal).ToArray() });
     }
     public static CampaignRuntimeSession Create(string combatJson, AdventureContent adventure, ProgressionContent policy, CampaignContent campaign, ulong seed = 42, string discipline = "Vanguard", LocalProfileState? profile = null)
     {
@@ -208,7 +208,7 @@ public sealed class CampaignRuntimeSession
                 if (command.Production.Expedition?.Id == "dungeon.replay") return Failed("Campaign regions keep their own completion history.");
                 string specialist = command.Production.Action switch
                 {
-                    ProductionAction.Equip or ProductionAction.Unequip => "service.torren",
+                    ProductionAction.Equip or ProductionAction.Unequip or ProductionAction.Discard => "service.torren",
                     ProductionAction.Craft => command.Production.Crafting?.Service switch
                     { CraftingService.Tempering => "service.torren", CraftingService.Rebinding => "npc.oris", CraftingService.Engraving => "hub.workshops", CraftingService.Extraction => "npc.kesh", CraftingService.Purification => "npc.cael", _ => "service.mara" },
                     ProductionAction.Expedition when command.Production.Expedition?.Action == ExpeditionAction.Interact => command.Production.Expedition.Id,

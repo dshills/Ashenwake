@@ -21,7 +21,7 @@ public static class ProductionContent
         }).ToArray();
         var skills = combat.Skills.Where(s => definition.Disciplines.Any(d => d.Id == s.Discipline))
             .Select(skill => new SkillMasteryDefinition(skill.Id, skill.Discipline, combat.Mutations.Where(m => m.SkillId == skill.Id).Select(m => m.Id).ToArray())).ToArray();
-        return ProgressionContent.Create(definition with { Items = items, Skills = skills, FragmentIds = combat.Fragments.Select(f => f.Id).ToArray(), DiscoveryIds = definition.DiscoveryIds.Concat(adventure?.Capture().Rooms.Select(r => r.Discovery) ?? []).Distinct().Order().ToArray() });
+        return ProgressionContent.Create(definition with { Items = items, Skills = skills, FragmentIds = combat.Fragments.Select(f => f.Id).ToArray(), DiscoveryIds = definition.DiscoveryIds.Concat(adventure?.Capture().Rooms.Select(r => r.Discovery) ?? []).Distinct().Order(StringComparer.Ordinal).ToArray() });
     }
     public static AdventureContent ResolveAdventure(string combatJson, AdventureContent policy)
     {

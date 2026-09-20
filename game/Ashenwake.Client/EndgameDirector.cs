@@ -130,6 +130,7 @@ public partial class EndgameDirector : Node3D
         _character.RespecRequested += () => Permanent(new(ProductionAction.Respec));
         _character.EquipRequested += (id, slot) => Permanent(new(ProductionAction.Equip, ItemId: id, Slot: slot));
         _character.UnequipRequested += slot => Permanent(new(ProductionAction.Unequip, Slot: slot));
+        _character.DiscardRequested += id => Permanent(new(ProductionAction.Discard, ItemId: id, ConfirmPermanent: true));
         _character.CraftRequested += request => Permanent(new(ProductionAction.Craft, Crafting: request));
         _character.MutationRequested += (id, value) => Permanent(new(ProductionAction.Mutation, Id: id, Value: value));
         _character.ServiceRequested += Interact;

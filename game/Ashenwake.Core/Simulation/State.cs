@@ -92,6 +92,9 @@ public sealed class FixedStepClock
         while (_accumulator + 1e-12 >= SecondsPerTick && count < 5)
         {
             step(); _accumulator = Math.Max(0, _accumulator - SecondsPerTick); count++;
+            // A step can open a modal. Discard the remaining wall-clock debt so
+            // neither this frame nor resuming the game advances behind that modal.
+            if (Paused) { _accumulator = 0; return count; }
         }
         if (_accumulator >= SecondsPerTick)
         {

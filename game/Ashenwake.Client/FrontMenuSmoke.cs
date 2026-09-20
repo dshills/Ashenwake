@@ -46,12 +46,14 @@ public partial class FrontMenuSmoke : Node3D
                 throw new InvalidDataException("Front menu smoke requires --front-menu-smoke --output=<fresh-artifact-directory>, without --discipline.");
             Directory.CreateDirectory(_output); _writeReport = true; Engine.MaxFps = 60;
             Resize(1280, 800);
-            _director = new EndgameDirector(); AddChild(_director); _director.SetProcess(false);
+            _director = new EndgameDirector(); AddChild(_director);
             _sandbox = Field<Sandbox>(_director, "_sandbox"); _sandbox.SetProcess(false); _sandbox.AutomaticStep = true;
             _menu = Field<FrontMenu>(_director, "_frontMenu");
             if (DisplayServer.GetName() != "headless") GetWindow().GrabFocus();
             await Frames(8);
+            await WaitForCatalog();
             await InitialMenuAndPreviews();
+            await CatalogRefreshKeepsMenuResponsive();
             await CreateSeparateCharacters();
             await BlockedWritesPreserveCharacter();
             await ArchiveRecoveryAndCompatibility();
@@ -114,6 +116,36 @@ public partial class FrontMenuSmoke : Node3D
         for (int i = 0; i < 15; i++) _sandbox._Process(FixedStepClock.SecondsPerTick);
         Check("all_startup_previews_and_shortcuts_are_read_only", Session.StateHash == hash && Session.CaptureReplay().Frames.Length == 0 && Archives().Count == 0 && !HasCharacter);
         Check("startup_does_not_publish_a_ghost_character_selector", !System.IO.File.Exists(Path.Combine(_output, "current-save.txt")) && !System.IO.File.Exists(Path.Combine(_output, "current-character.txt")));
+    }
+
+    private async Task WaitForCatalog()
+    {
+        ulong deadline = Time.GetTicksMsec() + 15000;
+        while (_menu.CatalogLoading && Time.GetTicksMsec() < deadline) await Frames();
+        if (_menu.CatalogLoading) throw new InvalidDataException("Character preview refresh did not complete.");
+    }
+
+    private async Task CatalogRefreshKeepsMenuResponsive()
+    {
+        var catalog = Field<ClientCharacterCatalog>(_director, "_characterCatalog");
+        var gate = Field<SemaphoreSlim>(catalog, "_scanGate");
+        await gate.WaitAsync();
+        try
+        {
+            Call(_director, "RefreshFrontMenu");
+            await Click("FrontNew");
+            Check("catalog_refresh_allows_menu_navigation_while_pending", _menu.CatalogLoading && _menu.Page == "New");
+            await Click("FrontBack"); await Click("FrontSettings");
+            Check("catalog_refresh_allows_settings_while_pending", _menu.CatalogLoading && _sandbox.FrontSettingsVisible);
+            Call(_director, "RefreshFrontMenu");
+        }
+        finally { gate.Release(); }
+        await WaitForCatalog();
+        var settings = Field<PanelContainer>(_sandbox, "_settingsPanel");
+        var focused = GetViewport().GuiGetFocusOwner();
+        Check("completed_catalog_refresh_does_not_steal_settings_focus", _sandbox.FrontSettingsVisible && focused is not null && settings.IsAncestorOf(focused));
+        Check("replacement_catalog_refresh_finishes_without_adopting_cancelled_result", _menu.IsOpen && _sandbox.IsPaused && !_menu.CatalogLoading);
+        await ClickText("Close settings");
     }
 
     private async Task CreateSeparateCharacters()
@@ -225,7 +257,7 @@ public partial class FrontMenuSmoke : Node3D
         string futureBytes = futureDocument.ToJsonString();
         System.IO.File.WriteAllText(Path.Combine(_output, future), futureBytes);
         System.IO.File.WriteAllText(Path.Combine(_output, future + ".bak"), _firstBytes);
-        Call(_director, "RefreshFrontMenu"); await Click("FrontCharacters");
+        Call(_director, "RefreshFrontMenu"); await WaitForCatalog(); await Click("FrontCharacters");
         string activeHash = Session.StateHash; var before = Archives();
         await SelectSlot(corrupt);
         Check("corrupt_character_without_backup_is_visible_but_cannot_play", Button("FrontPlay").Disabled && VisibleText(_menu).Length > 0);
@@ -293,10 +325,10 @@ public partial class FrontMenuSmoke : Node3D
     {
         var archives = Archives(); string selection = Read("current-character.txt");
         _director.QueueFree(); await Frames(5);
-        _director = new EndgameDirector(); AddChild(_director); _director.SetProcess(false);
+        _director = new EndgameDirector(); AddChild(_director);
         _sandbox = Field<Sandbox>(_director, "_sandbox"); _sandbox.SetProcess(false); _sandbox.AutomaticStep = true;
         _menu = Field<FrontMenu>(_director, "_frontMenu");
-        await Frames(8); _restarts++;
+        await Frames(8); await WaitForCatalog(); _restarts++;
         Check(kind + "_restart_builds_a_fresh_paused_director_without_active_session", _menu.IsOpen && _menu.Page == "Main" && _sandbox.IsPaused && !HasCharacter && Experiment is null);
         Check(kind + "_restart_preserves_archives_and_selected_character", SameFiles(archives, Archives()) && Read("current-character.txt") == selection && selection.Trim() == selectedFilename && !Button("FrontContinue").Disabled);
         await Capture("front-restart-" + kind + ".png");
@@ -325,6 +357,7 @@ public partial class FrontMenuSmoke : Node3D
         if (Field<EndgameHud>(_director, "_board").IsOpen) await Click("ExpeditionClose");
         if (!_sandbox.IsPaused) await KeyPress(Key.P);
         await Click("FrontReturnToMenu"); await Frames(3);
+        await WaitForCatalog();
         Check("native_save_to_menu_" + _checks.Keys.Count(k => k.StartsWith("native_save_to_menu_", StringComparison.Ordinal)), _menu.IsOpen && _menu.Page == "Main" && _sandbox.IsPaused);
     }
     private void RecordReplay(string name)

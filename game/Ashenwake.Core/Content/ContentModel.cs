@@ -11,7 +11,7 @@ public static class JsonData
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
-        Converters = { new JsonStringEnumConverter(allowIntegerValues: false) }
+        Converters = { new OrdinalStringCollectionsConverter(), new JsonStringEnumConverter(allowIntegerValues: false) }
     };
 
     public static string Write<T>(T value) => JsonSerializer.Serialize(value, Options);

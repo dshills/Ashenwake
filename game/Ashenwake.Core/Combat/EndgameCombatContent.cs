@@ -47,7 +47,7 @@ public sealed class EndgameCombatContent
         EndgameContent.ValidateSigil(EndgameContent.Create(content.Endgame?.Policy ?? throw new InvalidDataException("Missing endgame policy.")), sigil);
         if (content.Endgame is null || runId <= 0) throw new InvalidDataException("A valid run and endgame registry are required.");
         ulong rng = sigil.Seed;
-        var packs = content.Endgame.Packs.Where(p => p.Region == sigil.Region).OrderBy(p => p.Id).ToList();
+        var packs = content.Endgame.Packs.Where(p => p.Region == sigil.Region).OrderBy(p => p.Id, StringComparer.Ordinal).ToList();
         for (int i = packs.Count - 1; i > 0; i--) { int j = SeededRandom.Range(ref rng, i + 1); (packs[i], packs[j]) = (packs[j], packs[i]); }
         var rooms = new List<EndgameManifestRoom>(); var inherited = new List<string>(); var sources = new List<EndgameInheritanceSource>();
         for (int index = 0; index < 3; index++)

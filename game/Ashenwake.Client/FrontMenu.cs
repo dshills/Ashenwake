@@ -12,6 +12,7 @@ public partial class FrontMenu : Control
     public PanelContainer Panel { get; private set; } = null!;
     public bool IsOpen => Panel is { Visible: true };
     public string Page => _page;
+    public bool CatalogLoading { get; private set; }
 
     private static readonly Color Bone = new("eee1c8"), Mint = new("add7ca"), Gold = new("e8c286"), Blue = new("a8c5df");
     private FrontDiscipline[] _disciplines = [];
@@ -20,7 +21,7 @@ public partial class FrontMenu : Control
     private bool _canResume;
     private int _oldSibling = -1;
     private ColorRect _backdrop = null!;
-    private Label _subtitle = null!, _notice = null!;
+    private Label _subtitle = null!, _notice = null!, _catalogStatus = null!;
     private VBoxContainer _body = null!;
     private HBoxContainer _footer = null!;
     private ScrollContainer _scroll = null!;
@@ -52,6 +53,8 @@ public partial class FrontMenu : Control
         var title = Text("ASHENWAKE", 38, Bone); title.Name = "FrontTitle"; headings.AddChild(title);
         _subtitle = Text("CHOOSE YOUR NEXT JOURNEY", 12, Gold); _subtitle.Name = "FrontSubtitle"; headings.AddChild(_subtitle);
         var rule = new HSeparator(); column.AddChild(rule);
+        _catalogStatus = Text("Checking saved characters…", 12, Blue);
+        _catalogStatus.Name = "FrontCatalogStatus"; _catalogStatus.Visible = false; column.AddChild(_catalogStatus);
         _scroll = new ScrollContainer
         {
             Name = "FrontScroll",
@@ -71,8 +74,10 @@ public partial class FrontMenu : Control
 
     public override void _Process(double delta) => UpdateLayout();
 
-    public void SetView(FrontDiscipline[] disciplines, CharacterSlot[] slots, string continueSlot, bool canResume, string activeSlot)
+    public void SetView(FrontDiscipline[] disciplines, CharacterSlot[] slots, string continueSlot, bool canResume, string activeSlot, bool catalogLoading = false)
     {
+        CatalogLoading = catalogLoading;
+        _catalogStatus.Visible = catalogLoading;
         _disciplines = disciplines; _slots = slots; _continueSlot = continueSlot;
         _canResume = canResume; _activeSlot = activeSlot;
         if (!disciplines.Any(d => d.Id == _selectedDiscipline)) _selectedDiscipline = disciplines.FirstOrDefault()?.Id ?? "";
@@ -81,10 +86,19 @@ public partial class FrontMenu : Control
         string key = string.Join("\n", disciplines.Select(d => $"{d.Id}|{d.Resource}|{d.Playstyle}|{d.ResourceHint}|{d.Appearance.Key}|" +
             string.Join(";", d.Abilities.Select(a => $"{a.Id}|{a.Name}|{a.Description}|{a.ResourceCost}")))) + "\n" +
             string.Join("\n", slots.Select(s => $"{s.Filename}|{s.Discipline}|{s.Level}|{s.Location}|{s.IsEchoes}|{s.Available}|{s.RecoveredBackup}|{s.Notice}|{s.Appearance?.Key}|{s.SavedUtc.Ticks}")) +
-            $"\n{continueSlot}|{canResume}|{activeSlot}";
+            $"\n{continueSlot}|{canResume}|{activeSlot}|{catalogLoading}";
         if (_viewKey == key) return;
         _viewKey = key;
-        if (IsNodeReady() && IsOpen) Rebuild();
+        if (IsNodeReady() && IsOpen)
+        {
+            var owner = GetViewport().GuiGetFocusOwner();
+            bool restoreFocus = owner is null || IsAncestorOf(owner);
+            string focus = owner?.Name.ToString() ?? "";
+            Rebuild();
+            if (!restoreFocus) return;
+            if (focus.Length > 0 && FindChild(focus, true, false) is Control control && control.IsVisibleInTree()) control.GrabFocus();
+            else _initialFocus?.GrabFocus();
+        }
     }
 
     public void SetOpen(bool open)
@@ -170,9 +184,9 @@ public partial class FrontMenu : Control
         var resumeCard = Card("FrontContinueCard", new("628b80"), 16); actions.AddChild(resumeCard);
         var resume = Stack(7); resumeCard.AddChild(resume);
         resume.AddChild(Text("CONTINUE YOUR JOURNEY", 11, Mint));
-        var summary = Text(next is null ? "No saved character yet" : Identity(next), 20, Bone);
+        var summary = Text(next is null ? CatalogLoading ? "Looking for your characters…" : "No saved character yet" : Identity(next), 20, Bone);
         summary.Name = "FrontContinueSummary"; resume.AddChild(summary);
-        resume.AddChild(Text(next is null ? "Start a new character to enter Greyhaven." : $"{next.Location} · {Mode(next)}", 13, Blue));
+        resume.AddChild(Text(next is null ? CatalogLoading ? "You can start a new character while your saves are checked." : "Start a new character to enter Greyhaven." : $"{next.Location} · {Mode(next)}", 13, Blue));
         if (next is not null) AddSlotStatus(resume, next);
         var continueButton = ActionButton("FrontContinue", "Continue", () => RequestLoad(_continueSlot), true);
         continueButton.Disabled = next?.Available != true; resume.AddChild(continueButton);
@@ -250,7 +264,7 @@ public partial class FrontMenu : Control
         {
             var empty = Card("FrontNoCharacters", new("435969"), 20); _body.AddChild(empty);
             var words = Stack(9); empty.AddChild(words);
-            words.AddChild(Text("No saved characters yet", 20, Bone));
+            words.AddChild(Text(CatalogLoading ? "Looking for saved characters…" : "No saved characters yet", 20, Bone));
             words.AddChild(Text("Begin a new journey, or import a compatible save through the file picker.", 13));
             var create = ActionButton("FrontEmptyNew", "Create your first character", () => ShowPage("New")); words.AddChild(create); _initialFocus = create;
         }

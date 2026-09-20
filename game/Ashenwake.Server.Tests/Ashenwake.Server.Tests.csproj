@@ -6,6 +6,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
     <ProjectReference Include="../Ashenwake.Server/Ashenwake.Server.csproj" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <Compile Include="../Ashenwake.Client/CoopClientSnapshots.cs" Link="Client/CoopClientSnapshots.cs" />
     <None Include="../../content/combat.json" Link="combat.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

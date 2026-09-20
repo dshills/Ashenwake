@@ -41,12 +41,22 @@ public sealed record CombatContent
         try { content = JsonData.Read<CombatContent>(json); }
         catch (System.Text.Json.JsonException ex) { throw new InvalidDataException("Invalid combat JSON: " + ex.Message, ex); }
         content.Validate();
-        if (!System.Text.Json.Nodes.JsonNode.Parse(json)!["skills"]!.AsArray().Any(s => s!["discipline"] is not null))
+        var source = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+        if (!source["skills"]!.AsArray().Any(s => s!["discipline"] is not null))
         {
             var node = System.Text.Json.Nodes.JsonNode.Parse(JsonData.Write(content))!;
-            if (System.Text.Json.Nodes.JsonNode.Parse(json)!["encounters"] is null) node.AsObject().Remove("encounters");
-            foreach (var skill in node["skills"]!.AsArray()) foreach (var field in new[] { "discipline", "behavior", "resourceMode" }) skill!.AsObject().Remove(field);
-            foreach (var item in node["items"]!.AsArray()) foreach (var field in new[] { "compatibleSlots", "hands", "disciplines" }) item!.AsObject().Remove(field);
+            if (source["encounters"] is null) node.AsObject().Remove("encounters");
+            // Old bundles predate these optional fields. Remove only defaults that
+            // deserialization introduced; an explicitly authored rule still belongs
+            // to the identity, even when the bundle omits discipline declarations.
+            void RemoveIntroducedDefaults(string collection, string[] fields)
+            {
+                for (int index = 0; index < node[collection]!.AsArray().Count; index++)
+                    foreach (string field in fields)
+                        if (!source[collection]![index]!.AsObject().ContainsKey(field)) node[collection]![index]!.AsObject().Remove(field);
+            }
+            RemoveIntroducedDefaults("skills", ["discipline", "behavior", "resourceMode"]);
+            RemoveIntroducedDefaults("items", ["compatibleSlots", "hands", "disciplines"]);
             content._legacyHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(node.ToJsonString())));
         }
         return content;

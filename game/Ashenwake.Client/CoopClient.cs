@@ -13,11 +13,14 @@ public partial class CoopClient : Node3D
     private sealed class Peer
     {
         public CoopClientTransport Transport { get; } = new();
-        public CoopView? View, Previous;
+        public CoopClientSnapshots Snapshots { get; } = new();
+        public CoopView? View => Snapshots.Current;
+        public CoopView? Previous => Snapshots.Previous;
+        public double ReceivedAt => Snapshots.ReceivedAt;
         public int Id;
         public long LastSentTick = -1, Sequence, Revision;
         public string Hash = "";
-        public double ReceivedAt, LastSendAt, RoundTripMs;
+        public double LastSendAt, RoundTripMs;
         public volatile bool Sending;
         public int Accepted, Rejected;
         public readonly Dictionary<long, double> SentAt = [];
@@ -100,7 +103,7 @@ public partial class CoopClient : Node3D
             movement = mouseMovement.Resolve(view, local.Id, manualMovement, inputEnabled);
             stage.SetDestination(mouseMovement.Destination);
             if (!view.Actors.Any(a => a.Id == target && a.PlayerId == 0 && a.Health > 0)) target = Nearest(view);
-            stage.Render(view, local.Previous, local.Id, target, movement, Math.Max(0, Now - local.ReceivedAt), delta);
+            stage.Render(view, local.Previous, local.Id, target, movement, Math.Max(0, Now - local.Snapshots.InterpolationStartedAt), delta);
             RefreshHud(view);
             Send(local, true);
             if (OS.GetCmdlineUserArgs().Contains("--capture-coop") && DisplayServer.GetName() != "headless" && view.Warnings.Length > 0 && capturedEncounters.Add(view.EncounterIndex))
@@ -121,11 +124,9 @@ public partial class CoopClient : Node3D
         while (peer.Transport.TryRead(out var frame) && frame is not null)
         {
             if (frame.View is not { } view || view.ContentHash != contentHash || frame.PlayerId is < 1 or > 2) { Fail("The session uses incompatible content."); return; }
+            if (!peer.Snapshots.Apply(view, frame.Kind == "joined", Now)) continue;
             peer.Id = frame.PlayerId; peer.Revision = frame.Revision; peer.Hash = frame.StateHash;
             if (frame.Kind == "joined" && isLocal) { connection.Visible = false; CancelMouseMovement(); actions.Clear(); }
-            if (peer.View is null || view.Tick > peer.View.Tick || frame.Kind == "joined")
-            { peer.Previous = peer.View; peer.View = view; peer.ReceivedAt = Now; }
-            else if (frame.Kind == "snapshot") peer.ReceivedAt = Now;
             if (frame.InputResult is { } receipt)
             {
                 if (isLocal) mouseMovement.ObserveReceipt(receipt);

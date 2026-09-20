@@ -79,6 +79,7 @@ public partial class EndgameDirector
     }
     public override void _Process(double delta)
     {
+        PollCatalogRefresh();
         if (!_echoesSmoke || _finished) return;
         if (++_echoesFrames > 10000) { Fail(new InvalidDataException("Experiment smoke exceeded its scene-frame bound.")); return; }
         if (_echoesFrames % 600 == 0) GD.Print(JsonData.Write(new { kind = "ExperimentClientFrameProgress", frames = _echoesFrames, steps = _echoesSteps, tick = _session.Tick, paused = _sandbox.IsPaused, capturing = _capturing }));

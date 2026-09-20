@@ -45,10 +45,12 @@ public partial class AppearanceSmoke : Node3D
             _hud = new ProductionHud { Catalog = TextCatalog.Parse(Read("text.en")) }; _sandbox.AddOverlay(_hud);
             _hud.EquipRequested += (id, slot) => { Require(_session.Equip(id, slot)); _equips++; Refresh(); };
             _hud.UnequipRequested += slot => { Require(_session.Unequip(slot)); _unequips++; Refresh(); };
+            _hud.DiscardRequested += id => { Require(_session.Discard(id, confirmPermanent: true)); _discards++; Refresh(); };
             _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(true); Refresh();
             await EquipmentFlow();
             await DragDropFlow();
             await DungeonFlow();
+            await DiscardFlow();
             await Gallery();
             Finish(true, "");
         }

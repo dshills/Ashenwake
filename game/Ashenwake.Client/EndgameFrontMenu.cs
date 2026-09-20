@@ -12,6 +12,10 @@ public partial class EndgameDirector
     private ClientCharacterCatalog _characterCatalog = null!;
     private FrontDiscipline[] _frontDisciplines = [];
     private bool _hasActiveCharacter;
+    private CharacterSlot[] _catalogSlots = [];
+    private Task<CharacterCatalogScan>? _catalogRefresh;
+    private CancellationTokenSource? _catalogCancellation;
+    private string _catalogRecent = "";
     private string _echoesOriginalSaveName = "", _legacyEchoesSlot = "", _legacyOriginalSlot = "";
     private string ActiveCharacterFilename => _experiment is null ? _saveName : _echoesSaveName;
 
@@ -33,6 +37,7 @@ public partial class EndgameDirector
         _frontMenu.OpenChanged += open =>
         {
             if (open) { _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
+            else CancelCatalogRefresh();
             _sandbox.SetModalPaused("front-menu", open);
         };
         _sandbox.ConfigureFrontMenu(() => Safely(ShowFrontMenu), () => Safely(MenuQuit));
@@ -81,24 +86,55 @@ public partial class EndgameDirector
 
     private void RefreshFrontMenu()
     {
-        string recent = ReadCharacterPointer("current-character.txt");
-        if (recent.Length == 0) recent = _saveName;
-        CharacterSlot[] slots;
-        string notice = "";
-        try { slots = _characterCatalog.Scan(_output); if (_characterCatalog.LimitReached) notice = "Showing up to 128 character slots. All other archives remain in your save folder."; }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        { slots = []; notice = "The save folder could not be read. Existing archives are preserved."; }
-        if (!slots.Any(s => s.Filename == recent) && ClientCharacterCatalog.IsValidFilename(recent) &&
-            (File.Exists(Path.Combine(_output, recent)) || File.Exists(Path.Combine(_output, recent + ".bak"))))
-            slots = [_characterCatalog.Inspect(_output, recent), .. slots.Take(ClientCharacterCatalog.MaximumSlots - 1)];
-        _frontMenu.SetView(_frontDisciplines, slots, recent, _hasActiveCharacter, _hasActiveCharacter ? ActiveCharacterFilename : "");
-        if (notice.Length > 0) _frontMenu.Notice(notice);
+        CancelCatalogRefresh();
+        _catalogRecent = ReadCharacterPointer("current-character.txt");
+        if (_catalogRecent.Length == 0) _catalogRecent = _saveName;
+        _frontMenu.SetView(_frontDisciplines, _catalogSlots, _catalogRecent, _hasActiveCharacter, _hasActiveCharacter ? ActiveCharacterFilename : "", true);
+        _catalogCancellation = new();
+        _catalogRefresh = _characterCatalog.ScanAsync(_output, _catalogRecent, _catalogCancellation.Token);
     }
+
+    private void PollCatalogRefresh()
+    {
+        if (_catalogRefresh is not { IsCompleted: true } task) return;
+        _catalogRefresh = null;
+        _catalogCancellation?.Dispose(); _catalogCancellation = null;
+        try
+        {
+            var result = task.GetAwaiter().GetResult();
+            if (!_frontMenu.IsOpen) return;
+            _catalogSlots = result.Slots;
+            _frontMenu.SetView(_frontDisciplines, _catalogSlots, _catalogRecent, _hasActiveCharacter, _hasActiveCharacter ? ActiveCharacterFilename : "");
+            if (result.LimitReached) _frontMenu.Notice("Showing up to 128 character slots. All other archives remain in your save folder.");
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            if (!_frontMenu.IsOpen) return;
+            _catalogSlots = [];
+            _frontMenu.SetView(_frontDisciplines, [], _catalogRecent, _hasActiveCharacter, _hasActiveCharacter ? ActiveCharacterFilename : "");
+            _frontMenu.Notice("The save folder could not be read. Existing archives are preserved.");
+            GD.PushWarning(ex.Message);
+        }
+    }
+
+    private void CancelCatalogRefresh()
+    {
+        _catalogCancellation?.Cancel(); _catalogCancellation?.Dispose(); _catalogCancellation = null;
+        // A replaced/exiting menu never adopts a late result. Observe faults even
+        // when the scene is gone; the worker holds only managed catalog data.
+        if (_catalogRefresh is { } task)
+            _ = task.ContinueWith(completed => { _ = completed.Exception; }, CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        _catalogRefresh = null;
+    }
+
+    public override void _ExitTree() => CancelCatalogRefresh();
 
     private void ShowFrontMenu()
     {
         if (_hasActiveCharacter) Save();
-        _frontMenu.ShowPage("Main"); RefreshFrontMenu(); _frontMenu.SetOpen(true);
+        RefreshFrontMenu(); _frontMenu.ShowPage("Main");
     }
 
     private void ResumeFromFrontMenu()

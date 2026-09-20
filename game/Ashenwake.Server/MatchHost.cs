@@ -58,6 +58,9 @@ public sealed class MatchHost : IAsyncDisposable
         _characterRevisions = allocation.Characters.ToDictionary(c => c.Id, c => c.Revision, StringComparer.Ordinal);
         foreach (int id in new[] { 1, 2 }) _recorder.SetConnected(_session, id, false);
         _dirty = true; _completed = session.View.Completed;
+        // A progressed allocation already passed its initial two-player admission.
+        // Restarts and idle eviction must preserve its ability to continue with one peer.
+        _started = session.Tick > 0 ? 1 : 0;
         _committedRewards = session.View.Rewards.Length;
         _lastCheckpointTick = session.Tick;
         _loop = Run();

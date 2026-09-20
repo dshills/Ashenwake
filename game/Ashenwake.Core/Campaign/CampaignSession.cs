@@ -96,7 +96,7 @@ public sealed class CampaignSession
         if (state.WorldFlags.Contains("compact.supplies_arrive")) conditions.Add("Compact supplies sustain the clinic while seal damage demands attention.");
         return new(id,
             "The immediate collapse is prevented. Nhal is still beyond the breach, and Edrath must build a future that does not depend on harvesting dead gods.",
-            Outcomes(state).SelectMany(o => o.Allies).Distinct().Order().ToArray(),
+            Outcomes(state).SelectMany(o => o.Allies).Distinct().Order(StringComparer.Ordinal).ToArray(),
             state.RescuedResidents.Where(r => r != "Pale Child").ToArray(), string.Join(" ", conditions),
             resonance >= 40 ? "The protagonist accepts visible transformation while retaining responsibility for its consequences." : "The protagonist preserves a restrained relationship with divine power.", true);
     }
