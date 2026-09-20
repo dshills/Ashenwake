@@ -12,6 +12,8 @@ The [combat HUD](../docs/combat_hud.md) now groups vitals, skills, status effect
 
 The [main menu and character browser](../docs/front_menu.md) add visual discipline previews, separate new-character save slots, validated save cards and safe resume/return/quit flows.
 
+The [Settings & Controls screen](../docs/settings_controls.md) adds organized preferences, readable rebinding with conflict detection, independent audio channels, explicit accessibility guidance and tab-specific defaults.
+
 Build a small, satisfying, replayable single-player game loop first. Prove that Divine Anatomy creates surprising build interactions, then establish a repeatable content pipeline, produce the campaign and endgame, and release a reliable single-player game. Cooperative play follows as a separately gated expansion.
 
 At the planning baseline, the repository contained the two source specifications and no implementation. This plan therefore starts from project setup. It preserves the architecture's Phases 0–4, adds explicit endgame and release phases, and moves its optional online prototype from Phase 5 to Phase 7. Phase numbers describe dependencies, not calendar commitments.

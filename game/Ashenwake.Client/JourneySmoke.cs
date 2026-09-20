@@ -203,7 +203,7 @@ public partial class JourneySmoke : Node
         var effects = Descendants(_sandbox).OfType<CheckButton>().Single(b => b.Text == "Reduced visual effects");
         bool originalReducedEffects = effects.ButtonPressed;
         if (originalReducedEffects)
-        { await Click("Settings [Esc]"); await ClickNode(effects); await Click("Close settings"); }
+        { await Click("Settings [Esc]"); await Click("Accessibility"); await ClickNode(effects); await Click("Close settings"); }
         bool rendered = DisplayServer.GetName() != "headless";
         if (rendered)
         {
@@ -224,14 +224,14 @@ public partial class JourneySmoke : Node
             _skippedChecks.Add("ambient_motes_animate_when_playing");
             _skippedChecks.Add("ambient_motes_pause_and_resume_with_game");
         }
-        await Click("Settings [Esc]"); await ClickNode(effects);
+        await Click("Settings [Esc]"); await Click("Accessibility"); await ClickNode(effects);
         Check("reduced_effects_disable_environment_atmosphere", effects.ButtonPressed && !motes.IsVisibleInTree() && !environment.FogEnabled);
         await ClickNode(effects); await Click("Close settings");
         var pose = motes.Multimesh.GetInstanceTransform(0);
         for (int i = 0; i < 4; i++) await Settle();
         Check("restoring_effects_restores_environment_atmosphere", !effects.ButtonPressed && !_sandbox.IsPaused && motes.IsVisibleInTree() && environment.FogEnabled && (!rendered || !motes.Multimesh.GetInstanceTransform(0).IsEqualApprox(pose)));
         if (originalReducedEffects)
-        { await Click("Settings [Esc]"); await ClickNode(effects); await Click("Close settings"); }
+        { await Click("Settings [Esc]"); await Click("Accessibility"); await ClickNode(effects); await Click("Close settings"); }
     }
     private async Task FightUntil(Func<bool> complete)
     {

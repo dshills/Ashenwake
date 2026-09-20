@@ -195,8 +195,9 @@ public partial class Sandbox
         }
         if (_regionalAmbience is null)
         {
-            // Master bus volume/muting remains authoritative for both combat and ambient audio.
-            _regionalAmbience = new AudioStreamPlayer { Name = "RegionalAmbience", VolumeDb = -25, Bus = "Master" };
+            // Environmental beds share Music & ambience; Master still governs the complete mix.
+            ClientAudio.EnsureBuses();
+            _regionalAmbience = new AudioStreamPlayer { Name = "RegionalAmbience", VolumeDb = -25, Bus = ClientAudio.MusicBus };
             AddChild(_regionalAmbience);
         }
         _regionalAmbience.Stream = cinder ? CinderAmbience.GetStream(cue) : spine ? SpineAmbience.GetStream(cue) : hollow ? HollowAmbience.GetStream(cue) : VerdantAmbience.GetStream(cue);

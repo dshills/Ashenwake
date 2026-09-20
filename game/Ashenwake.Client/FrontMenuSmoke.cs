@@ -372,7 +372,15 @@ public partial class FrontMenuSmoke : Node3D
         await Frames(3);
     }
     private void Resize(int width, int height) { GetWindow().Size = new(width, height); GetWindow().ContentScaleSize = new(width, height); }
-    private async Task Frames(int count = 2) { for (int i = 0; i < count; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
+    private async Task Frames(int count = 2)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            // This diagnostic owns stepping; keep the settings layout refresh normally done in Sandbox._Process.
+            if (_sandbox is not null && GodotObject.IsInstanceValid(_sandbox)) Call(_sandbox, "LayoutSettings");
+        }
+    }
     private async Task Capture(string filename)
     {
         if (!_writeReport || !OS.GetCmdlineUserArgs().Contains("--capture-front-menu") || DisplayServer.GetName() == "headless") return;

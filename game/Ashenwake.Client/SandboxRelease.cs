@@ -56,6 +56,7 @@ public partial class Sandbox
 
     private void PauseForInterruption(string reason)
     {
+        CancelSettingsBinding();
         _interruptionPause = true;
         if (_resumeReason is not null) _resumeReason.Text = reason;
         ChangePause(false);
@@ -167,5 +168,5 @@ public partial class Sandbox
         { ReleaseStatus("The local diagnostic file could not be written. Choose a writable output folder and try again."); }
     }
     private void ReleaseStatus(string text)
-    { Message(text); if (_releaseSettingsStatus is not null) _releaseSettingsStatus.Text = text; }
+    { Message(text); SettingsNotice(text); if (_releaseSettingsStatus is not null) _releaseSettingsStatus.Text = text; }
 }

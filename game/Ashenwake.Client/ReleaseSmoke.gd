@@ -75,12 +75,13 @@ func _process(_delta):
         125:
             button("Settings").pressed.emit()
             var focused = get_viewport().gui_get_focus_owner()
-            checks["settings_receives_keyboard_focus"] = focused is CheckButton and focused.text == "Reduced visual effects"
+            checks["settings_receives_keyboard_focus"] = focused is Button and focused.name == "SettingsTabControls"
             paused_tick = saved().tick
             for node in nodes(get_tree().root):
                 if node is CheckButton and node.text == "Reduced visual effects": checks["backup_restores_reduced_effects"] = node.button_pressed
                 if node is CheckButton and node.text == "Reduced camera shake": checks["backup_restores_reduced_shake"] = node.button_pressed
                 if node is Label and "Settings recovered from" in node.text: checks["backup_recovery_visible"] = true
+            get_tree().root.find_child("SettingsTabGameplay", true, false).pressed.emit()
             button("Export local diagnostics").pressed.emit()
         150:
             checks["settings_pause_does_not_advance_ticks"] = saved().tick == paused_tick
@@ -126,6 +127,7 @@ func _process(_delta):
             checks["settings_close_preserves_interruption_pause"] = saved().tick == paused_tick and button("Resume playing").is_visible_in_tree()
             button("Resume playing").pressed.emit()
             button("Settings").pressed.emit()
+            get_tree().root.find_child("SettingsTabGameplay", true, false).pressed.emit()
             button("Inspect ground loot").pressed.emit()
             sandbox.notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
             paused_tick = saved().tick
@@ -147,6 +149,7 @@ func _process(_delta):
         390:
             checks["last_modal_owner_releases_pause"] = saved().tick > paused_tick
             button("Settings").pressed.emit()
+            get_tree().root.find_child("SettingsTabGameplay", true, false).pressed.emit()
             var ok = checks.size() == 33
             for value in checks.values(): ok = ok and value
             var report = {"kind":"ReleaseClientSmokePassed" if ok else "ReleaseClientSmokeFailed", "passed":ok,"frames":frames,"checks":checks,"note":"Godot engine notifications and connection signals exercised in software. No physical-controller certification."}

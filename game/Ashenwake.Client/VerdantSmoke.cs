@@ -307,7 +307,8 @@ public partial class VerdantSmoke : Node
         var motes = Descendants(_sandbox).OfType<MultiMeshInstance3D>().Single(n => n.Name == "AmbientMotes");
         var environment = _sandbox.GetChildren().OfType<WorldEnvironment>().Single().Environment;
         var audio = Descendants(_sandbox).OfType<AudioStreamPlayer>().Single(n => n.Name == "RegionalAmbience");
-        Check("ambient_audio_respects_master_volume", audio.Bus == "Master" && audio.VolumeDb <= -20);
+        Check("ambient_audio_respects_master_volume", audio.Bus == ClientAudio.MusicBus && audio.VolumeDb <= -20 &&
+            AudioServer.GetBusSend(AudioServer.GetBusIndex(ClientAudio.MusicBus)) == ClientAudio.MasterBus);
         Check("fog_begins_behind_nearby_combat", environment.FogEnabled && environment.FogDepthBegin >= 35 && environment.FogDepthEnd > environment.FogDepthBegin);
         if (DisplayServer.GetName() != "headless")
         {

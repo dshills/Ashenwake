@@ -11,7 +11,8 @@ namespace Ashenwake.Client;
 /// <summary>Input and presentation adapter. Every gameplay change goes through CombatSession commands.</summary>
 public partial class Sandbox : Node3D
 {
-    private sealed record Preferences(bool ReducedEffects, bool ReducedShake, Dictionary<string, long> Keys, int MinimumLootRarity = 0, bool CompatibleLootOnly = false);
+    private sealed record Preferences(bool ReducedEffects, bool ReducedShake, Dictionary<string, long> Keys, int MinimumLootRarity = 0, bool CompatibleLootOnly = false,
+        float MasterVolume = 1, float MusicVolume = 1, float EffectsVolume = 1, float InterfaceVolume = 1);
     public CombatSession Session => _session;
     public string CombatContentJson => _contentJson;
     public string? ContentJsonOverride { get; set; }
@@ -135,7 +136,7 @@ public partial class Sandbox : Node3D
             if (showAllLootHeld != _showAllLootHeld)
             { _showAllLootHeld = showAllLootHeld; SynchronizeLootVisuals(); _lootSignature = ""; }
             AnimatePresentation(delta, _clock.Alpha, _target); UpdateEnvironmentAtmosphere(delta); UpdateNavigationNotice(delta); UpdateWorldHover(delta); RefreshHud(); RefreshLootInspector();
-            AdvanceRewardPresentation(delta);
+            AdvanceRewardPresentation(delta); LayoutSettings();
             _frames++; Sample(_frameCosts, Stopwatch.GetElapsedTime(watch).TotalMilliseconds);
             if (_frames > 10) Sample(_frameIntervals, delta * 1000);
             if (_capturePath is not null && _frames == 30 && DisplayServer.GetName() != "headless")
@@ -154,28 +155,13 @@ public partial class Sandbox : Node3D
         if (!_smoke && (_clickMove?.Destination is not null || PendingWorldActionId is not null) && (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left or MouseButton.Right } ||
             NavigationInterruptActions.Any(a => input.IsActionPressed(a))))
             CancelMouseMovement(true);
-        if (_smoke || _awaitingKey is null || input is not InputEventKey { Pressed: true, Echo: false } key) return;
-        GetViewport().SetInputAsHandled();
-        try
-        {
-            if (key.PhysicalKeycode != Key.Escape)
-            {
-                var binding = _awaitingKey;
-                if (_keys.Any(p => p.Key != binding && p.Value == key.PhysicalKeycode))
-                { Message("That key already has an action. Choose an unused key, or Esc to cancel."); return; }
-                SetKey(binding, key.PhysicalKeycode); SavePreferences();
-                _keyButtons[binding].Text = $"{binding}: {key.PhysicalKeycode}";
-                Message($"{binding} rebound to {key.PhysicalKeycode}.");
-            }
-            _awaitingKey = null;
-        }
-        catch (Exception ex) { Message(ex.Message); GD.PushWarning(ex.Message); }
+        HandleSettingsInput(input);
     }
 
     public override void _UnhandledInput(InputEvent input)
     {
         if (_smoke || _session is null) return;
-        if (FrontSettingsVisible)
+        if (_settingsPanel.Visible)
         {
             if (input.IsActionPressed("aw_settings")) TogglePanel(_settingsPanel);
             GetViewport().SetInputAsHandled(); return;
@@ -469,35 +455,6 @@ public partial class Sandbox : Node3D
         AddButton(column, "Close inventory", () => TogglePanel(_inventoryPanel));
     }
 
-    private void BuildSettings()
-    {
-        _settingsPanel = Panel(new(841, 105), new(407, 518));
-        var scroll = new ScrollContainer { CustomMinimumSize = new(371, 490) }; _settingsPanel.AddChild(scroll);
-        var column = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; scroll.AddChild(column);
-        column.AddChild(TextLabel("SETTINGS & ARENA", 18));
-        var effects = new CheckButton { Text = "Reduced visual effects", ButtonPressed = _reduceEffects };
-        effects.Toggled += value => { _reduceEffects = value; SavePreferences(); }; column.AddChild(effects);
-        var shake = new CheckButton { Text = "Reduced camera shake", ButtonPressed = _reduceShake };
-        shake.Toggled += value => { _reduceShake = value; SavePreferences(); }; column.AddChild(shake);
-        column.AddChild(TextLabel("MOUSE MOVEMENT", 14));
-        column.AddChild(TextLabel("Left-click ground to walk around obstacles. Click an enemy to attack; Shift-click attacks while standing. Right-click uses your secondary skill. WASD / left stick takes over; X stops. Menus and pause cancel the destination.", 12));
-        BuildLootSettings(column);
-        var arenas = new VBoxContainer(); column.AddChild(arenas); _sandboxControls.Add(arenas);
-        arenas.AddChild(TextLabel("Choose an arena (starts a fresh session)", 13));
-        foreach (var preset in Presets) AddButton(arenas, preset.ToUpperInvariant(), () => Reset(preset));
-        AddButton(column, "Save character [F5]", Save); AddButton(column, "Load character [F9]", Load);
-        AddButton(column, "Verify & save replay [F6]", VerifyReplay);
-        BuildReleaseSettings(column);
-        column.AddChild(TextLabel("KEY BINDINGS · select, then press a key", 14));
-        foreach (var pair in _keys)
-        {
-            string action = pair.Key;
-            _keyButtons[action] = AddButton(column, $"{action}: {pair.Value}", () =>
-            { _awaitingKey = action; Message($"Press a key for {action}, or Esc to cancel."); });
-        }
-        AddButton(column, "Close settings", () => TogglePanel(_settingsPanel));
-    }
-
     private void TogglePanel(PanelContainer panel)
     {
         bool open = !panel.Visible; _inventoryPanel.Visible = false; _settingsPanel.Visible = false;
@@ -596,40 +553,7 @@ public partial class Sandbox : Node3D
 
     private void BindInputs()
     {
-        var defaults = new Dictionary<string, Key>
-        {
-            ["left"] = Key.A,
-            ["right"] = Key.D,
-            ["up"] = Key.W,
-            ["down"] = Key.S,
-            ["skill1"] = Key.Key1,
-            ["skill2"] = Key.Key2,
-            ["skill3"] = Key.Key3,
-            ["skill4"] = Key.Key4,
-            ["skill5"] = Key.Key5,
-            ["skill6"] = Key.Key6,
-            ["dodge"] = Key.Space,
-            ["potion"] = Key.Q,
-            ["pickup"] = Key.E,
-            ["target"] = Key.Tab,
-            ["stop"] = Key.X,
-            ["inventory"] = Key.I,
-            ["settings"] = Key.Escape,
-            ["journey"] = Key.J,
-            ["endgame"] = Key.B,
-            ["showloot"] = Key.Alt,
-            ["interact"] = Key.F,
-            ["character"] = Key.C,
-            ["corpse"] = Key.V,
-            ["echo"] = Key.G,
-            ["pause"] = Key.P,
-            ["step"] = Key.Period,
-            ["reset"] = Key.R,
-            ["save"] = Key.F5,
-            ["load"] = Key.F9,
-            ["replay"] = Key.F6
-        };
-        foreach (var pair in defaults) SetKey(pair.Key, pair.Value);
+        foreach (var pair in DefaultKeys) SetKey(pair.Key, pair.Value);
         foreach (var pair in new[] { ("left", JoyAxis.LeftX, -1f), ("right", JoyAxis.LeftX, 1f), ("up", JoyAxis.LeftY, -1f), ("down", JoyAxis.LeftY, 1f) })
             InputMap.ActionAddEvent("aw_" + pair.Item1, new InputEventJoypadMotion { Axis = pair.Item2, AxisValue = pair.Item3 });
         foreach (var pair in new[] { ("skill1", JoyButton.A), ("skill2", JoyButton.X), ("skill3", JoyButton.Y), ("dodge", JoyButton.B),

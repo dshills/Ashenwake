@@ -355,11 +355,15 @@ public partial class Sandbox
 
     private void BuildAudio()
     {
+        ClientAudio.EnsureBuses();
         _combatEffects = new CombatEffects { Name = "CombatEffects" }; AddChild(_combatEffects);
         foreach (string cue in CombatAudio.CueNames)
             _tones[cue] = new AudioStreamWav { Format = AudioStreamWav.FormatEnum.Format16Bits, MixRate = 22050, Data = CombatAudio.CreateSamples(cue) };
         for (int i = 0; i < 8; i++)
-        { var voice = new AudioStreamPlayer { VolumeDb = -12 }; AddChild(voice); _voices.Add(voice); }
+        {
+            var voice = new AudioStreamPlayer { Name = "CombatVoice" + i, Bus = ClientAudio.EffectsBus, VolumeDb = -12 };
+            AddChild(voice); _voices.Add(voice);
+        }
     }
     private void PlayTone(string kind)
     {

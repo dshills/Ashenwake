@@ -13,7 +13,9 @@ public partial class Sandbox
     private Control? _campaignObjective, _expeditionObjective;
     private Vector2 _combatHudViewport = new(-1, -1);
     private string _hudResourceName = "";
-    private const string ControlsHelp = "CLICK Move / attack / interact / collect · WASD Move · SHIFT+CLICK Stand & attack · RIGHT CLICK Secondary · X Stop · 1–6 Skills · SPACE Dodge · Q Potion · F/E Interact / loot";
+    private string ControlsHelp => $"CLICK Move / attack / interact / collect · {MovementKeys} Move · SHIFT+CLICK Stand & attack · RIGHT CLICK Secondary · {KeyDisplay(_keys["stop"])} Stop · {SkillKeys} Skills · {KeyDisplay(_keys["dodge"])} Dodge · {KeyDisplay(_keys["potion"])} Potion · {KeyDisplay(_keys["interact"])}/{KeyDisplay(_keys["pickup"])} Interact / loot";
+    private string MovementKeys => string.Join("/", new[] { "up", "left", "down", "right" }.Select(a => KeyDisplay(_keys[a])));
+    private string SkillKeys => string.Join("/", Enumerable.Range(1, 6).Select(i => KeyDisplay(_keys["skill" + i])));
 
     private void BuildCombatDock()
     {
@@ -54,6 +56,9 @@ public partial class Sandbox
         if (_resumePanel is not null) _resumePanel.Position = (viewport - _resumePanel.Size) / 2;
         if (_combatHudViewport == viewport) return;
         _combatHudViewport = viewport;
+        _inventoryHudButton.Text = $"Inventory [{KeyDisplay(_keys["inventory"])}]";
+        _settingsHudButton.Text = $"Settings [{KeyDisplay(_keys["settings"])}]";
+        _pauseHudButton.Text = $"Pause [{KeyDisplay(_keys["pause"])}]";
         float margin = viewport.X < 900 ? 16 : 22, width = viewport.X - margin * 2;
         float top = viewport.Y - 196, left = margin + 12, inside = width - 24;
         _hudDock.Position = new(margin, top); _hudDock.Size = new(width, 184);
@@ -80,13 +85,13 @@ public partial class Sandbox
         _pauseHudButton.Position = new(margin + width - 92, top + 147);
         _controlHint.Position = new(left, top + 144); _controlHint.Size = new(Math.Max(200, inside - 312), 34);
         _controlHint.ClipText = true; _controlHint.TooltipText = ControlsHelp;
-        _controlHint.Text = viewport.X < 1000 ? "CLICK move / interact · WASD move\nSHIFT+CLICK stand & attack · 1–6 skills" :
-            "CLICK move / attack / interact / collect · WASD move · SHIFT+CLICK stand & attack\nRIGHT CLICK secondary · X stop · F interact · E collect · 1–6 skills";
+        _controlHint.Text = viewport.X < 1000 ? $"CLICK move / interact · {MovementKeys} move\nSHIFT+CLICK stand & attack · {SkillKeys} skills" :
+            $"CLICK move / attack / interact / collect · {MovementKeys} move · SHIFT+CLICK stand & attack\nRIGHT CLICK secondary · {KeyDisplay(_keys["stop"])} stop · {KeyDisplay(_keys["interact"])} interact · {KeyDisplay(_keys["pickup"])} collect · {SkillKeys} skills";
         _statusStrip.Position = new(left, top - 49); _statusStrip.Size = new(Math.Min(600, inside), 44);
         if (_navigationNotice is not null) { _navigationNotice.Position = new(left, top - 71); _navigationNotice.Size = new(inside, 20); _navigationNotice.ClipText = true; }
         _rewardFeed.Position = new(viewport.X - 302, 182); _rewardFeed.Size = new(280, 190);
         _resetHudButton.Position = new(viewport.X - 126, top - 38);
-        foreach (var panel in new[] { _inventoryPanel, _settingsPanel })
+        foreach (var panel in new[] { _inventoryPanel })
             if (panel is not null) panel.Position = new(Math.Max(22, viewport.X - panel.Size.X - 22), Math.Max(22, Math.Min(105, viewport.Y - panel.Size.Y - 22)));
         LayoutCombatTarget();
     }

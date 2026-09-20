@@ -25,10 +25,10 @@ public partial class Sandbox
         var rarity = new OptionButton();
         for (int i = 0; i < LootRarities.Length; i++) rarity.AddItem(i == 0 ? "Show all rarities" : LootRarities[i] + " and above");
         rarity.Name = "LootRarityFilter";
-        rarity.Select(_minimumLootRarity); rarity.ItemSelected += index => { _minimumLootRarity = (int)index; SavePreferences(); _lootSignature = ""; if (_view is not null) SynchronizeLootVisuals(); }; column.AddChild(rarity);
-        var compatible = new CheckButton { Text = "Only items for the current discipline", ButtonPressed = _compatibleLootOnly };
-        compatible.Toggled += value => { _compatibleLootOnly = value; SavePreferences(); _lootSignature = ""; if (_view is not null) SynchronizeLootVisuals(); }; column.AddChild(compatible);
-        column.AddChild(TextLabel("Filtering does not delete drops. Godwrought items remain visible. Hold Show loot (default Alt) to reveal every drop; this binding can be changed below.", 12));
+        rarity.Select(_minimumLootRarity); rarity.ItemSelected += index => { if (_syncingSettings) return; _minimumLootRarity = (int)index; SavePreferences(); _lootSignature = ""; if (_view is not null) SynchronizeLootVisuals(); }; column.AddChild(rarity);
+        var compatible = new CheckButton { Name = "SettingsCompatibleLoot", Text = "Only items for the current discipline", ButtonPressed = _compatibleLootOnly };
+        compatible.Toggled += value => { if (_syncingSettings) return; _compatibleLootOnly = value; SavePreferences(); _lootSignature = ""; if (_view is not null) SynchronizeLootVisuals(); }; column.AddChild(compatible);
+        column.AddChild(TextLabel("Filtering does not delete drops. Godwrought items remain visible. Hold Show loot (default Alt) to reveal every drop; change its binding in Controls.", 12));
         AddButton(column, "Inspect ground loot", ToggleLootInspector);
         _lootPanel = Panel(new(841, 105), new(407, 518));
         var rows = new VBoxContainer(); _lootPanel.AddChild(rows); rows.AddChild(TextLabel("GROUND LOOT", 18));

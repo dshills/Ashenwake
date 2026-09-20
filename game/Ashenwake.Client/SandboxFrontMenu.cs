@@ -5,7 +5,6 @@ namespace Ashenwake.Client;
 public partial class Sandbox
 {
     private bool _frontSettings;
-    private ColorRect? _frontSettingsBackdrop;
     private readonly List<BaseButton> _frontDisabledActions = [];
     public bool FrontSettingsVisible => _frontSettings && _settingsPanel.Visible;
     public event Action? FrontSettingsClosed;
@@ -28,14 +27,6 @@ public partial class Sandbox
                 button.Text.StartsWith("Load character", StringComparison.Ordinal) || button.Text.StartsWith("Verify & save replay", StringComparison.Ordinal) ||
                 button.Text.StartsWith("Inspect ground loot", StringComparison.Ordinal)))
             { button.Disabled = true; _frontDisabledActions.Add(button); }
-        if (_frontSettingsBackdrop is null)
-        {
-            _frontSettingsBackdrop = new ColorRect { Color = new("050b14ba"), MouseFilter = Control.MouseFilterEnum.Stop };
-            _hud.AddChild(_frontSettingsBackdrop); _frontSettingsBackdrop.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        }
-        _frontSettingsBackdrop.Visible = true;
-        _hud.MoveChild(_frontSettingsBackdrop, _hud.GetChildCount() - 1);
-        _hud.MoveChild(_settingsPanel, _hud.GetChildCount() - 1);
         if (!_settingsPanel.Visible) TogglePanel(_settingsPanel);
     }
 
@@ -43,7 +34,6 @@ public partial class Sandbox
     {
         if (!_frontSettings || _settingsPanel.Visible) return;
         _frontSettings = false;
-        if (_frontSettingsBackdrop is not null) _frontSettingsBackdrop.Visible = false;
         foreach (var button in _frontDisabledActions) button.Disabled = false;
         _frontDisabledActions.Clear(); FrontSettingsClosed?.Invoke();
     }
