@@ -4,10 +4,10 @@ using Godot;
 namespace Ashenwake.Client;
 
 /// <summary>Scene-independent checks for cosmetic identity, isolation and bounded appearance resources.</summary>
-public static class AppearanceVisualChecks
+public static partial class AppearanceVisualChecks
 {
     private static readonly string[] Disciplines = ["Vanguard", "Veilwalker", "Arcanist", "Gravecaller", "Warden"];
-    private static readonly string[] Slots = ["MainHand", "OffHand", "Head", "Chest"];
+    private static readonly string[] Slots = ["MainHand", "OffHand", "Head", "Chest", "Shoulders", "Gloves", "Belt", "Legs", "Boots"];
     private static readonly string[] Rarities = ["Common", "Tempered", "Rare", "Relic", "Legendary", "Godwrought"];
     private static readonly (int Bit, string Name)[] Manifestations =
     [(1, "ManifestationBurning"), (2, "ManifestationShadow"), (4, "ManifestationStone"), (8, "ManifestationRenewal")];
@@ -19,6 +19,7 @@ public static class AppearanceVisualChecks
         CheckEquipment(require);
         CheckManifestations(require);
         CheckAnatomy(require);
+        CheckArmor(require);
         CheckLoot(require);
         require(CharacterVisual.CachedEquipmentResourceCount <= 160 && CharacterVisual.CachedResourceCounts.Models <= 96 &&
             CharacterVisual.CachedResourceCounts.Materials <= 256, "appearance_character_caches_are_bounded");
@@ -27,7 +28,8 @@ public static class AppearanceVisualChecks
     }
 
     private static CharacterAppearance Equipped(string discipline = "Vanguard", int mask = 0) => new(discipline,
-        new("item.starter_mainhand"), new("item.starter_offhand"), new("item.starter_head"), new("item.starter_chest"), mask);
+        new("item.starter_mainhand"), new("item.starter_offhand"), new("item.starter_head"), new("item.starter_chest"), mask)
+    { Shoulders = new("item.starter_shoulders"), Gloves = new("item.starter_gloves"), Belt = new("item.starter_belt"), Legs = new("item.starter_legs"), Boots = new("item.starter_boots") };
     private static CharacterVisual Hero(CharacterAppearance appearance)
         => CharacterVisual.Create("player." + appearance.Discipline.ToLowerInvariant(), "", appearance.Discipline, appearance: appearance);
 
@@ -52,12 +54,18 @@ public static class AppearanceVisualChecks
                         "MainHand" => appearance with { MainHand = ItemAppearance.Empty },
                         "OffHand" => appearance with { OffHand = ItemAppearance.Empty },
                         "Head" => appearance with { Head = ItemAppearance.Empty },
-                        _ => appearance with { Chest = ItemAppearance.Empty }
+                        "Chest" => appearance with { Chest = ItemAppearance.Empty },
+                        "Shoulders" => appearance with { Shoulders = ItemAppearance.Empty },
+                        "Gloves" => appearance with { Gloves = ItemAppearance.Empty },
+                        "Belt" => appearance with { Belt = ItemAppearance.Empty },
+                        "Legs" => appearance with { Legs = ItemAppearance.Empty },
+                        _ => appearance with { Boots = ItemAppearance.Empty }
                     };
                     var unequipped = Hero(changed);
                     try
                     {
                         require(unequipped.AppearanceKey == changed.Key && changed.Key != appearance.Key && Module(unequipped, "Equipment" + slot) is null &&
+                            Module(unequipped, "Equipment" + slot + "Right") is null &&
                             Slots.Where(s => s != slot).All(s => HasGeometry(Module(unequipped, "Equipment" + s))),
                             "appearance_" + discipline + "_unequip_" + slot + "_affects_only_its_slot");
                     }

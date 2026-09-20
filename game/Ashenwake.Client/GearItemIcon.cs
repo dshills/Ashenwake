@@ -13,6 +13,7 @@ public partial class GearItemIcon : Control
     private string _definitionId = "", _discipline = "";
     private Silhouette _silhouette = Silhouette.Sword;
     private bool _empty = true;
+    private ArmorPalette _armor = ArmorPalette.For("Vanguard");
     private Color _accent = new("bdc6c8"), _cloth = new("354d57");
 
     public string IconKey { get; private set; } = "";
@@ -34,6 +35,7 @@ public partial class GearItemIcon : Control
         IconKey = key;
         _definitionId = itemName;
         _discipline = form;
+        _armor = ArmorPalette.For(form);
         _silhouette = silhouette;
         _empty = !rarity.HasValue;
         _accent = rarity switch
@@ -285,54 +287,73 @@ public partial class GearItemIcon : Control
     {
         foreach (int x in new[] { 4, 22 })
         {
-            Shape(SteelShade, new(x, 15), new(x + 4, 8), new(x + 11, 8), new(x + 14, 15), new(x + 13, 28), new(x + 1, 28));
-            Shape(Steel, new(x, 15), new(x + 4, 10), new(x + 11, 10), new(x + 14, 15), new(x + 12, 21), new(x + 2, 21));
-            Line(new(x + 4, 16), new(x + 10, 16), _accent, 2);
-            Line(new(x + 3, 25), new(x + 11, 25), Steel, 1.5f);
+            Shape(new(_armor.Cloth), new(x, 15), new(x + 14, 15), new(x + 13, 32), new(x + 9, 29), new(x + 5, 33), new(x + 1, 30));
+            Shape(new(_armor.Shell), new(x, 15), new(x + 4, 8), new(x + 11, 8), new(x + 14, 15), new(x + 12, 21), new(x + 2, 21));
+            if (_discipline is "gravecaller" or "warden")
+                for (int i = 0; i < 3; i++)
+                    Shape(_discipline == "gravecaller" ? Bone : new(_armor.Shell), new(x + 2 + i * 4, 11), new(x + 3 + i * 4, 3 + i), new(x + 6 + i * 4, 12));
+            Arc(new(x + 7, 16), 3, 0, Mathf.Tau, new(_armor.Trim), 1.3f);
+            Line(new(x + 7, 13), new(x + 7, 19), new(_armor.Trim), 1);
+            for (int i = 0; i < 3; i++)
+                Line(new(x + 3 + i * 4, 24), new(x + 3 + i * 4, 28), new(_armor.Trim), 1);
         }
     }
 
     private void Gloves()
     {
-        foreach (int x in new[] { 5, 23 })
+        foreach (int x in new[] { 4, 22 })
         {
-            Shape(Leather, new(x + 2, 8), new(x + 10, 8), new(x + 11, 19), new(x + 14, 17), new(x + 15, 20), new(x + 11, 26), new(x + 10, 33), new(x + 1, 33), new(x, 18));
-            Shape(SteelShade, new(x + 1, 8), new(x + 11, 8), new(x + 11, 14), new(x + 1, 14));
-            Line(new(x + 3, 21), new(x + 9, 21), _accent, 2);
-            Line(new(x + 5, 25), new(x + 5, 30), SteelShade, 1);
+            Shape(new(ArmorPalette.Leather), new(x + 2, 8), new(x + 10, 8), new(x + 11, 19), new(x + 14, 17), new(x + 15, 20), new(x + 11, 26), new(x + 10, 33), new(x + 1, 33), new(x, 18));
+            Shape(new(_armor.Shell), new(x + 1, 6), new(x + 11, 6), new(x + 11, 18), new(x + 1, 18));
+            for (int i = 0; i < 3; i++)
+            {
+                Line(new(x + 2, 9 + i * 3), new(x + 10, 8 + i * 3), new(_armor.Trim), 1.3f);
+                Line(new(x + 3 + i * 3, 22), new(x + 3 + i * 3, 25), Bone, 2);
+            }
+            Line(new(x + 5, 28), new(x + 5, 31), SteelShade, 1);
         }
     }
 
     private void Belt()
     {
-        Shape(Leather, new(3, 15), new(12, 12), new(28, 12), new(37, 15), new(36, 27), new(28, 24), new(12, 24), new(4, 27));
-        Shape(Steel, new(14, 12), new(26, 12), new(26, 27), new(14, 27));
-        Shape(Ink, new(17, 15), new(23, 15), new(23, 24), new(17, 24));
-        Line(new(20, 18), new(25, 18), _accent, 2);
-        Disc(new(8, 20), 1, Bone);
-        Disc(new(32, 20), 1, Bone);
+        Shape(new(ArmorPalette.Leather), new(3, 12), new(12, 10), new(28, 10), new(37, 12), new(36, 24), new(28, 22), new(12, 22), new(4, 24));
+        foreach (int x in new[] { 10, 25 })
+        {
+            Shape(new(_armor.Cloth), new(x, 20), new(x + 5, 20), new(x + 7, 36), new(x + 1, 34));
+            for (int i = 0; i < 3; i++) Line(new(x + 2, 25 + i * 3), new(x + 5, 25 + i * 3), new(_armor.Trim), 1);
+        }
+        Shape(new(_armor.Trim), new(14, 10), new(26, 10), new(26, 24), new(14, 24));
+        Shape(new(_armor.Cloth), new(17, 13), new(23, 13), new(23, 21), new(17, 21));
+        Line(new(20, 14), new(20, 21), Bone, 1.4f);
+        Line(new(18, 17), new(23, 17), Bone, 1.4f);
+        Disc(new(7, 18), 1, Bone);
+        Disc(new(33, 18), 1, Bone);
     }
 
     private void Legs()
     {
-        Shape(_cloth, new(10, 5), new(30, 5), new(30, 18), new(28, 36), new(21, 36), new(20, 20), new(19, 36), new(12, 36), new(10, 18));
-        Line(new(11, 9), new(29, 9), Leather, 3);
-        Shape(SteelShade, new(11, 20), new(18, 20), new(18, 27), new(12, 28));
-        Shape(SteelShade, new(22, 20), new(29, 20), new(28, 28), new(22, 27));
-        Line(new(13, 22), new(17, 22), Steel, 1.5f);
-        Line(new(23, 22), new(27, 22), Steel, 1.5f);
-        Gem(new(20, 9), 2, _accent);
+        Shape(new(_armor.Cloth), new(10, 5), new(30, 5), new(30, 18), new(28, 36), new(21, 36), new(20, 20), new(19, 36), new(12, 36), new(10, 18));
+        foreach (int x in new[] { 11, 22 })
+        {
+            Shape(new(_armor.Shell), new(x, 11), new(x + 7, 11), new(x + 7, 20), new(x + 1, 20));
+            Shape(new(_armor.Shell), new(x, 23), new(x + 7, 23), new(x + 7, 29), new(x + 3.5f, 32), new(x, 29));
+            Line(new(x + 1, 26), new(x + 3.5f, 28), new(_armor.Trim), 1.5f);
+            Line(new(x + 6, 26), new(x + 3.5f, 28), new(_armor.Trim), 1.5f);
+        }
+        Line(new(9, 18), new(9, 31), new(_armor.Trim), 1.4f);
+        Line(new(31, 18), new(31, 31), new(_armor.Trim), 1.4f);
     }
 
     private void Boots()
     {
         foreach (int x in new[] { 4, 22 })
         {
-            Shape(Leather, new(x + 3, 6), new(x + 12, 6), new(x + 11, 26), new(x + 15, 28), new(x + 15, 33), new(x, 33), new(x, 28), new(x + 3, 24));
-            Line(new(x + 3, 9), new(x + 12, 9), _accent, 3);
-            Shape(SteelShade, new(x + 2, 27), new(x + 10, 27), new(x + 14, 29), new(x + 14, 32), new(x + 1, 32));
-            Line(new(x + 4, 16), new(x + 10, 16), Bone, 1.2f);
-            Line(new(x + 4, 20), new(x + 10, 20), Bone, 1.2f);
+            Shape(new(ArmorPalette.Leather), new(x + 3, 6), new(x + 12, 6), new(x + 11, 26), new(x + 15, 28), new(x + 15, 33), new(x, 33), new(x, 28), new(x + 3, 24));
+            Line(new(x + 3, 8), new(x + 12, 8), new(_armor.Shell), 4);
+            Shape(new(_armor.Shell), new(x + 2, 27), new(x + 10, 27), new(x + 14, 29), new(x + 14, 32), new(x + 1, 32));
+            Line(new(x + 1, 33), new(x + 14, 33), new(ArmorPalette.Ember), 1.7f);
+            for (int i = 0; i < 3; i++)
+                Line(new(x + 4, 13 + i * 4), new(x + 10, 15 + i * 4), new(_armor.Trim), 1.2f);
         }
     }
 

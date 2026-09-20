@@ -13,7 +13,12 @@ public sealed record ItemAppearance(string DefinitionId = "", string Rarity = "C
 public sealed record CharacterAppearance(string Discipline, ItemAppearance MainHand, ItemAppearance OffHand,
     ItemAppearance Head, ItemAppearance Chest, int ManifestationMask = 0, int AnatomyMask = 0)
 {
-    public string Key => $"{Discipline}|{MainHand.Key}|{OffHand.Key}|{Head.Key}|{Chest.Key}|{ManifestationMask & 15}|{AnatomyMask & 15}";
+    public ItemAppearance Shoulders { get; init; } = ItemAppearance.Empty;
+    public ItemAppearance Gloves { get; init; } = ItemAppearance.Empty;
+    public ItemAppearance Belt { get; init; } = ItemAppearance.Empty;
+    public ItemAppearance Legs { get; init; } = ItemAppearance.Empty;
+    public ItemAppearance Boots { get; init; } = ItemAppearance.Empty;
+    public string Key => $"{Discipline}|{MainHand.Key}|{OffHand.Key}|{Head.Key}|{Chest.Key}|{Shoulders.Key}|{Gloves.Key}|{Belt.Key}|{Legs.Key}|{Boots.Key}|{ManifestationMask & 15}|{AnatomyMask & 15}";
 
     public static int AnatomyFragments(IEnumerable<string>? ids)
     {
@@ -56,7 +61,8 @@ public sealed record CharacterAppearance(string Discipline, ItemAppearance MainH
                 item.DefinitionId == "item.ashcleaver" ? ashcleaverEvolution : "");
         }
         return new(view.Discipline, At("MainHand"), At("OffHand"), At("Head"), At("Chest"), Manifestations(manifestations),
-            AnatomyFragments(view.Fragments.Where(f => f.Equipped).Select(f => f.Id)));
+            AnatomyFragments(view.Fragments.Where(f => f.Equipped).Select(f => f.Id)))
+        { Shoulders = At("Shoulders"), Gloves = At("Gloves"), Belt = At("Belt"), Legs = At("Legs"), Boots = At("Boots") };
     }
 
     public static CharacterAppearance FromProgression(ProgressionSnapshot state, IReadOnlyList<string>? manifestations = null,
@@ -70,6 +76,7 @@ public sealed record CharacterAppearance(string Discipline, ItemAppearance MainH
                 item.DefinitionId == "item.ashcleaver" ? item.Evolution.Length > 0 ? item.Evolution : item.Awakened ? "Awakened" : "" : "");
         }
         return new(state.Character.Discipline, At(EquipmentSlot.MainHand), At(EquipmentSlot.OffHand), At(EquipmentSlot.Head), At(EquipmentSlot.Chest),
-            Manifestations(manifestations), AnatomyFragments(fragments));
+            Manifestations(manifestations), AnatomyFragments(fragments))
+        { Shoulders = At(EquipmentSlot.Shoulders), Gloves = At(EquipmentSlot.Gloves), Belt = At(EquipmentSlot.Belt), Legs = At(EquipmentSlot.Legs), Boots = At(EquipmentSlot.Boots) };
     }
 }

@@ -116,13 +116,14 @@ public partial class CharacterVisual : Node3D
         return (separator < 0 ? id : id[(separator + 1)..]).ToLowerInvariant();
     }
 
-    private void HumanLeg(int side, bool plate)
+    private Node3D HumanLeg(int side, bool plate, bool underclothes = false)
     {
         var leg = Joint(BodyRoot, new Vector3(side * .18f, .92f, 0), side < 0 ? "left_leg" : "right_leg");
         Cone(leg, new Vector3(0, -.18f, 0), .12f, .145f, .34f, Dark);
-        Orb(leg, new Vector3(0, -.37f, -.045f), new Vector3(.25f, .22f, .24f), plate ? Metal : Main);
-        Cone(leg, new Vector3(0, -.57f, 0), .105f, .13f, .32f, plate ? Metal : Main);
-        Box(leg, new Vector3(0, -.82f, -.075f), new Vector3(.24f, .19f, .39f), Dark);
+        Orb(leg, new Vector3(0, -.37f, -.045f), new Vector3(.25f, .22f, .24f), underclothes ? Dark : plate ? Metal : Main);
+        Cone(leg, new Vector3(0, -.57f, 0), .105f, .13f, .32f, underclothes ? Dark : plate ? Metal : Main);
+        Box(leg, new Vector3(0, underclothes ? -.865f : -.82f, -.075f), underclothes ? new(.20f, .10f, .29f) : new(.24f, .19f, .39f), Dark);
+        return leg;
     }
 
     private Node3D HumanArm(int side, bool plate)

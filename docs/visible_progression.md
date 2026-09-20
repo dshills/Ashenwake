@@ -1,6 +1,6 @@
 # Visible character progression
 
-Solo characters now display the equipped **MainHand, OffHand, Head and Chest** slots. Empty slots remove their weapon, shield or focus, headwear and outer armor while retaining a clothed body. Vanguard, Veilwalker, Arcanist, Gravecaller and Warden retain their discipline palettes and distinctive starter equipment. The other eight permanent equipment slots still affect stats; their individual items are not attached to the character model in this pass.
+Solo characters display the equipped **MainHand, OffHand, Head, Chest, Shoulders, Gloves, Belt, Legs and Boots** slots. Empty slots remove their own equipment while retaining a clothed body and soft foot coverings. Vanguard, Veilwalker, Arcanist, Gravecaller and Warden retain their discipline palettes and distinctive starter equipment. Amulets and rings have inventory icons and stat effects without body attachments. See [the completed armor wardrobe](armor_wardrobe.md) for the five independent armor modules and matching icons.
 
 Weapons include the Ash Axe, Cinder Edge, Oath Hammer, Pilgrim Pike and Greatstaff. March Plate, Oath Plate, Ash Weave and Serath Shroud have distinct outer armor silhouettes. Rarity adds bounded ornamentation. Ashcleaver has an ivory spine, exposed ribs and a glowing axe edge; its awakened form adds illuminated bindings, Serath adds flame-shaped blades, and Orrun adds stone-colored reinforcement and pale seams. These forms reflect the item's existing awakening and permanent evolution state.
 

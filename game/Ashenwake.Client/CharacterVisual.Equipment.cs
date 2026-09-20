@@ -9,18 +9,18 @@ public partial class CharacterVisual
     private static readonly Dictionary<string, Mesh[]> EquipmentTemplates = new(StringComparer.Ordinal);
     private CharacterAppearance? _appearance;
     private Node3D _equipmentLeft = null!, _equipmentRight = null!;
+    private Node3D _equipmentLegLeft = null!, _equipmentLegRight = null!;
     public string AppearanceKey => _appearance?.Key ?? "";
     internal static int CachedEquipmentResourceCount => EquipmentTemplates.Count;
 
     private void BuildEquippedBody()
     {
         Height = 2.3f;
-        HumanLeg(-1, false); HumanLeg(1, false);
+        _equipmentLegLeft = HumanLeg(-1, false, underclothes: true);
+        _equipmentLegRight = HumanLeg(1, false, underclothes: true);
         Box(BodyRoot, new(0, .96f, 0), new(.48f, .25f, .3f), Dark);
         var shirt = Cone(BodyRoot, new(0, 1.34f, 0), .27f, .34f, .64f, Main);
         shirt.Scale = new(1, 1, .65f);
-        Box(BodyRoot, new(0, 1.03f, -.025f), new(.56f, .11f, .36f), Dark);
-        Box(BodyRoot, new(0, 1.03f, -.215f), new(.11f, .10f, .045f), Metal);
         Cone(BodyRoot, new(0, 1.77f, 0), .105f, .105f, .16f, Skin);
         _equipmentLeft = HumanArm(-1, false); _equipmentRight = HumanArm(1, false);
         HumanFace();
@@ -30,11 +30,7 @@ public partial class CharacterVisual
     {
         string kind = appearance.Discipline.ToLowerInvariant();
         BuildSlot(BodyRoot, "EquipmentChest", "chest", appearance.Chest, kind, n => EquippedChest(n, appearance.Chest, kind));
-        if (appearance.Chest.DefinitionId.Length > 0)
-        {
-            BuildSlot(_equipmentLeft, "EquipmentChestLeft", "chest-left", appearance.Chest, kind, n => EquippedShoulder(n, -1, appearance.Chest, kind));
-            BuildSlot(_equipmentRight, "EquipmentChestRight", "chest-right", appearance.Chest, kind, n => EquippedShoulder(n, 1, appearance.Chest, kind));
-        }
+        BuildArmor(appearance, kind);
         BuildSlot(BodyRoot, "EquipmentHead", "head", appearance.Head, kind, n => EquippedHead(n, appearance.Head, kind));
         BuildSlot(_equipmentLeft, "EquipmentOffHand", "offhand", appearance.OffHand, kind, n => EquippedOffHand(n, appearance.OffHand, kind));
         BuildSlot(_equipmentRight, "EquipmentMainHand", "mainhand", appearance.MainHand, kind, n => EquippedWeapon(n, appearance.MainHand, kind));
@@ -253,10 +249,7 @@ public partial class CharacterVisual
         }
         if (robe)
         {
-            var skirt = Cone(parent, new(0, .74f, .035f), chest == "serath_shroud" ? .51f : .46f, .28f, 1.2f, fabric);
-            skirt.Scale = new(1, 1, .76f);
-            Box(parent, new(0, .81f, -.33f), new(.12f, 1.1f, .045f), trim);
-            Ring(parent, new(0, .17f, .035f), .37f, .44f, Metal);
+            EquippedRobeSkirt(parent, chest == "serath_shroud" ? .51f : .46f, fabric, trim);
         }
         float capeLength = robe ? 1.26f : kind == "veilwalker" ? 1.15f : .80f;
         Box(parent, new(0, 1.68f - capeLength * .5f, .33f), new(chest == "serath_shroud" ? .73f : .62f, capeLength, .065f), (chest == "starter_chest" && kind is "vanguard" or "warden") ? Accent : fabric, new(10, 0, 0));
@@ -279,18 +272,4 @@ public partial class CharacterVisual
             Orb(parent, new(0, 1.55f, -.39f), new(.13f, .16f, .07f), RarityMaterial(item));
     }
 
-    private void EquippedShoulder(Node3D parent, int side, ItemAppearance item, string kind)
-    {
-        string chest = ItemKind(item);
-        bool plate = chest is "march_plate" or "oath_plate" || (chest == "starter_chest" && kind == "vanguard");
-        Material surface = chest switch
-        { "oath_plate" => SharedMaterial("c2ae7c", metallic: true), "ash_weave" => SharedMaterial("473e50"), "serath_shroud" => SharedMaterial("743f3b"), _ => plate ? Metal : Main };
-        Orb(parent, new(side * .02f, -.025f, 0), plate ? new(.48f, .29f, .49f) : new(.38f, .23f, .40f), surface);
-        if (plate)
-            Box(parent, new(side * .055f, -.47f, -.025f), new(.24f, .27f, .25f), surface);
-        if (chest == "oath_plate" || chest == "serath_shroud")
-            Cone(parent, new(side * .04f, .12f, 0), .12f, 0, .34f, chest == "serath_shroud" ? Bone : surface, new(0, 0, side * -28));
-        if (RarityRank(item.Rarity) >= 3)
-            Orb(parent, new(side * .10f, .085f, -.12f), new(.1f, .12f, .085f), RarityMaterial(item));
-    }
 }

@@ -32,7 +32,7 @@ public partial class AppearanceSmoke
         await ClickGearControl(Find<Button>("ResetGearPreview"));
         Check("drag_inventory_inspection_keeps_existing_reset_control", ModelsAgree() && _session.StateHash == inspectionHash);
 
-        foreach (var slot in new[] { EquipmentSlot.MainHand, EquipmentSlot.Head, EquipmentSlot.Chest })
+        foreach (var slot in new[] { EquipmentSlot.MainHand, EquipmentSlot.Head, EquipmentSlot.Chest, EquipmentSlot.Shoulders, EquipmentSlot.Gloves, EquipmentSlot.Belt, EquipmentSlot.Legs, EquipmentSlot.Boots })
         {
             long id = EquipmentId(slot);
             int unequips = _unequips, equips = _equips;

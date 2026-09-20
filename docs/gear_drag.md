@@ -21,7 +21,7 @@ To free inventory space, stand near Torren, select an unequipped backpack item, 
 
 The inventory holds 512 items for loot collection, including equipped gear. Characters with larger existing collections must discard until fewer than 512 items remain to collect again. Canceling the confirmation, closing Gear, changing the character/loadout, or losing application focus leaves the item intact and releases only the confirmation's pause. Successful discards are saved and replayed as ordinary authoritative transactions.
 
-Successful drops use the existing equipment transactions, so stats, world appearance, preview, saves and replay all reflect the same committed item. Weapons, off hands, helmets and chest armor have visible model attachments; the other eight slots retain their existing stat effects. If ownership or the current loadout changes during a drag, that old drag is rejected.
+Successful drops use the existing equipment transactions, so stats, world appearance, preview, saves and replay all reflect the same committed item. Weapons, off hands, helmets, chest armor, shoulders, gloves, belts, leg armor and boots have independent visible model attachments; amulets and rings retain their icons and stat effects. If ownership or the current loadout changes during a drag, that old drag is rejected.
 
 This interface is available in the solo Endgame, Campaign and Production scenes. The cooperative equipment interface is unchanged. The layout takes inspiration from Diablo's equipment-and-backpack arrangement and uses Ashenwake's existing Godot controls and styling.
 
