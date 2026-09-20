@@ -69,10 +69,14 @@ public partial class MouseActionsSmoke
     private async Task<Vector2> MechanismPoint(int id, EndgamePresentation effects)
     {
         var visual = effects.GetMechanismVisual(id) ?? throw new InvalidDataException("Missing authored mechanism visual.");
-        foreach (var point in PickPoints(visual))
+        for (int zoom = 0; zoom < 20; zoom++)
         {
-            await Hover(point);
-            if (_sandbox.HoveredWorldActionId == "mechanism:" + id) return point;
+            foreach (var point in PickPoints(visual))
+            {
+                await Hover(point);
+                if (_sandbox.HoveredWorldActionId == "mechanism:" + id) return point;
+            }
+            if (zoom == 19 || !await ZoomOutThroughWorldInput("mechanism:" + id)) break;
         }
         throw new InvalidDataException("No actual mechanism body could be picked: " + id);
     }

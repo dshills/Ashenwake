@@ -70,6 +70,7 @@ public partial class CampaignHud
     {
         bool anatomy = _tab == "Anatomy";
         var viewport = GetViewportRect().Size;
+        CombatHudLayout.Objective(_objectivePanel, viewport);
         if (_anatomyLayoutViewport != viewport || _anatomyLayoutActive != anatomy)
         {
             _anatomyLayoutViewport = viewport; _anatomyLayoutActive = anatomy;

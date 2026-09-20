@@ -22,7 +22,7 @@ public partial class CampaignHud : Control
     private CombatView _combat = null!;
     private IReadOnlyList<InteractionDisplay> _interactions = [];
     private Label _headline = null!, _objective = null!, _notice = null!;
-    private PanelContainer _panel = null!;
+    private PanelContainer _panel = null!, _objectivePanel = null!;
     private ScrollContainer _journeyScroll = null!;
     private AnatomyWorkbench _anatomyWorkbench = null!;
     private AdventureContent? _previewContent;
@@ -43,13 +43,14 @@ public partial class CampaignHud : Control
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Ignore; SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        var objective = Panel(new(22, 88), new(565, 104)); _objectiveRows = new VBoxContainer(); objective.AddChild(_objectiveRows);
+        _objectivePanel = Panel(new(22, 88), new(565, 104)); _objectivePanel.Name = "HudObjective"; _objectiveRows = new VBoxContainer(); _objectivePanel.AddChild(_objectiveRows);
         _objectiveRows.AddThemeConstantOverride("separation", 6);
         _headline = Label("", 14); _objectiveRows.AddChild(_headline);
         _objective = Label("", 14); _objectiveRows.AddChild(_objective);
         _notice = Label("", 11); _notice.MaxLinesVisible = 2; _notice.Visible = false; _objectiveRows.AddChild(_notice);
         var toggle = new Button { Text = "Journey map & anatomy [J]", Position = new(921, 22), Size = new(326, 35) };
         toggle.Pressed += Toggle; AddChild(toggle);
+        CombatHudLayout.Navigation(toggle, 0);
         _anatomyBackdrop = new ColorRect { Color = new(0, 0, 0, .62f), MouseFilter = MouseFilterEnum.Stop, MouseForcePassScrollEvents = false, Visible = false };
         _anatomyBackdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); AddChild(_anatomyBackdrop);
         _panel = Panel(new(876, 140), new(371, 482)); _panel.Name = "CampaignPanel"; var column = new VBoxContainer(); _panel.AddChild(column);

@@ -57,7 +57,7 @@ rg -q 'AnatomyClientSmokePassed' "$anatomy_output/smoke.log"
 
 interaction_output="$package_output/interaction-client"
 mkdir -p "$interaction_output"
-"$binary" --headless --quit-after 600 --log-file "$interaction_output/smoke.log" -- --interaction-smoke --output="$interaction_output"
+"$binary" --headless --quit-after 1200 --log-file "$interaction_output/smoke.log" -- --interaction-smoke --output="$interaction_output"
 python3 tools/check-godot-log.py "$interaction_output/smoke.log"
 rg -q 'InteractionClientSmokePassed' "$interaction_output/smoke.log"
 
@@ -132,6 +132,12 @@ mkdir -p "$expedition_output"
 "$binary" --headless --quit-after 18000 --log-file "$expedition_output/smoke.log" -- --expedition-smoke --output="$expedition_output"
 python3 tools/check-godot-log.py "$expedition_output/smoke.log"
 rg -q 'ExpeditionClientSmokePassed' "$expedition_output/smoke.log"
+
+hud_output="$package_output/hud-client"
+mkdir -p "$hud_output"
+"$binary" --headless --quit-after 18000 --log-file "$hud_output/smoke.log" -- --hud-smoke --output="$hud_output"
+python3 tools/check-godot-log.py "$hud_output/smoke.log"
+rg -q 'HudClientSmokePassed' "$hud_output/smoke.log"
 
 experiment_output="$package_output/experiment-client"
 mkdir -p "$experiment_output"

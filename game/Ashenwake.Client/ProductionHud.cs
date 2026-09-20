@@ -51,9 +51,10 @@ public partial class ProductionHud : Control
     {
         MouseFilter = MouseFilterEnum.Ignore;
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _summary = Label("", 13); _summary.Position = new(603, 23); _summary.Size = new(305, 36); AddChild(_summary);
+        _summary = Label("", 13); _summary.Visible = false; AddChild(_summary);
         var toggle = new Button { Text = Catalog.Format("production.title") + " [C]", Position = new(601, 61), Size = new(266, 32), AutowrapMode = TextServer.AutowrapMode.WordSmart };
         toggle.Pressed += Toggle; AddChild(toggle);
+        CombatHudLayout.Navigation(toggle, 1);
         _craftingBackdrop = new ColorRect { Name = "CraftingBackdrop", Color = new(0, 0, 0, .28f), MouseFilter = MouseFilterEnum.Stop, MouseForcePassScrollEvents = false, Visible = false };
         _craftingBackdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); AddChild(_craftingBackdrop);
         _panel = new PanelContainer { Position = new(22, 201), Size = new(455, 419), Visible = false };

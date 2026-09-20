@@ -78,7 +78,12 @@ public partial class Sandbox : Node3D
         catch (Exception ex) { Fail(ex); }
     }
 
-    public void AddOverlay(Control overlay) => _hud.AddChild(overlay);
+    public void AddOverlay(Control overlay)
+    {
+        _hud.AddChild(overlay);
+        if (overlay is CampaignHud) _campaignObjective = overlay.FindChild("HudObjective", true, false) as Control;
+        if (overlay is EndgameHud) _expeditionObjective = overlay.FindChild("HudExpeditionObjective", true, false) as Control;
+    }
     public void EnableCampaign()
     {
         _campaignMode = true;
@@ -99,6 +104,7 @@ public partial class Sandbox : Node3D
         var player = session.Capture().Actors.Single(a => a.Id == 1);
         _moveX = player.MoveX; _moveZ = player.MoveZ; _target = 0;
         _initialInventoryCount = _view.Inventory.Count; _inventorySignature = "";
+        ResetRewardPresentation();
         ClearPresentation(); SynchronizeWorld();
         if (_inventoryPanel is not null)
         { _inventoryPanel.Visible = false; _settingsPanel.Visible = false; if (_lootPanel is not null) _lootPanel.Visible = false; _lootSignature = ""; _inspectedLoot = 0; RefreshHud(); }
@@ -129,6 +135,7 @@ public partial class Sandbox : Node3D
             if (showAllLootHeld != _showAllLootHeld)
             { _showAllLootHeld = showAllLootHeld; SynchronizeLootVisuals(); _lootSignature = ""; }
             AnimatePresentation(delta, _clock.Alpha, _target); UpdateEnvironmentAtmosphere(delta); UpdateNavigationNotice(delta); UpdateWorldHover(delta); RefreshHud(); RefreshLootInspector();
+            AdvanceRewardPresentation(delta);
             _frames++; Sample(_frameCosts, Stopwatch.GetElapsedTime(watch).TotalMilliseconds);
             if (_frames > 10) Sample(_frameIntervals, delta * 1000);
             if (_capturePath is not null && _frames == 30 && DisplayServer.GetName() != "headless")
@@ -353,17 +360,12 @@ public partial class Sandbox : Node3D
         var layer = new CanvasLayer(); AddChild(layer);
         _hud = new Control { MouseFilter = Control.MouseFilterEnum.Ignore }; layer.AddChild(_hud);
         _hud.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        LabelAt("A S H E N W A K E", new(30, 22), 27, new("f0dfc4"));
+        _hudTitle = LabelAt("A S H E N W A K E", new(30, 22), 27, new("f0dfc4"));
         _subtitleLabel = LabelAt("VANGUARD  /  THE PROVING GROUND", new(32, 62), 13, new("9eb1c0"));
         _stateText = LabelAt("", new(32, 94), 15, _ember);
         _log = LabelAt("", new(32, 143), 12, new("d7d9d6"));
         _metrics = LabelAt("", new(921, 24), 12, new("afc4d1"));
-        _healthText = LabelAt("", new(32, 641), 16, _mint);
-        _health = Bar(new(32, 669), new(290, 9), _mint);
-        _momentumText = LabelAt("", new(350, 641), 16, _ember);
-        _momentum = Bar(new(350, 669), new(260, 9), _ember);
-        ButtonAt("Inventory [I]", new(916, 650), new(152, 30), ShowInventory);
-        ButtonAt("Settings [Esc]", new(1081, 650), new(166, 30), () => TogglePanel(_settingsPanel));
+        BuildCombatDock();
         for (int i = 0; i < 6; i++)
         {
             int index = i;
@@ -372,10 +374,13 @@ public partial class Sandbox : Node3D
             _hud.AddChild(button); _skillButtons.Add(button);
         }
         _navigationNotice = LabelAt("", new(32, 615), 13, new("ecd4ac"));
-        LabelAt("CLICK Move / attack / interact / collect · WASD Move · SHIFT+CLICK Stand & attack · RIGHT CLICK Secondary · X Stop · 1–6 Skills · SPACE Dodge · Q Potion · F/E Interact / loot", new(32, 765), 11, new("abc0cb"));
-        _sandboxControls.Add(ButtonAt("Reset [R]", new(985, 697), new(122, 54), () => Reset(_view.Preset)));
-        ButtonAt("Pause [P]", new(1118, 697), new(129, 54), ToggleManualPause);
+        _controlHint = LabelAt("", Vector2.Zero, 10, new("abc0cb"));
+        _resetHudButton = ButtonAt("Reset [R]", Vector2.Zero, new(96, 28), () => Reset(_view.Preset));
+        _sandboxControls.Add(_resetHudButton);
+        BuildRewardPresentation();
+        LayoutCombatHud();
         BuildInventory(); BuildSettings();
+        _combatHudViewport = new(-1, -1); LayoutCombatHud();
     }
     private Label LabelAt(string text, Vector2 position, int size, Color color, Node? parent = null)
     {
@@ -516,9 +521,12 @@ public partial class Sandbox : Node3D
     private void RefreshHud()
     {
         var player = _view.Actors.Single(a => a.Id == 1);
-        _healthText.Text = $"HEALTH  {player.Health}/{player.MaxHealth}    BARRIER {_view.Barrier}";
-        _health.Value = player.Health * 100d / player.MaxHealth;
-        _momentumText.Text = $"{_view.ResourceName.ToUpperInvariant()}  {_view.Resource}/{_view.MaxResource}"; _momentum.Value = _view.Resource * 100d / _view.MaxResource;
+        LayoutCombatHud();
+        _healthText.Text = $"HEALTH  {player.Health}/{player.MaxHealth}";
+        _health.MaxValue = player.MaxHealth; _health.Value = player.Health;
+        _momentumText.Text = $"{_view.ResourceName.ToUpperInvariant()}  {_view.Resource}/{_view.MaxResource}";
+        _momentum.MaxValue = _view.MaxResource; _momentum.Value = _view.Resource;
+        RefreshCombatDock(player);
         int enemies = _view.Actors.Count(a => a.Faction == CombatFaction.Enemy && a.Health > 0);
         _stateText.Text = player.Health <= 0 ? "YOU HAVE FALLEN · R to reset the arena" : enemies == 0 ? "ENCOUNTER CLEARED · collect the spoils with E" :
             $"{_view.Preset.ToUpperInvariant()} · {enemies} hostiles · {(_clock.Paused ? "PAUSED" : "LIVE")} · target {_target}";

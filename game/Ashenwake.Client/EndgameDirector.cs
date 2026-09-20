@@ -304,6 +304,7 @@ public partial class EndgameDirector : Node3D
     private void Refresh()
     {
         var snapshot = _session.Capture(); var campaign = snapshot.Campaign; var combat = _session.Combat.View; var player = combat.Actors.Single(a => a.Id == 1);
+        _sandbox.PresentProgression(_session.Production.ProgressionView, _session.Production.CurrentLevelExperience, combat.Skills, campaign.Production.Progression.Character.UnlockedDisciplines);
         var interactions = _session.Interactions.Select(i => new InteractionDisplay(i.ActionId, i.Name, (int)Math.Sqrt(CorePosition.DistanceSquared(i.Position, player.Position)), i.Range)).ToArray();
         _campaignHud.SetView(_session.Campaign.View, campaign.Campaign, _campaignDefinition, _session.Production.View, campaign.Production.Expedition.Adventure, _anatomyDefinition, combat, interactions, _revision);
         if (_smoke || _echoesSmoke) _campaignHud.SetOpen(false);

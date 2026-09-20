@@ -99,6 +99,7 @@ public partial class Sandbox
             return;
         }
         EnsureCombatTargetDetail();
+        LayoutCombatTarget();
         _targetDetail!.Visible = true;
         if (_targetDetailActor != focus || _targetName.Text != target.Name) _targetName.Text = target.Name;
         if (_targetHealth.Text != target.HealthDetail) _targetHealth.Text = target.HealthDetail;
@@ -146,6 +147,7 @@ public partial class Sandbox
         _targetConditions.CustomMinimumSize = new(0, 32);
         column.AddChild(_targetName); column.AddChild(_targetHealth); column.AddChild(_targetConditions);
         _hud.AddChild(_targetDetail);
+        LayoutCombatTarget();
     }
 
     private static Label TargetDetailLabel(string name, int size, Color color)

@@ -20,6 +20,9 @@ public partial class MouseActionsSmoke : Node
     private readonly List<CombatCommand> _commands = [];
     private readonly List<CombatEvent> _events = [];
     private readonly List<EndgameRuntimeReplay> _replays = [];
+    private readonly List<string> _groundCheckpoints = [];
+    private readonly List<string> _cameraPicks = [];
+    private int _cameraZoomInputs;
     private EndgameDirector _director = null!;
     private Sandbox _sandbox = null!;
     private CampaignStage _stage = null!;
@@ -253,11 +256,48 @@ public partial class MouseActionsSmoke : Node
     }
     private async Task MoveAwayFromLoot()
     {
-        var room = Session.Room;
-        var candidates = new[] { new CorePosition(-room.HalfWidth + 1400, room.HalfDepth - 1400), new CorePosition(room.HalfWidth - 1400, room.HalfDepth - 1400), new CorePosition(0, room.HalfDepth - 1800), new CorePosition(0, -room.HalfDepth + 1800) };
-        var target = candidates.OrderByDescending(p => Session.Combat.View.Loot.Min(l => CorePosition.DistanceSquared(p, l.Position))).First();
-        await Ground(target); await WalkUntilStopped();
+        await ReachVisibleGroundCheckpoint(p => Session.Combat.View.Loot.Min(l => CorePosition.DistanceSquared(p, l.Position)),
+            CombatSession.PickupRange, "loot_" + Session.Combat.View.Loot.Count);
         Check("loot_checkpoint_stands_outside_pickup_range_" + Session.Combat.View.Loot.Count, Session.Combat.View.Loot.All(l => CorePosition.DistanceSquared(Player, l.Position) > (long)CombatSession.PickupRange * CombatSession.PickupRange));
+    }
+    private async Task ReachVisibleGroundCheckpoint(Func<CorePosition, long> separationSquared, int requiredRange, string label)
+    {
+        var room = Session.Room;
+        var space = new SpatialWorld(room);
+        var planner = new ClickMovePlanner(room);
+        var occupied = Session.Combat.View.Actors.Where(a => a.Id != 1 && a.Health > 0).Select(a => a.Position).ToArray();
+        int margin = requiredRange + ClickMovePlanner.ArrivalTolerance + 300;
+        var candidates = (from x in Enumerable.Range(-3, 7)
+                          from z in Enumerable.Range(-3, 7)
+                          select new CorePosition(x * (room.HalfWidth - 1400) / 3, z * (room.HalfDepth - 1400) / 3))
+            .Where(p => separationSquared(p) > (long)margin * margin && space.CanOccupy(p, CombatSession.ActorRadius) &&
+                CorePosition.DistanceSquared(Player, p) > 1000L * 1000)
+            // A checkpoint needs a real approach, not the farthest corner. Prefer the closest
+            // safe separation so following the character does not push every target behind the HUD.
+            .OrderBy(separationSquared).ThenBy(p => CorePosition.DistanceSquared(Player, p)).ThenBy(p => p.X).ThenBy(p => p.Z).ToArray();
+        foreach (var target in candidates)
+        {
+            var point = _camera.UnprojectPosition(World(target));
+            if (!GetViewport().GetVisibleRect().Grow(-8).HasPoint(point) || !planner.TrySetDestination(Player, target, occupied)) continue;
+            await Hover(point);
+            var hovered = GetViewport().GuiGetHoveredControl();
+            if (hovered is not null || _sandbox.HoveredWorldActionId is not null || _sandbox.HoveredLootId != 0)
+            {
+                if (_groundCheckpoints.Count < 24) _groundCheckpoints.Add($"{label}: skipped {target} at {point}; gui={hovered?.GetPath()}; action={_sandbox.HoveredWorldActionId}; loot={_sandbox.HoveredLootId}");
+                continue;
+            }
+            // The HUD may cover a perfectly legal floor point. Select through native input only
+            // after checking actual UI occlusion; never let a consumed click pass as completed movement.
+            await Click(point);
+            Check(label + "_checkpoint_native_ground_click_starts_route", _sandbox.PendingWorldActionId is null &&
+                _sandbox.ClickMoveDestination is { } destination && CorePosition.DistanceSquared(destination, target) <= 4);
+            await WalkUntilStopped();
+            Check(label + "_checkpoint_reaches_clicked_ground", CorePosition.DistanceSquared(Player, target) <=
+                (long)(ClickMovePlanner.ArrivalTolerance + 2) * (ClickMovePlanner.ArrivalTolerance + 2));
+            _groundCheckpoints.Add($"{label}: reached {Player}; clicked {target} at {point}");
+            return;
+        }
+        throw new InvalidDataException("No reachable, unoccluded native ground checkpoint for " + label + ". " + string.Join("; ", _groundCheckpoints));
     }
     private async Task WalkUntilStopped()
     {
@@ -276,7 +316,7 @@ public partial class MouseActionsSmoke : Node
         var visual = _stage.GetInteractionVisual(id) ?? Field<IReadOnlyList<WorldInteractionTarget>>(_sandbox, "_worldInteractions").FirstOrDefault(t => t.Id == id)?.Visual
             ?? throw new InvalidDataException("Missing interaction visual: " + id);
         string evidence = "";
-        for (int zoom = 0; zoom < 5; zoom++)
+        for (int zoom = 0; zoom < 20; zoom++)
         {
             foreach (var point in PickPoints(visual))
             {
@@ -284,25 +324,53 @@ public partial class MouseActionsSmoke : Node
                 if (_sandbox.HoveredWorldActionId == id) return point;
                 if (evidence.Length == 0) evidence = $"requested={point}; viewport={GetViewport().GetMousePosition()}; gui={GetViewport().GuiGetHoveredControl()?.GetPath()}; paused={_sandbox.IsPaused}; targets={string.Join(',', Field<IReadOnlyList<WorldInteractionTarget>>(_sandbox, "_worldInteractions").Select(t => t.Id))}";
             }
-            // Use the shipping zoom control when a distant landmark is outside the camera
-            // or behind a HUD panel; never bypass UI occlusion or fabricate a pick.
-            foreach (bool pressed in new[] { true, false })
-                GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.WheelDown, Position = new(640, 400), Pressed = pressed }, true);
-            await Frames();
+            if (zoom == 19 || !await ZoomOutThroughWorldInput("interaction:" + id)) break;
         }
         throw new InvalidDataException("No visible body point selected interaction " + id + ": " + evidence);
     }
     private async Task<(long Id, Vector2 Point)> FindLootPoint(IReadOnlySet<long> ids)
     {
-        foreach (var visual in Descendants(_sandbox).OfType<LootVisual>().Where(v => v.IsVisibleInTree()).ToArray())
+        for (int zoom = 0; zoom < 20; zoom++)
         {
-            foreach (var point in PickPoints(visual))
+            foreach (var visual in Descendants(_sandbox).OfType<LootVisual>().Where(v => v.IsVisibleInTree()).ToArray())
             {
-                await Hover(point);
-                if (ids.Contains(_sandbox.HoveredLootId)) return (_sandbox.HoveredLootId, point);
+                bool described = false;
+                foreach (var point in PickPoints(visual))
+                {
+                    await Hover(point);
+                    if (ids.Contains(_sandbox.HoveredLootId)) return (_sandbox.HoveredLootId, point);
+                    if (!described && _cameraPicks.Count < 64)
+                    {
+                        _cameraPicks.Add($"loot:{visual.Name}; camera={_camera.Size}; point={point}; gui={GetViewport().GuiGetHoveredControl()?.GetPath()}; paused={_sandbox.IsPaused}");
+                        described = true;
+                    }
+                }
             }
+            if (zoom == 19 || !await ZoomOutThroughWorldInput("loot")) break;
         }
-        throw new InvalidDataException("No actual visible reward could be picked.");
+        throw new InvalidDataException("No actual visible reward could be picked after native zoom. " + string.Join("; ", _cameraPicks));
+    }
+    private async Task<bool> ZoomOutThroughWorldInput(string reason)
+    {
+        var viewport = GetViewport().GetVisibleRect().Size;
+        foreach (var fraction in new[] { new Vector2(.5f, .5f), new(.7f, .5f), new(.5f, .6f), new(.8f, .55f), new(.25f, .6f) })
+        {
+            Vector2 point = viewport * fraction;
+            await Hover(point);
+            if (GetViewport().GuiGetHoveredControl() is not null) continue;
+            float before = _camera.Size;
+            string hash = _sandbox.Session.StateHash;
+            var destination = _sandbox.ClickMoveDestination;
+            string? action = _sandbox.PendingWorldActionId;
+            foreach (bool pressed in new[] { true, false })
+                GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.WheelDown, Position = point, Pressed = pressed }, true);
+            await Frames(); _cameraZoomInputs++;
+            if (_sandbox.Session.StateHash != hash || _sandbox.ClickMoveDestination != destination || _sandbox.PendingWorldActionId != action)
+                throw new InvalidDataException("A diagnostic camera wheel input changed gameplay or pending movement.");
+            if (_cameraPicks.Count < 64) _cameraPicks.Add($"{reason}: native wheel at {point}; camera {before} -> {_camera.Size}");
+            return _camera.Size > before;
+        }
+        throw new InvalidDataException("No unoccluded world point accepted camera input for " + reason);
     }
     private IEnumerable<Vector2> PickPoints(Node3D visual)
     {
@@ -391,6 +459,9 @@ public partial class MouseActionsSmoke : Node
             inputCommands = _commands.Count,
             campaignSetupCommands = _campaignCommands,
             replayCount = _replays.Count,
+            groundCheckpoints = _groundCheckpoints,
+            cameraZoomInputs = _cameraZoomInputs,
+            cameraPicks = _cameraPicks,
             error,
             scope = "The shipping EndgameDirector receives actual viewport NPC and loot clicks, UI/key interruption and save/load input; its Sandbox is stepped at the real fixed interval. Actual campaign commands prepare a build and earn the drops. The real filter widget signal isolates disappearance from modal cancellation. Public presentation invalidation tests a vanished target. No fabricated combat rewards or progression; branch command replays must match. An isolated authored Orrun hunt phase uses the earned character, real mechanism availability and a separately verified combat replay; it does not claim a full endgame unlock journey. Full road-to-Bell-Saint objectives remain covered by the journey diagnostic."
         };

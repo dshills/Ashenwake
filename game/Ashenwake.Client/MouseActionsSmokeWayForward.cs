@@ -15,11 +15,7 @@ public partial class MouseActionsSmoke
         string encounter = Session.Campaign.ActiveEncounterId;
         var rewards = Session.Combat.View.Loot.Select(l => l.Id).ToHashSet();
         Check("way_forward_branch_has_real_uncollected_rewards", rewards.Count > 0);
-        var room = Session.Room;
-        var space = new Ashenwake.Core.Simulation.SpatialWorld(room);
-        var candidates = new[] { new CorePosition(-room.HalfWidth + 1600, room.HalfDepth - 1600), new CorePosition(room.HalfWidth - 1600, room.HalfDepth - 1600), new CorePosition(0, -room.HalfDepth + 1600), new CorePosition(0, room.HalfDepth - 1600) };
-        var distant = candidates.Where(p => space.CanOccupy(p, CombatSession.ActorRadius)).OrderByDescending(p => CorePosition.DistanceSquared(p, target.Position)).First();
-        await Ground(distant); await WalkUntilStopped();
+        await ReachVisibleGroundCheckpoint(p => CorePosition.DistanceSquared(p, target.Position), target.Range, "way_forward");
         Check("way_forward_checkpoint_outside_interaction_range", CorePosition.DistanceSquared(Player, target.Position) > (long)target.Range * target.Range);
         var panel = Field<PanelContainer>(_hud, "_panel");
         int openings = 0;

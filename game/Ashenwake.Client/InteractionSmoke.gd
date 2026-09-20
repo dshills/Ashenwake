@@ -116,12 +116,69 @@ func check_expedition_navigation():
     checks["expedition_echoes_shortcut_hands_off_to_echoes"] = not expedition_is_open() and visible_label("ECHOES: BORROWED MEMORY")
     await key(KEY_ESCAPE)
 
+func control_named(name):
+    for node in nodes(self):
+        if node is Control and node.name == name: return node
+    return null
+
+func check_combat_hud_layout():
+    for size in [Vector2i(1280, 800), Vector2i(1000, 720), Vector2i(780, 720)]:
+        get_window().size = size
+        get_window().content_scale_size = size
+        await settle()
+        await settle()
+        var screen = get_viewport().get_visible_rect()
+        var nav = [button_containing("[J]"), button_containing("[C]"), button_containing("[B]"), button_containing("[H]")]
+        var objective = control_named("HudObjective")
+        var fits = objective != null and screen.encloses(objective.get_global_rect())
+        var separated = true
+        for a in nav:
+            fits = fits and a != null and screen.encloses(a.get_global_rect())
+            if a == null: continue
+            separated = separated and not a.get_global_rect().intersects(objective.get_global_rect())
+            for b in nav:
+                if b != null and a != b: separated = separated and not a.get_global_rect().intersects(b.get_global_rect())
+        checks["shipping_navigation_and_objective_fit_" + str(size.x)] = fits
+        checks["shipping_navigation_and_objective_do_not_overlap_" + str(size.x)] = separated
+        var utilities = [button_containing("Inventory [I]"), button_containing("Settings [Esc]"), button_containing("Pause [P]")]
+        fits = screen.encloses(control_named("HudDock").get_global_rect()) and screen.encloses(control_named("HudExperience").get_global_rect())
+        for a in utilities:
+            fits = fits and a != null and screen.encloses(a.get_global_rect())
+            if a == null: continue
+            for b in utilities:
+                if b != null and a != b: fits = fits and not a.get_global_rect().intersects(b.get_global_rect())
+        checks["shipping_dock_controls_fit_without_overlap_" + str(size.x)] = fits
+        if "--capture-interaction" in OS.get_cmdline_user_args() and DisplayServer.get_name() != "headless":
+            RenderingServer.force_draw(false)
+            RenderingServer.force_sync()
+            get_viewport().get_texture().get_image().save_png(output.path_join("combat-hud-" + str(size.x) + ".png"))
+    await click(button_containing("[J]"))
+    checks["compact_navigation_mouse_opens_journey"] = visible_label("EDRATH · REGIONS")
+    await key(KEY_J)
+    await click(button_containing("[B]"))
+    checks["compact_navigation_mouse_opens_expeditions"] = expedition_is_open()
+    await key(KEY_B)
+    await click(button_containing("[C]"))
+    checks["compact_navigation_mouse_opens_character"] = button_containing("Close character") != null
+    await click(button_containing("Close character"))
+    await click(button_containing("[H]"))
+    checks["compact_navigation_mouse_opens_echoes"] = visible_label("ECHOES: BORROWED MEMORY")
+    await key(KEY_ESCAPE)
+    await click(button_containing("Pause [P]"))
+    var resume = button_containing("Resume playing")
+    checks["compact_pause_card_and_resume_stay_in_view"] = resume != null and get_viewport().get_visible_rect().encloses(resume.get_parent().get_parent().get_global_rect())
+    await click(resume)
+    get_window().size = Vector2i(1280, 800)
+    get_window().content_scale_size = Vector2i(1280, 800)
+    await settle()
+
 func run():
     add_child(load("res://Endgame.tscn").instantiate())
     await settle()
     await click(button_containing("Vanguard ·"))
     checks["discipline_selection_accepts_mouse"] = not visible_label("CHOOSE YOUR FIRST DISCIPLINE")
     checks["journey_starts_closed_after_discipline_selection"] = not visible_label("EDRATH · REGIONS")
+    await check_combat_hud_layout()
     await key(KEY_J)
     checks["journey_key_opens_map"] = visible_label("EDRATH · REGIONS")
     await key(KEY_J)
@@ -164,9 +221,12 @@ func run():
     if not visible_label("EDRATH · REGIONS"): await key(KEY_J)
     await click(button_containing("Mara · Divine Anatomy"))
     checks["mara_service_opens_anatomy"] = visible_label("DIVINE ANATOMY ·")
+    if not checks["mara_service_opens_anatomy"]:
+        print("HUD diagnostic: Mara click did not open anatomy; visible labels: ", nodes(self).filter(func(n): return n is Label and n.is_visible_in_tree()).map(func(n): return n.text))
     await click(button_containing("Map"))
     if "--capture-interaction" in OS.get_cmdline_user_args() and DisplayServer.get_name() != "headless":
-        await RenderingServer.frame_post_draw
+        RenderingServer.force_draw(false)
+        RenderingServer.force_sync()
         get_viewport().get_texture().get_image().save_png(output.path_join("mara-map.png"))
     await click(button_named("JourneyRegion1"))
     await click(button_named("JourneyTravel"))
@@ -184,6 +244,7 @@ func run():
     await key(KEY_ESCAPE)
     checks["echoes_escape_closes_panel"] = not visible_label("ECHOES: BORROWED MEMORY")
     checks["echoes_preserves_manual_pause"] = button_containing("Resume playing") != null and await saved_tick() == paused_tick
+    if not checks["echoes_preserves_manual_pause"]: print("HUD diagnostic: expected paused tick ", paused_tick, " actual ", await saved_tick(), " resume ", button_containing("Resume playing") != null)
     await click(button_containing("Resume playing"))
     await key(KEY_H)
     for node in nodes(self):
@@ -198,7 +259,7 @@ func run():
     await click(button_containing("Resume playing"))
     for i in range(12): await get_tree().process_frame
     checks["echoes_requires_explicit_resume"] = await saved_tick() > paused_tick
-    var passed = checks.size() == 29
+    var passed = checks.size() == 43
     for value in checks.values(): passed = passed and value
     var report = {"kind": "InteractionClientSmokePassed" if passed else "InteractionClientSmokeFailed", "passed": passed, "checks": checks}
     var file = FileAccess.open(output.path_join("interaction-review.json"), FileAccess.WRITE)

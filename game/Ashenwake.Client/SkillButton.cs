@@ -20,6 +20,9 @@ public partial class SkillButton : Button
 
     public override void _Ready() => EnsureChildren();
 
+    public override void _Notification(int what)
+    { if (what == NotificationResized && _icon is not null) LayoutChildren(); }
+
     public void SetSkill(CombatSkillView skill, string discipline, string resourceName, int resource, int maxResource, string binding)
     {
         EnsureChildren();
@@ -98,6 +101,18 @@ public partial class SkillButton : Button
         AddChild(_cooldown);
         // Apply the compact size after theme setup removes the default percentage-label minimum.
         _cooldown.Size = new(136, 3);
+        LayoutChildren();
+    }
+
+    private void LayoutChildren()
+    {
+        if (_cooldown is null) return;
+        _name.ClipText = true; _name.Position = new(40, 2);
+        _name.AddThemeFontSizeOverride("font_size", Size.X < 135 ? 10 : 11);
+        _name.AddThemeConstantOverride("line_spacing", 0);
+        _name.Size = new(Math.Max(45, Size.X - 46), 31);
+        _state.Size = new(Math.Max(45, Size.X - 48), 13);
+        _cooldown.Size = new(Math.Max(20, Size.X - 12), 3);
     }
 
     private Label Caption(string name, Vector2 position, Vector2 size, int fontSize)

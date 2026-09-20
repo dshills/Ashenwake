@@ -48,13 +48,14 @@ public partial class EndgameHud : Control
         MouseFilter = MouseFilterEnum.Ignore; SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         for (Node? parent = GetParent(); parent is not null; parent = parent.GetParent())
             if (parent is Sandbox sandbox) { _sandbox = sandbox; break; }
-        _headlinePanel = Panel(); _headlinePanel.Position = new(22, 88); _headlinePanel.Size = new(565, 104); AddChild(_headlinePanel);
+        _headlinePanel = Panel(); _headlinePanel.Name = "HudExpeditionObjective"; _headlinePanel.Position = new(22, 88); _headlinePanel.Size = new(565, 104); AddChild(_headlinePanel);
         var heading = new VBoxContainer(); _headlinePanel.AddChild(heading);
         _title = Text("THE FRACTURES", 16); heading.AddChild(_title);
         _status = Text("", 12); heading.AddChild(_status);
         _notice = Text("", 12); _notice.MaxLinesVisible = 1; heading.AddChild(_notice);
         var toggle = new Button { Text = "Fractures & God Hunts [B]", Position = new(921, 61), Size = new(326, 32) };
         toggle.AddThemeFontSizeOverride("font_size", 13); toggle.Pressed += Toggle; AddChild(toggle);
+        CombatHudLayout.Navigation(toggle, 2);
         _backdrop = new ColorRect { Color = new(0, 0, 0, .64f), MouseFilter = MouseFilterEnum.Stop, MouseForcePassScrollEvents = false }; AddChild(_backdrop);
         _backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _panel = Panel(); _panel.Name = "ExpeditionPanel"; _panel.MouseForcePassScrollEvents = false; AddChild(_panel);
@@ -160,6 +161,7 @@ public partial class EndgameHud : Control
     private void UpdateLayout()
     {
         var viewport = GetViewportRect().Size;
+        CombatHudLayout.Objective(_headlinePanel, viewport);
         Vector2 size = new(Math.Min(1080, viewport.X - 44), Math.Min(714, viewport.Y - 44));
         _panel.Position = (viewport - size) / 2; _panel.Size = size;
     }

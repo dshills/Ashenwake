@@ -37,6 +37,7 @@ public sealed partial class ProductionSession
     public CombatSession Combat => Expedition.Combat;
     public AdventureView View => Expedition.View;
     public ProgressionView ProgressionView => progression.View;
+    public long CurrentLevelExperience => progression.ExperienceForLevel(progression.Level);
     public IReadOnlyList<string> WorldEvents { get; private set; } = [];
     public string StateHash => JsonData.Hash(Capture());
     public IReadOnlyList<ExpeditionInteraction> Interactions => View.RoomId == "room.greyhaven"

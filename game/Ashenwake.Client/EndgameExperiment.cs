@@ -36,6 +36,7 @@ public partial class EndgameDirector
         _memoryPresentation = new ExperimentPresentation(); AddChild(_memoryPresentation);
         var open = new Button { Text = "Echoes: Borrowed Memory [H]", Position = new(921, 100), Size = new(326, 32) };
         open.AddThemeFontSizeOverride("font_size", 13); open.Pressed += ShowExperimentPanel; _sandbox.AddOverlay(open);
+        CombatHudLayout.Navigation(open, 3);
         _memoryStatus = new Label { Position = new(32, 304), Size = new(295, 180), AutowrapMode = TextServer.AutowrapMode.WordSmart, MouseFilter = Control.MouseFilterEnum.Ignore };
         _memoryStatus.AddThemeFontSizeOverride("font_size", 14); _memoryStatus.AddThemeColorOverride("font_color", new Color("c1dcff")); _sandbox.AddOverlay(_memoryStatus);
         _bindMemory = MemoryButton("Bind nearby memory [H]", new(32, 485), () => { if (_experiment?.View.Memory is { } memory) ApplyExperiment(new(ExperimentAction.BindMemory, SourceActorId: memory.SourceActorId)); });
@@ -158,6 +159,19 @@ public partial class EndgameDirector
     private void RefreshExperiment()
     {
         if (_memoryStatus is null) return;
+        var viewport = GetViewport().GetVisibleRect().Size;
+        _echoesPanel.Position = (viewport - _echoesPanel.Size) / 2;
+        bool compact = viewport.X < 1220;
+        float memoryWidth = Math.Min(460, viewport.X - 344);
+        _memoryStatus.Position = new(22, compact ? 360 : 304); _memoryStatus.Size = new(memoryWidth, compact ? 74 : 145);
+        _memoryStatus.MaxLinesVisible = compact ? 5 : -1; _memoryStatus.ClipText = compact;
+        _memoryStatus.MouseFilter = Control.MouseFilterEnum.Pass;
+        _memoryStatus.AddThemeFontSizeOverride("font_size", compact ? 11 : 13);
+        float actionY = compact ? viewport.Y - 278 : viewport.Y - 292;
+        _bindMemory.Position = _castMemory.Position = new(22, actionY);
+        _releaseMemory.Position = new(26 + memoryWidth / 2, actionY);
+        _bindMemory.Size = _castMemory.Size = _releaseMemory.Size = new(memoryWidth / 2 - 4, 32);
+        foreach (var button in new[] { _bindMemory, _castMemory, _releaseMemory }) button.AddThemeFontSizeOverride("font_size", compact ? 10 : 11);
         var view = _experiment?.View; var memory = view?.Memory;
         _memoryPresentation.Show(memory);
         bool visible = memory is not null && !_echoesPanel.Visible;
@@ -168,7 +182,9 @@ public partial class EndgameDirector
         string echoKey = InputMap.ActionGetEvents("aw_echo").OfType<InputEventKey>().FirstOrDefault()?.PhysicalKeycode.ToString() ?? "Controls";
         string state = memory.Status switch { "Pending" => "Defeat an elite to reveal its memory.", "Offered" => memory.CanBind ? "Memory nearby. Bind it [H] or release the loan." : "Approach the marked elite memory.", "Bound" => $"Echo Storm · {memory.RemainingTicks / 30d:F1}s remaining · [{echoKey}] to cast", "Spent" => "Echo used. Finish the Fracture to earn its cosmetic record.", "Released" => "You released the memory.", "Expired" => "The borrowed memory faded.", "Lost" => "The borrowed memory was lost on death.", _ => "" };
         _castMemory.Text = $"Cast Echo Storm [{echoKey}]";
-        _memoryStatus.Text = "BORROWED MEMORY\n" + suppression + "\n\n" + state + (memory.HazardStage == "None" ? "" : $"\n\nSTORM {memory.HazardStage.ToUpperInvariant()} · {memory.HazardRemainingTicks / 30d:F1}s · leave the circle");
+        string gap = compact ? "\n" : "\n\n";
+        _memoryStatus.Text = "BORROWED MEMORY\n" + suppression + gap + state + (memory.HazardStage == "None" ? "" : $"{gap}STORM {memory.HazardStage.ToUpperInvariant()} · {memory.HazardRemainingTicks / 30d:F1}s · leave the circle");
+        _memoryStatus.TooltipText = _memoryStatus.Text;
         _bindMemory.Disabled = !memory.CanBind || _sandbox.IsPaused; _castMemory.Disabled = _sandbox.IsPaused;
         if (OS.GetCmdlineUserArgs().Contains("--capture-echoes") && DisplayServer.GetName() != "headless" && (memory.Status == "Offered" || memory.HazardStage != "None"))
         {

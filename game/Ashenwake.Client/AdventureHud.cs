@@ -19,7 +19,7 @@ public partial class AdventureHud : Control
     public event Action? SaveRequested;
     public event Action? LoadRequested;
     private Label _objective = null!, _subtitle = null!, _notice = null!;
-    private PanelContainer _panel = null!;
+    private PanelContainer _panel = null!, _objectivePanel = null!;
     private VBoxContainer _rows = null!;
     private Button _journey = null!;
     private Button _firstTab = null!;
@@ -34,18 +34,20 @@ public partial class AdventureHud : Control
     private IReadOnlyDictionary<string, string> _fragmentDescriptions = new Dictionary<string, string>();
     private string _graftInstance = "", _graftLineage = "";
     private ConfirmationDialog _graftDialog = null!;
+    private Vector2 _layoutViewport = new(-1, -1), _layoutPanelSize = new(-1, -1);
 
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Ignore;
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        var objectivePanel = Panel(new(22, 88), new(565, 102));
-        var objectiveRows = new VBoxContainer(); objectivePanel.AddChild(objectiveRows);
+        _objectivePanel = Panel(new(22, 88), new(565, 102));
+        var objectiveRows = new VBoxContainer(); _objectivePanel.AddChild(objectiveRows);
         _objective = Label("", 16); objectiveRows.AddChild(_objective);
         _subtitle = Label("", 12); objectiveRows.AddChild(_subtitle);
         _notice = Label("", 12); objectiveRows.AddChild(_notice);
         _journey = new Button { Text = "Journey & services [J]", Position = new(921, 22), Size = new(326, 35) };
         _journey.Pressed += Toggle; AddChild(_journey);
+        CombatHudLayout.Navigation(_journey, 0);
         _panel = Panel(new(876, 68), new(371, 554));
         var column = new VBoxContainer(); _panel.AddChild(column);
         var tabs = new HBoxContainer(); column.AddChild(tabs);
@@ -78,6 +80,15 @@ public partial class AdventureHud : Control
         if (_panel.Visible) { Rebuild(true); _firstTab.GrabFocus(); }
     }
     public void Notice(string text) => _notice.Text = text;
+    public override void _Process(double delta)
+    {
+        if (_panel is null) return;
+        var viewport = GetViewportRect().Size;
+        if (_layoutViewport == viewport && _layoutPanelSize == _panel.Size) return;
+        _layoutViewport = viewport; _layoutPanelSize = _panel.Size;
+        CombatHudLayout.Objective(_objectivePanel, viewport);
+        _panel.Position = new(Math.Max(22, viewport.X - _panel.Size.X - 22), Math.Max(22, Math.Min(68, viewport.Y - _panel.Size.Y - 22)));
+    }
     public void SetFragmentDescriptions(IReadOnlyDictionary<string, string> descriptions) => _fragmentDescriptions = descriptions;
     public void SetView(AdventureView view, AdventureState state, AdventureDefinition content, IReadOnlyList<InteractionDisplay> interactions, long revision)
     {

@@ -119,7 +119,7 @@ public partial class Sandbox
                     if (actor is null) break;
                     _combatEffects.Emit("phase", actor.Current, Vector3.Forward, new Color("cfb1e6"), _reduceEffects);
                     PlayTone(e.Amount >= 3 ? "chain" : "bell"); break;
-                case "LootPickedUp": Message($"Collected {Readable(e.ContentId)}. Open inventory to compare."); PlayTone("loot"); break;
+                case "LootPickedUp": PresentLootReward(e); Message($"Collected {Readable(e.ContentId)}. Open inventory to compare."); PlayTone("loot"); break;
                 case "FragmentTriggered": Message($"{Readable(e.ContentId)} triggered · action {e.ActionId} / chain {e.Depth}"); break;
                 case "SummonSpawned": Message("A Serath spirit rises from a damage-over-time death."); break;
                 case "StatusApplied": if (e.ContentId is "Burning" or "Poisoned") Message($"{e.ContentId} → actor {e.TargetId} · owner {e.ActorId}"); break;

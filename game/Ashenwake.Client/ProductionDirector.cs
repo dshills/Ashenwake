@@ -161,7 +161,7 @@ public partial class ProductionDirector : Node3D
             var result = action();
             if (!result.Success) { _journey.Notice(result.Reason); _character.Notice(result.Reason); if (reportCraft) _character.ReportCraftResult(false, result.Reason); if (reportBuild) _character.ReportBuildResult(false, result.Reason); return; }
             _revision++; Consume(result.WorldEvents);
-            if (!ReferenceEquals(_sandbox.Session, _session.Combat)) _sandbox.SetSession(_session.Combat);
+            if (!ReferenceEquals(_sandbox.Session, _session.Combat)) _sandbox.AdoptSession(_session.Combat);
             Refresh();
             if (reportCraft) _character.ReportCraftResult(true, "");
             if (reportBuild) _character.ReportBuildResult(true, "");
@@ -180,6 +180,7 @@ public partial class ProductionDirector : Node3D
     private void Refresh()
     {
         var snapshot = _session.Capture(); var world = _session.View;
+        _sandbox.PresentProgression(_session.ProgressionView, _session.CurrentLevelExperience, _session.Combat.View.Skills, snapshot.Progression.Character.UnlockedDisciplines);
         var player = _session.Combat.View.Actors.Single(a => a.Id == 1);
         var interactions = _session.Interactions.Select(i => new InteractionDisplay(i.ActionId, i.Name,
             (int)Math.Sqrt(CorePosition.DistanceSquared(i.Position, player.Position)), i.Range)).ToArray();
