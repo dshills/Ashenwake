@@ -166,4 +166,6 @@ Launch the exported application with `-- --coop` for the connection screen. The 
 
 After unlocking Fractures, press **H** at Greyhaven to open the optional Echoes board. Entering with an owned Sigil creates a separate Echoes character and preserves the original. Keep your Mind for an ordinary run, or suppress its effect to bind one defeated elite's memory and borrow Echo Storm. Its cast warns of a hostile Storm field at your feet. Complete the Fracture after using it to earn a cosmetic record. The board supports save, continue, and safe return to the original character.
 
+The [visual Echoes screen](docs/echoes_screen.md) compares both choices, shows the active memory and hostile Storm countdown, and provides Record and Character tabs for earned cosmetics, contract history and separate character navigation.
+
 `bash tools/experiment-verify.sh` validates the content, completes the CLI and Godot routes, and checks completion, Keep Mind and Release replays. `aw experiment import-endgame <source> <new-destination>` explicitly imports a validated hub character without overwriting it. `tools/export.sh` includes the actual packaged Echoes smoke. See [experiment design](docs/permanent_experiment_design.md), [archive contract](docs/permanent_experiment_contract.md), and [Phase 8 verification](docs/phase8_verification.md).

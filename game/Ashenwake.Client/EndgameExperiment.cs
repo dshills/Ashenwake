@@ -15,12 +15,15 @@ public partial class EndgameDirector
 {
     private ExperimentRuntimeSession? _experiment;
     private ExperimentContent _experimentContent = null!;
+    private ExperimentRules _experimentRules = null!;
     private ExperimentPresentation _memoryPresentation = null!;
     private PanelContainer _echoesPanel = null!;
-    private ColorRect _echoesBackdrop = null!;
-    private VBoxContainer _echoesRows = null!;
-    private Label _memoryStatus = null!;
-    private Button _bindMemory = null!, _releaseMemory = null!, _castMemory = null!;
+    private EchoesBoard _echoesBoard = null!;
+    private EchoesMemoryHud _memoryHud = null!;
+    private bool _hasEchoesSelection;
+    private (long Run, int Actor) _memorySourceKey;
+    private string _memorySourceName = "";
+    private string _memoryNoticeStatus = "";
     private bool _echoesSmoke, _echoesSavedBound, _echoesSavedWarning, _echoesReleasedCheck, _echoesMindPrepared, _echoesSuppressionChecked, _echoesCompletionScheduled;
     private int _echoesSteps;
     private int _echoesFrames;
@@ -32,34 +35,46 @@ public partial class EndgameDirector
     {
         _echoesSmoke = OS.GetCmdlineUserArgs().Contains("--echoes-smoke");
         _experimentContent = ExperimentContent.Parse(FileAccess.GetFileAsString("res://experiments.json"));
+        _experimentRules = _experimentContent.Capture();
         _sandbox.AutomaticStep |= _echoesSmoke;
         _memoryPresentation = new ExperimentPresentation(); AddChild(_memoryPresentation);
         var open = new Button { Text = "Echoes: Borrowed Memory [H]", Position = new(921, 100), Size = new(326, 32) };
         open.AddThemeFontSizeOverride("font_size", 13); open.Pressed += ShowExperimentPanel; _sandbox.AddOverlay(open);
         CombatHudLayout.Navigation(open, 3);
-        _memoryStatus = new Label { Position = new(32, 304), Size = new(295, 180), AutowrapMode = TextServer.AutowrapMode.WordSmart, MouseFilter = Control.MouseFilterEnum.Ignore };
-        _memoryStatus.AddThemeFontSizeOverride("font_size", 14); _memoryStatus.AddThemeColorOverride("font_color", new Color("c1dcff")); _sandbox.AddOverlay(_memoryStatus);
-        _bindMemory = MemoryButton("Bind nearby memory [H]", new(32, 485), () => { if (_experiment?.View.Memory is { } memory) ApplyExperiment(new(ExperimentAction.BindMemory, SourceActorId: memory.SourceActorId)); });
-        _castMemory = MemoryButton("Cast Echo Storm", new(32, 524), () =>
+        _memoryHud = new EchoesMemoryHud(); _sandbox.AddOverlay(_memoryHud);
+        _memoryHud.GetParent().MoveChild(_memoryHud, _character.GetIndex());
+        _memoryHud.BindRequested += () => Safely(() =>
+        { if (!_sandbox.IsPaused && _experiment?.View.Memory is { CanBind: true } memory) ApplyExperiment(new(ExperimentAction.BindMemory, SourceActorId: memory.SourceActorId)); });
+        _memoryHud.ReleaseRequested += () => Safely(() =>
+        { if (!_sandbox.IsPaused && _experiment?.View.Memory is { CanRelease: true }) ApplyExperiment(new(ExperimentAction.ReleaseMemory)); });
+        _memoryHud.CastRequested += () => Safely(() =>
         {
-            int target = _session.Combat.View.Actors.Where(a => a.Faction == CombatFaction.Enemy && a.Health > 0).OrderBy(a => CorePosition.DistanceSquared(a.Position, _session.Combat.View.Actors.Single(a => a.Id == 1).Position)).FirstOrDefault()?.Id ?? 0;
+            if (_sandbox.IsPaused || _experiment?.View.Memory is not { Status: "Bound", RemainingTicks: > 0 }) return;
+            int target = _session.Combat.View.Actors.Where(a => a.Faction == CombatFaction.Enemy && a.Health > 0)
+                .OrderBy(a => CorePosition.DistanceSquared(a.Position, _session.Combat.View.Actors.Single(a => a.Id == 1).Position)).FirstOrDefault()?.Id ?? 0;
             Apply(new(EndgameRuntimeAction.Tick, Commands: [new(CombatCommandKind.CastEcho, TargetId: target)]));
         });
-        _releaseMemory = MemoryButton("Release · restore owned Mind", new(32, 563), () => ApplyExperiment(new(ExperimentAction.ReleaseMemory)));
-        foreach (Control control in new Control[] { _memoryStatus, _bindMemory, _castMemory, _releaseMemory }) control.GetParent().MoveChild(control, _character.GetIndex());
-        _echoesBackdrop = new ColorRect { Color = new Color(0, 0, 0, .4f), MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
-        _echoesBackdrop.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect); _sandbox.AddOverlay(_echoesBackdrop);
-        _echoesPanel = new PanelContainer { Position = new(266, 162), Size = new(748, 466), Visible = false };
-        _echoesPanel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color("122031"), BorderColor = new Color("9abadd"), BorderWidthBottom = 2, BorderWidthTop = 2, BorderWidthLeft = 2, BorderWidthRight = 2, ContentMarginLeft = 18, ContentMarginRight = 18, ContentMarginTop = 15, ContentMarginBottom = 15 });
-        _sandbox.AddOverlay(_echoesPanel);
-        var scroll = new ScrollContainer { CustomMinimumSize = new(700, 435) }; _echoesPanel.AddChild(scroll);
-        _echoesRows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; scroll.AddChild(_echoesRows);
+        _echoesBoard = new EchoesBoard(); _sandbox.AddOverlay(_echoesBoard); _echoesPanel = _echoesBoard.Panel;
+        _echoesBoard.EntryRequested += (sigil, choice) => Safely(() => BeginExperiment(sigil, choice));
+        _echoesBoard.SaveRequested += () => Safely(() => { SaveExperiment(); CloseExperimentPanel(); });
+        _echoesBoard.ContinueRequested += () => Safely(() =>
+        {
+            if (_experiment is not null || !_session.InHub || TryEchoesSelection() is null) return;
+            // Resolve the destination before saving/switching, so an invalid Echoes archive cannot discard the current character.
+            string name = TryEchoesSelection()!;
+            var loaded = ExperimentSaveStore.Load(Path.Combine(_output, name), _combatJson, _adventure, _progression, _campaign, _endgame, _experimentContent);
+            Save(); CloseExperimentPanel(); _experiment = loaded.Session; _echoesSaveName = name;
+            Adopt(_experiment.Endgame, true); Notice("Continued the separate Echoes character. Your original character was saved.");
+        });
+        _echoesBoard.ReturnRequested += () => Safely(ExitExperiment);
+        _echoesBoard.OpenChanged += isOpen =>
+        {
+            _sandbox.SetModalPaused("echoes", isOpen);
+            if (isOpen) { _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); }
+            RefreshExperiment();
+        };
+        _hasEchoesSelection = TryEchoesSelection() is not null;
         if (!InputMap.HasAction("aw_experiment")) { InputMap.AddAction("aw_experiment"); InputMap.ActionAddEvent("aw_experiment", new InputEventKey { PhysicalKeycode = Key.H }); }
-    }
-    private Button MemoryButton(string text, Vector2 position, Action action)
-    {
-        var button = new Button { Text = text, Position = position, Size = new(295, 32), Visible = false };
-        button.AddThemeFontSizeOverride("font_size", 13); button.Pressed += () => Safely(action); _sandbox.AddOverlay(button); return button;
     }
     private void ConfigureExperimentStart()
     {
@@ -89,50 +104,15 @@ public partial class EndgameDirector
     private void ShowExperimentPanel()
     {
         if (_classSelection.Visible) return;
-        _campaignHud.SetOpen(false);
-        _board.SetOpen(false);
-        _sandbox.SetModalPaused("echoes", true);
-        _echoesPanel.Visible = _echoesBackdrop.Visible = true;
-        foreach (var child in _echoesRows.GetChildren()) { _echoesRows.RemoveChild(child); child.QueueFree(); }
-        EchoesText("ECHOES: BORROWED MEMORY", 23);
-        EchoesAction("Close [Esc]", CloseExperimentPanel).GrabFocus();
-        if (_experiment?.View.Cosmetics.Count > 0) EchoesText("EARNED · Borrowed Memory cosmetic record", 18);
-        if (_experiment?.View.Entries.LastOrDefault() is { } latest) EchoesText($"Last contract: {(latest.Choice == ExperimentChoice.KeepMind ? "kept owned Mind" : "borrowed a memory")} · {latest.Outcome}");
-        EchoesText("An optional Fracture contract. A separate Echoes character preserves your original save. Future progress in this character, including the contract outcome, stays in its Echoes archive.");
-        EchoesText("KEEP YOUR MIND: enter an ordinary Fracture with your current anatomy.\nBORROW A MEMORY: suppress the owned Mind effect, defeat an elite, then approach its memory to bind Echo Storm. Your permanent anatomy and Resonance remain intact.");
-        var rules = _experimentContent.Capture();
-        EchoesText($"Use the borrowed Echo within {rules.EchoLifetimeTicks / 30d:F0} seconds. Casting warns of a hostile Storm circle at your feet for {rules.WarningTicks / 30d:F1} seconds, then makes it dangerous for {rules.HazardTicks / 30d:F1} seconds. Move or dodge out. Release restores your owned Mind without using the Echo.");
-        EchoesText("Complete the actual Fracture after using the Echo to earn the Borrowed Memory cosmetic record. No additional combat power is awarded.");
-        if (!_session.View.Unlocked) EchoesText("Complete the campaign before entering this contract.");
-        else if (!_session.InHub) EchoesText("Complete or abandon this expedition, then return to Greyhaven to begin another contract.");
-        else
-        {
-            var sigils = _session.View.AvailableSigils;
-            if (sigils.Length == 0) EchoesText("Claim a recovery Sigil from the expedition board first.");
-            else
-            {
-                var selector = new OptionButton(); foreach (var sigil in sigils) selector.AddItem($"Tier {sigil.Tier} · {Region(sigil.Region)} · Sigil #{sigil.Id}"); _echoesRows.AddChild(selector);
-                EchoesText(AtGate() ? "Entering consumes the selected Sigil. The expedition's existing rules and three attempts still apply." : "Approach the Fracture gate in eastern Greyhaven first.");
-                EchoesAction("Keep my Mind · consume Sigil and enter", () => BeginExperiment(sigils[selector.Selected].Id, ExperimentChoice.KeepMind)).Disabled = !AtGate();
-                EchoesAction("Borrow a memory · consume Sigil and enter", () => BeginExperiment(sigils[selector.Selected].Id, ExperimentChoice.BorrowMind)).Disabled = !AtGate() || !_experimentContent.AcceptingEntries;
-                if (!_experimentContent.AcceptingEntries) EchoesText("New Borrowed Memory entries are closed. Existing contracts can still finish, save and resume.");
-            }
-        }
-        if (_experiment is not null)
-        {
-            EchoesAction("Save this Echoes character", () => { SaveExperiment(); CloseExperimentPanel(); });
-            EchoesAction("Return to original character · save Echoes separately", ExitExperiment).Disabled = !_session.InHub;
-        }
-        if (TryEchoesSelection() is not null) EchoesAction("Continue saved Echoes character", LoadExperiment);
-        RefreshExperiment();
+        _hasEchoesSelection = TryEchoesSelection() is not null;
+        _echoesBoard.Notice(""); RefreshExperiment(); _echoesBoard.SetOpen(true);
     }
-    private void EchoesText(string text, int size = 14)
-    { var label = new Label { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new(675, 0) }; label.AddThemeFontSizeOverride("font_size", size); _echoesRows.AddChild(label); }
-    private Button EchoesAction(string text, Action action)
-    { var button = new Button { Text = text, CustomMinimumSize = new(0, 35) }; button.Pressed += () => Safely(action); _echoesRows.AddChild(button); return button; }
-    private void CloseExperimentPanel() { _echoesPanel.Visible = _echoesBackdrop.Visible = false; _sandbox.SetModalPaused("echoes", false); RefreshExperiment(); }
+    private void CloseExperimentPanel() => _echoesBoard.SetOpen(false);
     private void BeginExperiment(long sigil, ExperimentChoice choice)
     {
+        if (!_session.InHub || !_session.View.Unlocked || !AtGate() || !_session.View.AvailableSigils.Any(s => s.Id == sigil) ||
+            choice == ExperimentChoice.BorrowMind && !_experimentContent.AcceptingEntries)
+        { Notice("This contract is no longer available. Review the selected Sigil and approach the Fracture gate."); RefreshExperiment(); return; }
         if (_experiment is null)
         {
             Save();
@@ -154,39 +134,51 @@ public partial class EndgameDirector
         if (!result.Success) { Notice(result.Reason); return; }
         Observe(new(result.Success, result.Reason, result.CombatEvents, result.WorldEvents)); _revision++;
         _sandbox.AdoptSession(_session.Combat); Refresh();
-        Notice(command.Action switch { ExperimentAction.BindMemory => "Echo Storm bound. Use it before the memory fades; leave the Storm warning after casting.", ExperimentAction.ReleaseMemory => "Memory released. Your owned Mind effect is restored.", _ => command.Choice == ExperimentChoice.KeepMind ? "Entered with your owned Mind intact." : "Your Mind effect is suppressed until this borrowed memory ends." });
     }
     private void RefreshExperiment()
     {
-        if (_memoryStatus is null) return;
+        if (_memoryHud is null || _echoesBoard is null || _cachedDisplay is null) return;
         var viewport = GetViewport().GetVisibleRect().Size;
-        _echoesPanel.Position = (viewport - _echoesPanel.Size) / 2;
-        bool compact = viewport.X < 1220;
-        float memoryWidth = Math.Min(460, viewport.X - 344);
-        _memoryStatus.Position = new(22, compact ? 360 : 304); _memoryStatus.Size = new(memoryWidth, compact ? 74 : 145);
-        _memoryStatus.MaxLinesVisible = compact ? 5 : -1; _memoryStatus.ClipText = compact;
-        _memoryStatus.MouseFilter = Control.MouseFilterEnum.Pass;
-        _memoryStatus.AddThemeFontSizeOverride("font_size", compact ? 11 : 13);
-        float actionY = compact ? viewport.Y - 278 : viewport.Y - 292;
-        _bindMemory.Position = _castMemory.Position = new(22, actionY);
-        _releaseMemory.Position = new(26 + memoryWidth / 2, actionY);
-        _bindMemory.Size = _castMemory.Size = _releaseMemory.Size = new(memoryWidth / 2 - 4, 32);
-        foreach (var button in new[] { _bindMemory, _castMemory, _releaseMemory }) button.AddThemeFontSizeOverride("font_size", compact ? 10 : 11);
+        _memoryHud.Position = new(viewport.X - 302, 378);
+        _memoryHud.Size = new(280, Math.Clamp(viewport.Y - 584, 136, 180));
         var view = _experiment?.View; var memory = view?.Memory;
+        var mind = _session.Combat.View.Fragments.FirstOrDefault(f => f.Equipped && f.Slot == AnatomySlot.Mind);
+        var progression = _session.Production.ProgressionView;
+        _echoesBoard.SetView(new(_cachedDisplay, view, _experimentRules, _experimentContent.AcceptingEntries,
+            _hasEchoesSelection, mind?.Name ?? "Mind socket empty", mind?.Description ?? "No owned Mind effect is installed.",
+            $"{progression.Discipline} · Level {progression.Level}", _revision));
         _memoryPresentation.Show(memory);
-        bool visible = memory is not null && !_echoesPanel.Visible;
-        _memoryStatus.Visible = visible; _bindMemory.Visible = visible && memory!.Status == "Offered";
-        _releaseMemory.Visible = visible && memory!.CanRelease; _castMemory.Visible = visible && memory!.EchoSkillId.Length > 0;
-        if (memory is null) return;
-        string suppression = memory.SuppressedMindId.Length > 0 ? "Suppressed: " + (_combat.Fragments.FirstOrDefault(f => f.Id == memory.SuppressedMindId)?.Name ?? "owned Mind fragment") : memory.CanRelease ? "Mind socket loan active." : "Owned Mind restored.";
+        string source = "";
+        if (memory is { SourceActorId: > 0 } && view?.Run is { } run)
+        {
+            var key = (run.RunId, memory.SourceActorId);
+            if (_memorySourceKey != key) { _memorySourceKey = key; _memorySourceName = ""; }
+            if (_session.Combat.View.Endgame?.EncounterIndex == run.SourceRoom &&
+                _session.Combat.View.Actors.FirstOrDefault(a => a.Id == memory.SourceActorId) is { } actor)
+                _memorySourceName = Readable(actor.DefinitionId).ToUpperInvariant();
+            source = (_memorySourceName.Length > 0 ? _memorySourceName : "Elite memory") + $" · room {run.SourceRoom + 1}";
+        }
         string echoKey = InputMap.ActionGetEvents("aw_echo").OfType<InputEventKey>().FirstOrDefault()?.PhysicalKeycode.ToString() ?? "Controls";
-        string state = memory.Status switch { "Pending" => "Defeat an elite to reveal its memory.", "Offered" => memory.CanBind ? "Memory nearby. Bind it [H] or release the loan." : "Approach the marked elite memory.", "Bound" => $"Echo Storm · {memory.RemainingTicks / 30d:F1}s remaining · [{echoKey}] to cast", "Spent" => "Echo used. Finish the Fracture to earn its cosmetic record.", "Released" => "You released the memory.", "Expired" => "The borrowed memory faded.", "Lost" => "The borrowed memory was lost on death.", _ => "" };
-        _castMemory.Text = $"Cast Echo Storm [{echoKey}]";
-        string gap = compact ? "\n" : "\n\n";
-        _memoryStatus.Text = "BORROWED MEMORY\n" + suppression + gap + state + (memory.HazardStage == "None" ? "" : $"{gap}STORM {memory.HazardStage.ToUpperInvariant()} · {memory.HazardRemainingTicks / 30d:F1}s · leave the circle");
-        _memoryStatus.TooltipText = _memoryStatus.Text;
-        _bindMemory.Disabled = !memory.CanBind || _sandbox.IsPaused; _castMemory.Disabled = _sandbox.IsPaused;
-        if (OS.GetCmdlineUserArgs().Contains("--capture-echoes") && DisplayServer.GetName() != "headless" && (memory.Status == "Offered" || memory.HazardStage != "None"))
+        _memoryHud.SetView(memory, _experimentRules, source, mind?.Name ?? "", echoKey, _sandbox.IsPaused);
+        _memoryHud.Visible = memory is not null && !_echoesBoard.IsOpen;
+        string status = memory?.Status ?? "";
+        if (_memoryNoticeStatus != status)
+        {
+            _memoryNoticeStatus = status;
+            string? notice = status switch
+            {
+                "Pending" => "Mind socket on loan. Defeat an elite to reveal a memory.",
+                "Offered" => "An elite memory is revealed. Approach it to bind the Echo, or release the loan.",
+                "Bound" => "Echo Storm bound. Cast before the memory fades, then leave the hostile Storm circle.",
+                "Spent" => "Echo used; owned Mind restored. Avoid the Storm and finish the Fracture for its cosmetic record.",
+                "Released" => "Memory released. Your owned anatomy is active again.",
+                "Expired" => "The borrowed Echo faded. Your owned anatomy is active again.",
+                "Lost" => "Death ended the borrowed memory. Your owned anatomy is active again.",
+                _ => null
+            };
+            if (notice is not null) Notice(notice);
+        }
+        if (memory is not null && OS.GetCmdlineUserArgs().Contains("--capture-echoes") && DisplayServer.GetName() != "headless" && (memory.Status == "Offered" || memory.HazardStage != "None"))
         {
             string key = memory.HazardStage != "None" ? "storm-" + memory.HazardStage.ToLowerInvariant() : "memory-offered";
             if (_echoesCaptures.Add(key)) CaptureRenderedFrame("echoes-" + key + ".png");
@@ -207,20 +199,20 @@ public partial class EndgameDirector
     {
         if (_experiment is null) return false;
         ExperimentSaveStore.Write(EchoesPath, _combatJson, _adventure, _progression, _campaign, _endgame, _experimentContent, _experiment.Capture());
-        AtomicFile.Write(Path.Combine(_output, "current-echoes.txt"), _echoesSaveName); Notice("Echoes character and contract saved separately. Your original character is preserved."); return true;
+        AtomicFile.Write(Path.Combine(_output, "current-echoes.txt"), _echoesSaveName); _hasEchoesSelection = true; Notice("Echoes character and contract saved separately. Your original character is preserved."); return true;
     }
     private void LoadExperiment()
     {
         string name = _experiment is not null ? _echoesSaveName : TryEchoesSelection() ?? throw new InvalidDataException("No valid Echoes save selection is available.");
         var loaded = ExperimentSaveStore.Load(Path.Combine(_output, name), _combatJson, _adventure, _progression, _campaign, _endgame, _experimentContent);
-        _experiment = loaded.Session; _echoesSaveName = name; _echoesPanel.Visible = _echoesBackdrop.Visible = false; Adopt(_experiment.Endgame, true);
+        CloseExperimentPanel(); _experiment = loaded.Session; _echoesSaveName = name; Adopt(_experiment.Endgame, true);
         Notice(loaded.RecoveredBackup ? "Recovered the previous valid Echoes character and contract." : "Echoes character, choices and contract loaded.");
     }
     private void ExitExperiment()
     {
         if (!_session.InHub) throw new InvalidDataException("Return to Greyhaven before switching characters.");
         var original = EndgameRuntimeSaveStore.Load(SavePath, _combatJson, _adventure, _progression, _campaign, _endgame).Session;
-        SaveExperiment(); _echoesPanel.Visible = _echoesBackdrop.Visible = false; Adopt(original);
+        SaveExperiment(); CloseExperimentPanel(); Adopt(original);
         Notice("Original character restored. Continue the separate Echoes character from its panel whenever you choose.");
     }
     private void VerifyExperiment(string directory)

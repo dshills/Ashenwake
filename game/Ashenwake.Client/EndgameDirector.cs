@@ -405,7 +405,8 @@ public partial class EndgameDirector : Node3D
     { if (_campaignHud is not null && _board is not null) _campaignHud.Visible = !_board.IsOpen && _session.Combat.View.Endgame is null; }
     private string Region(string id) => _campaignDefinition.Acts.FirstOrDefault(a => a.Id == id)?.Name ?? Readable(id);
     private string RuleName(string id) => _endgameDefinition.Modifiers.FirstOrDefault(m => m.Id == id || m.Rule == id)?.Name ?? Readable(id);
-    private void Notice(string message) { _board.Notice(message); _campaignHud.Notice(message); _character.Notice(message); }
+    private void Notice(string message)
+    { _board.Notice(message); _campaignHud.Notice(message); _character.Notice(message); if (_echoesBoard?.IsOpen == true) _echoesBoard.Notice(message); }
     private string? PlayerNotice(string message)
     {
         string[] parts = message.Split(':'); string value = parts.Length > 1 ? parts[1] : "";
@@ -416,6 +417,7 @@ public partial class EndgameDirector : Node3D
             "SigilAwarded" or "RecoverySigilClaimed" => "A new Sigil is ready on your expedition board.",
             "SigilAttuned" => "Sigil attuned. Review its new rule before entering.",
             "FractureStarted" => "Sigil consumed. Four rooms, three attempts. Read the expedition rules.",
+            "ExperimentMindKept" => "Entered with your owned Mind intact. Ordinary Fracture rewards apply.",
             "GodHuntStarted" => "God Hunt begun. Read the phase guidance and marked mechanisms.",
             "EndgameRoomCleared" or "EndgameEncounterCompleted" => "Area cleared. Collect the spoils and inspect the next room before continuing.",
             "EndgameRewardCommitted" => "Expedition complete. Permanent rewards have been committed to this character.",
@@ -462,6 +464,8 @@ public partial class EndgameDirector : Node3D
     }
     private void Adopt(EndgameRuntimeSession session, bool retainExperiment = false)
     {
+        _echoesBoard?.SessionRestored();
+        _memorySourceKey = default; _memorySourceName = ""; _memoryNoticeStatus = "";
         if (!retainExperiment) _experiment = null;
         _session = session; CacheDefinitions(); _classSelection.Visible = false; _classBackdrop.Visible = false;
         _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(false); _revision++; Refresh(); _campaignHud.AnatomySessionRestored(); _board.SessionRestored();
