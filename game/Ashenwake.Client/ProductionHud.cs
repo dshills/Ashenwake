@@ -122,6 +122,7 @@ public partial class ProductionHud : Control
 
     public override void _ExitTree() { GetViewport().SizeChanged -= LayoutPanel; }
     public void Toggle() { _panel.Visible = !_panel.Visible; if (_panel.Visible) { Rebuild(true); _firstTab.GrabFocus(); } else _gearInspecting = false; }
+    public void Close() { _panel.Hide(); _gearInspecting = false; }
     public void ToggleInventory()
     {
         _gearLoadout.CancelDrag();

@@ -20,6 +20,8 @@ Open **C → Skills** for ability cards, mastery progress and mutation compariso
 
 Press **J** for the connected Journey map. Select Greyhaven or a campaign region to preview its route, unlock state, encounter progress and next objective, then choose a travel action. Leaving ground loot requires confirmation. The Journal organizes objectives, earned discoveries, reached choices and rescued residents; future revelations remain hidden. See [Journey map and journal](docs/journey_map.md).
 
+Press **B** for the visual expedition board: inspect Sigil cards and connected routes, preview attunement, browse God Hunt emblems and unlock requirements, and track rooms, attempts and earned rewards. Sigil consumption, hunt entry, abandonment and leaving ground loot have explicit confirmation controls. See [Fractures & God Hunts controls](docs/expedition_board.md).
+
 ## Start here
 
 Requires Git/Git LFS, Python 3, `curl`, `unzip`, `ripgrep`, and **Go 1.27.1**. The bootstrap installs **.NET SDK 8.0.425** and **Godot 4.6.2 Mono** inside ignored `.tools/`; it does not replace the system Godot. Supported bootstrap hosts are macOS Apple Silicon and Linux x86_64.

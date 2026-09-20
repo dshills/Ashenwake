@@ -75,6 +75,47 @@ func saved_tick():
     await key(KEY_F5)
     return JSON.parse_string(FileAccess.get_file_as_string(output.path_join("endgame.save.json"))).state.tick
 
+func expedition_is_open():
+    for node in nodes(self):
+        if node.name == "ExpeditionPanel" and node is Control: return node.is_visible_in_tree()
+    return false
+
+func check_expedition_navigation():
+    await key(KEY_B)
+    checks["expedition_key_opens_locked_board"] = expedition_is_open() and visible_label("The seals have not yet broken") and button_named("ExpeditionEnter") == null
+    var paused_tick = await saved_tick()
+    await key(KEY_F)
+    await key(KEY_PERIOD)
+    await key(KEY_W)
+    for i in range(12): await get_tree().process_frame
+    checks["expedition_board_blocks_world_input_and_simulation"] = expedition_is_open() and await saved_tick() == paused_tick
+    await key(KEY_B)
+    checks["expedition_key_closes_board"] = not expedition_is_open()
+    for i in range(12): await get_tree().process_frame
+    checks["expedition_close_releases_its_pause"] = await saved_tick() > paused_tick
+    await key(KEY_P)
+    paused_tick = await saved_tick()
+    await key(KEY_B)
+    await key(KEY_ESCAPE)
+    checks["expedition_escape_preserves_independent_manual_pause"] = not expedition_is_open() and button_containing("Resume playing") != null and await saved_tick() == paused_tick
+    await click(button_containing("Resume playing"))
+    await key(KEY_B)
+    await key(KEY_C)
+    checks["expedition_character_shortcut_hands_off_to_character"] = not expedition_is_open() and button_containing("Close character") != null
+    await click(button_containing("Close character"))
+    await key(KEY_B)
+    await key(KEY_I)
+    checks["expedition_inventory_shortcut_hands_off_to_gear"] = not expedition_is_open() and button_containing("Close character") != null and visible_label("EQUIPPED ·")
+    await click(button_containing("Close character"))
+    await key(KEY_B)
+    await key(KEY_J)
+    checks["expedition_journey_shortcut_hands_off_to_map"] = not expedition_is_open() and visible_label("EDRATH · REGIONS")
+    await key(KEY_B)
+    checks["journey_expedition_shortcut_hands_off_to_board"] = expedition_is_open() and not visible_label("EDRATH · REGIONS")
+    await key(KEY_H)
+    checks["expedition_echoes_shortcut_hands_off_to_echoes"] = not expedition_is_open() and visible_label("ECHOES: BORROWED MEMORY")
+    await key(KEY_ESCAPE)
+
 func run():
     add_child(load("res://Endgame.tscn").instantiate())
     await settle()
@@ -85,6 +126,7 @@ func run():
     checks["journey_key_opens_map"] = visible_label("EDRATH · REGIONS")
     await key(KEY_J)
     checks["journey_key_closes_map"] = not visible_label("EDRATH · REGIONS")
+    await check_expedition_navigation()
     var resident = null
     for stage in nodes(self):
         if stage.get_script() != null and stage.get_script().resource_path.ends_with("/AdventureStage.cs"):
@@ -156,7 +198,7 @@ func run():
     await click(button_containing("Resume playing"))
     for i in range(12): await get_tree().process_frame
     checks["echoes_requires_explicit_resume"] = await saved_tick() > paused_tick
-    var passed = checks.size() == 19
+    var passed = checks.size() == 29
     for value in checks.values(): passed = passed and value
     var report = {"kind": "InteractionClientSmokePassed" if passed else "InteractionClientSmokeFailed", "passed": passed, "checks": checks}
     var file = FileAccess.open(output.path_join("interaction-review.json"), FileAccess.WRITE)

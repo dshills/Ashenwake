@@ -1,21 +1,22 @@
-using Ashenwake.Core.Endgame;
 using Godot;
 
 namespace Ashenwake.Client;
 
 public sealed record EndgameChoice(string Id, string Name, string Description);
 public sealed record EndgameSigilDisplay(long Id, string Region, int Tier, ulong Seed, string BossFamily,
-    string RewardTendency, EndgameChoice[] Modifiers, IReadOnlyDictionary<string, EndgameChoice[]> Replacements, string[] Rooms, string[] Inherited, string[] Skipped);
+    string RewardTendency, EndgameChoice[] Modifiers, IReadOnlyDictionary<string, EndgameChoice[]> Replacements, string[] Rooms, string[] Inherited, string[] Skipped, string RegionId = "");
 public sealed record EndgameHuntDisplay(string Id, string Name, int RequiredTier, bool Secret, bool Unlocked,
     string Gate, string[] Phases, string[] Counterplay, string Material);
 public sealed record EndgameRunDisplay(long Id, string Name, string Kind, string Status, string Region, int Tier,
     int Room, int RoomCount, int Attempts, int Deaths, int RewardPercent, string[] Rules, string[] Counterplay,
-    string[] Inherited, string[] Skipped, bool Cleared, bool CanAdvance, bool CanRetry, bool CanAbandon);
+    string[] Inherited, string[] Skipped, bool Cleared, bool CanAdvance, bool CanRetry, bool CanAbandon, string[]? Rooms = null);
+public sealed record EndgameRewardDisplay(long RunId, int Materials, int Mastery, string Catalyst, int CatalystCount);
 public sealed record EndgameDisplay(bool Unlocked, bool InHub, int HighestTier, int Materials,
     IReadOnlyDictionary<string, int> Catalysts, EndgameSigilDisplay[] Sigils, EndgameHuntDisplay[] Hunts,
-    EndgameRunDisplay? Run, bool CanRecover, bool AtGate, int GroundDrops, string RewardSummary, long Revision);
+    EndgameRunDisplay? Run, bool CanRecover, bool AtGate, int GroundDrops, string RewardSummary, long Revision,
+    EndgameRewardDisplay? Reward = null, bool Alive = true, bool InExpedition = false);
 
-/// <summary>Read-only expedition presentation. Buttons request transactions from the endgame runtime.</summary>
+/// <summary>Read-only expedition presentation. Every spend, attempt and reward remains a Core transaction.</summary>
 public partial class EndgameHud : Control
 {
     public event Action<long>? FractureRequested;
@@ -26,209 +27,209 @@ public partial class EndgameHud : Control
     public event Action<bool>? VisibilityChangedByPlayer, ModalChanged;
     private EndgameDisplay? _view;
     private PanelContainer _panel = null!, _headlinePanel = null!;
-    private VBoxContainer _rows = null!;
-    private Label _title = null!, _status = null!, _notice = null!;
+    private ColorRect _backdrop = null!;
+    private VBoxContainer _catalog = null!, _rows = null!, _actions = null!;
+    private ScrollContainer _catalogScroll = null!, _detailsScroll = null!;
+    private Label _title = null!, _status = null!, _notice = null!, _wallet = null!, _detailTitle = null!, _catalogTitle = null!, _detailStatus = null!, _boardNotice = null!;
+    private ExpeditionRouteDiagram _route = null!;
     private readonly Dictionary<string, Button> _tabs = [];
     private ConfirmationDialog _confirmation = null!;
-    private Action? _pendingAction;
-    private string _tab = "Sigils", _oldModifier = "", _newModifier = "";
+    private string _tab = "Sigils", _oldModifier = "", _newModifier = "", _selectedHunt = "";
     private long _selectedSigil;
-    private bool _unlockPresented;
-    private (long Revision, string Tab, long Sigil, int Drops, bool AtGate)? _rendered;
-    public bool IsOpen => _panel.Visible;
+    private bool _unlockPresented, _pauseHeld;
+    private Sandbox? _sandbox;
+    private object? _seenSession;
+    private int _oldSibling = -1;
+    private (long Revision, string Tab, long Sigil, string Hunt, int Drops, bool AtGate)? _rendered;
+    public bool IsOpen => _panel is { Visible: true };
 
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Ignore; SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _headlinePanel = Panel(new(22, 88), new(565, 104));
+        for (Node? parent = GetParent(); parent is not null; parent = parent.GetParent())
+            if (parent is Sandbox sandbox) { _sandbox = sandbox; break; }
+        _headlinePanel = Panel(); _headlinePanel.Position = new(22, 88); _headlinePanel.Size = new(565, 104); AddChild(_headlinePanel);
         var heading = new VBoxContainer(); _headlinePanel.AddChild(heading);
         _title = Text("THE FRACTURES", 16); heading.AddChild(_title);
         _status = Text("", 12); heading.AddChild(_status);
         _notice = Text("", 12); _notice.MaxLinesVisible = 1; heading.AddChild(_notice);
         var toggle = new Button { Text = "Fractures & God Hunts [B]", Position = new(921, 61), Size = new(326, 32) };
         toggle.AddThemeFontSizeOverride("font_size", 13); toggle.Pressed += Toggle; AddChild(toggle);
-        _panel = Panel(new(810, 140), new(437, 482));
-        var column = new VBoxContainer(); _panel.AddChild(column);
+        _backdrop = new ColorRect { Color = new(0, 0, 0, .64f), MouseFilter = MouseFilterEnum.Stop, MouseForcePassScrollEvents = false }; AddChild(_backdrop);
+        _backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _panel = Panel(); _panel.Name = "ExpeditionPanel"; _panel.MouseForcePassScrollEvents = false; AddChild(_panel);
+        var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 10); _panel.AddChild(column);
+        column.AddChild(Text("BEYOND THE BREACH · FRACTURES & GOD HUNTS", 19));
+        _wallet = Text("", 12); column.AddChild(_wallet);
         var tabs = new HBoxContainer(); column.AddChild(tabs);
-        var tabGroup = new ButtonGroup();
+        var group = new ButtonGroup();
         foreach (string tab in new[] { "Sigils", "Hunts", "Run", "Rewards" })
         {
-            var button = new Button { Text = tab, SizeFlagsHorizontal = SizeFlags.ExpandFill, ToggleMode = true, ButtonGroup = tabGroup };
-            button.AddThemeFontSizeOverride("font_size", 12); button.Pressed += () => { _tab = tab; Rebuild(true); }; tabs.AddChild(button);
-            _tabs.Add(tab, button);
+            var button = new Button { Name = "ExpeditionTab" + tab, Text = tab, CustomMinimumSize = new(0, 34), SizeFlagsHorizontal = SizeFlags.ExpandFill, ToggleMode = true, ButtonGroup = group };
+            button.Pressed += () => ShowTab(tab); tabs.AddChild(button); _tabs.Add(tab, button);
         }
-        var scroll = new ScrollContainer { CustomMinimumSize = new(405, 382), SizeFlagsVertical = SizeFlags.ExpandFill };
-        column.AddChild(scroll); _rows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; scroll.AddChild(_rows);
+        var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill }; body.AddThemeConstantOverride("separation", 16); column.AddChild(body);
+        var left = new VBoxContainer { CustomMinimumSize = new(270, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = .85f }; body.AddChild(left);
+        _catalogTitle = Text("", 13); left.AddChild(_catalogTitle);
+        _catalogScroll = Scroll("ExpeditionCatalogScroll"); left.AddChild(_catalogScroll);
+        _catalog = Stack(); _catalogScroll.AddChild(_catalog);
+        var right = new VBoxContainer { CustomMinimumSize = new(334, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 1.5f }; right.AddThemeConstantOverride("separation", 8); body.AddChild(right);
+        _detailTitle = Text("", 19); _detailTitle.Name = "ExpeditionDetailTitle"; right.AddChild(_detailTitle);
+        _detailStatus = Text("", 12); _detailStatus.Name = "ExpeditionDetailStatus"; _detailStatus.AddThemeColorOverride("font_color", new Color("a6d7ce")); right.AddChild(_detailStatus);
+        _route = new ExpeditionRouteDiagram { Name = "ExpeditionRoute", SizeFlagsHorizontal = SizeFlags.ExpandFill }; right.AddChild(_route);
+        _detailsScroll = Scroll("ExpeditionDetailsScroll"); right.AddChild(_detailsScroll); _rows = Stack(); _detailsScroll.AddChild(_rows);
+        _actions = Stack(); right.AddChild(_actions);
+        _boardNotice = Text("", 12); _boardNotice.Name = "ExpeditionNotice"; _boardNotice.MaxLinesVisible = 2; _boardNotice.Visible = false; column.AddChild(_boardNotice);
         var footer = new HBoxContainer(); column.AddChild(footer);
-        foreach (var (name, action) in new[] { ("Save", (Action)(() => SaveRequested?.Invoke())), ("Load", (Action)(() => LoadRequested?.Invoke())), ("Close", (Action)(() => SetOpen(false))) })
-        { var button = new Button { Text = name, SizeFlagsHorizontal = SizeFlags.ExpandFill }; button.Pressed += action; footer.AddChild(button); }
-        _confirmation = new ConfirmationDialog { Title = "Leave this expedition", OkButtonText = "Abandon expedition", CancelButtonText = "Keep playing" };
-        _confirmation.Confirmed += () => { var action = _pendingAction; _pendingAction = null; action?.Invoke(); ModalChanged?.Invoke(false); };
-        _confirmation.Canceled += () => { _pendingAction = null; ModalChanged?.Invoke(false); }; AddChild(_confirmation);
-        _panel.Visible = false; _headlinePanel.Visible = false;
+        foreach (var (name, action) in new[] { ("Save", (Action)(() => SaveRequested?.Invoke())), ("Load", (Action)(() => { CancelConfirmation(); LoadRequested?.Invoke(); })), ("Close", (Action)(() => SetOpen(false))) })
+        { var button = new Button { Name = "Expedition" + name, Text = name, CustomMinimumSize = new(0, 34), SizeFlagsHorizontal = SizeFlags.ExpandFill }; button.Pressed += action; footer.AddChild(button); }
+        BuildConfirmation();
+        _panel.Visible = _backdrop.Visible = _headlinePanel.Visible = false;
+        VisibilityChanged += UpdateModal; _panel.VisibilityChanged += UpdateModal;
+        UpdateLayout();
     }
+
     public void Toggle() => SetOpen(!IsOpen);
     public void SetOpen(bool open)
     {
-        _panel.Visible = open; _headlinePanel.Visible = open || _view?.Run is { Status: "Active" };
+        if (!open) CancelConfirmation();
+        _panel.Visible = open; _headlinePanel.Visible = !open && _view?.Run is { Status: "Active" };
         if (open) { Rebuild(true); _tabs[_tab].GrabFocus(); }
-        VisibilityChangedByPlayer?.Invoke(open);
+        UpdateModal(); VisibilityChangedByPlayer?.Invoke(open);
     }
-    public void ShowRun() { _tab = "Run"; SetOpen(true); }
-    public void Notice(string message) { _notice.Text = message; _notice.TooltipText = message; }
+    public void ShowRun() => ShowTab("Run");
+    public void ShowTab(string tab)
+    {
+        if (!_tabs.ContainsKey(tab)) return;
+        CancelConfirmation(); _tab = tab; _detailsScroll.ScrollVertical = _catalogScroll.ScrollVertical = 0;
+        SetOpen(true);
+    }
+    public void SelectSigil(long id)
+    {
+        if (_view?.Sigils.Any(s => s.Id == id) != true) return;
+        CancelConfirmation(); _selectedSigil = id; _oldModifier = _newModifier = ""; _detailsScroll.ScrollVertical = 0; Rebuild(true);
+    }
+    public void SelectHunt(string id)
+    {
+        if (_view?.Hunts.Any(h => h.Id == id && (!h.Secret || h.Unlocked)) != true) return;
+        CancelConfirmation(); _selectedHunt = id; _detailsScroll.ScrollVertical = 0; Rebuild(true);
+    }
+    public void SessionRestored() { CancelConfirmation(); _seenSession = null; _rendered = null; UpdateModal(); Rebuild(true); }
+    public void Notice(string message)
+    { _notice.Text = message; _notice.TooltipText = message; _boardNotice.Text = message; _boardNotice.TooltipText = message; _boardNotice.Visible = message.Length > 0; }
     public void SetView(EndgameDisplay view)
     {
+        if (_view is not null && (_view.Revision != view.Revision || _view.GroundDrops != view.GroundDrops || _view.AtGate != view.AtGate || _view.InHub != view.InHub || _view.Run != view.Run || _view.Alive != view.Alive)) CancelConfirmation();
         if (!view.Unlocked) _unlockPresented = false;
         bool unlocked = view.Unlocked && view.InHub && !_unlockPresented;
         if (unlocked) _unlockPresented = true;
         bool entered = view.Run is { Status: "Active" } && (_view?.Run?.Id != view.Run.Id || _view.Run.Status != "Active");
         bool died = view.Run is { } run && _view?.Run?.Id == run.Id && _view.Run.Deaths < run.Deaths;
         bool ended = _view?.Run is { Status: "Active" } && view.Run is { Status: not "Active" };
-        if (view.Run is { } next && (_view?.Run?.Id != next.Id || _view.Run.Room != next.Room)) _notice.Text = "";
+        if (view.Run is { } next && (_view?.Run?.Id != next.Id || _view.Run.Room != next.Room)) Notice("");
         _view = view;
         if (entered || died || ended) { _tab = "Run"; SetOpen(true); }
         else if (unlocked) { _tab = "Sigils"; SetOpen(true); }
-        var current = view.Run;
-        bool active = current?.Status == "Active";
-        _headlinePanel.Visible = IsOpen || active;
-        _title.Text = active ? $"{current!.Name.ToUpperInvariant()} · {(current.Kind == "Fracture" ? "ROOM" : "PHASE")} {current.Room}/{current.RoomCount}" : "THE FRACTURES · GOD HUNTS";
-        _status.Text = active ? $"{current!.Attempts} attempts left · {current.RewardPercent}% base material reward · {(current.Cleared ? "Area cleared; collect spoils or continue." : "Read the marked dangers and current counterplay.")}" :
-            view.Unlocked ? $"Highest cleared tier {view.HighestTier} · {view.Sigils.Length} Sigils · {view.Materials} common materials" : "Complete the campaign to unlock expeditions. Your character and discoveries continue here.";
-        Rebuild(false);
+        _wallet.Text = view.Unlocked ? $"Highest cleared tier {view.HighestTier}   ·   {view.Sigils.Length} Sigils   ·   {view.Materials} common materials" : "Complete the campaign to open expeditions. Your character and discoveries continue here.";
+        var current = view.Run; bool active = current?.Status == "Active";
+        _headlinePanel.Visible = !IsOpen && active;
+        _title.Text = active ? $"{current!.Name.ToUpperInvariant()} · {(current.Kind == "Fracture" ? "ROOM" : "PHASE")} {Math.Min(current.Room, current.RoomCount)}/{current.RoomCount}" : "THE FRACTURES · GOD HUNTS";
+        _status.Text = active ? $"{current!.Attempts} attempts left · {current.RewardPercent}% base material reward · {(current.Cleared ? "Area cleared; collect spoils or continue [B]." : "Read the marked dangers and current counterplay.")}" : _wallet.Text;
+        UpdateModal(); Rebuild(false);
     }
     private void Rebuild(bool force)
     {
         if (_view is null || !IsOpen) return;
-        var key = (_view.Revision, _tab, _selectedSigil, _view.GroundDrops, _view.AtGate);
+        var key = (_view.Revision, _tab, _selectedSigil, _selectedHunt, _view.GroundDrops, _view.AtGate);
         if (!force && _rendered == key) return; _rendered = key;
+        string focus = GetViewport().GuiGetFocusOwner()?.Name.ToString() ?? "";
         foreach (var tab in _tabs) tab.Value.SetPressedNoSignal(tab.Key == _tab);
-        foreach (var child in _rows.GetChildren()) { _rows.RemoveChild(child); child.QueueFree(); }
+        Clear(_rows); Clear(_catalog); Clear(_actions); _route.Visible = false;
+        _detailStatus.Text = "";
         if (!_view.Unlocked)
         {
-            Row("A FUTURE BEYOND THE BREACH", 17);
-            Row("Continue the five-act campaign. Its ending unlocks Fractures and the path to God Hunts for this character.");
-            Button("Import an existing campaign save", () => ImportRequested?.Invoke());
-            return;
+            _catalogTitle.Text = "A FUTURE BEYOND THE BREACH"; _detailTitle.Text = "The seals have not yet broken";
+            _catalog.AddChild(Text("Complete the five-act campaign to unlock Fractures and God Hunts.", 15));
+            Row("Your existing character, equipment and discoveries carry into every expedition. Four-room Fractures lead to encounters with incomplete reconstructions of dead gods.");
+            ActionButton("Import an existing campaign save", () => ImportRequested?.Invoke(), "ExpeditionImport");
         }
-        switch (_tab) { case "Sigils": Sigils(); break; case "Hunts": Hunts(); break; case "Run": Run(); break; default: Rewards(); break; }
+        else switch (_tab) { case "Sigils": Sigils(); break; case "Hunts": Hunts(); break; case "Run": Run(); break; default: Rewards(); break; }
+        UpdateLayout();
+        if (focus.Length > 0 && FindChild(focus, true, false) is Control control && control.IsVisibleInTree()) control.GrabFocus();
     }
-    private void Sigils()
+    private void UpdateLayout()
     {
-        var view = _view!;
-        Row("CHOOSE A FRACTURE SIGIL", 17);
-        Row("A Sigil is consumed on entry. Clear four rooms with three attempts; each death reduces the base material reward by 20%, to a minimum of 40%.");
-        if (view.InHub && !view.AtGate) Row("Approach the Fracture gate in eastern Greyhaven to claim, attune or consume a Sigil.");
-        if (!view.InHub) { Row("Return to Greyhaven to select or attune your next expedition."); Button("Return to Greyhaven", () => HubRequested?.Invoke()).Disabled = view.Run is { Status: "Active" }; }
-        if (view.Sigils.Length == 0)
-        {
-            Row("No unconsumed Sigils remain. A recovery Sigil begins a new tier-1 route without a material cost.");
-            Button("Claim a tier-1 recovery Sigil", () => RecoveryRequested?.Invoke()).Disabled = !view.CanRecover || !view.AtGate;
-            return;
-        }
-        if (!view.Sigils.Any(s => s.Id == _selectedSigil)) { _selectedSigil = view.Sigils[0].Id; _oldModifier = _newModifier = ""; }
-        var choice = new OptionButton();
-        foreach (var sigil in view.Sigils)
-        {
-            int index = choice.ItemCount; choice.AddItem($"Tier {sigil.Tier} · {sigil.Region} · {sigil.BossFamily} · #{sigil.Id}"); choice.SetItemMetadata(index, sigil.Id);
-            if (sigil.Id == _selectedSigil) choice.Select(index);
-        }
-        choice.ItemSelected += index => { _selectedSigil = choice.GetItemMetadata((int)index).AsInt64(); _oldModifier = _newModifier = ""; Rebuild(true); };
-        _rows.AddChild(choice);
-        var selected = view.Sigils.Single(s => s.Id == _selectedSigil);
-        Row($"{selected.Region} · TIER {selected.Tier}", 15);
-        Row($"Boss family: {selected.BossFamily}\nReward tendency: {selected.RewardTendency}\nGeneration seed: {selected.Seed}");
-        foreach (var modifier in selected.Modifiers) { Row(modifier.Name, 14); Row(modifier.Description); }
-        Row("Route: " + string.Join(" → ", selected.Rooms));
-        if (selected.Inherited.Length > 0) Row("Boss inheritance: " + string.Join(", ", selected.Inherited));
-        foreach (string skipped in selected.Skipped) Row("Skipped: " + skipped);
-        Button("Consume this Sigil & enter", () => FractureRequested?.Invoke(selected.Id)).Disabled = !view.InHub || !view.AtGate || view.Run is { Status: "Active" };
-        Rule(); Row("ATTUNEMENT · 5 COMMON MATERIALS", 14);
-        Row($"Available: {view.Materials}. Replace one rule before consuming the Sigil. Only compatible rules for this tier are listed.");
-        if (selected.Modifiers.Length == 0) { Row("This Sigil has no replaceable modifier."); return; }
-        if (!selected.Modifiers.Any(m => m.Id == _oldModifier)) _oldModifier = selected.Modifiers[0].Id;
-        var old = Choice(selected.Modifiers, _oldModifier, id => { _oldModifier = id; _newModifier = ""; Rebuild(true); });
-        old.Disabled = !view.InHub || !view.AtGate || view.Run is { Status: "Active" };
-        var replacements = selected.Replacements.GetValueOrDefault(_oldModifier, []);
-        if (replacements.Length == 0) { Row("No other compatible rule is available at this tier."); return; }
-        if (!replacements.Any(m => m.Id == _newModifier)) _newModifier = replacements[0].Id;
-        Choice(replacements, _newModifier, id => { _newModifier = id; Rebuild(true); });
-        Row(replacements.Single(m => m.Id == _newModifier).Description);
-        Button("Attune · spend 5 common materials", () => AttuneRequested?.Invoke(selected.Id, _oldModifier, _newModifier)).Disabled = !view.InHub || !view.AtGate || view.Materials < 5 || view.Run is { Status: "Active" };
+        var viewport = GetViewportRect().Size;
+        Vector2 size = new(Math.Min(1080, viewport.X - 44), Math.Min(714, viewport.Y - 44));
+        _panel.Position = (viewport - size) / 2; _panel.Size = size;
     }
-    private void Hunts()
+    public override void _Process(double delta) { if (_panel is not null) { UpdateLayout(); UpdateModal(); } }
+    private void UpdateModal()
     {
-        var view = _view!; Row("GOD HUNTS", 18);
-        if (view.InHub && !view.AtGate) Row("Approach the Fracture gate in eastern Greyhaven to enter a hunt.");
-        Row("These are incomplete reconstructions of dead gods. Each hunt has three encounters and two attempts. Success grants a permanent evolution catalyst.");
-        foreach (var hunt in view.Hunts.Where(h => !h.Secret || h.Unlocked))
-        {
-            Rule(); Row(hunt.Name, 15); Row(hunt.Unlocked ? "Available · 2 attempts" : hunt.Gate);
-            for (int i = 0; i < hunt.Phases.Length; i++) Row($"{i + 1}. {Readable(hunt.Phases[i])}\n{hunt.Counterplay[i]}");
-            Row("Evolution catalyst: " + Readable(hunt.Material));
-            Button("Begin " + hunt.Name, () => HuntRequested?.Invoke(hunt.Id)).Disabled = !hunt.Unlocked || !view.InHub || !view.AtGate || view.Run is { Status: "Active" };
-        }
-        if (view.Hunts.Any(h => h.Secret && !h.Unlocked)) { Rule(); Row("An unremembered shape remains hidden. Explore higher tiers and complete the four known God Hunts."); }
+        if (_panel is null || _backdrop is null) return;
+        bool open = IsVisibleInTree() && IsOpen;
+        _backdrop.Visible = open;
+        if (open && _oldSibling < 0) { _oldSibling = GetIndex(); GetParent().MoveChild(this, GetParent().GetChildCount() - 1); }
+        else if (!open && _oldSibling >= 0) { GetParent().MoveChild(this, Math.Min(_oldSibling, GetParent().GetChildCount() - 1)); _oldSibling = -1; }
+        bool changedSession = _sandbox is not null && !ReferenceEquals(_seenSession, _sandbox.Session);
+        if (changedSession) { _seenSession = _sandbox!.Session; CancelConfirmation(); }
+        if (_pauseHeld != open || changedSession && open) { _sandbox?.SetModalPaused("expedition-panel", open); _pauseHeld = open; }
+        if (!open) CancelConfirmation();
     }
-    private void Run()
+    private static readonly string[] MenuActions = ["aw_inventory", "aw_character", "aw_journey", "aw_endgame", "aw_experiment", "aw_save", "aw_load"];
+    private static readonly string[] UiActions = ["ui_up", "ui_down", "ui_left", "ui_right", "ui_accept", "ui_focus_next", "ui_focus_prev"];
+    private static readonly string[] CloseActions = ["ui_cancel", "aw_endgame"];
+    private static readonly string[] TransferActions = ["aw_inventory", "aw_character", "aw_experiment"];
+    public override void _Input(InputEvent input)
     {
-        var view = _view!; var run = view.Run;
-        if (run is null) { Row("No expedition has begun. Choose a Sigil or an unlocked God Hunt."); return; }
-        Row(run.Name, 18); Row($"{run.Kind} · {run.Status} · tier {run.Tier}\n{run.Region}");
-        Row($"{(run.Kind == "Fracture" ? "Room" : "Phase")} {Math.Min(run.Room, run.RoomCount)}/{run.RoomCount} · {run.Attempts} attempts left · {run.Deaths} deaths\nBase material reward: {run.RewardPercent}%");
-        foreach (string rule in run.Rules) Row(rule, 14);
-        foreach (string counterplay in run.Counterplay) Row(counterplay);
-        if (run.Inherited.Length > 0) { Rule(); Row("FINAL BOSS INHERITANCE · AT MOST TWO", 14); foreach (string modifier in run.Inherited) Row(modifier); }
-        foreach (string skipped in run.Skipped) Row("Skipped inheritance: " + skipped);
-        string drops = view.GroundDrops > 0 ? $" · leave {view.GroundDrops} uncollected {(view.GroundDrops == 1 ? "drop" : "drops")}" : "";
-        if (run.Status == "Active")
-        {
-            Button((run.Room >= run.RoomCount ? "Finish expedition" : "Continue to next room") + drops, () => AdvanceRequested?.Invoke()).Disabled = !run.CanAdvance;
-            Button("Retry this encounter", () => RetryRequested?.Invoke()).Disabled = !run.CanRetry;
-            Button("Abandon expedition", () =>
-            {
-                _pendingAction = () => AbandonRequested?.Invoke();
-                _confirmation.DialogText = "End this expedition without its final reward? Your earned character progress is preserved. A consumed Sigil is not returned." +
-                    (view.GroundDrops > 0 ? $"\n\n{view.GroundDrops} ground drops will be left behind." : "");
-                ModalChanged?.Invoke(true); _confirmation.PopupCentered(new(520, 240));
-            }).Disabled = !run.CanAbandon;
-            Row("Save to resume this exact encounter later. Returning to the application does not restore spent attempts or consumed Sigils.");
-        }
-        else
-        {
-            Row(run.Status == "Completed" ? view.RewardSummary : "This expedition has ended. You can return to Greyhaven and choose another Sigil or claim a recovery Sigil when none remain.");
-            Button("Return to Greyhaven" + drops, () => HubRequested?.Invoke()).Disabled = view.InHub;
-        }
-        Rule(); Button("Verify & export replay", () => ReplayRequested?.Invoke());
+        if (!IsOpen || !IsVisibleInTree() || _confirmation.Visible || input is not (InputEventKey or InputEventJoypadButton)) return;
+        if (input.IsActionPressed("aw_journey"))
+        { SetOpen(false); if (_view?.InExpedition == true) GetViewport().SetInputAsHandled(); }
+        else if (MatchesAction(input, CloseActions, pressed: true))
+        { SetOpen(false); GetViewport().SetInputAsHandled(); }
+        else if (MatchesAction(input, TransferActions, pressed: true)) SetOpen(false);
+        else if (!MatchesAction(input, MenuActions) && !MatchesAction(input, UiActions)) GetViewport().SetInputAsHandled();
     }
-    private void Rewards()
+    public override void _UnhandledInput(InputEvent input)
     {
-        var view = _view!; Row("PERMANENT REWARDS", 18);
-        Row($"Common materials: {view.Materials}\nHighest cleared Fracture: tier {view.HighestTier}");
-        Row(view.RewardSummary);
-        Rule(); Row("EVOLUTION CATALYSTS", 15);
-        foreach (var pair in view.Catalysts.Where(p => p.Value > 0)) Row($"{Readable(pair.Key)} · {pair.Value}");
-        if (!view.Catalysts.Any(p => p.Value > 0)) Row("Complete a God Hunt to earn its matching catalyst.");
-        Rule(); Row("ASHCLEAVER · A PERMANENT CHOICE", 15);
-        Row("Awaken Ashcleaver through 1,000 credited burning kills, learn the matching lineage fragment, then approach Mara in Greyhaven. Character → Craft → Divine Grafting shows the exact requirements and spends the catalyst only when the permanent craft succeeds.");
-        Row("Serath: burning victims can rise as temporary flaming revenants.\nOrrun: the awakened flame wave becomes a molten seismic attack that ignites enemies.");
-        Row("Sigils, catalysts, attempts and rewards are included in the same character save. Repeated loading never grants the same expedition reward again.");
+        if (IsOpen && IsVisibleInTree() && !_confirmation.Visible && input is InputEventKey or InputEventJoypadButton &&
+            !MatchesAction(input, MenuActions)) GetViewport().SetInputAsHandled();
     }
-    private OptionButton Choice(EndgameChoice[] choices, string selected, Action<string> action)
+    private static bool MatchesAction(InputEvent input, string[] actions, bool pressed = false)
     {
-        var button = new OptionButton();
-        foreach (var choice in choices) { int index = button.ItemCount; button.AddItem(choice.Name); button.SetItemMetadata(index, choice.Id); button.SetItemTooltip(index, choice.Description); if (choice.Id == selected) button.Select(index); }
-        button.ItemSelected += index => action(button.GetItemMetadata((int)index).AsString()); _rows.AddChild(button); return button;
+        foreach (string action in actions)
+            if (InputMap.HasAction(action) && (pressed ? input.IsActionPressed(action) : input.IsAction(action))) return true;
+        return false;
     }
-    private Button Button(string text, Action action)
-    { var button = new Button { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart }; button.AddThemeFontSizeOverride("font_size", 12); button.Pressed += action; _rows.AddChild(button); return button; }
-    private void Row(string text, int size = 12) => _rows.AddChild(Text(text, size));
-    private void Rule() => _rows.AddChild(new HSeparator());
+    public override void _Notification(int what) { if (what == NotificationApplicationFocusOut && IsInsideTree()) CancelConfirmation(); }
+    public override void _ExitTree()
+    {
+        CancelConfirmation();
+        if (_sandbox is not null && GodotObject.IsInstanceValid(_sandbox)) _sandbox.SetModalPaused("expedition-panel", false);
+    }
+    private static void Clear(Node node) { foreach (var child in node.GetChildren()) { node.RemoveChild(child); child.QueueFree(); } }
+    private static VBoxContainer Stack() { var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; box.AddThemeConstantOverride("separation", 9); return box; }
+    private static ScrollContainer Scroll(string name) => new() { Name = name, CustomMinimumSize = new(0, 80), SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
     private static string Readable(string id) => string.Join(' ', id.Split('.').Skip(1).DefaultIfEmpty(id)).Replace('_', ' ');
-    private static Label Text(string text, int size) => new() { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, LabelSettings = new LabelSettings { FontSize = size } };
-    private PanelContainer Panel(Vector2 position, Vector2 size)
+    private static Label Text(string text, int size = 13) => new() { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, MouseFilter = MouseFilterEnum.Ignore, LabelSettings = new LabelSettings { FontSize = size } };
+    private void Row(string text, int size = 13) => _rows.AddChild(Text(text, size));
+    private void Rule() => _rows.AddChild(new HSeparator());
+    private static PanelContainer Panel() { var panel = new PanelContainer(); panel.AddThemeStyleboxOverride("panel", CardStyle("0b141c", "71878c", 12)); return panel; }
+    private static StyleBoxFlat CardStyle(string fill, string border, int margin = 10) => new()
     {
-        var panel = new PanelContainer { Position = position, Size = size };
-        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(.035f, .052f, .075f, .98f), BorderColor = new Color("8a9b9a"), BorderWidthBottom = 1, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, ContentMarginLeft = 12, ContentMarginRight = 12, ContentMarginTop = 10, ContentMarginBottom = 10 });
-        AddChild(panel); return panel;
-    }
+        BgColor = new(fill),
+        BorderColor = new(border),
+        BorderWidthBottom = 1,
+        BorderWidthLeft = 1,
+        BorderWidthRight = 1,
+        BorderWidthTop = 1,
+        CornerRadiusTopLeft = 4,
+        CornerRadiusTopRight = 4,
+        CornerRadiusBottomLeft = 4,
+        CornerRadiusBottomRight = 4,
+        ContentMarginLeft = margin,
+        ContentMarginRight = margin,
+        ContentMarginTop = margin,
+        ContentMarginBottom = margin
+    };
 }

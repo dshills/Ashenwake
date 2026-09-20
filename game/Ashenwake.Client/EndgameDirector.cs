@@ -82,7 +82,7 @@ public partial class EndgameDirector : Node3D
             _board = new EndgameHud(); _sandbox.AddOverlay(_board);
             WireCampaign(); WireCharacter(); WireBoard(); BuildClassSelection(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); Refresh();
             if (_smoke) VerifyMigrationFixture();
-            if (OS.GetCmdlineUserArgs().Contains("--show-character")) { _campaignHud.SetOpen(false); _character.Toggle(); }
+            if (OS.GetCmdlineUserArgs().Contains("--show-character")) { _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Toggle(); }
             string? import = Argument("--import-campaign=");
             if (import is not null) Import(import);
             else if (OS.GetCmdlineUserArgs().Contains("--continue")) Load();
@@ -137,7 +137,7 @@ public partial class EndgameDirector : Node3D
         _board.HubRequested += ReturnHub;
         _board.SaveRequested += () => Safely(Save); _board.LoadRequested += () => Safely(Load);
         _board.ReplayRequested += () => Safely(VerifyReplay); _board.ImportRequested += () => _importDialog.PopupCentered(new(860, 560));
-        _board.VisibilityChangedByPlayer += _ => UpdatePanelVisibility();
+        _board.VisibilityChangedByPlayer += open => { if (open) { _campaignHud.SetOpen(false); _character.Close(); } UpdatePanelVisibility(); };
         _board.ModalChanged += open => _sandbox.SetModalPaused("endgame-confirmation", open);
     }
     private void BindBoardInput()
@@ -315,6 +315,8 @@ public partial class EndgameDirector : Node3D
             _cachedDisplay = Display(view, snapshot); _displayKey = displayKey;
         }
         _board.SetView(_cachedDisplay);
+        // Public-command replay diagnostics observe combat without interactive menus.
+        if (_smoke || _echoesSmoke) _board.SetOpen(false);
         var manifestations = _session.Production.View.ActiveManifestations;
         _character.SetAppearance(CharacterAppearance.FromProgression(campaign.Production.Progression, manifestations,
             campaign.Production.Expedition.Adventure.Anatomy.Values));
@@ -366,14 +368,16 @@ public partial class EndgameDirector : Node3D
         var presentation = run is null ? null : new EndgameRunDisplay(run.Id, run.Name, run.Kind, run.Status, Region(run.Region), run.Tier,
             run.EncounterIndex + 1, run.EncounterCount, run.AttemptsRemaining, run.Deaths, run.RewardPercent, run.Rules.Select(RuleName).ToArray(), run.Counterplay,
             run.InheritedModifiers, snapshot.Manifest?.Inheritance.Where(i => !i.Selected).Select(i => $"room {i.RoomIndex + 1}: {i.Candidate} · {i.Reason}").ToArray() ?? [],
-            run.EncounterCleared, run.CanAdvance, run.CanRetry, run.CanAbandon);
+            run.EncounterCleared, run.CanAdvance, run.CanRetry, run.CanAbandon, snapshot.Manifest?.Rooms.Select(r => r.Name).ToArray());
         var hunts = _endgameDefinition.Hunts.Select(h => new EndgameHuntDisplay(h.Id, h.Name, h.RequiredTier, h.Secret, view.UnlockedHunts.Contains(h.Id),
             $"Requires cleared Fracture tier {h.RequiredTier}" + (h.Secret ? " and victories over all four known God Hunts." : "."), h.Phases, h.Counterplay, h.EvolutionMaterial)).ToArray();
         var reward = snapshot.Endgame.Rewards.Values.LastOrDefault();
         string summary = reward is null ? "Expedition completion commits materials, mastery and any catalyst once, together with the outcome." :
             $"Last completion: +{reward.Materials} common materials · +{reward.Mastery} mastery" + (reward.EvolutionMaterial.Length == 0 ? "." : $" · +{reward.EvolutionCount} {Readable(reward.EvolutionMaterial)}.");
         return new(view.Unlocked, view.InHub, view.HighestClearedTier, view.Materials, view.Catalysts, view.AvailableSigils.Select(SigilDisplay).ToArray(), hunts,
-            presentation, view.CanClaimRecoverySigil, AtGate(), _session.Combat.View.Loot.Count, summary, _revision);
+            presentation, view.CanClaimRecoverySigil, AtGate(), _session.Combat.View.Loot.Count, summary, _revision,
+            reward is null ? null : new(reward.RunId, reward.Materials, reward.Mastery, reward.EvolutionMaterial, reward.EvolutionCount),
+            _session.Combat.View.Actors.Any(a => a.Id == 1 && a.Health > 0), _session.Combat.View.Endgame is not null);
     }
     private EndgameSigilDisplay SigilDisplay(FractureSigil sigil)
     {
@@ -393,7 +397,7 @@ public partial class EndgameDirector : Node3D
             replacements[old] = valid.ToArray();
         }
         var preview = _session.PreviewSigil(sigil.Id);
-        var display = new EndgameSigilDisplay(sigil.Id, Region(sigil.Region), sigil.Tier, sigil.Seed, sigil.BossFamily, sigil.RewardTendency, modifiers, replacements, preview.EncounterNames, preview.InheritedModifiers, preview.SkippedInheritance);
+        var display = new EndgameSigilDisplay(sigil.Id, Region(sigil.Region), sigil.Tier, sigil.Seed, sigil.BossFamily, sigil.RewardTendency, modifiers, replacements, preview.EncounterNames, preview.InheritedModifiers, preview.SkippedInheritance, sigil.Region);
         if (_sigilDisplays.Count >= 256) _sigilDisplays.Clear(); _sigilDisplays[sigil.Id] = (key, display); return display;
     }
     private void UpdatePanelVisibility()
@@ -459,7 +463,7 @@ public partial class EndgameDirector : Node3D
     {
         if (!retainExperiment) _experiment = null;
         _session = session; CacheDefinitions(); _classSelection.Visible = false; _classBackdrop.Visible = false;
-        _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(false); _revision++; Refresh(); _campaignHud.AnatomySessionRestored();
+        _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(false); _revision++; Refresh(); _campaignHud.AnatomySessionRestored(); _board.SessionRestored();
     }
     private void Import(string path)
     {
