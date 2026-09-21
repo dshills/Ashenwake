@@ -8,6 +8,8 @@ Heroes, Greyhaven specialists, and enemies now use articulated low-poly models w
 
 The [graphics polish pass](docs/graphics_polish.md) adds beveled character shapes, more detailed faces, textured stone/wood/metal/cloth, sky reflections, contact shading and smoother edges. Choose **Settings → Graphics → High / Performance**; Reduced Effects also suppresses bloom.
 
+The opening environments now have distinct Greyhaven service courts, a winding Grey March road, a ruined monastery courtyard, layered cliffs and restrained chimney smoke and drifting leaves. Paths and landmarks follow the existing walkable rooms; see [environment composition](docs/environment_art.md).
+
 Combat now includes discipline-specific attacks, enemy anticipation and recovery, dodge and hit reactions, and visible defeat clips. Short weapon/spell effects and twenty-one synthesized sound cues follow Core combat events. The Bell Saint sanctuary swings, sheds broken links, and settles after victory. See [combat feedback](docs/combat_feedback.md) for scope, accessibility behavior, and diagnostics.
 
 Enemies have compact health bars. The selected or hovered enemy's exact health and conditions appear in one detail card, while required boss and seal instructions remain overhead. The objective card and a clickable **WAY FORWARD** marker after cleared campaign encounters offer the same contextual next action; remaining ground loot stays behind an explicit reward/travel review, and permanent story choices still require confirmation. See [mouse actions verification](docs/mouse_actions_verification.md).

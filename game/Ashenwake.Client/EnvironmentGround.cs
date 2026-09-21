@@ -35,6 +35,8 @@ public static class EnvironmentGround
     /// <summary>All ground tops stay below Y=0, below gameplay telegraphs and interaction rings.</summary>
     public static void Build(Node3D parent, RoomDefinition room, string style)
     {
+        if (OpeningGround.Supports(style))
+        { OpeningGround.Build(parent, room, style); return; }
         if (style is "verdant_ruins" or "verdant_village" or "verdant_heart" or "verdant_hunt")
         { VerdantGround.Build(parent, room, style); return; }
         if (CinderAmbience.CueForStyle(style).Length != 0)

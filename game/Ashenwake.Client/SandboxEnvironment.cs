@@ -7,6 +7,8 @@ public partial class Sandbox
     private WorldEnvironment _worldEnvironment = null!;
     private DirectionalLight3D _sun = null!;
     private MultiMeshInstance3D? _ambientMotes;
+    private OpeningAtmosphere? _openingAtmosphere;
+    private (float Width, float Depth) _openingAtmosphereBounds;
     private string _environmentStyle = "";
     private double _atmosphereTime;
     private AudioStreamPlayer? _regionalAmbience;
@@ -18,6 +20,7 @@ public partial class Sandbox
     public bool AmbiencePlaying => _regionalAmbience?.Playing ?? false;
     public bool AmbiencePaused => _regionalAmbience?.StreamPaused ?? false;
     public int AmbientMoteCount => _ambientMotes?.Multimesh.InstanceCount ?? 0;
+    public OpeningAtmosphere? OpeningMotion => _openingAtmosphere;
 
     public void SetEnvironmentStyle(string style)
     {
@@ -133,6 +136,22 @@ public partial class Sandbox
     {
         if (_regionalAmbience is not null && _ambienceCue.Length != 0)
             _regionalAmbience.StreamPaused = _clock.Paused;
+        float x = (_authoredBounds.Width > 0 ? _authoredBounds.Width : _content.Room.HalfWidth) * .001f;
+        float z = (_authoredBounds.Depth > 0 ? _authoredBounds.Depth : _content.Room.HalfDepth) * .001f;
+        bool opening = _environmentStyle is "greyhaven" or "road" or "monastery" or "sanctum";
+        if (_openingAtmosphere is not null && (!opening || _openingAtmosphere.Style != _environmentStyle || _openingAtmosphereBounds != (x, z)))
+        {
+            RemoveChild(_openingAtmosphere);
+            _openingAtmosphere.QueueFree();
+            _openingAtmosphere = null;
+        }
+        if (opening && _openingAtmosphere is null)
+        {
+            _openingAtmosphere = OpeningAtmosphere.Create(_environmentStyle, x, z);
+            _openingAtmosphereBounds = (x, z);
+            AddChild(_openingAtmosphere);
+        }
+        _openingAtmosphere?.Animate(delta, _clock.Paused, _reduceEffects);
         if (_ambientMotes is null) return;
         _ambientMotes.Visible = !_reduceEffects && _environmentStyle != "default";
         _worldEnvironment.Environment.FogEnabled = _ambientMotes.Visible;
@@ -141,9 +160,6 @@ public partial class Sandbox
         bool cinder = CinderAmbience.CueForStyle(_environmentStyle).Length != 0, storm = _environmentStyle == "cinder_storm";
         bool spine = SpineAmbience.CueForStyle(_environmentStyle).Length != 0;
         bool hollow = HollowAmbience.CueForStyle(_environmentStyle).Length != 0;
-        float x = _content.Room.HalfWidth * .001f, z = _content.Room.HalfDepth * .001f;
-        if ((verdant || cinder || spine || hollow) && _authoredBounds.Width > 0 && _authoredBounds.Depth > 0)
-        { x = _authoredBounds.Width * .001f; z = _authoredBounds.Depth * .001f; }
         // A newly shown room still receives its initial layout when entered through a paused menu.
         bool layoutChanged = _motePlacementStyle != _environmentStyle || _motePlacementBounds != (x, z);
         if (_clock.Paused && !layoutChanged) return;

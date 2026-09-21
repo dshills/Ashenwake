@@ -19,10 +19,10 @@ public static class GreyhavenArt
     public static void Build(Node3D parent, float x, float z, int hubStage)
     {
         var b = new EnvironmentBuilder(parent, "GreyhavenArchitecture");
-        float street = -z - 2.85f;
-        float forgeX = -Mathf.Min(x * .58f, 7f);
-        float lodgeX = .15f;
-        float healerX = Mathf.Min(x * .62f, 7.4f);
+        float street = -z - 3.05f;
+        float forgeX = Mathf.Min(x * .22f, 3f);
+        float lodgeX = -Mathf.Min(x * .60f, 7.2f);
+        float healerX = Mathf.Min(x * .71f, 8.5f);
 
         // Unequal rooflines and gaps make the settlement a cluster of inhabited places.
         House(b, new(forgeX, 0, street - .3f), 4.4f, 3.6f, 2.9f, "485c62", -.85f, false);
@@ -32,6 +32,8 @@ public static class GreyhavenArt
         Forge(b, new(forgeX + 1.2f, 0, -z - .97f));
         Chimney(b, new(forgeX - 1.38f, 0, street - .1f), 5.5f);
         Chimney(b, new(lodgeX + 1.3f, 0, street - 1f), 6.2f);
+        ShrineCourt(b, new(lodgeX, 0, -z - 1.05f));
+        WorkshopYard(b, new(forgeX, 0, -z - 1.15f));
 
         // A covered apothecary window, hanging herbs and stacked pots identify the smaller house.
         float healerFront = street + .1f + 1.725f;
@@ -57,6 +59,9 @@ public static class GreyhavenArt
         Crate(b, new(lodgeX + 2.95f, .42f, -z - 1.05f), new(.8f, .84f, .78f));
         Crate(b, new(lodgeX + 3.15f, 1.08f, -z - 1.1f), new(.56f, .48f, .54f));
         Barrel(b, new(healerX + 2.22f, 0, -z - 1.55f), .39f, .92f);
+        MarketQuay(b, x, z);
+        Wayposts(b, x);
+        Hillside(b, x, z);
 
         // Keep the camera-facing edges below knee height so the plaza stays legible.
         Bench(b, new(-x * .52f, 0, z + .78f));
@@ -70,8 +75,135 @@ public static class GreyhavenArt
         }
 
         b.Flush();
+        ScenicTerrain.Build(parent.GetNode<Node3D>("GreyhavenArchitecture"),
+        [
+            new(new(-x - 4.7f, -.2f, -z * .58f), new(6.2f, 4.1f, 8), -9, 1),
+            new(new(-x - 5.7f, -.3f, -z - 4.4f), new(8, 6.4f, 8), 12, 2),
+            new(new(-x * .56f, -.3f, -z - 9.7f), new(9.5f, 6.6f, 7.3f), -12, 3),
+            new(new(x * .15f, -.3f, -z - 10.6f), new(8.5f, 4.7f, 6.9f), 8, 4),
+            new(new(x * .81f, -.3f, -z - 8.8f), new(7.4f, 3.1f, 5.8f), 18, 5),
+            new(new(-x - 2.1f, -.15f, z * .62f), new(2.8f, .6f, 3.2f), -11, 6),
+            new(new(x + 1.35f, -.12f, -z * .43f), new(1.7f, .35f, 2.8f), 8, 7)
+        ], StoneDark, Stone, StoneLight,
+        [
+            new(new(0, -.92f, -z - 3.25f), new(x * 2 + 3.8f, .86f, 6.1f)),
+            new(new(-x - 2.0f, -.92f, -z * .22f), new(3.6f, .86f, z * 1.7f)),
+            new(new(x * .23f, -.57f, z + 1.0f), new(x * .77f, .51f, 1.55f)),
+            new(new(-x * .52f, -.57f, z + .91f), new(3.35f, .51f, 1.2f)),
+            new(new(x + 1.50f, -.69f, z * .64f), new(2.9f, .63f, 4.0f)),
+            new(new(x + .91f, -.57f, z * .33f), new(1.78f, .51f, 1.35f)),
+            new(new(x + .92f, -.57f, -1.9f), new(1.65f, .51f, 1.5f)),
+            new(new(x + .92f, -.57f, 1.9f), new(1.65f, .51f, 1.5f))
+        ]);
         Light(parent, new(forgeX + 1.2f, 1.25f, -z - .7f), new("ffae58"), 1.05f, 6f);
         Light(parent, new(lodgeX - .3f, 2.1f, -z - 1f), new("ffd59a"), .6f, 5.5f);
+    }
+
+    internal static Vector3[] SmokeAnchors(float x, float z)
+        => [new(Mathf.Min(x * .22f, 3f) - 1.38f, 5.58f, -z - 3.15f),
+            new(-Mathf.Min(x * .60f, 7.2f) + 1.3f, 6.28f, -z - 4.05f)];
+
+    private static void ShrineCourt(EnvironmentBuilder b, Vector3 p)
+    {
+        // The pale, candle-lined frontage visually extends Mara's western court.
+        for (int step = 0; step < 3; step++)
+            b.Box(new(4.5f - step * .34f, .11f, .30f), p + new Vector3(0, .055f + step * .105f, -step * .30f), StoneLight);
+        foreach (float side in new[] { -1f, 1f })
+        {
+            b.Cylinder(.31f, .26f, .65f, p + new Vector3(side * 1.86f, .325f, -.30f), Stone);
+            b.Torus(.24f, .32f, p + new Vector3(side * 1.86f, .69f, -.30f), Bronze);
+            for (int candle = 0; candle < 3; candle++)
+            {
+                Vector3 at = p + new Vector3(side * 1.86f + (candle - 1) * .13f, .83f, -.30f);
+                b.Cylinder(.035f, .035f, .23f, at, StoneLight);
+                b.Cylinder(.028f, 0, .085f, at + Vector3.Up * .16f, Warm, glow: true);
+            }
+        }
+        b.Torus(.45f, .53f, p + new Vector3(0, 4.1f, -.98f), Bronze, new(90, 0, 0));
+        b.Box(new(.095f, 1.30f, .09f), p + new Vector3(0, 4.10f, -.96f), StoneLight);
+        b.Box(new(.72f, .095f, .09f), p + new Vector3(0, 4.18f, -.96f), StoneLight);
+    }
+
+    private static void WorkshopYard(EnvironmentBuilder b, Vector3 p)
+    {
+        // Long work surfaces, stacked slate and hanging tools distinguish the forge from the shrine.
+        b.Box(new(2.1f, .14f, .57f), p + new Vector3(-1.3f, 1.10f, -.25f), TimberLight);
+        foreach (float side in new[] { -1f, 1f })
+            b.Box(new(.14f, 1.03f, .43f), p + new Vector3(-1.3f + side * .84f, .52f, -.25f), Timber);
+        for (int tool = 0; tool < 3; tool++)
+        {
+            Vector3 at = p + new Vector3(-2.0f + tool * .49f, 1.40f, -.57f);
+            b.Beam(at, at + new Vector3(.09f, .76f, 0), .055f, TimberLight);
+            b.Box(new(.30f, .16f, .15f), at + new Vector3(.09f, .66f, 0), Iron);
+        }
+        for (int slab = 0; slab < 3; slab++)
+            b.Box(new(.75f, .085f, .66f), p + new Vector3(-2.65f, .14f + slab * .1f, -.15f), StoneDark, new(0, slab * 9, 0));
+        b.Beam(p + new Vector3(.28f, 3.7f, -.85f), p + new Vector3(1.05f, 3.7f, -.85f), .10f, Timber);
+        b.Box(new(.72f, .49f, .08f), p + new Vector3(.80f, 3.28f, -.82f), TimberLight);
+        b.Box(new(.44f, .12f, .035f), p + new Vector3(.80f, 3.29f, -.765f), Iron);
+        b.Box(new(.15f, .18f, .04f), p + new Vector3(.80f, 3.17f, -.76f), Iron);
+    }
+
+    private static void MarketQuay(EnvironmentBuilder b, float x, float z)
+    {
+        // Open, low market tables align with Oris and Kesh across the southern plaza.
+        foreach (float px in new[] { x * .05f, x * .43f })
+        {
+            Vector3 at = new(px, 0, z + 1.05f);
+            b.Box(new(2.75f, .15f, .78f), at + Vector3.Up * .72f, TimberLight);
+            b.Box(new(2.70f, .035f, .74f), at + Vector3.Up * .815f, Cloth);
+            foreach (float side in new[] { -1f, 1f })
+                b.Box(new(.13f, .66f, .53f), at + new Vector3(side * 1.12f, .33f, 0), Timber);
+            for (int basket = -1; basket <= 1; basket++)
+            {
+                Vector3 goods = at + new Vector3(basket * .72f, .93f, 0);
+                b.Cylinder(.27f, .31f, .22f, goods, Timber);
+                for (int fruit = 0; fruit < 3; fruit++)
+                    b.Cylinder(.09f, .065f, .13f, goods + new Vector3((fruit - 1) * .13f, .17f, fruit % 2 * .10f), basket == 0 ? "ac8060" : "607e65");
+            }
+        }
+        Vector3 cart = new(x + 1.55f, 0, z * .64f);
+        b.Box(new(1.7f, .18f, 2.8f), cart + Vector3.Up * .65f, Timber);
+        foreach (float side in new[] { -1f, 1f })
+        {
+            b.Box(new(.10f, .47f, 2.82f), cart + new Vector3(side * .80f, .93f, 0), TimberLight);
+            foreach (float end in new[] { -.82f, .82f })
+            {
+                b.Torus(.31f, .40f, cart + new Vector3(side * .92f, .42f, end), Iron, new(0, 0, 90));
+                b.Beam(cart + new Vector3(side * .94f, .13f, end), cart + new Vector3(side * .94f, .72f, end), .065f, TimberLight);
+            }
+        }
+        Crate(b, cart + new Vector3(0, 1.08f, -.58f), new(.78f, .67f, .75f));
+        b.Cylinder(.31f, .31f, 1.07f, cart + new Vector3(.12f, 1.05f, .50f), ClothLight, new(90, 0, 0));
+    }
+
+    private static void Wayposts(EnvironmentBuilder b, float x)
+    {
+        foreach (float side in new[] { -1f, 1f })
+        {
+            Vector3 at = new(x + .92f, 0, side * 1.9f);
+            b.Box(new(.67f, .24f, .72f), at + Vector3.Up * .12f, StoneDark);
+            b.Box(new(.36f, 1.24f, .40f), at + Vector3.Up * .83f, Stone);
+            b.Box(new(.47f, .11f, .52f), at + Vector3.Up * 1.50f, StoneLight);
+            b.Box(new(.035f, .53f, .26f), at + new Vector3(-.19f, 1.06f, 0), Cloth);
+            b.Torus(.105f, .14f, at + new Vector3(-.215f, 1.07f, 0), Bronze, new(0, 0, 90));
+        }
+    }
+
+    private static void Hillside(EnvironmentBuilder b, float x, float z)
+    {
+        // Broken terraces lead the eye toward the western chapel instead of outlining a rectangle.
+        for (int tier = 0; tier < 3; tier++)
+        {
+            b.Box(new(5.8f - tier * .85f, .42f, 1.10f), new(-x - 3.2f, .2f + tier * .44f, -z - .8f - tier * .9f), StoneDark, new(0, -14, 0));
+            b.Box(new(5.95f - tier * .85f, .10f, 1.2f), new(-x - 3.2f, .45f + tier * .44f, -z - .8f - tier * .9f), StoneLight, new(0, -14, 0));
+        }
+        foreach (Vector3 tree in new[] { new Vector3(-x - 3.0f, 0, -z * .55f), new Vector3(-x * .84f, 1.8f, -z - 6.8f), new Vector3(x * .73f, .4f, -z - 6.4f) })
+        {
+            b.Cylinder(.16f, .095f, 2.3f, tree + Vector3.Up * 1.15f, Timber);
+            for (int crown = 0; crown < 3; crown++)
+                b.Cylinder(1.05f - crown * .24f, .06f, 1.25f, tree + Vector3.Up * (1.68f + crown * .66f), crown % 2 == 0 ? "607e65" : "586b60", surface: SurfaceKind.Earth);
+        }
     }
 
     private static void House(EnvironmentBuilder b, Vector3 center, float width, float depth, float wallHeight,

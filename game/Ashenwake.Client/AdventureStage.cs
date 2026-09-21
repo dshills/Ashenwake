@@ -113,11 +113,11 @@ public partial class AdventureStage : Node3D
         foreach (var (id, point) in interactions)
         {
             if (!occupied.Add(point)) continue;
-            string color = id.Contains("torren", StringComparison.Ordinal) ? "705443" : id == "dungeon.replay" ? "747764" : "395e5c";
-            Vector3 position = new(point.X * .001f, -.007f, point.Z * .001f);
-            builder.Box(new(2.25f, .008f, 1.95f), position, color);
+            string color = id.Contains("torren", StringComparison.Ordinal) ? "887860" : id == "dungeon.replay" ? "83866e" : "71857a";
+            Vector3 position = new(point.X * .001f, -.016f, point.Z * .001f);
+            builder.Cylinder(.65f, .65f, .008f, position, color);
             foreach (float side in new[] { -1f, 1f })
-                builder.Box(new(.045f, .009f, 1.85f), position + new Vector3(side * 1.03f, .001f, 0), "9d9680");
+                builder.Box(new(.06f, .008f, .31f), position + new Vector3(side * .72f, 0, 0), "9d9680");
         }
         builder.Flush();
     }

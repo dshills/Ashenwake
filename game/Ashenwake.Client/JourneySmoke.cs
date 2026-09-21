@@ -24,6 +24,7 @@ public partial class JourneySmoke : Node
     private readonly List<string> _skippedChecks = [];
     private readonly List<string> _captures = [];
     private readonly List<EnvironmentEvidence> _environments = [];
+    private readonly List<OpeningEnvironmentChecks.Evidence> _openingLayouts = [];
     private long _revision;
     private readonly Dictionary<string, int> _combatEvents = new(StringComparer.Ordinal);
     private readonly HashSet<string> _feedbackWitnesses = new(StringComparer.Ordinal);
@@ -79,6 +80,8 @@ public partial class JourneySmoke : Node
             await Capture("first-encounter-cleared.png");
             string reviewHash = _session.StateHash;
             var forward = _stage.PresentWayForward(_session.Room, _hud.CanRequestNextStep, _hud.NextStepLabel);
+            if (forward is not null)
+                _openingLayouts.Add(OpeningEnvironmentChecks.Inspect(_sandbox, roadArchitecture, _session.Room, "road_exit", [forward], Check));
             _hud.RequestNextStep(); await Settle();
             Check("way_forward_reuses_reward_review_without_travel", forward is { Id: "journey.next", Range: 1800, Visual: not null } &&
                 new Ashenwake.Core.Simulation.SpatialWorld(_session.Room).CanOccupy(forward.Position, CombatSession.ActorRadius) &&
@@ -195,6 +198,18 @@ public partial class JourneySmoke : Node
         if (top is { } value && !float.IsFinite(value)) top = null;
         bool cosmeticOnly = !Descendants(_stage).Any(n => n is CollisionObject3D or CollisionShape3D or NavigationRegion3D);
         _environments.Add(new(district, meshes.Length, materials, groundMeshes.Length, top, cosmeticOnly));
+        if (district is "greyhaven" or "road" or "monastery" or "sanctum")
+        {
+            var targets = _session.Interactions.Select(i => new WorldInteractionTarget(i.ActionId, i.Name,
+                i.Position, i.Range, _stage.GetInteractionVisual(i.ActionId))).ToArray();
+            _openingLayouts.Add(OpeningEnvironmentChecks.Inspect(_sandbox, architecture, _session.Room, district, targets, Check));
+            Check("opening_" + district + "_live_atmosphere_matches_room", _sandbox.OpeningMotion is { } motion &&
+                motion.Style == district && motion.Capacity == (district == "greyhaven" ? 6 : 8) &&
+                Descendants(_sandbox).OfType<OpeningAtmosphere>().Count() == 1);
+            using var diagnostic = OpeningAtmosphere.Create(district, _session.Room.HalfWidth * .001f, _session.Room.HalfDepth * .001f);
+            try { OpeningEnvironmentChecks.Atmosphere(diagnostic, Check); }
+            finally { diagnostic.Free(); }
+        }
     }
     private sealed record EnvironmentEvidence(string District, int ArchitectureMeshes, int ArchitectureMaterials, int GroundMeshes, float? GroundTop, bool CosmeticOnly);
     private async Task CheckGraphicsProfiles()
@@ -251,11 +266,15 @@ public partial class JourneySmoke : Node
         if (rendered)
         {
             var movingPose = motes.Multimesh.GetInstanceTransform(0);
+            double smokeTime = _sandbox.OpeningMotion!.MotionTime;
             for (int i = 0; i < 4; i++) await Settle();
             Check("ambient_motes_animate_when_playing", !_sandbox.IsPaused && motes.IsVisibleInTree() && !motes.Multimesh.GetInstanceTransform(0).IsEqualApprox(movingPose));
+            Check("opening_motion_advances_in_live_scene", _sandbox.OpeningMotion.MotionTime > smokeTime);
             _sandbox.SetPaused(true); var frozenPose = motes.Multimesh.GetInstanceTransform(0);
+            smokeTime = _sandbox.OpeningMotion.MotionTime;
             for (int i = 0; i < 4; i++) await Settle();
             bool frozen = _sandbox.IsPaused && motes.Multimesh.GetInstanceTransform(0).IsEqualApprox(frozenPose);
+            Check("opening_motion_freezes_in_live_paused_scene", _sandbox.OpeningMotion.MotionTime == smokeTime);
             _sandbox.SetPaused(false);
             for (int i = 0; i < 4; i++) await Settle();
             Check("ambient_motes_pause_and_resume_with_game", frozen && !_sandbox.IsPaused && !motes.Multimesh.GetInstanceTransform(0).IsEqualApprox(frozenPose));
@@ -269,10 +288,12 @@ public partial class JourneySmoke : Node
         }
         await Click("Settings [Esc]"); await Click("Accessibility"); await ClickNode(effects);
         Check("reduced_effects_disable_environment_atmosphere", effects.ButtonPressed && !motes.IsVisibleInTree() && !environment.FogEnabled);
+        Check("reduced_effects_disable_opening_motion_live", _sandbox.OpeningMotion!.ActiveCount == 0);
         await ClickNode(effects); await Click("Close settings");
         var pose = motes.Multimesh.GetInstanceTransform(0);
         for (int i = 0; i < 4; i++) await Settle();
         Check("restoring_effects_restores_environment_atmosphere", !effects.ButtonPressed && !_sandbox.IsPaused && motes.IsVisibleInTree() && environment.FogEnabled && (!rendered || !motes.Multimesh.GetInstanceTransform(0).IsEqualApprox(pose)));
+        Check("restoring_effects_restores_opening_motion_live", _sandbox.OpeningMotion!.ActiveCount == _sandbox.OpeningMotion.Capacity);
         if (originalReducedEffects)
         { await Click("Settings [Esc]"); await Click("Accessibility"); await ClickNode(effects); await Click("Close settings"); }
     }
@@ -403,6 +424,20 @@ public partial class JourneySmoke : Node
                 sandbox.GetNode<Node3D>($"Actor{actor.Id}").GetChildren().OfType<CharacterVisual>().Single().IsDying == false));
             Check("replaced_session_discards_old_hit_and_death_effects", Descendants(sandbox).OfType<CombatEffects>().Single().Count == 0 &&
                 !Descendants(sandbox).OfType<Label3D>().Any(label => label.Text is "FALLEN" or "SILENCED"));
+            var room = CombatContent.Parse(_combatJson).Room;
+            sandbox.SetPaused(true);
+            sandbox.PresentAuthoredRoom(room, "opening-lifecycle", "greyhaven");
+            var firstMotion = sandbox.OpeningMotion!;
+            sandbox.PresentAuthoredRoom(room, "opening-lifecycle", "greyhaven");
+            Check("opening_same_room_preserves_motion_node", ReferenceEquals(firstMotion, sandbox.OpeningMotion));
+            var largerRoom = room with { HalfWidth = room.HalfWidth + 3000, HalfDepth = room.HalfDepth + 2000 };
+            sandbox.PresentAuthoredRoom(largerRoom, "opening-lifecycle", "greyhaven");
+            Check("opening_resize_replaces_motion_while_paused", sandbox.IsPaused && !ReferenceEquals(firstMotion, sandbox.OpeningMotion) &&
+                firstMotion.GetParent() is null && sandbox.OpeningMotion!.MotionTime == 0 &&
+                Descendants(sandbox).OfType<OpeningAtmosphere>().Count() == 1);
+            sandbox.PresentAuthoredRoom(room, "opening-lifecycle-exit", "verdant_ruins");
+            Check("leaving_opening_region_removes_optional_motion", sandbox.OpeningMotion is null &&
+                !Descendants(sandbox).OfType<OpeningAtmosphere>().Any());
         }
         finally { sandbox.Free(); }
     }
@@ -447,6 +482,7 @@ public partial class JourneySmoke : Node
             checks = _checks,
             skippedChecks = _skippedChecks,
             environments = _environments,
+            openingLayouts = _openingLayouts,
             combatEvents = _combatEvents,
             feedbackWitnesses = _feedbackWitnesses.Order().ToArray(),
             captures = _captures,

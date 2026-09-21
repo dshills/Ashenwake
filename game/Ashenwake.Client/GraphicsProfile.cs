@@ -6,6 +6,7 @@ namespace Ashenwake.Client;
 internal static class GraphicsProfile
 {
     private static Shader? _reflectionShader;
+    private static bool _flushingSkyTeardown;
 
     public static string Normalize(string? quality) => quality == "Performance" ? "Performance" : "High";
 
@@ -14,10 +15,21 @@ internal static class GraphicsProfile
         // C# wrappers may outlive scene nodes until GC. Release GPU-backed sky
         // resources with their world, and recreate them if that world is reattached.
         var environment = owner.Environment;
-        owner.TreeEntered += () => ApplyBackground(environment);
+        var enteredFrame = Engine.GetFramesDrawn();
+        owner.TreeEntered += () => { ApplyBackground(environment); enteredFrame = Engine.GetFramesDrawn(); };
         owner.TreeExited += () =>
         {
             if (environment.Sky is not { } sky) return;
+            // In pinned GLES3, a newly created Sky can still be on dirty_sky_list.
+            // free(RID) does not unlink that list. Process it before releasing the
+            // Sky, including when a scene is created and removed in one frame.
+            if (!_flushingSkyTeardown && enteredFrame == Engine.GetFramesDrawn() && DisplayServer.GetName() != "headless" &&
+                RenderingServer.GetCurrentRenderingMethod() == "gl_compatibility")
+            {
+                _flushingSkyTeardown = true;
+                try { RenderingServer.ForceDraw(false); RenderingServer.ForceSync(); }
+                finally { _flushingSkyTeardown = false; }
+            }
             var material = sky.SkyMaterial;
             environment.Sky = null;
             sky.Dispose();
