@@ -100,6 +100,7 @@ public partial class Sandbox : Node3D
 
     public void SetSession(CombatSession session)
     {
+        CloseLocalMap();
         _session = session; _clock = new(); _pending.Clear();
         _view = session.View; _recorder = new(session); _eventLog.Clear();
         var player = session.Capture().Actors.Single(a => a.Id == 1);
@@ -122,7 +123,7 @@ public partial class Sandbox : Node3D
         bool changedArena = CrossedCombatBoundary(_session, session);
         _session = session; _recorder = new(session);
         if (changedArena)
-        { _pending.Clear(); ClearPresentation(); _target = 0; _moveX = _moveZ = int.MinValue; }
+        { CloseLocalMap(); _pending.Clear(); ClearPresentation(); _target = 0; _moveX = _moveZ = int.MinValue; }
     }
 
     public override void _Process(double delta)
@@ -136,7 +137,7 @@ public partial class Sandbox : Node3D
             if (showAllLootHeld != _showAllLootHeld)
             { _showAllLootHeld = showAllLootHeld; SynchronizeLootVisuals(); _lootSignature = ""; }
             AnimatePresentation(delta, _clock.Alpha, _target); UpdateEnvironmentAtmosphere(delta); UpdateNavigationNotice(delta); UpdateWorldHover(delta); RefreshHud(); RefreshLootInspector();
-            AdvanceRewardPresentation(delta); LayoutSettings();
+            AdvanceRewardPresentation(delta); LayoutSettings(); RefreshLocalMapPresentation();
             _frames++; Sample(_frameCosts, Stopwatch.GetElapsedTime(watch).TotalMilliseconds);
             if (_frames > 10) Sample(_frameIntervals, delta * 1000);
             if (_capturePath is not null && _frames == 30 && DisplayServer.GetName() != "headless")
@@ -151,6 +152,7 @@ public partial class Sandbox : Node3D
 
     public override void _Input(InputEvent input)
     {
+        if (HandleLocalMapInput(input)) return;
         ObserveWorldPointer(input);
         if (!_smoke && (_clickMove?.Destination is not null || PendingWorldActionId is not null) && (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left or MouseButton.Right } ||
             NavigationInterruptActions.Any(a => input.IsActionPressed(a))))
@@ -458,6 +460,7 @@ public partial class Sandbox : Node3D
 
     private void TogglePanel(PanelContainer panel)
     {
+        CloseLocalMap();
         bool open = !panel.Visible; _inventoryPanel.Visible = false; _settingsPanel.Visible = false;
         if (_lootPanel is not null) _lootPanel.Visible = false;
         panel.Visible = open; ChangePause(open);

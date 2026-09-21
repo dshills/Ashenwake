@@ -2,6 +2,7 @@ using Ashenwake.Core.Adventure;
 using Ashenwake.Core.Combat;
 using Ashenwake.Core.Content;
 using Ashenwake.Core.Expedition;
+using Ashenwake.Core.Exploration;
 using Ashenwake.Core.Production;
 using Ashenwake.Core.Progression;
 using Ashenwake.Core.Simulation;
@@ -9,7 +10,7 @@ using System.Text.Json.Serialization;
 
 namespace Ashenwake.Core.Campaign;
 
-public enum CampaignRuntimeAction { Tick, EnterAct, AdvanceEncounter, ReturnToHub, Choose, BeginExploration, TrackClue, LeaveExploration, Production, RevisitEncounter, InteractOpening }
+public enum CampaignRuntimeAction { Tick, EnterAct, AdvanceEncounter, ReturnToHub, Choose, BeginExploration, TrackClue, LeaveExploration, Production, RevisitEncounter, InteractOpening, EnableExplorationMap }
 public sealed record CampaignRuntimeCommand(CampaignRuntimeAction Action, int Act = 0, string Id = "", string Value = "", CombatCommand[]? Commands = null, ProductionCommand? Production = null);
 public sealed record CampaignRuntimeResult(bool Success, string Reason, CombatEvent[] CombatEvents, string[] WorldEvents);
 public sealed record CampaignRuntimeSnapshot
@@ -24,6 +25,8 @@ public sealed record CampaignRuntimeSnapshot
     public CombatSnapshot Combat { get; init; } = null!;
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public SortedDictionary<string, CombatSnapshot>? ClearedRooms { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public LocalMapAtlasState? ExplorationMap { get; init; }
 }
 public sealed record CampaignRuntimeFrame(CampaignRuntimeCommand Command, string StateHash, string EventHash);
 public sealed record CampaignRuntimeReplay(int SchemaVersion, CampaignRuntimeSnapshot Initial, CampaignRuntimeFrame[] Frames);
@@ -104,6 +107,7 @@ public sealed partial class CampaignRuntimeSession
         var session = new CampaignRuntimeSession(combatJson, adventure, resolved, campaign, production, story, arena)
         { Tick = snapshot.Tick, ActiveEncounterId = snapshot.ActiveEncounterId, explorationReturnEncounter = snapshot.ExplorationReturnEncounter };
         session.RestoreClearedRooms(snapshot.ClearedRooms);
+        session.RestoreExplorationMap(snapshot.ExplorationMap);
         session.ValidateRegistry(); session.ValidateState(); session.initial = session.Capture(); return session;
     }
     internal static CampaignRuntimeSession ImportProduction(string combatJson, AdventureContent adventure, ProgressionContent policy, CampaignContent campaign, ProductionSnapshot source)
@@ -120,7 +124,7 @@ public sealed partial class CampaignRuntimeSession
         production.GrantCampaignOutcome("campaign.begin", 0, 0, [], ["Mara Vey"], []);
         session.ValidateRegistry(); session.ValidateState(); session.initial = session.Capture(); return session;
     }
-    public CampaignRuntimeSnapshot Capture() => new() { Tick = Tick, ActiveEncounterId = ActiveEncounterId, ExplorationReturnEncounter = explorationReturnEncounter, Campaign = story.Capture(), Production = Production.Capture(), Combat = Combat.Capture(), ClearedRooms = clearedRooms.Count == 0 ? null : JsonData.Copy(clearedRooms) };
+    public CampaignRuntimeSnapshot Capture() => new() { Tick = Tick, ActiveEncounterId = ActiveEncounterId, ExplorationReturnEncounter = explorationReturnEncounter, Campaign = story.Capture(), Production = Production.Capture(), Combat = Combat.Capture(), ClearedRooms = clearedRooms.Count == 0 ? null : JsonData.Copy(clearedRooms), ExplorationMap = explorationMap?.Capture() };
     public CampaignRuntimeReplay CaptureReplay() => JsonData.Copy(new CampaignRuntimeReplay(1, initial, frames.ToArray()));
     public CampaignRuntimeResult Step(params CombatCommand[] commands) => Execute(new(CampaignRuntimeAction.Tick, Commands: commands));
     public CampaignRuntimeResult EnterAct(int act) => Execute(new(CampaignRuntimeAction.EnterAct, Act: act));
@@ -141,7 +145,8 @@ public sealed partial class CampaignRuntimeSession
         try
         {
             result = command.Action == CampaignRuntimeAction.Tick ? Advance(command.Commands ?? []) : ChangeWorld(command);
-            if (!result.Success && rollback is not null) RestoreFields(rollback);
+            if (result.Success) RevealExplorationMap();
+            else if (rollback is not null) RestoreFields(rollback);
         }
         catch { if (rollback is not null) RestoreFields(rollback); throw; }
         WorldEvents = result.WorldEvents;
@@ -154,6 +159,7 @@ public sealed partial class CampaignRuntimeSession
         story = CampaignSession.Restore(Content, snapshot.Campaign); arena = CombatSession.Restore(combatJson, snapshot.Combat);
         Tick = snapshot.Tick; ActiveEncounterId = snapshot.ActiveEncounterId; explorationReturnEncounter = snapshot.ExplorationReturnEncounter;
         RestoreClearedRooms(snapshot.ClearedRooms);
+        RestoreExplorationMap(snapshot.ExplorationMap);
     }
     private CampaignRuntimeResult Advance(CombatCommand[] commands)
     {
@@ -210,6 +216,8 @@ public sealed partial class CampaignRuntimeSession
         var state = story.CurrentState; var messages = new List<string>(); CampaignResult result;
         switch (command.Action)
         {
+            case CampaignRuntimeAction.EnableExplorationMap:
+                explorationMap ??= new(); return new(true, "", [], []);
             case CampaignRuntimeAction.InteractOpening: return InteractOpening(command.Id);
             case CampaignRuntimeAction.RevisitEncounter: return RevisitOpeningRoom(command.Id);
             case CampaignRuntimeAction.Production:

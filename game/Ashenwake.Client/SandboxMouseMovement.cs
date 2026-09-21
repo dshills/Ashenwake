@@ -7,7 +7,7 @@ namespace Ashenwake.Client;
 /// <summary>Mouse destinations are input intent. Core still owns every movement, collision and replay command.</summary>
 public partial class Sandbox
 {
-    private static readonly string[] NavigationInterruptActions = ["aw_inventory", "aw_settings", "aw_journey", "aw_endgame", "aw_character", "aw_interact", "aw_pickup", "aw_corpse", "aw_echo"];
+    private static readonly string[] NavigationInterruptActions = ["aw_localmap", "aw_inventory", "aw_settings", "aw_journey", "aw_endgame", "aw_character", "aw_interact", "aw_pickup", "aw_corpse", "aw_echo"];
     private ClickMovePlanner? _clickMove;
     private MeshInstance3D? _moveDestination;
     private Label? _navigationNotice;
@@ -26,6 +26,13 @@ public partial class Sandbox
         if (distance < 0 || !float.IsFinite(ground.X) || !float.IsFinite(ground.Z) ||
             Math.Abs(ground.X) > 1_000_000 || Math.Abs(ground.Z) > 1_000_000) return;
         var destination = new CorePosition((int)MathF.Round(ground.X * 1000), (int)MathF.Round(ground.Z * 1000));
+        TryBeginGroundMovement(destination);
+    }
+
+    private bool TryBeginGroundMovement(CorePosition destination)
+    {
+        var player = _session.View.Actors.Single(a => a.Id == 1);
+        if (player.Health <= 0 || IsPaused) return false;
         _clickMove ??= new ClickMovePlanner(_session.Room);
         var occupied = _view.Actors.Where(a => a.Id != 1 && a.Health > 0).Select(a => a.Position).ToArray();
         if (!_clickMove.TrySetDestination(player.Position, destination, occupied))
@@ -33,10 +40,10 @@ public partial class Sandbox
             CancelMouseMovement(true);
             if (_navigationNotice is not null)
             { _navigationNotice.Text = "No clear route to that spot."; _navigationNoticeAge = 2; }
-            return;
+            return false;
         }
         if (_navigationNotice is not null) _navigationNotice.Text = "";
-        ShowMoveDestination();
+        ShowMoveDestination(); return true;
     }
 
     private void UpdateMovementInput()

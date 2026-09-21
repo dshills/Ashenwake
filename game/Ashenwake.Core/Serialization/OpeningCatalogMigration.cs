@@ -1,3 +1,4 @@
+using Ashenwake.Core.Exploration;
 using System.Text.Json.Nodes;
 using Ashenwake.Core.Adventure;
 using Ashenwake.Core.Campaign;
@@ -75,6 +76,7 @@ internal static class OpeningCatalogMigration
         return state with
         {
             Campaign = state.Campaign with { ContentHash = campaign.Hash },
+            ExplorationMap = LocalMapAtlas.Rebind(state.ExplorationMap, id => CampaignRuntimeSession.ResolveMapRoom(content, id)),
             Combat = Relocate(state.Combat, content, state.ActiveEncounterId),
             ClearedRooms = state.ClearedRooms is null ? null : new SortedDictionary<string, CombatSnapshot>(
                 state.ClearedRooms.ToDictionary(pair => pair.Key, pair => Relocate(pair.Value, content, pair.Key)), StringComparer.Ordinal)

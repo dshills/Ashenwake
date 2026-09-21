@@ -149,6 +149,8 @@ public partial class EndgameDirector
         if (_hasActiveCharacter) Save();
         PreserveLegacyEchoesLink();
         var fresh = Fresh(discipline, _session.Production.Capture().Progression.Profile);
+        var mapped = fresh.EnableExplorationMap();
+        if (!mapped.Success) throw new InvalidDataException(mapped.Reason);
         string filename = "endgame.character-" + Guid.NewGuid().ToString("N") + ".save.json";
         string path = Path.Combine(_output, filename);
         if (File.Exists(path) || File.Exists(path + ".bak") || Directory.Exists(path)) throw new IOException("The new character slot is unavailable. Try again.");

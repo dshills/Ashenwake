@@ -28,9 +28,13 @@ public partial class Sandbox
             throw new InvalidDataException("Settings contain an unsupported audio volume.");
         var effectiveKeys = new Dictionary<string, Key>(DefaultKeys);
         foreach (var pair in preferences.Keys) if (effectiveKeys.ContainsKey(pair.Key)) effectiveKeys[pair.Key] = (Key)pair.Value;
+        // Add the new map action without invalidating an older player's binding to M.
+        if (!preferences.Keys.ContainsKey("localmap") && effectiveKeys.Any(pair => pair.Key != "localmap" && pair.Value == Key.M))
+            effectiveKeys["localmap"] = Enumerable.Range((int)Key.A, 26).Concat(Enumerable.Range((int)Key.F1, 12)).Select(value => (Key)value)
+                .First(key => CanBindSettingsKey(key) && !effectiveKeys.Values.Contains(key));
         if (effectiveKeys.Values.Distinct().Count() != effectiveKeys.Count || effectiveKeys.Values.Any(key => !CanBindSettingsKey(key)))
             throw new InvalidDataException("Settings contain conflicting or reserved key bindings.");
-        return preferences with { GraphicsQuality = preferences.GraphicsQuality == "Performance" ? "Performance" : "High" };
+        return preferences with { Keys = effectiveKeys.ToDictionary(pair => pair.Key, pair => (long)pair.Value), GraphicsQuality = preferences.GraphicsQuality == "Performance" ? "Performance" : "High" };
     }
 
     private void LoadReleasePreferences()

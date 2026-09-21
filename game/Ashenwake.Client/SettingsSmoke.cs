@@ -302,17 +302,17 @@ public partial class SettingsSmoke : Node3D
     {
         await Click("FrontNew"); await Click("FrontDisciplineVanguard"); await Click("FrontBegin");
         Check("native_new_character_starts_play_after_settings_restarts", !Menu.IsOpen && !_sandbox.IsPaused);
-        string hash = Session.StateHash;
+        string hash = Session.StateHash, replayHash = JsonData.Hash(Session.CaptureReplay());
         var files = Directory.EnumerateFiles(_output, "*.save.json").ToDictionary(p => Path.GetFileName(p)!, System.IO.File.ReadAllText);
         await KeyPress(Key.Escape);
         Check("in_game_escape_opens_settings_and_pauses", Find<Control>("SettingsPanel").Visible && _sandbox.IsPaused);
         await Click("SettingsTabGraphics"); await SelectGraphics("Performance"); await Click("SettingsRestore");
-        Check("in_game_graphics_changes_preserve_character_and_replay", Session.StateHash == hash && Session.CaptureReplay().Frames.Length == 0 &&
+        Check("in_game_graphics_changes_preserve_character_and_replay", Session.StateHash == hash && JsonData.Hash(Session.CaptureReplay()) == replayHash &&
             files.All(p => System.IO.File.ReadAllText(Path.Combine(_output, p.Key!)) == p.Value) && _sandbox.GraphicsQuality == "High");
         await Click("SettingsTabAudio");
         foreach (Key key in new[] { Key.O, Key.F, Key.C, Key.J, Key.B, Key.H, Key.P, Key.F5, Key.F9, Key.F6 }) await KeyPress(key);
         AdvanceWhilePaused();
-        Check("in_game_settings_prevent_world_ticks_and_shortcuts", Session.StateHash == hash && Session.CaptureReplay().Frames.Length == 0 &&
+        Check("in_game_settings_prevent_world_ticks_and_shortcuts", Session.StateHash == hash && JsonData.Hash(Session.CaptureReplay()) == replayHash &&
             files.All(p => System.IO.File.ReadAllText(Path.Combine(_output, p.Key!)) == p.Value));
         await Capture("settings-in-game-paused.png"); await Click("SettingsClose");
         Check("closing_in_game_settings_resumes_when_no_other_pause_owner", !Find<Control>("SettingsPanel").Visible && !_sandbox.IsPaused);

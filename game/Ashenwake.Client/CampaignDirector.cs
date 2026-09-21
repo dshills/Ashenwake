@@ -85,7 +85,10 @@ public partial class CampaignDirector : Node3D
             _character.CraftRequested += request => Permanent(new(ProductionAction.Craft, Crafting: request));
             _character.MutationRequested += (skill, mutation) => Permanent(new(ProductionAction.Mutation, Id: skill, Value: mutation));
             _character.ServiceRequested += Interact;
-            BuildClassSelection(); Refresh();
+            BuildClassSelection();
+            _sandbox.ConfigureLocalMap(() => !_classSelection.Visible, () => _session.LocalMap);
+            if (!_smoke && Argument("--discipline=") is not null) _session.EnableExplorationMap();
+            Refresh();
             if (OS.GetCmdlineUserArgs().Contains("--show-character")) { _campaign.SetOpen(false); _character.Toggle(); }
             if (!_smoke && Argument("--discipline=") is null)
             { _campaign.SetOpen(false); _classSelection.Visible = true; _classBackdrop.Visible = true; _sandbox.SetPaused(true); _classSelection.GetChild<VBoxContainer>(0).GetChildren().OfType<Button>().First().GrabFocus(); }
@@ -238,6 +241,7 @@ public partial class CampaignDirector : Node3D
             _session.EncounterCleared && _campaign.CanRequestNextStep && _campaign.CanShowWayForward, _campaign.NextStepLabel);
         if (wayForward is not null) mouseTargets.Add(wayForward);
         _sandbox.SetWorldInteractions(mouseTargets, Interact);
+        _sandbox.PresentLocalMap(_session.LocalMap, _session.InHub ? "Greyhaven" : _session.View.Region, combat);
         _sandbox.SetManifestationPresentation(manifestations, snapshot.Production.Expedition.Adventure.Anatomy.Values); _sandbox.SetWorldSubtitle($"CAMPAIGN / {_session.View.Region.ToUpperInvariant()}");
         if (_captureCampaign && DisplayServer.GetName() != "headless" && !_session.InHub &&
             combat.CampaignHazards is { Count: > 0 } && _capturedActs.Add(snapshot.Campaign.CurrentAct))
@@ -256,7 +260,7 @@ public partial class CampaignDirector : Node3D
     private void Load()
     {
         var result = CampaignRuntimeSaveStore.Load(Path.Combine(_output, "campaign.save.json"), _combatJson, _adventure, _progression, _content);
-        _session = result.Session; CacheDefinitions(); _classSelection.Visible = false; _classBackdrop.Visible = false; _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(false); _revision++; Refresh(); _campaign.AnatomySessionRestored();
+        _session = result.Session; if (!_smoke) _session.EnableExplorationMap(); CacheDefinitions(); _classSelection.Visible = false; _classBackdrop.Visible = false; _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(false); _revision++; Refresh(); _campaign.AnatomySessionRestored();
         Notice(result.RecoveredBackup ? "Recovered the previous valid campaign save." : "Campaign loaded.");
     }
     private void VerifyReplay() { VerifyAndWrite(_output); Notice("Campaign combat, choices, exploration and permanent actions replay verified."); }
@@ -318,7 +322,7 @@ public partial class CampaignDirector : Node3D
         foreach (var discipline in _productionDefinition.Disciplines)
         {
             var button = new Button { Text = $"{discipline.Id} · {discipline.Resource}", CustomMinimumSize = new(0, 40) };
-            button.Pressed += () => { _session = Fresh(discipline.Id, _session.Capture().Production.Progression.Profile); CacheDefinitions(); _classSelection.Visible = false; _classBackdrop.Visible = false; _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(false); _revision++; Refresh(); }; column.AddChild(button);
+            button.Pressed += () => { _session = Fresh(discipline.Id, _session.Capture().Production.Progression.Profile); _session.EnableExplorationMap(); CacheDefinitions(); _classSelection.Visible = false; _classBackdrop.Visible = false; _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(false); _revision++; Refresh(); }; column.AddChild(button);
         }
         var load = new Button { Text = "Continue saved campaign", Disabled = !File.Exists(Path.Combine(_output, "campaign.save.json")) && !File.Exists(Path.Combine(_output, "campaign.save.json.bak")) };
         load.Pressed += () => Safely(Load); column.AddChild(load);

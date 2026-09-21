@@ -57,6 +57,8 @@ Choose a discipline and click Mara to approach and open her conversation and the
 
 Act I’s Widow’s Crypt branches north from the secured road. Click its marker to approach and enter, defeat the guardians, then open the Widow’s Testament for rare armor and 25 materials. The western passage returns to the road. Click the return and revisit markers to backtrack between cleared opening rooms; their remaining drops and the claimed testament persist in your save.
 
+The **local minimap** reveals nearby terrain as you explore. Press **M** or click its header for the expanded room map; discovered exits, services, treasure, and remaining loot are marked. Click revealed ground to move there. **M** or **Escape** closes the expanded map. Exploration is saved separately for each room and returns when you backtrack. See [local exploration map](docs/local_exploration_map.md).
+
 Act II contains an ordered tracking hunt, Act III a timed Resonance Storm, and Act IV a Divine Memory with reversed fault warnings. These temporary contexts clean up on expiry, departure, victory, or death. Both final story outcomes unlock the Fracture gate in eastern Greyhaven. Press B to inspect Sigils, four-room routes, rules, hunt gates, and rewards. Sigils are consumed on entry; three attempts and explicit retry/abandon controls make failures recoverable. A free tier-one recovery Sigil is available when no unconsumed Sigils remain. Cleared tiers unlock four distinct God Hunts and an optional secret reconstruction. Their catalysts support permanent Godwrought choices and crafting.
 
 | Action | Control |
@@ -73,6 +75,7 @@ Act II contains an ordered tracking hunt, Act III a timed Resonance Storm, and A
 | Character and crafting / inventory and equipment / settings | C / I / Escape |
 | Cycle target / camera zoom | Tab / mouse wheel |
 | Interact / journey map, journal and services | Click a visible target or F nearby / J |
+| Local exploration map / move to explored ground | M / click revealed ground on either map |
 | Fractures, God Hunts, expedition progress | B |
 | Echoes board / bind an offered nearby memory | H |
 | Reveal all ground loot | Hold Alt |

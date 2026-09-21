@@ -1,3 +1,4 @@
+using Ashenwake.Core.Exploration;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Ashenwake.Core.Adventure;
@@ -43,6 +44,7 @@ public static class CampaignRuntimeSaveStore
         if (json.Length > 64 * 1024 * 1024) throw new InvalidDataException("Campaign archive exceeds its bounded size.");
         using var document = JsonDocument.Parse(json); ArchiveHeaders.Require(document.RootElement, 1);
         var state = ArchiveHeaders.Object(document.RootElement, "state"); ArchiveHeaders.Require(state, 1, "campaign-runtime.1");
+        LocalMapAtlas.Inspect(state);
         var narrative = ArchiveHeaders.Object(state, "campaign"); ArchiveHeaders.Require(narrative, 1); ArchiveHeaders.Identity(narrative, "contentHash", campaign.Hash);
         string identity = CombatContent.Parse(combatJson).Identity;
         var arena = ArchiveHeaders.Object(state, "combat"); ArchiveHeaders.Require(arena, 1, "combat.1"); ArchiveHeaders.Identity(arena, "contentHash", identity);

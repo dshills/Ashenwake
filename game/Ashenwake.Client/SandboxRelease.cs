@@ -57,7 +57,7 @@ public partial class Sandbox
     private void PauseForInterruption(string reason)
     {
         CancelSettingsBinding();
-        _interruptionPause = true;
+        _interruptionPause = true; CloseLocalMap();
         if (_resumeReason is not null) _resumeReason.Text = reason;
         ChangePause(false);
     }
@@ -66,6 +66,7 @@ public partial class Sandbox
     public void SetModalPaused(string source, bool paused)
     {
         if (paused) _modalPauses.Add(source); else _modalPauses.Remove(source);
+        if (paused && source != "local-map") CloseLocalMap();
         ChangePause(false);
     }
 

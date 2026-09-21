@@ -1,3 +1,4 @@
+using Ashenwake.Core.Exploration;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Ashenwake.Core.Adventure;
@@ -21,6 +22,8 @@ public static class EndgameRuntimeSaveStore
         ProgressionContent policy, CampaignContent campaign, EndgameContent endgame)
     {
         ArchiveHeaders.Require(state, 1, "endgame-runtime.1");
+        LocalMapAtlas.Inspect(state);
+        LocalMapAtlas.Inspect(ArchiveHeaders.Object(state, "campaign"));
         var ledger = ArchiveHeaders.Object(state, "endgame"); ArchiveHeaders.Require(ledger, 1); ArchiveHeaders.Identity(ledger, "contentHash", endgame.Hash);
         string identity = CombatContent.Parse(combatJson).Identity;
         void CombatHeader(JsonElement value)

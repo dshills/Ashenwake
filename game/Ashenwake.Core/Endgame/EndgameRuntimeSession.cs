@@ -10,7 +10,7 @@ using Ashenwake.Core.Simulation;
 namespace Ashenwake.Core.Endgame;
 
 /// <summary>Owns the complete local journey. Only observed combat victories may advance an endgame run.</summary>
-public sealed class EndgameRuntimeSession
+public sealed partial class EndgameRuntimeSession
 {
     private readonly string combatJson;
     private readonly AdventureContent adventure;
@@ -101,6 +101,7 @@ public sealed class EndgameRuntimeSession
             cleared = snapshot.EncounterCleared,
             awaitingRetry = snapshot.AwaitingRetry
         };
+        session.RestoreExplorationMap(snapshot.ExplorationMap);
         session.ValidateState(); session.initial = session.Capture(); return session;
     }
     internal static EndgameRuntimeSession ImportCampaign(string combatJson, AdventureContent adventure, ProgressionContent policy,
@@ -120,7 +121,8 @@ public sealed class EndgameRuntimeSession
         Combat = arena?.Capture(),
         Manifest = manifest is null ? null : JsonData.Copy(manifest),
         AwaitingRetry = awaitingRetry,
-        EncounterCleared = cleared
+        EncounterCleared = cleared,
+        ExplorationMap = explorationMap?.Capture()
     };
     public EndgameRuntimeReplay CaptureReplay() => JsonData.Copy(new EndgameRuntimeReplay(1, initial, frames.ToArray()));
     public FracturePreview PreviewSigil(long id)
@@ -154,7 +156,7 @@ public sealed class EndgameRuntimeSession
         try
         {
             result = command.Action == EndgameRuntimeAction.Tick ? Advance(command.Commands ?? []) : Change(command);
-            if (result.Success) { operationSequence++; RefreshUnlock(); }
+            if (result.Success) { operationSequence++; RefreshUnlock(); RevealExplorationMap(); }
             else if (rollback is not null) RestoreFields(rollback);
         }
         catch { if (rollback is not null) RestoreFields(rollback); throw; }
@@ -168,6 +170,7 @@ public sealed class EndgameRuntimeSession
         ledger = EndgameSession.Restore(Content, state.Endgame); arena = state.Combat is null ? null : CombatSession.Restore(combatJson, state.Combat);
         manifest = state.Manifest is null ? null : JsonData.Copy(state.Manifest); cleared = state.EncounterCleared; awaitingRetry = state.AwaitingRetry;
         Tick = state.Tick; operationSequence = state.OperationSequence;
+        RestoreExplorationMap(state.ExplorationMap);
     }
     private void RefreshUnlock()
     {
@@ -202,6 +205,12 @@ public sealed class EndgameRuntimeSession
     private EndgameRuntimeResult Change(EndgameRuntimeCommand command)
     {
         var messages = new List<string>();
+        if (command.Action == EndgameRuntimeAction.EnableExplorationMap)
+        {
+            explorationMap ??= new();
+            var enabled = Campaign.Execute(new(CampaignRuntimeAction.EnableExplorationMap), recordReplay: false);
+            return new(enabled.Success, enabled.Reason, enabled.CombatEvents, enabled.WorldEvents);
+        }
         if (command.Action is EndgameRuntimeAction.Campaign or EndgameRuntimeAction.Production)
         {
             if (arena is not null) return Fail("Finish or abandon the endgame run before changing the campaign or permanent build.");
@@ -275,6 +284,7 @@ public sealed class EndgameRuntimeSession
     private void ReturnArenaToHub()
     {
         Production.ReturnCampaignToHub(arena!.Capture()); arena = null; manifest = null; cleared = false; awaitingRetry = false;
+        if (explorationMap is not null) explorationMap = new();
     }
     private void DiscloseDrops(List<string> events)
     { if (arena!.View.Loot.Count > 0) events.Add("GroundLootLeftBehind:" + arena.View.Loot.Count); }

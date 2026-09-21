@@ -88,7 +88,10 @@ public partial class EndgameDirector : Node3D
             _campaignHud = new CampaignHud(); _sandbox.AddOverlay(_campaignHud);
             _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = _character.ToggleInventory;
             _board = new EndgameHud(); _sandbox.AddOverlay(_board);
-            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeFrontMenu(); Refresh();
+            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeFrontMenu();
+            _sandbox.ConfigureLocalMap(() => _hasActiveCharacter && !_frontMenu.IsOpen && !_classSelection.Visible, () => _session.LocalMap);
+            if (_hasActiveCharacter) EnableLocalMap();
+            Refresh();
             if (_smoke) VerifyMigrationFixture();
             if (OS.GetCmdlineUserArgs().Contains("--show-character")) { _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Toggle(); }
             string? import = Argument("--import-campaign=");
@@ -105,6 +108,15 @@ public partial class EndgameDirector : Node3D
     private string SavePath => Path.Combine(_output, _saveName);
     private EndgameRuntimeSession Fresh(string discipline, LocalProfileState? profile = null)
         => EndgameRuntimeSession.Create(_combatJson, _adventure, _progression, _campaign, _endgame, 42, discipline, profile);
+    private void EnableLocalMap()
+    {
+        if (_smoke || _echoesSmoke || _session.Capture().ExplorationMap is not null) return;
+        var result = ExecuteActive(new(EndgameRuntimeAction.EnableExplorationMap));
+        if (!result.Success) throw new InvalidDataException(result.Reason);
+    }
+    private string LocalMapTitle()
+        => _session.InHub ? "Greyhaven" : _session.Combat.View.Endgame is not null ? _session.View.Run?.Name ?? "Expedition" :
+            _combat.Campaign?.Encounters.FirstOrDefault(e => e.Id == _session.Campaign.ActiveEncounterId)?.Name ?? _session.Campaign.View.Region;
     private void CacheDefinitions()
     {
         _anatomyDefinition = _session.Production.AdventureContent.Capture(); _productionDefinition = _session.Production.Content.Capture();
@@ -364,6 +376,7 @@ public partial class EndgameDirector : Node3D
             _session.EncounterCleared && _campaignHud.CanRequestNextStep && _campaignHud.CanShowWayForward, _campaignHud.NextStepLabel);
         if (wayForward is not null) mouseTargets.Add(wayForward);
         _sandbox.SetWorldInteractions(mouseTargets, Interact);
+        _sandbox.PresentLocalMap(_session.LocalMap, LocalMapTitle(), combat);
         _sandbox.SetMechanismVisuals(_effects.GetMechanismVisual);
         _sandbox.SetManifestationPresentation(manifestations, campaign.Production.Expedition.Adventure.Anatomy.Values);
         _sandbox.SetWorldSubtitle(combat.Endgame is null ? $"CAMPAIGN / {_session.Campaign.View.Region.ToUpperInvariant()}" : $"{view.Run?.Kind.ToUpperInvariant()} / {view.Run?.Name.ToUpperInvariant()}");
@@ -490,7 +503,7 @@ public partial class EndgameDirector : Node3D
         _memorySourceKey = default; _memorySourceName = ""; _memoryNoticeStatus = "";
         if (!retainExperiment) _experiment = null;
         _frontMenu?.SetOpen(false); _hasActiveCharacter = true;
-        _session = session; CacheDefinitions(); _classSelection.Visible = false;
+        _session = session; EnableLocalMap(); CacheDefinitions(); _classSelection.Visible = false;
         _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(false); _revision++; Refresh(); _campaignHud.AnatomySessionRestored(); _board.SessionRestored();
     }
     private void Import(string path)
@@ -501,6 +514,11 @@ public partial class EndgameDirector : Node3D
         PreserveLegacyEchoesLink();
         string destinationName = File.Exists(SavePath) || File.Exists(SavePath + ".bak") ? "endgame.imported-" + Guid.NewGuid().ToString("N") + ".save.json" : _saveName;
         string destination = Path.Combine(_output, destinationName);
+        if (!_smoke && !_echoesSmoke)
+        {
+            var mapped = imported.EnableExplorationMap();
+            if (!mapped.Success) throw new InvalidDataException(mapped.Reason);
+        }
         EndgameRuntimeSaveStore.Write(destination, _combatJson, _adventure, _progression, _campaign, _endgame, imported.Capture());
         PublishCharacterSelection(destinationName); _saveName = destinationName;
         Adopt(EndgameRuntimeSaveStore.Load(destination, _combatJson, _adventure, _progression, _campaign, _endgame).Session);

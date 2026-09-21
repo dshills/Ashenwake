@@ -337,7 +337,8 @@ public partial class HudSmoke : Node3D
     private async Task CheckSaveReset(string label)
     {
         RecordReplay();
-        string path = Path.Combine(_output, "hud." + label + ".save.json");
+        // Independent opening and historical-import routes must not merge their profile discoveries.
+        string path = Path.Combine(_output, label, "hud.save.json");
         string hash = _session.StateHash;
         EndgameRuntimeSaveStore.Write(path, _combatJson, _adventure, _progression, _campaign, _endgame, _session.Capture());
         _session = EndgameRuntimeSaveStore.Load(path, _combatJson, _adventure, _progression, _campaign, _endgame).Session;
