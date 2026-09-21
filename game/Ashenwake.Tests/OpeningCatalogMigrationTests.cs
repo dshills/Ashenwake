@@ -144,9 +144,9 @@ public sealed class OpeningCatalogMigrationTests
     public void ActiveLaterActKeepsItsExistingRoomAndOldReplayRemainsBoundToTheOldCatalog()
     {
         var original = OldJourney();
-        for (int i = 0; i < 32000 && original.ActiveEncounterId != "campaign.bone_causeway"; i++)
+        for (int i = 0; i < 40000 && original.ActiveEncounterId != "campaign.repeating_rooms"; i++)
             Assert.True(original.Execute(CampaignRuntimeSmoke.Next(original)).Success);
-        Assert.Equal("campaign.bone_causeway", original.ActiveEncounterId);
+        Assert.Equal("campaign.repeating_rooms", original.ActiveEncounterId);
         Assert.False(original.EncounterCleared);
         Assert.True(CampaignRuntimeReplayRunner.Run(Journey(true), Adventure, Policy, Campaign(true), original.CaptureReplay()).Success);
         var loaded = Upgrade(Save(original));

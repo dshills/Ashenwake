@@ -16,7 +16,7 @@ public static class SpineAmbience
     public static string CueForStyle(string style) => style switch
     {
         "spine_causeway" => "spine_wind",
-        "spine_hall" => "spine_hall",
+        "spine_hall" or "spine_archive" => "spine_hall",
         "spine_warden" => "spine_warden",
         "spine_memory" => "spine_memory",
         _ => ""

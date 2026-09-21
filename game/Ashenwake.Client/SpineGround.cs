@@ -1,3 +1,4 @@
+using Ashenwake.Core.Combat;
 using Ashenwake.Core.Content;
 using Godot;
 
@@ -10,7 +11,7 @@ public static class SpineGround
     {
         var b = new EnvironmentBuilder(parent, "AuthoredGround");
         float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
-        bool memory = style == "spine_memory", hall = style == "spine_hall", warden = style == "spine_warden";
+        bool memory = style == "spine_memory", hall = style is "spine_hall" or "spine_archive", warden = style == "spine_warden";
         string baseColor = memory ? "424d46" : "45525b";
         string paving = memory ? "596158" : "596872";
         string lightPaving = memory ? "666b60" : "63717a";
@@ -26,6 +27,7 @@ public static class SpineGround
             {
                 int pattern = (row * 11 + col * 17 + row * col * 3) % 19;
                 float px = -x + (col + .5f) * width, pz = -z + (row + .5f) * depth;
+                if (!ClearFloor(room, px, pz, width * .5f, depth * .5f)) continue;
                 string color = pattern % 5 == 0 ? lightPaving : pattern % 3 == 0 ? darkPaving : paving;
                 b.Box(new(width - .037f, .025f, depth - .037f), new(px, -.051f, pz), color);
                 if (!memory && pattern % 6 == 0)
@@ -39,6 +41,7 @@ public static class SpineGround
         else if (warden) Court(b, x, z, inset, engraving);
         else if (memory) Memory(b, x, z, inset, engraving);
         else Causeway(b, x, z, inset, engraving);
+        RoutePaving(b, room, style);
         // A thin, interrupted stone seam marks the actual boundary without competing with oath and fault warnings.
         for (int i = 0; i < 20; i++)
         {
@@ -49,6 +52,67 @@ public static class SpineGround
             b.Box(new(.105f, .01f, z * 2 / 20 - .07f), new(x, -.014f, pz), line);
         }
         b.Flush();
+    }
+
+    public static Vector2[][] Routes(string style)
+    {
+        string encounter = style switch
+        {
+            "spine_hall" => "campaign.contract_hall",
+            "spine_warden" => "campaign.covenant_warden",
+            "spine_memory" => "exploration.first_oath",
+            "spine_archive" => "exploration.oathkeeper_archive",
+            _ => "campaign.bone_causeway"
+        };
+        var entrance = style is "spine_memory" or "spine_archive" ? SpineCampaignLayout.BranchReturn : SpineCampaignLayout.BackExit;
+        var main = SpineCampaignLayout.Route(encounter).Prepend(entrance).Select(p => new Vector2(p.X * .001f, p.Z * .001f)).ToArray();
+        if (style is not ("spine_causeway" or "spine_hall")) return [main];
+        var branch = style == "spine_causeway" ? SpineCampaignLayout.ArchiveEntrance : SpineCampaignLayout.MemoryEntrance;
+        return [main, [new(6, 0), new(branch.X * .001f, branch.Z * .001f)]];
+    }
+
+    private static void RoutePaving(EnvironmentBuilder b, RoomDefinition room, string style)
+    {
+        var routes = Routes(style);
+        float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
+        bool memory = style == "spine_memory", archive = style == "spine_archive";
+        int row = 0;
+        for (float pz = -z + .45f; pz < z - .3f; pz += .84f, row++)
+        {
+            int column = 0;
+            for (float px = -x + .5f + row % 2 * .12f; px < x - .3f; px += .94f, column++)
+            {
+                var point = new Vector2(px, pz);
+                if (!routes.Any(route => DistanceToRoute(point, route) < 1.18f) || !ClearFloor(room, px, pz, .45f, .4f)) continue;
+                int pattern = (row * 13 + column * 7) % 5;
+                string color = memory ? pattern == 0 ? "858776" : "747c70" : pattern == 0 ? "829092" : "71838b";
+                b.Box(new(.85f, .012f, .76f), new(px, -.008f, pz), color);
+                // Small, subdued witness marks belong to the paving; glowing lines and
+                // complete numbered bands remain exclusive to announced fault attacks.
+                if (archive || pattern == 0)
+                {
+                    b.Box(new(.21f, .0015f, .025f), new(px, -.001f, pz - .17f), memory ? "9b9982" : "a0a694");
+                    b.Box(new(.025f, .0015f, .13f), new(px + .06f, -.001f, pz - .11f), memory ? "9b9982" : "a0a694");
+                }
+            }
+        }
+    }
+
+    private static bool ClearFloor(RoomDefinition room, float x, float z, float halfWidth, float halfDepth)
+        => Math.Abs(x) + halfWidth < room.HalfWidth * .001f && Math.Abs(z) + halfDepth < room.HalfDepth * .001f &&
+            !room.Obstacles.Any(obstacle => x + halfWidth > obstacle.MinX * .001f && x - halfWidth < obstacle.MaxX * .001f &&
+                z + halfDepth > obstacle.MinZ * .001f && z - halfDepth < obstacle.MaxZ * .001f);
+
+    private static float DistanceToRoute(Vector2 point, Vector2[] route)
+    {
+        float distance = float.PositiveInfinity;
+        for (int i = 1; i < route.Length; i++)
+        {
+            Vector2 segment = route[i] - route[i - 1];
+            float t = Math.Clamp((point - route[i - 1]).Dot(segment) / Math.Max(.001f, segment.LengthSquared()), 0, 1);
+            distance = Math.Min(distance, point.DistanceTo(route[i - 1] + segment * t));
+        }
+        return distance;
     }
 
     private static void Causeway(EnvironmentBuilder b, float x, float z, string inset, string engraving)

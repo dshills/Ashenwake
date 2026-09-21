@@ -17,6 +17,7 @@ internal static class OpeningCatalogMigration
     private sealed record Release(string Campaign, string Combat, string PreviousCombat, string Resource, string Discovery);
     private static readonly Release[] Releases =
     [
+        new("campaign.spine.5", "campaign-combat.spine.5", "campaign-combat.cinder.4", "PreviousSpine", "discovery.oathkeeper_archive"),
         new("campaign.cinder.4", "campaign-combat.cinder.4", "campaign-combat.verdant.3", "PreviousCinder", "discovery.sealed_foundry"),
         new("campaign.verdant.3", "campaign-combat.verdant.3", "campaign-combat.grey_march.2", "PreviousVerdant", "discovery.briar_shrine"),
         new("campaign.grey_march.2", "campaign-combat.grey_march.2", "campaign.combat.1", "PreviousOpening", "discovery.widow_crypt")
@@ -93,6 +94,22 @@ internal static class OpeningCatalogMigration
     {
         var state = LegendaryCatalogMigration.Rebind(original, combatJson, adventure, policy, campaign);
         var content = CombatContent.Parse(combatJson);
+        if (campaign.Capture().Exploration.Any(e => e.Id == "event.oathkeeper_archive") &&
+            state.Campaign.CurrentAct == 4 && !state.Campaign.InHub)
+        {
+            // Published generic cleared arenas gain a secured physical room. A Memory
+            // entered from that generic arena returns to the latest secured main room.
+            bool hallSecured = state.Campaign.CompletedEncounters.Contains("campaign.contract_hall");
+            string secured = hallSecured && !state.Campaign.CompletedEncounters.Contains("campaign.covenant_warden")
+                ? "campaign.contract_hall" : "campaign.bone_causeway";
+            if (state.ActiveEncounterId == "clear" && state.Campaign.Exploration is null && state.Campaign.CompletedEncounters.Contains(secured))
+                state = state with { ActiveEncounterId = secured };
+            if (state.Campaign.Exploration?.Id == "event.divine_memory" && state.ExplorationReturnEncounter == "clear")
+            {
+                string parent = hallSecured ? "campaign.contract_hall" : "campaign.bone_causeway";
+                if (state.Campaign.CompletedEncounters.Contains(parent)) state = state with { ExplorationReturnEncounter = parent };
+            }
+        }
         if (campaign.Capture().Exploration.Any(e => e.Id == CampaignRuntimeSession.FoundryEvent) &&
             state.Campaign.CurrentAct == 3 && !state.Campaign.InHub)
         {

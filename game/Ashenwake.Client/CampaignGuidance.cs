@@ -24,8 +24,12 @@ public partial class CampaignHud
     private bool InSealedFoundry => _interactions.Any(i => i.Id == "cinder.foundry.return");
     private bool InBurningRain => _interactions.Any(i => i.Id == "cinder.storm.return");
     private string StormReturnName => _interactions.FirstOrDefault(i => i.Id == "cinder.storm.return")?.Name ?? "Return to the Extraction Floor";
-    private InteractionDisplay? RegionalForward => _interactions.FirstOrDefault(i => i.Id.StartsWith("opening.forward.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.forward.", StringComparison.Ordinal) || i.Id.StartsWith("cinder.forward.", StringComparison.Ordinal));
-    public bool CanShowWayForward => !InOpeningCrypt && !InBriarShrine && !InAntlerGrove && !InSealedFoundry && !InBurningRain && RegionalForward is null;
+    private bool HasSpineExploration => _content.Exploration.Any(e => e.Id == "event.oathkeeper_archive");
+    private bool InOathkeeperArchive => _interactions.Any(i => i.Id == "spine.archive.return");
+    private bool InFirstOath => _interactions.Any(i => i.Id == "spine.memory.return");
+    private string MemoryReturnName => _interactions.FirstOrDefault(i => i.Id == "spine.memory.return")?.Name ?? "Return to the Contract Hall";
+    private InteractionDisplay? RegionalForward => _interactions.FirstOrDefault(i => i.Id.StartsWith("opening.forward.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.forward.", StringComparison.Ordinal) || i.Id.StartsWith("cinder.forward.", StringComparison.Ordinal) || i.Id.StartsWith("spine.forward.", StringComparison.Ordinal));
+    public bool CanShowWayForward => !InOpeningCrypt && !InBriarShrine && !InAntlerGrove && !InSealedFoundry && !InBurningRain && !InOathkeeperArchive && !InFirstOath && RegionalForward is null;
 
     private void BuildNextStep()
     {
@@ -177,6 +181,25 @@ public partial class CampaignHud
             SetNextStep(NextAction.Interaction, StormReturnName);
             return;
         }
+        if (InOathkeeperArchive)
+        {
+            var treasure = _interactions.FirstOrDefault(i => i.Id == "spine.archive.treasure");
+            _objective.Text = _engaged ? "OATHKEEPER'S ARCHIVE · Defeat the archive guardians. The western passage returns to the Bone Causeway."
+                : treasure is not null ? "The Archive Testament is uncovered. Claim Vowkeeper's Carapace, materials, and the oathkeepers' lost testimony."
+                : "The archive's testimony is yours. Collect any remaining drops, then return to the Bone Causeway.";
+            _nextInteraction = treasure?.Id ?? "spine.archive.return";
+            SetNextStep(NextAction.Interaction, treasure is not null ? "Approach the Archive Testament" : "Return to the Bone Causeway");
+            return;
+        }
+        if (InFirstOath)
+        {
+            _objective.Text = _engaged
+                ? "THE PROMISE BEFORE STONE · Defeat the memory's guardians. Its faults unfold in reverse order: watch the numbered warnings. The western passage is your way out."
+                : "The first promise is remembered. Your reward is secured. Collect remaining drops, then leave by the western passage.";
+            _nextInteraction = "spine.memory.return";
+            SetNextStep(NextAction.Interaction, MemoryReturnName);
+            return;
+        }
         if (_engaged) { _objective.Text = _view.Objective; return; }
         if (RegionalForward is { } passage)
         {
@@ -222,10 +245,10 @@ public partial class CampaignHud
     {
         _rows.AddChild(new HSeparator());
         _rows.AddChild(Label("NEXT STEP", 14));
-        if (InOpeningCrypt || InBriarShrine || InAntlerGrove || InSealedFoundry || InBurningRain || RegionalForward is not null)
+        if (InOpeningCrypt || InBriarShrine || InAntlerGrove || InSealedFoundry || InBurningRain || InOathkeeperArchive || InFirstOath || RegionalForward is not null)
         {
-            foreach (var target in _interactions.Where(i => i.Id is "opening.crypt.treasure" or "opening.crypt.return" or "verdant.shrine.treasure" or "verdant.shrine.return" or "verdant.hunt.return" or "cinder.foundry.treasure" or "cinder.foundry.return" or "cinder.storm.return" ||
-                i.Id.StartsWith("opening.forward.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.forward.", StringComparison.Ordinal) || i.Id.StartsWith("cinder.forward.", StringComparison.Ordinal) || i.Id.StartsWith("clue.", StringComparison.Ordinal)))
+            foreach (var target in _interactions.Where(i => i.Id is "opening.crypt.treasure" or "opening.crypt.return" or "verdant.shrine.treasure" or "verdant.shrine.return" or "verdant.hunt.return" or "cinder.foundry.treasure" or "cinder.foundry.return" or "cinder.storm.return" or "spine.archive.treasure" or "spine.archive.return" or "spine.memory.return" ||
+                i.Id.StartsWith("opening.forward.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.forward.", StringComparison.Ordinal) || i.Id.StartsWith("cinder.forward.", StringComparison.Ordinal) || i.Id.StartsWith("spine.forward.", StringComparison.Ordinal) || i.Id.StartsWith("clue.", StringComparison.Ordinal)))
                 Button(target.Name, () => RequestInteraction(target.Id));
             Button("Return to Greyhaven" + LootSuffix, () => RequestJourneyTravel(new(JourneyTravelKind.Hub)));
             return;

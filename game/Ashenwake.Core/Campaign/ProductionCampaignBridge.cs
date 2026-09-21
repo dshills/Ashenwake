@@ -34,6 +34,15 @@ public sealed partial class ProductionSession
     }
     internal bool HasFoundryTestamentReceipt => progression.CharacterState.OperationReceipts.TryGetValue("campaign.foundry.testament", out string? hash) &&
         hash == JsonData.Hash(new { Action = "GrantItem", definitionId = "item.cinder_edge", rarity = ItemRarity.Rare, Affixes = new SortedDictionary<string, int>() });
+    internal ProgressionResult GrantArchiveTestament()
+    {
+        SynchronizeItemSequence();
+        var result = progression.GrantItem("campaign.archive.testament", "item.oath_plate", ItemRarity.Rare);
+        if (result.Success) ProjectPermanentInventory();
+        return result;
+    }
+    internal bool HasArchiveTestamentReceipt => progression.CharacterState.OperationReceipts.TryGetValue("campaign.archive.testament", out string? hash) &&
+        hash == JsonData.Hash(new { Action = "GrantItem", definitionId = "item.oath_plate", rarity = ItemRarity.Rare, Affixes = new SortedDictionary<string, int>() });
     internal bool ContainsCampaignReceipt(string receipt) => progression.CharacterState.OperationReceipts.ContainsKey(receipt);
     internal bool HasCampaignReward(string receipt, int amount, int materials)
         => progression.CharacterState.OperationReceipts.TryGetValue(receipt, out string? hash) && hash == JsonData.Hash(new { Action = "Experience", amount, materials });

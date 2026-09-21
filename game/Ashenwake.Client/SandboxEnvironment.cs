@@ -92,7 +92,7 @@ public partial class Sandbox
         }
         if (spine)
         {
-            bool memory = style == "spine_memory", hall = style == "spine_hall";
+            bool memory = style == "spine_memory", hall = style is "spine_hall" or "spine_archive";
             environment.BackgroundColor = new Color(memory ? "30312c" : "202833");
             environment.AmbientLightColor = new Color(memory ? "bbc3ba" : "a9b8cb");
             environment.AmbientLightEnergy = memory ? .38f : .42f;

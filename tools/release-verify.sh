@@ -39,6 +39,12 @@ mkdir -p "$cinder_exploration_output"
 python3 tools/check-godot-log.py "$cinder_exploration_output/smoke.log"
 rg -q 'CinderExplorationClientSmokePassed' "$cinder_exploration_output/smoke.log"
 
+spine_exploration_output="$release_soak/spine-exploration-client"
+mkdir -p "$spine_exploration_output"
+"$GODOT" --headless --path game/Ashenwake.Client res://SpineExplorationSmoke.tscn --quit-after 30000 --log-file "$spine_exploration_output/smoke.log" -- --spine-exploration-smoke --discipline=Vanguard --output="$spine_exploration_output"
+python3 tools/check-godot-log.py "$spine_exploration_output/smoke.log"
+rg -q 'SpineExplorationClientSmokePassed' "$spine_exploration_output/smoke.log"
+
 service_ui="$release_soak/service-client"
 mkdir -p "$service_ui"
 "$GODOT" --headless --path game/Ashenwake.Client res://ServiceInteractionSmoke.tscn --quit-after 600 --log-file "$service_ui/smoke.log" -- --service-interaction-smoke --output="$service_ui"

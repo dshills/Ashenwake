@@ -113,7 +113,7 @@ public partial class CampaignHud
 
     private void JourneyHeading(string title, string status)
     { _rows.AddChild(Label(title, 18)); var label = Label(status, 12); label.Modulate = new("9bd4c7"); _rows.AddChild(label); }
-    private bool RoomLootRetained => !_state.InHub && !_engaged && _interactions.Any(i => i.Id.StartsWith("opening.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.", StringComparison.Ordinal) || i.Id.StartsWith("cinder.", StringComparison.Ordinal));
+    private bool RoomLootRetained => !_state.InHub && !_engaged && _interactions.Any(i => i.Id.StartsWith("opening.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.", StringComparison.Ordinal) || i.Id.StartsWith("cinder.", StringComparison.Ordinal) || i.Id.StartsWith("spine.", StringComparison.Ordinal));
     private string LootSuffix => _combat.Loot.Count > 0 ? $" · {_combat.Loot.Count} uncollected drops" : "";
     private void JourneyLootNotice()
     {
@@ -169,6 +169,20 @@ public partial class CampaignHud
                     _rows.AddChild(Label($"Defeat its creatures within {entry.DurationTicks / 30d:F0} seconds. The timer starts on entry; expiry returns you to the regional route without the storm reward.", 12));
                 continue;
             }
+            if (HasSpineExploration && entry.Id is ("event.oathkeeper_archive" or "event.divine_memory"))
+            {
+                bool archive = entry.Id == "event.oathkeeper_archive";
+                string entrance = archive ? "spine.archive.enter" : "spine.memory.enter";
+                bool available = _interactions.Any(i => i.Id == entrance);
+                Button((_state.CompletedExploration.Contains(entry.Id) ? "✓ Revisit " : "Explore ") + entry.Name + (archive ? " · lost testimony" : " · divine memory"),
+                    () => RequestInteraction(entrance)).Disabled = !available;
+                if (!available && !(archive ? InOathkeeperArchive : InFirstOath)) _rows.AddChild(Label(archive
+                    ? "Its marked entrance branches north from the secured Bone Causeway."
+                    : "Enter the memory through the southern passage from the secured Contract Hall.", 12));
+                if (!archive && !_state.CompletedExploration.Contains(entry.Id))
+                    _rows.AddChild(Label("Inside the memory, the regional faults unfold in reverse order. Watch the numbered warnings before they strike.", 12));
+                continue;
+            }
             var request = new JourneyTravelRequest(JourneyTravelKind.Exploration, Id: entry.Id);
             Button((_state.CompletedExploration.Contains(entry.Id) ? "✓ " : "") + entry.Name + " · " + entry.Kind + LootSuffix,
                 () => RequestJourneyTravel(request)).Disabled = JourneyTravelReason(request).Length > 0;
@@ -201,6 +215,22 @@ public partial class CampaignHud
                 : "The storm reward is secured and its timer has stopped. Remaining drops stay here when you return to the regional route.", 12));
             foreach (string rule in _view.ExplorationRules) _rows.AddChild(Label(Readable(rule), 12));
             Button(StormReturnName, () => RequestInteraction("cinder.storm.return"));
+            return;
+        }
+        if (HasSpineExploration && definition.Id == "event.oathkeeper_archive")
+        {
+            _rows.AddChild(Label("Open the Archive Testament after defeating the archive guardians. The western passage returns to the Bone Causeway; remaining drops stay in cleared rooms.", 12));
+            Button("Return to the Bone Causeway", () => RequestInteraction("spine.archive.return"));
+            return;
+        }
+        if (HasSpineExploration && definition.Id == "event.divine_memory")
+        {
+            _rows.AddChild(Label(_engaged ? "THE PROMISE BEFORE STONE · DIVINE MEMORY" : "THE PROMISE BEFORE STONE · REMEMBERED", 14));
+            _rows.AddChild(Label(_engaged
+                ? "The founding sanctuary remembers the first voluntary oath. Defeat its guardians and watch its reversed fault warnings. You can retreat through the western passage; an unfinished attempt restarts on entry."
+                : "The memory reward is secured. Remaining drops stay here when you return to the regional route.", 12));
+            foreach (string rule in _view.ExplorationRules) _rows.AddChild(Label(Readable(rule), 12));
+            Button(MemoryReturnName, () => RequestInteraction("spine.memory.return"));
             return;
         }
         _rows.AddChild(Label(definition.Name + (active.RemainingTicks > 0 ? $" · {active.RemainingTicks / 30d:F0}s remaining" : ""), 14));
@@ -254,6 +284,8 @@ public partial class CampaignHud
                     {
                         "event.widow_crypt" => "The widow hid her family beneath the monastery when the bells began calling the dead. Her testament names the first resurrection as an experiment, not a miracle. She left a burial mantle for whoever would carry that truth beyond the crypt.",
                         "event.sealed_foundry" => "The foundry workers sealed their furnace to shelter their families from an extraction surge. Their foreman left the Cinderwake Saber beside a roster of those saved. The city remembered its lost output; this testament remembers its people.",
+                        "event.oathkeeper_archive" => "The oathkeepers preserved the testimony the Contract Hall erased: Orrun's first promise bound the strong to protect the vulnerable, and every vow required consent. Their last keeper left Vowkeeper's Carapace beside the uncensored tablets, trusting a future witness to carry both beyond these walls.",
+                        "event.divine_memory" => "Before stone made the law permanent, the first covenant was spoken freely. Its witnesses promised shelter and mutual protection. The founding sanctuary remembers an oath that could be chosen, before the Contract Hall made every life a debt.",
                         "event.briar_shrine" => "Before the roots covered this refuge, an oathstone promised shelter to every plague exile. The names beneath it belong to people the village had turned away. Orrun's Oathseal survived among their offerings: a vow kept even when its keepers were forgotten.",
                         _ => Readable(exploration.Discovery)
                     }, 13));

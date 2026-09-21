@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign.spine.5",
+  "version": "campaign.cinder.4",
   "acts": [
     {
       "number": 1,
@@ -581,22 +581,6 @@
       "clues": [],
       "discovery": "discovery.sealed_foundry",
       "materials": 35
-    },
-    {
-      "id": "event.oathkeeper_archive",
-      "act": 4,
-      "kind": "Memory",
-      "name": "The Oathkeeper’s Archive",
-      "encounterId": "exploration.oathkeeper_archive",
-      "durationTicks": 0,
-      "rules": [
-        "context:oathkeeper_archive",
-        "lore:the_first_witnesses_bound_themselves_to_protect_those_without_a_voice",
-        "reward:archive_testament"
-      ],
-      "clues": [],
-      "discovery": "discovery.oathkeeper_archive",
-      "materials": 40
     }
   ],
   "factions": [

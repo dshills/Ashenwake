@@ -21,6 +21,10 @@ Left-click ground to walk, left-click an enemy to attack, Shift-click to attack 
 
 Shattered Spine endgame arenas reuse the causeway setting, floor and ambience. The animated covenant appears only in its authored campaign boss encounter. This pass covers solo procedural presentation. [Act V’s Hollow Night](hollow_night.md) now completes the regional pass. Cooperative environments retain their earlier treatment; these assets do not establish final textured art or measured performance across hardware.
 
+## Connected exploration
+
+The later [Shattered Spine exploration milestone](spine_exploration.md) adds authored collision layouts, physical passages, persistent backtracking and Oathkeeper’s Archive. The presentation-only scope above describes the original regional art pass; the Memory now remains explorable after victory until the player leaves.
+
 ## Inspection run
 
 After compiling content and building the solution, use Bash and a fresh output directory:

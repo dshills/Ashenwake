@@ -25,7 +25,7 @@ public partial class SpineSmoke : Node
     private ProgressionContent _progression = null!;
     private string _combatJson = "", _output = "", _signature = "";
     private long _revision;
-    private int _commands, _memoryTicks, _deathBranchTicks, _wardenBranchTicks;
+    private int _commands, _memoryTicks, _departureBranchTicks, _deathBranchTicks, _wardenBranchTicks;
     private readonly Dictionary<string, bool> _checks = [];
     private readonly List<string> _skippedChecks = [];
     private readonly List<EnvironmentEvidence> _environments = [];
@@ -99,9 +99,9 @@ public partial class SpineSmoke : Node
                 }
             }
             Check("real_route_completed_act_four", _session.Capture().Campaign.CompletedActs.Contains(4));
-            Check("all_four_distinct_act_four_contexts_observed", _contexts.SetEquals(new[] { "spine_causeway", "spine_hall", "spine_warden", "spine_memory" }));
-            Check("architecture_is_distinct_in_every_context", _environments.Select(e => e.ArchitectureFingerprint).Distinct().Count() == 4);
-            Check("ground_is_distinct_in_every_context", _environments.Select(e => e.GroundFingerprint).Distinct().Count() == 4);
+            Check("all_five_distinct_act_four_contexts_observed", _contexts.SetEquals(new[] { "spine_causeway", "spine_hall", "spine_warden", "spine_memory", "spine_archive" }));
+            Check("architecture_is_distinct_in_every_context", _environments.Select(e => e.ArchitectureFingerprint).Distinct().Count() == 5);
+            Check("ground_is_distinct_in_every_context", _environments.Select(e => e.GroundFingerprint).Distinct().Count() == 5);
             Check("memory_reverses_actual_fault_sequence", _memoryObserved && _memoryTicks > 45 &&
                 _faultOrders.TryGetValue("spine_causeway", out var causeway) && _faultOrders.TryGetValue("spine_memory", out var memory) && causeway.SequenceEqual(memory.Reverse()));
             Check("real_memory_completed_and_returned_to_anchor", _session.Capture().Campaign.CompletedExploration.Contains("event.divine_memory") && _memoryCleaned);
@@ -119,7 +119,7 @@ public partial class SpineSmoke : Node
             Check("hub_hides_warden_and_spine_architecture", !Descendants(_stage).OfType<CovenantWardenVisual>().Any(n => n.IsVisibleInTree()) &&
                 !Descendants(_stage).OfType<Node3D>().Any(n => n.Name == "ShatteredSpineArchitecture" && n.IsVisibleInTree()));
             Check("hub_style_takes_precedence_over_stale_region", EnvironmentGround.Style(true, "clear", "event.divine_memory", 4) == "greyhaven");
-            Check("completed_act_four_can_be_revisited", _session.EnterAct(4).Success && _session.ActiveEncounterId == "clear"); _commands++;
+            Check("completed_act_four_can_be_revisited", _session.EnterAct(4).Success && _session.ActiveEncounterId == "campaign.bone_causeway"); _commands++;
             Refresh(); await Settle();
             Check("completed_act_four_retains_regional_floor_and_atmosphere", _sandbox.EnvironmentStyle == "spine_causeway" && _sandbox.AmbienceCue == "spine_wind" &&
                 Descendants(_stage).OfType<Node3D>().Any(n => n.Name == "ShatteredSpineArchitecture" && n.IsVisibleInTree()));
@@ -299,7 +299,18 @@ public partial class SpineSmoke : Node
         var live = _session; var snapshot = live.Capture(); string hash = live.StateHash;
         var leave = CampaignRuntimeSession.Restore(_combatJson, _adventure, _progression, _campaign, snapshot);
         Check("memory_restore_preserves_active_faults_exactly", leave.StateHash == hash);
-        Check("memory_accepts_explicit_departure", leave.LeaveExploration().Success);
+        var exit = leave.Interactions.Single(interaction => interaction.ActionId == "spine.memory.return");
+        for (_departureBranchTicks = 0; _departureBranchTicks < 1000; _departureBranchTicks++)
+        {
+            var view = leave.Combat.View; var player = view.Actors.Single(actor => actor.Id == 1);
+            if (CorePosition.DistanceSquared(player.Position, exit.Position) <= (long)exit.Range * exit.Range) break;
+            var occupied = view.Actors.Where(actor => actor.Id != 1 && actor.Health > 0).Select(actor => actor.Position).ToArray();
+            var direction = CombatProductionSmoke.MovementDirection(player.Position, exit.Position, leave.Room, occupied);
+            var commands = new List<CombatCommand> { new(CombatCommandKind.Move, X: direction.X, Z: direction.Z) };
+            if (player.Health < player.MaxHealth / 2 && view.PotionCharges > 0 && view.PotionCooldownTicks == 0) commands.Add(new(CombatCommandKind.Potion));
+            Check("memory_departure_approach_uses_ordinary_movement", leave.Step(commands.ToArray()).Success && leave.Capture().Campaign.Deaths == snapshot.Campaign.Deaths);
+        }
+        Check("memory_accepts_physical_departure", leave.Execute(new(CampaignRuntimeAction.InteractSpine, Id: "spine.memory.return")).Success);
         _session = leave; Refresh(); await Settle();
         Check("memory_departure_restores_recorded_arena", leave.ActiveEncounterId == snapshot.ExplorationReturnEncounter &&
             leave.Capture().Campaign.Deaths == snapshot.Campaign.Deaths && !leave.Capture().Campaign.CompletedExploration.Contains("event.divine_memory"));
@@ -620,6 +631,7 @@ public partial class SpineSmoke : Node
             memoryTicks = _memoryTicks,
             faultLanes = _orientations.Order().ToArray(),
             faultOrders = _faultOrders,
+            departureBranchTicks = _departureBranchTicks,
             deathBranchTicks = _deathBranchTicks,
             wardenBranchTicks = _wardenBranchTicks,
             wardenBranchLanes = _wardenBranchLanes.Order().ToArray(),
@@ -627,7 +639,7 @@ public partial class SpineSmoke : Node
             audioFingerprints = _audioFingerprints,
             captures = _captures.Order().ToArray(),
             error,
-            scope = "Real CampaignRuntimeSmoke commands unlock and complete Act IV and Divine Memory. Actual rule.fault.1/2/3 warning positions and displayed numbers establish the reversed sequence. Independently restored branches leave Memory and take real incoming damage until death to verify scoped cleanup and replay. A separate restored first-Warden checkpoint uses ordinary stationary movement and potion inputs without attacking so actual boss AI announces both north and south faults before the normal route defeats it; the branch is replayed and the untouched live checkpoint restored. Mesh vertices establish safe scenery and ground placement; shipping mouse planner routes around each room's obstacles. Real viewport clicks show the mint destination ring in each context and X cancels it while AdvanceOverride keeps campaign movement stationary. Core Warden guard, boss-owned oath marks and fault lanes, finite victory animation, restore, pause, reduced effects, regional audio, resource bounds and deterministic replay are checked without fabricating gameplay state."
+            scope = "Real CampaignRuntimeSmoke commands unlock and complete all five Act IV contexts including the Oathkeeper’s Archive and Divine Memory. Actual rule.fault.1/2/3 warning positions and displayed numbers establish the reversed sequence. Independently restored branches walk to Memory’s physical exit and take real incoming damage until death to verify scoped cleanup and replay. A separate restored first-Warden checkpoint uses ordinary stationary movement and potion inputs without attacking so actual boss AI announces both north and south faults before the normal route defeats it; the branch is replayed and the untouched live checkpoint restored. Mesh vertices establish safe scenery and ground placement; shipping mouse planner routes around each room's obstacles. Real viewport clicks show the mint destination ring in each context and X cancels it while AdvanceOverride keeps campaign movement stationary. Core Warden guard, boss-owned oath marks and fault lanes, finite victory animation, restore, pause, reduced effects, regional audio, resource bounds and deterministic replay are checked without fabricating gameplay state."
         };
         if (_output.Length > 0) System.IO.File.WriteAllText(Path.Combine(_output, "spine-review.json"), JsonData.Write(report));
         GD.Print(JsonData.Write(report)); GetTree().Quit(passed ? 0 : 1);

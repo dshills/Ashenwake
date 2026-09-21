@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign-combat.spine.5",
+  "version": "campaign-combat.cinder.4",
   "enemies": [
     {
       "id": "enemy.funeral_guard",
@@ -962,45 +962,7 @@
           "modifiers": [],
           "hidden": false
         }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -7800,
-            "minZ": -8500,
-            "maxX": -5900,
-            "maxZ": -3100
-          },
-          {
-            "minX": -1500,
-            "minZ": -7800,
-            "maxX": 1200,
-            "maxZ": -2300
-          },
-          {
-            "minX": -3400,
-            "minZ": 2700,
-            "maxX": -1000,
-            "maxZ": 8400
-          },
-          {
-            "minX": 8000,
-            "minZ": 2600,
-            "maxX": 10600,
-            "maxZ": 7800
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "campaign.contract_hall",
@@ -1035,45 +997,7 @@
           "modifiers": [],
           "hidden": false
         }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -7500,
-            "minZ": -8200,
-            "maxX": -5000,
-            "maxZ": -3300
-          },
-          {
-            "minX": -700,
-            "minZ": -7800,
-            "maxX": 1100,
-            "maxZ": -2400
-          },
-          {
-            "minX": -1800,
-            "minZ": 3000,
-            "maxX": 500,
-            "maxZ": 8000
-          },
-          {
-            "minX": 8000,
-            "minZ": -7500,
-            "maxX": 10400,
-            "maxZ": -3500
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "campaign.covenant_warden",
@@ -1092,45 +1016,7 @@
           ],
           "hidden": false
         }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -7600,
-            "minZ": -8000,
-            "maxX": -5400,
-            "maxZ": -3500
-          },
-          {
-            "minX": -7600,
-            "minZ": 3500,
-            "maxX": -5400,
-            "maxZ": 8000
-          },
-          {
-            "minX": 7400,
-            "minZ": -8000,
-            "maxX": 9800,
-            "maxZ": -3900
-          },
-          {
-            "minX": 7400,
-            "minZ": 3900,
-            "maxX": 9800,
-            "maxZ": 8000
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "campaign.repeating_rooms",
@@ -1327,45 +1213,7 @@
           },
           "modifiers": []
         }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -7600,
-            "minZ": -8000,
-            "maxX": -5400,
-            "maxZ": -3300
-          },
-          {
-            "minX": -7600,
-            "minZ": 3300,
-            "maxX": -5400,
-            "maxZ": 8000
-          },
-          {
-            "minX": 7200,
-            "minZ": -7600,
-            "maxX": 9900,
-            "maxZ": -3600
-          },
-          {
-            "minX": 7600,
-            "minZ": 3500,
-            "maxX": 10200,
-            "maxZ": 8000
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "exploration.antler_hunt",
@@ -1643,80 +1491,6 @@
             "minZ": 5700,
             "maxX": 10500,
             "maxZ": 8000
-          }
-        ]
-      }
-    },
-    {
-      "id": "exploration.oathkeeper_archive",
-      "name": "The Oathkeeper’s Archive",
-      "rule": "Memory",
-      "durationTicks": 0,
-      "spawns": [
-        {
-          "enemyId": "enemy.bone_sentinel",
-          "position": {
-            "x": -1200,
-            "z": 0
-          },
-          "modifiers": [
-            "Gravewake"
-          ]
-        },
-        {
-          "enemyId": "enemy.contract_keeper",
-          "position": {
-            "x": 4800,
-            "z": -3800
-          },
-          "modifiers": [
-            "Null"
-          ]
-        },
-        {
-          "enemyId": "enemy.oath_giant",
-          "position": {
-            "x": 6200,
-            "z": 1800
-          },
-          "modifiers": []
-        }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": 1200,
-            "minZ": -10000,
-            "maxX": 2900,
-            "maxZ": -1800
-          },
-          {
-            "minX": -1900,
-            "minZ": 2900,
-            "maxX": 400,
-            "maxZ": 7700
-          },
-          {
-            "minX": -9000,
-            "minZ": -7400,
-            "maxX": -6300,
-            "maxZ": -3500
-          },
-          {
-            "minX": 8200,
-            "minZ": 6000,
-            "maxX": 10700,
-            "maxZ": 8400
           }
         ]
       }

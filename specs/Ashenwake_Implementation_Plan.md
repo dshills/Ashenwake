@@ -14,7 +14,7 @@ The [main menu and character browser](../docs/front_menu.md) add visual discipli
 
 The [Settings & Controls screen](../docs/settings_controls.md) adds organized preferences, readable rebinding with conflict detection, independent audio channels, explicit accessibility guidance and tab-specific defaults. The [graphics polish pass](../docs/graphics_polish.md) adds textured materials, beveled character geometry, improved lighting and High/Performance presets.
 
-The [opening environment composition pass](../docs/environment_art.md) adds connected service courts, a bending road, a ruined courtyard, layered peripheral terrain and bounded ambient motion. That presentation pass preserved Core collision. Subsequent exploration milestones add authored connected rooms, persistent backtracking and save migration for the Grey March, [Verdant Maw](../docs/verdant_exploration.md) and [Cinder Reach](../docs/cinder_exploration.md).
+The [opening environment composition pass](../docs/environment_art.md) adds connected service courts, a bending road, a ruined courtyard, layered peripheral terrain and bounded ambient motion. That presentation pass preserved Core collision. Subsequent exploration milestones add authored connected rooms, persistent backtracking and save migration for the Grey March, [Verdant Maw](../docs/verdant_exploration.md), [Cinder Reach](../docs/cinder_exploration.md) and [Shattered Spine](../docs/spine_exploration.md).
 
 Build a small, satisfying, replayable single-player game loop first. Prove that Divine Anatomy creates surprising build interactions, then establish a repeatable content pipeline, produce the campaign and endgame, and release a reliable single-player game. Cooperative play follows as a separately gated expansion.
 

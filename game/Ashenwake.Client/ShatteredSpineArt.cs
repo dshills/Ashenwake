@@ -28,6 +28,7 @@ public static class ShatteredSpineArt
             case "campaign.contract_hall": ContractHall(b, halfWidth, halfDepth); break;
             case "campaign.covenant_warden": SealCourt(b, halfWidth, halfDepth); break;
             case "exploration.first_oath": FirstOath(b, halfWidth, halfDepth); break;
+            case "exploration.oathkeeper_archive": SpineExplorationArt.BuildArchive(b, halfWidth, halfDepth); break;
             default: Causeway(b, halfWidth, halfDepth); break;
         }
         Perimeter(b, halfWidth, halfDepth, memory);

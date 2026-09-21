@@ -7,7 +7,7 @@ public static class SpineObstacleArt
 {
     public static void Build(EnvironmentBuilder b, float width, float depth, Vector3 center, string style)
     {
-        bool memory = style == "spine_memory", hall = style == "spine_hall", warden = style == "spine_warden";
+        bool memory = style == "spine_memory", hall = style is "spine_hall" or "spine_archive", warden = style == "spine_warden";
         string baseColor = memory ? "9a9c87" : "697581";
         string bone = memory ? "c8bd9b" : "9eabaf";
         string edge = memory ? "e5d7b5" : "c2c8bc";
