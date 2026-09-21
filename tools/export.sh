@@ -79,6 +79,12 @@ mkdir -p "$verdant_output"
 python3 tools/check-godot-log.py "$verdant_output/smoke.log"
 rg -q 'VerdantClientSmokePassed' "$verdant_output/smoke.log"
 
+verdant_exploration_output="$package_output/verdant-exploration-client"
+mkdir -p "$verdant_exploration_output"
+"$binary" --headless --quit-after 18000 --log-file "$verdant_exploration_output/smoke.log" -- --verdant-exploration-smoke --discipline=Vanguard --output="$verdant_exploration_output"
+python3 tools/check-godot-log.py "$verdant_exploration_output/smoke.log"
+rg -q 'VerdantExplorationClientSmokePassed' "$verdant_exploration_output/smoke.log"
+
 cinder_output="$package_output/cinder-client"
 mkdir -p "$cinder_output"
 "$binary" --headless --quit-after 3600 --log-file "$cinder_output/smoke.log" -- --cinder-smoke --output="$cinder_output"

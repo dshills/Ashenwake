@@ -21,7 +21,7 @@ public static class VerdantAmbience
 
     public static string CueForStyle(string style) => style switch
     {
-        "verdant_ruins" or "verdant_hunt" => "forest",
+        "verdant_ruins" or "verdant_hunt" or "verdant_shrine" => "forest",
         "verdant_village" => "village",
         "verdant_heart" => "heart",
         _ => ""

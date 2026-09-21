@@ -22,17 +22,17 @@ public sealed class OpeningCampaignRoomTests
     public void OptionalRoomFieldsPreserveLegacySerializationAndLaterRegions()
     {
         var content = Content(); var registry = CombatContent.Parse(content.CombatJson);
-        Assert.Equal("campaign-combat.grey_march.2", registry.Campaign!.Version);
+        Assert.Equal("campaign-combat.verdant.3", registry.Campaign!.Version);
         Assert.DoesNotContain("\"room\"", JsonData.Write(new CampaignCombatEncounter("campaign.example", "Example", "Memory", 0, [])));
         Assert.DoesNotContain("roomEncounterId", JsonData.Write(new CombatSnapshot()));
-        var later = registry.Campaign.Encounters.Where(e => !OpeningCampaignLayout.Contains(e.Id));
+        var later = registry.Campaign.Encounters.Where(e => !OpeningCampaignLayout.Contains(e.Id) && !VerdantCampaignLayout.Contains(e.Id));
         Assert.All(later, encounter =>
         {
             Assert.Null(encounter.Room);
             Assert.Equal(JsonData.Hash(registry.Room), JsonData.Hash(content.CreateEncounter(encounter.Id).Room));
         });
         Assert.Equal(JsonData.Hash(registry.Room), JsonData.Hash(content.CreateEncounter("hub").Room));
-        Assert.Equal(4, registry.Campaign.Encounters.Where(e => e.Room is not null).Select(e => JsonData.Hash(e.Room!)).Distinct().Count());
+        Assert.Equal(9, registry.Campaign.Encounters.Where(e => e.Room is not null).Select(e => JsonData.Hash(e.Room!)).Distinct().Count());
     }
 
     [Theory, MemberData(nameof(OpeningRooms))]
@@ -76,7 +76,7 @@ public sealed class OpeningCampaignRoomTests
             Assert.Empty(session.View.CampaignHazards!); Assert.Empty(session.View.Loot);
         }
         Assert.Equal(session.StateHash, restored.StateHash);
-        var later = content.CreateEncounter("campaign.living_ruins", previous: session.Capture());
+        var later = content.CreateEncounter("campaign.cinder_pack", previous: session.Capture());
         Assert.Null(later.Capture().RoomEncounterId);
         Assert.Equal(JsonData.Hash(CombatContent.Parse(content.CombatJson).Room), JsonData.Hash(later.Room));
         var returned = content.CreateEncounter("hub", previous: session.Capture());
@@ -87,7 +87,7 @@ public sealed class OpeningCampaignRoomTests
     public void RetainedRoomIdentityRejectsUnknownActiveAndNonAuthoredLayouts()
     {
         var content = Content(); var valid = content.CreateClearedEncounter("campaign.road").Capture();
-        foreach (var id in new[] { "", "campaign.missing", "campaign.living_ruins", "hub" })
+        foreach (var id in new[] { "", "campaign.missing", "campaign.cinder_pack", "hub" })
         {
             Assert.Throws<ArgumentException>(() => content.CreateClearedEncounter(id));
             Assert.Throws<InvalidDataException>(() => CombatSession.Restore(content.CombatJson, valid with { RoomEncounterId = id }));

@@ -10,15 +10,16 @@ using Ashenwake.Core.Simulation;
 
 namespace Ashenwake.Core.Serialization;
 
-/// <summary>Reconstructs the exact published campaign catalogs preceding authored opening
+/// <summary>Reconstructs exact published campaign catalogs preceding authored regional
 /// rooms. Callers authenticate and restore the original archive before applying any changes.</summary>
 internal static class OpeningCatalogMigration
 {
-    private const string CurrentCampaign = "campaign.grey_march.2", CurrentCombat = "campaign-combat.grey_march.2";
-    private const string CryptDiscovery = "discovery.widow_crypt";
-    private static string Frozen(string name)
+    private const string CurrentCampaign = "campaign.verdant.3", CurrentCombat = "campaign-combat.verdant.3";
+    private const string OpeningCampaign = "campaign.grey_march.2", OpeningCombat = "campaign-combat.grey_march.2";
+    private const string CryptDiscovery = "discovery.widow_crypt", BriarDiscovery = "discovery.briar_shrine";
+    private static string Frozen(string name, bool verdant = false)
     {
-        using var stream = typeof(OpeningCatalogMigration).Assembly.GetManifestResourceStream("Ashenwake.PreviousOpening." + name + ".json")
+        using var stream = typeof(OpeningCatalogMigration).Assembly.GetManifestResourceStream("Ashenwake." + (verdant ? "PreviousVerdant." : "PreviousOpening.") + name + ".json")
             ?? throw new InvalidOperationException("Missing authenticated opening migration catalog.");
         using var reader = new StreamReader(stream); return reader.ReadToEnd();
     }
@@ -27,8 +28,16 @@ internal static class OpeningCatalogMigration
     // bundle as their intermediate target. That bundle must retain its matching story
     // until the importer moves both catalogs to the current build together.
     internal static CampaignContent CampaignForCombat(string combatJson, CampaignContent campaign)
-        => campaign.Capture().Version == CurrentCampaign && CombatContent.Parse(combatJson).Campaign?.Version == "campaign.combat.1"
-            ? CampaignContent.Parse(Frozen("Campaign")) : campaign;
+    {
+        string version = campaign.Capture().Version;
+        if (version is not (CurrentCampaign or OpeningCampaign)) return campaign;
+        return CombatContent.Parse(combatJson).Campaign?.Version switch
+        {
+            "campaign.combat.1" => CampaignContent.Parse(Frozen("Campaign")),
+            OpeningCombat when version == CurrentCampaign => CampaignContent.Parse(Frozen("Campaign", verdant: true)),
+            _ => campaign
+        };
+    }
 
     internal static bool TryPrevious(string combatJson, ProgressionContent policy, CampaignContent campaign,
         out string previousCombat, out ProgressionContent previousPolicy, out CampaignContent previousCampaign)
@@ -36,13 +45,18 @@ internal static class OpeningCatalogMigration
         previousCombat = combatJson; previousPolicy = policy; previousCampaign = campaign;
         var node = JsonNode.Parse(combatJson)!;
         string? version = node["campaign"]?["version"]?.GetValue<string>();
-        bool changedCombat = version == CurrentCombat, changedCampaign = campaign.Capture().Version == CurrentCampaign;
+        string storyVersion = campaign.Capture().Version;
+        bool verdant = version == CurrentCombat || storyVersion == CurrentCampaign;
+        string currentCombat = verdant ? CurrentCombat : OpeningCombat;
+        string currentCampaign = verdant ? CurrentCampaign : OpeningCampaign;
+        string previousVersion = verdant ? OpeningCombat : "campaign.combat.1";
+        bool changedCombat = version == currentCombat, changedCampaign = storyVersion == currentCampaign;
         if (!changedCombat && !changedCampaign) return false;
         // An unrelated campaign overlay is never substituted with a fabricated predecessor.
-        if (version is not (CurrentCombat or "campaign.combat.1")) return false;
+        if (version is not (CurrentCombat or OpeningCombat or "campaign.combat.1")) return false;
         if (changedCombat)
         {
-            var oldOverlay = JsonNode.Parse(Frozen("Combat"))!;
+            var oldOverlay = JsonNode.Parse(Frozen("Combat", verdant))!;
             var currentEnemies = node["campaign"]!["enemies"]!.AsArray();
             var campaignIds = currentEnemies.Select(e => e!["id"]!.GetValue<string>()).ToHashSet(StringComparer.Ordinal);
             var enemies = node["enemies"]!.AsArray();
@@ -52,20 +66,25 @@ internal static class OpeningCatalogMigration
             foreach (var enemy in oldOverlay["enemies"]!.AsArray()) enemies.Insert(offset++, enemy!.DeepClone());
             node["campaign"] = oldOverlay;
             string[] versions = node["contentVersion"]!.GetValue<string>().Split('+');
-            if (versions.Count(v => v == CurrentCombat) != 1) return false;
-            node["contentVersion"] = string.Join('+', versions.Select(v => v == CurrentCombat ? "campaign.combat.1" : v));
+            if (versions.Count(v => v == currentCombat) != 1) return false;
+            node["contentVersion"] = string.Join('+', versions.Select(v => v == currentCombat ? previousVersion : v));
             previousCombat = node.ToJsonString();
         }
-        if (changedCampaign) previousCampaign = CampaignContent.Parse(Frozen("Campaign"));
-        previousPolicy = PreviousPolicy(policy);
+        if (changedCampaign) previousCampaign = CampaignContent.Parse(Frozen("Campaign", verdant));
+        previousPolicy = WithoutDiscovery(policy, verdant ? BriarDiscovery : CryptDiscovery);
         return true;
     }
 
     internal static ProgressionContent PreviousPolicy(ProgressionContent policy)
     {
+        return WithoutDiscovery(policy, policy.Capture().DiscoveryIds.Contains(BriarDiscovery, StringComparer.Ordinal) ? BriarDiscovery : CryptDiscovery);
+    }
+
+    private static ProgressionContent WithoutDiscovery(ProgressionContent policy, string discovery)
+    {
         var source = policy.Capture();
-        return source.DiscoveryIds.Contains(CryptDiscovery, StringComparer.Ordinal)
-            ? ProgressionContent.Create(source with { DiscoveryIds = source.DiscoveryIds.Where(id => id != CryptDiscovery).ToArray() }) : policy;
+        return source.DiscoveryIds.Contains(discovery, StringComparer.Ordinal)
+            ? ProgressionContent.Create(source with { DiscoveryIds = source.DiscoveryIds.Where(id => id != discovery).ToArray() }) : policy;
     }
 
     internal static CampaignRuntimeSnapshot Rebind(CampaignRuntimeSnapshot original, string combatJson,
@@ -77,7 +96,8 @@ internal static class OpeningCatalogMigration
         {
             Campaign = state.Campaign with { ContentHash = campaign.Hash },
             ExplorationMap = LocalMapAtlas.Rebind(state.ExplorationMap, id => CampaignRuntimeSession.ResolveMapRoom(content, id)),
-            Combat = Relocate(state.Combat, content, state.ActiveEncounterId),
+            Combat = Relocate(state.Combat, content, state.ActiveEncounterId == "clear" && state.Campaign.Exploration is { } exploration
+                ? campaign.Capture().Exploration.Single(e => e.Id == exploration.Id).EncounterId : state.ActiveEncounterId),
             ClearedRooms = state.ClearedRooms is null ? null : new SortedDictionary<string, CombatSnapshot>(
                 state.ClearedRooms.ToDictionary(pair => pair.Key, pair => Relocate(pair.Value, content, pair.Key)), StringComparer.Ordinal)
         };
@@ -115,7 +135,7 @@ internal static class OpeningCatalogMigration
                         Position.DistanceSquared(candidate, other.Position) >= 4L * CombatSession.ActorRadius * CombatSession.ActorRadius))
                     orderby Position.DistanceSquared(point, candidate), x, z
                     select (Position?)candidate).FirstOrDefault()
-                ?? throw new InvalidDataException("No safe position in the migrated opening room.");
+                ?? throw new InvalidDataException("No safe position in the migrated campaign room.");
         }
         foreach (var actor in state.Actors.OrderBy(a => a.Id))
         {

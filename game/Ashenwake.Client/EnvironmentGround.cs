@@ -5,7 +5,7 @@ namespace Ashenwake.Client;
 
 public static class EnvironmentGround
 {
-    public static string Style(bool inHub, string encounterId, string? explorationId = null, int act = 0) => inHub ? "greyhaven" : explorationId == "event.widow_crypt" ? "crypt" : explorationId == "event.wake_hunt" ? "verdant_hunt" : explorationId == "event.resonance_storm" ? "cinder_storm" : explorationId == "event.divine_memory" ? "spine_memory" : encounterId switch
+    public static string Style(bool inHub, string encounterId, string? explorationId = null, int act = 0) => inHub ? "greyhaven" : explorationId == "event.widow_crypt" ? "crypt" : explorationId == "event.briar_shrine" ? "verdant_shrine" : explorationId == "event.wake_hunt" ? "verdant_hunt" : explorationId == "event.resonance_storm" ? "cinder_storm" : explorationId == "event.divine_memory" ? "spine_memory" : encounterId switch
     {
         "campaign.road" or "room.ossuary" => "road",
         "campaign.monastery" or "room.cloister" => "monastery",
@@ -15,6 +15,7 @@ public static class EnvironmentGround
         "campaign.plague_village" => "verdant_village",
         "campaign.rootheart" => "verdant_heart",
         "exploration.antler_hunt" => "verdant_hunt",
+        "exploration.briar_shrine" => "verdant_shrine",
         "clear" when act == 2 => "verdant_ruins",
         "campaign.cinder_pack" => "cinder_fields",
         "campaign.extraction_floor" => "cinder_extraction",
@@ -38,7 +39,7 @@ public static class EnvironmentGround
     {
         if (OpeningGround.Supports(style))
         { OpeningGround.Build(parent, room, style); return; }
-        if (style is "verdant_ruins" or "verdant_village" or "verdant_heart" or "verdant_hunt")
+        if (style is "verdant_ruins" or "verdant_village" or "verdant_heart" or "verdant_hunt" or "verdant_shrine")
         { VerdantGround.Build(parent, room, style); return; }
         if (CinderAmbience.CueForStyle(style).Length != 0)
         { CinderGround.Build(parent, room, style); return; }

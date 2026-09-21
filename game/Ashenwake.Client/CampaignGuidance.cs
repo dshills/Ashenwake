@@ -17,8 +17,11 @@ public partial class CampaignHud
         _combat.Actors.Any(actor => actor.Id == 1 && actor.Health > 0);
     public void RequestNextStep() { if (CanRequestNextStep) ActivateNextStep(); }
     private bool InOpeningCrypt => _interactions.Any(i => i.Id == "opening.crypt.return");
-    private InteractionDisplay? OpeningForward => _interactions.FirstOrDefault(i => i.Id.StartsWith("opening.forward.", StringComparison.Ordinal));
-    public bool CanShowWayForward => !InOpeningCrypt && OpeningForward is null;
+    private bool HasVerdantExploration => _content.Exploration.Any(e => e.Id == "event.briar_shrine");
+    private bool InBriarShrine => _interactions.Any(i => i.Id == "verdant.shrine.return");
+    private bool InAntlerGrove => _interactions.Any(i => i.Id == "verdant.hunt.return");
+    private InteractionDisplay? RegionalForward => _interactions.FirstOrDefault(i => i.Id.StartsWith("opening.forward.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.forward.", StringComparison.Ordinal));
+    public bool CanShowWayForward => !InOpeningCrypt && !InBriarShrine && !InAntlerGrove && RegionalForward is null;
 
     private void BuildNextStep()
     {
@@ -132,8 +135,26 @@ public partial class CampaignHud
             SetNextStep(NextAction.Interaction, treasure is not null ? "Approach the Widow's Testament" : "Return to the Grey March road");
             return;
         }
+        if (InBriarShrine)
+        {
+            var treasure = _interactions.FirstOrDefault(i => i.Id == "verdant.shrine.treasure");
+            _objective.Text = _engaged ? "BRIARHEART SHRINE · Defeat the overgrown guardians. The western passage returns to the Living Ruins."
+                : treasure is not null ? "The oathstone is uncovered. Claim Orrun's Oathseal, materials, and the refugees' hidden testimony."
+                : "The oathstone's testimony is yours. Collect any remaining drops, then return to the Living Ruins.";
+            _nextInteraction = treasure?.Id ?? "verdant.shrine.return";
+            SetNextStep(NextAction.Interaction, treasure is not null ? "Approach the oathstone" : "Return to the Living Ruins");
+            return;
+        }
+        if (InAntlerGrove)
+        {
+            _objective.Text = _engaged ? "THE ANTLER THAT WALKS · Follow its movements and defeat the creature. The western passage returns to Plague Village."
+                : "The Antler's trail is settled. Collect any remaining drops, then return to Plague Village.";
+            _nextInteraction = "verdant.hunt.return";
+            SetNextStep(NextAction.Interaction, "Return to Plague Village");
+            return;
+        }
         if (_engaged) { _objective.Text = _view.Objective; return; }
-        if (OpeningForward is { } passage)
+        if (RegionalForward is { } passage)
         {
             _objective.Text = "This area is secure. Cleared passages remain open and uncollected treasure stays in its room.";
             _nextInteraction = passage.Id; SetNextStep(NextAction.Interaction, passage.Name); return;
@@ -177,16 +198,17 @@ public partial class CampaignHud
     {
         _rows.AddChild(new HSeparator());
         _rows.AddChild(Label("NEXT STEP", 14));
-        if (InOpeningCrypt || OpeningForward is not null)
+        if (InOpeningCrypt || InBriarShrine || InAntlerGrove || RegionalForward is not null)
         {
-            foreach (var target in _interactions.Where(i => i.Id is "opening.crypt.treasure" or "opening.crypt.return" || i.Id.StartsWith("opening.forward.", StringComparison.Ordinal)))
+            foreach (var target in _interactions.Where(i => i.Id is "opening.crypt.treasure" or "opening.crypt.return" or "verdant.shrine.treasure" or "verdant.shrine.return" or "verdant.hunt.return" ||
+                i.Id.StartsWith("opening.forward.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.forward.", StringComparison.Ordinal) || i.Id.StartsWith("clue.", StringComparison.Ordinal)))
                 Button(target.Name, () => RequestInteraction(target.Id));
             Button("Return to Greyhaven" + LootSuffix, () => RequestJourneyTravel(new(JourneyTravelKind.Hub)));
             return;
         }
         string droppedLoot = _combat.Loot.Count > 0 ? $" · {_combat.Loot.Count} uncollected drops" : "";
         if (_combat.Loot.Count > 0)
-            _rows.AddChild(Label("Click a dropped item to walk over and collect it. E picks up nearby loot; hold Alt to reveal filtered drops. " + (OpeningLootRetained ? "This cleared room keeps remaining drops when you travel." : "Travel leaves uncollected drops behind."), 12));
+            _rows.AddChild(Label("Click a dropped item to walk over and collect it. E picks up nearby loot; hold Alt to reveal filtered drops. " + (RoomLootRetained ? "This cleared room keeps remaining drops when you travel." : "Travel leaves uncollected drops behind."), 12));
         if (_state.Exploration is null)
         {
             if (ChoicePending) Button("Resolve the region's choice", () => OpenTab("Story")).Disabled = _engaged;

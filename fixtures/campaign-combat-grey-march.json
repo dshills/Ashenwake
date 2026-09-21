@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign-combat.verdant.3",
+  "version": "campaign-combat.grey_march.2",
   "enemies": [
     {
       "id": "enemy.funeral_guard",
@@ -536,39 +536,7 @@
           "modifiers": [],
           "hidden": false
         }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -800,
-            "minZ": -10000,
-            "maxX": 800,
-            "maxZ": -1200
-          },
-          {
-            "minX": 3500,
-            "minZ": 3000,
-            "maxX": 5000,
-            "maxZ": 10000
-          },
-          {
-            "minX": -9000,
-            "minZ": 3000,
-            "maxX": -6500,
-            "maxZ": 5200
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "campaign.plague_village",
@@ -603,39 +571,7 @@
           "modifiers": [],
           "hidden": false
         }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -1200,
-            "minZ": 2000,
-            "maxX": 800,
-            "maxZ": 10000
-          },
-          {
-            "minX": 3500,
-            "minZ": -10000,
-            "maxX": 4800,
-            "maxZ": -3000
-          },
-          {
-            "minX": -9200,
-            "minZ": -8000,
-            "maxX": -7200,
-            "maxZ": -4800
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "campaign.rootheart",
@@ -662,45 +598,7 @@
           },
           "modifiers": []
         }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -3000,
-            "minZ": -8500,
-            "maxX": -1000,
-            "maxZ": -5800
-          },
-          {
-            "minX": 1800,
-            "minZ": -8000,
-            "maxX": 3600,
-            "maxZ": -5500
-          },
-          {
-            "minX": -1800,
-            "minZ": 5800,
-            "maxX": 800,
-            "maxZ": 8500
-          },
-          {
-            "minX": 6500,
-            "minZ": 4200,
-            "maxX": 8500,
-            "maxZ": 7000
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "campaign.cinder_pack",
@@ -1078,8 +976,8 @@
         {
           "enemyId": "boss.antler",
           "position": {
-            "x": 8000,
-            "z": 2500
+            "x": 3000,
+            "z": 0
           },
           "modifiers": [
             "Hunter"
@@ -1089,43 +987,11 @@
           "enemyId": "enemy.carnivorous_vine",
           "position": {
             "x": 5500,
-            "z": -6500
+            "z": -2500
           },
           "modifiers": []
         }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -1300,
-            "minZ": -10000,
-            "maxX": 1400,
-            "maxZ": -1200
-          },
-          {
-            "minX": -8500,
-            "minZ": 2800,
-            "maxX": -5800,
-            "maxZ": 6000
-          },
-          {
-            "minX": 5500,
-            "minZ": 4200,
-            "maxX": 7600,
-            "maxZ": 7000
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "exploration.widow_crypt",
@@ -1198,81 +1064,6 @@
             "minZ": -8000,
             "maxX": 7200,
             "maxZ": -6200
-          }
-        ]
-      }
-    },
-    {
-      "id": "exploration.briar_shrine",
-      "name": "Briarheart Shrine",
-      "rule": "Memory",
-      "durationTicks": 0,
-      "spawns": [
-        {
-          "enemyId": "enemy.carnivorous_vine",
-          "position": {
-            "x": 2200,
-            "z": -2600
-          },
-          "modifiers": [
-            "Devourer"
-          ],
-          "hidden": false
-        },
-        {
-          "enemyId": "enemy.bloom_carrier",
-          "position": {
-            "x": 3800,
-            "z": 2800
-          },
-          "modifiers": [],
-          "hidden": false
-        },
-        {
-          "enemyId": "enemy.needle_swarm",
-          "position": {
-            "x": 6500,
-            "z": 0
-          },
-          "modifiers": [],
-          "hidden": false
-        }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -1600,
-            "minZ": -5800,
-            "maxX": 800,
-            "maxZ": -2600
-          },
-          {
-            "minX": -1600,
-            "minZ": 2200,
-            "maxX": 800,
-            "maxZ": 5600
-          },
-          {
-            "minX": 4200,
-            "minZ": -8200,
-            "maxX": 6200,
-            "maxZ": -5800
-          },
-          {
-            "minX": -8000,
-            "minZ": 5800,
-            "maxX": -5800,
-            "maxZ": 8200
           }
         ]
       }

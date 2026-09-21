@@ -207,7 +207,16 @@ public partial class EndgameHud : Control
     public override void _ExitTree()
     {
         CancelConfirmation();
-        if (_sandbox is not null && GodotObject.IsInstanceValid(_sandbox)) _sandbox.SetModalPaused("expedition-panel", false);
+        if (!_pauseHeld) return;
+        _pauseHeld = false;
+        var sandbox = _sandbox;
+        // Releasing the last modal may raise the interruption-pause overlay. Wait until
+        // child removal finishes before reordering that overlay on a surviving Sandbox.
+        Callable.From(() =>
+        {
+            if (sandbox is not null && GodotObject.IsInstanceValid(sandbox) && sandbox.IsInsideTree() && !sandbox.IsQueuedForDeletion())
+                sandbox.SetModalPaused("expedition-panel", false);
+        }).CallDeferred();
     }
     private static void Clear(Node node) { foreach (var child in node.GetChildren()) { node.RemoveChild(child); child.QueueFree(); } }
     private static VBoxContainer Stack() { var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; box.AddThemeConstantOverride("separation", 9); return box; }

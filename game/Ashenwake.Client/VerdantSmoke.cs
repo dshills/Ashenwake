@@ -83,9 +83,9 @@ public partial class VerdantSmoke : Node
                 }
             }
             Check("real_route_completed_act_two", _session.Capture().Campaign.CompletedActs.Contains(2));
-            Check("all_four_distinct_act_two_contexts_observed", _contexts.SetEquals(new[] { "verdant_ruins", "verdant_village", "verdant_hunt", "verdant_heart" }));
-            Check("architecture_is_distinct_in_every_context", _environments.Select(e => e.ArchitectureFingerprint).Distinct().Count() == 4);
-            Check("ground_is_distinct_in_every_context", _environments.Select(e => e.GroundFingerprint).Distinct().Count() == 4);
+            Check("all_five_distinct_act_two_contexts_observed", _contexts.SetEquals(new[] { "verdant_ruins", "verdant_village", "verdant_hunt", "verdant_heart", "verdant_shrine" }));
+            Check("architecture_is_distinct_in_every_context", _environments.Select(e => e.ArchitectureFingerprint).Distinct().Count() == 5);
+            Check("ground_is_distinct_in_every_context", _environments.Select(e => e.GroundFingerprint).Distinct().Count() == 5);
             Check("all_three_authoritative_tracking_clues_seen", _seenClues.SetEquals(new[] { "clue.shed_bark", "clue.reversed_tracks", "clue.heartwood_nest" }));
             Check("leaving_hunt_cleans_up_all_clues", _huntObserved && _huntCleaned);
             Check("real_root_damage_reaches_heart", _rootCounts.Contains(3) && _rootCounts.Any(count => count < 3));
@@ -100,7 +100,7 @@ public partial class VerdantSmoke : Node
             Check("hub_hides_act_two_architecture", !Descendants(_stage).OfType<Node3D>().Any(n => n.Name == "VerdantMawArchitecture" && n.IsVisibleInTree()));
             Check("hub_style_takes_precedence_over_stale_region", EnvironmentGround.Style(true, "clear", "event.wake_hunt", 2) == "greyhaven");
             var revisit = _session.EnterAct(2); _commands++;
-            Check("completed_act_two_can_be_revisited", revisit.Success && _session.ActiveEncounterId == "clear");
+            Check("completed_act_two_can_be_revisited", revisit.Success && _session.ActiveEncounterId == "campaign.living_ruins" && _session.EncounterCleared);
             Refresh(); await Settle();
             Check("completed_act_two_retains_regional_floor_and_atmosphere", _sandbox.EnvironmentStyle == "verdant_ruins" && _sandbox.AmbienceCue == "forest" &&
                 Descendants(_stage).OfType<Node3D>().Any(n => n.Name == "VerdantMawArchitecture" && n.IsVisibleInTree()));
@@ -208,18 +208,23 @@ public partial class VerdantSmoke : Node
         var trails = Descendants(_stage).OfType<VerdantTrailVisual>().Where(t => t.IsVisibleInTree()).ToArray();
         if (state.Exploration?.Id != "event.wake_hunt")
         {
-            if (_huntObserved) { Check("clues_absent_after_hunt", trails.Length == 0); _huntCleaned = true; }
+            if (_huntObserved && _session.ActiveEncounterId == "exploration.antler_hunt")
+                Check("completed_grove_keeps_only_quiet_spent_clues", trails.All(trail => trail.Tracked && !trail.Focused) &&
+                    !_session.Interactions.Any(interaction => interaction.ActionId.StartsWith("clue.", StringComparison.Ordinal)));
+            else if (_huntObserved) { Check("clues_absent_after_leaving_grove", trails.Length == 0); _huntCleaned = true; }
             return;
         }
         _huntObserved = true;
         int tracked = state.Exploration.TrackedClues;
         Check("tracked_clues_keep_quiet_remains_" + tracked, trails.Count(t => t.Tracked) == tracked);
-        foreach (var interaction in _session.Interactions)
+        foreach (var interaction in _session.Interactions.Where(interaction => interaction.ActionId.StartsWith("clue.", StringComparison.Ordinal)))
         {
             var clue = trails.Single(t => t.ClueId == interaction.ActionId);
             _seenClues.Add(interaction.ActionId);
             Check(interaction.ActionId + "_matches_core_anchor", clue.Position.IsEqualApprox(new(interaction.Position.X * .001f, 0, interaction.Position.Z * .001f)));
-            Check(interaction.ActionId + "_focused_without_future_clues", clue.Focused && !clue.Tracked && trails.Count(t => !t.Tracked) == 1);
+            var player = _session.Combat.View.Actors.Single(actor => actor.Id == 1).Position;
+            bool nearest = _session.Interactions.MinBy(candidate => Ashenwake.Core.Simulation.Position.DistanceSquared(player, candidate.Position))!.ActionId == interaction.ActionId;
+            Check(interaction.ActionId + "_focus_matches_nearest_interaction_without_future_clues", clue.Focused == nearest && !clue.Tracked && trails.Count(t => !t.Tracked) == 1);
             Check(interaction.ActionId + "_bounded_profile", Meshes(clue).SelectMany(Vertices).All(p =>
                 p.Y <= VerdantTrailVisual.MaximumPropHeight + .001f && new Vector2(p.X - clue.GlobalPosition.X, p.Z - clue.GlobalPosition.Z).Length() <= VerdantTrailVisual.MaximumRadius));
             Check(interaction.ActionId + "_bounded_meshes", Meshes(clue).Length <= 9 && !Descendants(clue).Any(n => n is CollisionObject3D or CollisionShape3D));
@@ -394,8 +399,9 @@ public partial class VerdantSmoke : Node
     private async Task Capture(string filename)
     {
         if (!OS.GetCmdlineUserArgs().Contains("--capture-verdant") || DisplayServer.GetName() == "headless" || !_captures.Add(filename)) return;
-        await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
-        GetViewport().GetTexture().GetImage().SavePng(Path.Combine(_output, filename));
+        await Frames(3); RenderingServer.ForceDraw(false); RenderingServer.ForceSync();
+        using var image = GetViewport().GetTexture().GetImage();
+        Check("capture_" + filename, image.GetWidth() > 0 && image.SavePng(Path.Combine(_output, filename)) == Error.Ok);
     }
     private void Check(string name, bool passed) { _checks[name] = passed; if (!passed) throw new InvalidDataException("Verdant check failed: " + name); }
     private void Finish(bool passed, string error)

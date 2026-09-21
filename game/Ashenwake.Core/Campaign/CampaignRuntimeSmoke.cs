@@ -33,6 +33,14 @@ public static class CampaignRuntimeSmoke
             string target = state.CompletedExploration.Contains(CampaignRuntimeSession.CryptEvent) ? "opening.crypt.return" : "opening.crypt.treasure";
             return AtInteraction(session, target, new(CampaignRuntimeAction.InteractOpening, Id: target));
         }
+        bool verdant = definition.Exploration.Any(e => e.Id == CampaignRuntimeSession.ShrineEvent);
+        if (verdant && session.ActiveEncounterId is CampaignRuntimeSession.ShrineEncounter or CampaignRuntimeSession.HuntEncounter && session.EncounterCleared)
+        {
+            if (view.Loot.Count > 0 && view.Inventory.Count < 512) return CombatInput(session);
+            string target = session.ActiveEncounterId == CampaignRuntimeSession.HuntEncounter ? "verdant.hunt.return" :
+                state.CompletedExploration.Contains(CampaignRuntimeSession.ShrineEvent) ? "verdant.shrine.return" : "verdant.shrine.treasure";
+            return AtInteraction(session, target, new(CampaignRuntimeAction.InteractVerdant, Id: target));
+        }
         if (state.Exploration is { } exploration)
         {
             var eventDefinition = definition.Exploration.Single(e => e.Id == exploration.Id);
@@ -47,7 +55,27 @@ public static class CampaignRuntimeSmoke
         if (!session.EncounterCleared) return CombatInput(session);
         var loot = view.Loot.OrderBy(l => Position.DistanceSquared(l.Position, player.Position)).ThenBy(l => l.Id).FirstOrDefault();
         if (loot is not null && view.Inventory.Count < 512) return CombatInput(session);
-        var optional = definition.Exploration.FirstOrDefault(e => e.Act == state.CurrentAct && !state.CompletedExploration.Contains(e.Id));
+        if (verdant && state.CurrentAct == 2)
+        {
+            string? passage = null;
+            if (!state.CompletedExploration.Contains(CampaignRuntimeSession.ShrineEvent))
+                passage = session.ActiveEncounterId switch
+                {
+                    "campaign.plague_village" => "verdant.back.ruins",
+                    "campaign.rootheart" => "verdant.back.village",
+                    _ => "verdant.shrine.enter"
+                };
+            else if (!state.CompletedExploration.Contains(CampaignRuntimeSession.HuntEvent))
+                passage = session.ActiveEncounterId switch
+                {
+                    "campaign.plague_village" => "verdant.hunt.enter",
+                    "campaign.rootheart" => "verdant.back.village",
+                    "campaign.living_ruins" when state.CompletedEncounters.Contains("campaign.plague_village") => "verdant.forward.village",
+                    _ => null
+                };
+            if (passage is not null) return AtInteraction(session, passage, new(CampaignRuntimeAction.InteractVerdant, Id: passage));
+        }
+        var optional = definition.Exploration.FirstOrDefault(e => e.Act == state.CurrentAct && !state.CompletedExploration.Contains(e.Id) && !(verdant && e.Act == 2));
         if (optional?.Id == CampaignRuntimeSession.CryptEvent)
         {
             string passage = session.ActiveEncounterId switch
@@ -66,6 +94,16 @@ public static class CampaignRuntimeSmoke
         {
             var forward = session.Interactions.FirstOrDefault(i => i.ActionId.StartsWith("opening.forward.", StringComparison.Ordinal));
             if (forward is not null) return AtInteraction(session, forward.ActionId, new(CampaignRuntimeAction.InteractOpening, Id: forward.ActionId));
+            if (verdant && state.CurrentAct == 2)
+            {
+                forward = session.Interactions.FirstOrDefault(i => i.ActionId.StartsWith("verdant.forward.", StringComparison.Ordinal));
+                if (forward is not null) return AtInteraction(session, forward.ActionId, new(CampaignRuntimeAction.InteractVerdant, Id: forward.ActionId));
+                if (Position.DistanceSquared(player.Position, VerdantCampaignLayout.ForwardExit) > 2000L * 2000)
+                {
+                    var direction = CombatProductionSmoke.MovementDirection(player.Position, VerdantCampaignLayout.ForwardExit, session.Room);
+                    return new(CampaignRuntimeAction.Tick, Commands: [new(CombatCommandKind.Move, X: direction.X, Z: direction.Z)]);
+                }
+            }
             return new(CampaignRuntimeAction.AdvanceEncounter);
         }
         return state.CurrentAct == 5 ? new(CampaignRuntimeAction.ReturnToHub) : new(CampaignRuntimeAction.EnterAct, Act: state.CurrentAct + 1);

@@ -25,7 +25,14 @@ public partial class CampaignStage : Node3D
     public string PresentedEncounter { get; private set; } = "";
     private Sandbox? _sandbox;
 
-    public Node3D? GetInteractionVisual(string id) => _hub.Visible ? _hub.GetInteractionVisual(id) : _markers.GetValueOrDefault(id);
+    public Node3D? GetInteractionVisual(string id)
+    {
+        if (_hub.Visible) return _hub.GetInteractionVisual(id);
+        if (!_markers.TryGetValue(id, out var marker)) return null;
+        // Tracked remains persist independently of the current label marker. Native picking
+        // needs the active clue's mesh tree, not its meshless label container.
+        return _trails.TryGetValue(id, out var trail) ? trail : marker;
+    }
     public override void _Ready()
     {
         _hub = new AdventureStage(); AddChild(_hub); _region = new Node3D(); AddChild(_region);
@@ -59,6 +66,7 @@ public partial class CampaignStage : Node3D
         string encounter = state.Exploration?.Id switch
         {
             "event.widow_crypt" => "exploration.widow_crypt",
+            "event.briar_shrine" => "exploration.briar_shrine",
             "event.wake_hunt" => "exploration.antler_hunt",
             "event.resonance_storm" => "exploration.burning_rain",
             "event.divine_memory" => "exploration.first_oath",
@@ -124,12 +132,14 @@ public partial class CampaignStage : Node3D
                 }
                 else if (GreyMarchExplorationArt.SupportsMarker(interaction.ActionId))
                     GreyMarchExplorationArt.BuildMarker(marker, interaction.ActionId, encounter == "exploration.widow_crypt");
+                else if (VerdantExplorationArt.SupportsMarker(interaction.ActionId))
+                    VerdantExplorationArt.BuildMarker(marker, interaction.ActionId);
                 else
                 {
                     Mesh(new TorusMesh { InnerRadius = .47f, OuterRadius = .58f }, new(0, .07f, 0), new("d8c790"), marker);
                     Mesh(new CylinderMesh { TopRadius = .16f, BottomRadius = .3f, Height = .5f }, new(0, .25f, 0), new("93d6c9"), marker);
                 }
-                Label(GreyMarchExplorationArt.MarkerLabel(interaction.ActionId, interaction.Name), new(0, 1.3f, 0), new("eee0b8"), marker);
+                Label(VerdantExplorationArt.MarkerLabel(interaction.ActionId, GreyMarchExplorationArt.MarkerLabel(interaction.ActionId, interaction.Name)), new(0, 1.3f, 0), new("eee0b8"), marker);
             }
         }
         if (_markers.Count > 0)

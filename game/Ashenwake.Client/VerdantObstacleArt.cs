@@ -7,11 +7,18 @@ public static class VerdantObstacleArt
 {
     public static void Build(EnvironmentBuilder b, float width, float depth, Vector3 center, string style)
     {
-        bool village = style == "verdant_village", grove = style == "verdant_hunt";
+        bool village = style == "verdant_village", grove = style == "verdant_hunt", shrine = style == "verdant_shrine";
         b.Box(new(width, .90f, depth), center + Vector3.Up * .45f, grove ? "51473a" : village ? "50584b" : "647465");
         b.Box(new(width * .96f, .16f, depth * .94f), center + Vector3.Up * .98f, village ? "767b57" : "758566");
         // Low mats sit on the obstacle instead of obscuring the navigable lanes beside it.
         b.Box(new(width * .76f, .035f, depth * .74f), center + new Vector3(width * .02f, 1.08f, 0), "4c6545");
+        if (shrine)
+        {
+            // Reused refuge stones carry names beneath the growth, all inside the solid bank.
+            for (int line = 0; line < 4; line++)
+                b.Box(new(width * (.45f - line % 2 * .09f), .012f, depth * .018f),
+                    center + new Vector3(0, 1.11f, (line - 1.5f) * depth * .12f), "b1b58e");
+        }
         if (village)
         {
             for (int i = 0; i < 3; i++)

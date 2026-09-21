@@ -113,12 +113,12 @@ public partial class CampaignHud
 
     private void JourneyHeading(string title, string status)
     { _rows.AddChild(Label(title, 18)); var label = Label(status, 12); label.Modulate = new("9bd4c7"); _rows.AddChild(label); }
-    private bool OpeningLootRetained => !_state.InHub && !_engaged && _interactions.Any(i => i.Id.StartsWith("opening.", StringComparison.Ordinal));
+    private bool RoomLootRetained => !_state.InHub && !_engaged && _interactions.Any(i => i.Id.StartsWith("opening.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.", StringComparison.Ordinal));
     private string LootSuffix => _combat.Loot.Count > 0 ? $" · {_combat.Loot.Count} uncollected drops" : "";
     private void JourneyLootNotice()
     {
         if (_combat.Loot.Count == 0) return;
-        var notice = Label($"{_combat.Loot.Count} ground drops remain here. Travel leaves them behind. Close the map and click a drop or press E nearby to collect it; hold Alt to reveal filtered drops.", 12);
+        var notice = Label($"{_combat.Loot.Count} ground drops remain here. " + (RoomLootRetained ? "This cleared room keeps remaining drops when you travel. " : "Travel leaves them behind. ") + "Close the map and click a drop or press E nearby to collect it; hold Alt to reveal filtered drops.", 12);
         notice.Name = "JourneyLootWarning"; notice.Modulate = new("eab28d"); _rows.AddChild(notice);
     }
     private void JourneyNearby()
@@ -143,6 +143,18 @@ public partial class CampaignHud
                 if (!available && !InOpeningCrypt) _rows.AddChild(Label("Its marked entrance branches north from the secured Grey March road.", 12));
                 continue;
             }
+            if (HasVerdantExploration && entry.Id is ("event.briar_shrine" or "event.wake_hunt"))
+            {
+                bool shrine = entry.Id == "event.briar_shrine";
+                string entrance = shrine ? "verdant.shrine.enter" : "verdant.hunt.enter";
+                bool available = _interactions.Any(i => i.Id == entrance);
+                Button((_state.CompletedExploration.Contains(entry.Id) ? "✓ Revisit " : "Explore ") + entry.Name + (shrine ? " · hidden shrine" : " · tracking hunt"),
+                    () => RequestInteraction(entrance)).Disabled = !available;
+                if (!available && !(shrine ? InBriarShrine : InAntlerGrove)) _rows.AddChild(Label(shrine
+                    ? "Its marked entrance branches north from the secured Living Ruins."
+                    : "Follow the southern passage from secured Plague Village to the Antler's grove.", 12));
+                continue;
+            }
             var request = new JourneyTravelRequest(JourneyTravelKind.Exploration, Id: entry.Id);
             Button((_state.CompletedExploration.Contains(entry.Id) ? "✓ " : "") + entry.Name + " · " + entry.Kind + LootSuffix,
                 () => RequestJourneyTravel(request)).Disabled = JourneyTravelReason(request).Length > 0;
@@ -155,10 +167,22 @@ public partial class CampaignHud
             Button("Return to the Grey March road", () => RequestInteraction("opening.crypt.return"));
             return;
         }
+        if (definition.Id == "event.briar_shrine")
+        {
+            _rows.AddChild(Label("Uncover the oathstone after defeating its guardians. The western passage returns to the Living Ruins; remaining drops stay in cleared rooms.", 12));
+            Button("Return to the Living Ruins", () => RequestInteraction("verdant.shrine.return"));
+            return;
+        }
         _rows.AddChild(Label(definition.Name + (active.RemainingTicks > 0 ? $" · {active.RemainingTicks / 30d:F0}s remaining" : ""), 14));
         foreach (var (clue, index) in definition.Clues.Select((id, index) => (id, index)))
             _rows.AddChild(Label((index < active.TrackedClues ? "✓ " : "○ ") + Readable(clue), 12));
         foreach (string rule in _view.ExplorationRules) _rows.AddChild(Label(Readable(rule), 12));
+        if (HasVerdantExploration && definition.Id == "event.wake_hunt")
+        {
+            _rows.AddChild(Label("Follow each marked trace through the grove, then defeat the Antler. The western passage returns to Plague Village; drops stay in the secured grove.", 12));
+            Button("Return to Plague Village", () => RequestInteraction("verdant.hunt.return"));
+            return;
+        }
         bool won = !_engaged && (definition.Kind != "Hunt" || active.TrackedClues == definition.Clues.Length);
         Button((won ? "Finish exploration" : "Leave exploration") + LootSuffix, () => RequestJourneyTravel(new(JourneyTravelKind.LeaveExploration)));
     }
@@ -196,9 +220,12 @@ public partial class CampaignHud
                 }
                 foreach (var exploration in _content.Exploration.Where(e => _state.CompletedExploration.Contains(e.Id)))
                 {
-                    any = true; _rows.AddChild(Label("✓ " + exploration.Name, 15)); _rows.AddChild(Label(exploration.Id == "event.widow_crypt"
-                    ? "The widow hid her family beneath the monastery when the bells began calling the dead. Her testament names the first resurrection as an experiment, not a miracle. She left a burial mantle for whoever would carry that truth beyond the crypt."
-                    : Readable(exploration.Discovery), 13));
+                    any = true; _rows.AddChild(Label("✓ " + exploration.Name, 15)); _rows.AddChild(Label(exploration.Id switch
+                    {
+                        "event.widow_crypt" => "The widow hid her family beneath the monastery when the bells began calling the dead. Her testament names the first resurrection as an experiment, not a miracle. She left a burial mantle for whoever would carry that truth beyond the crypt.",
+                        "event.briar_shrine" => "Before the roots covered this refuge, an oathstone promised shelter to every plague exile. The names beneath it belong to people the village had turned away. Orrun's Oathseal survived among their offerings: a vow kept even when its keepers were forgotten.",
+                        _ => Readable(exploration.Discovery)
+                    }, 13));
                 }
                 if (!any) _rows.AddChild(Label("Discoveries will appear as you explore Edrath. Unvisited regions keep their secrets.", 14));
                 break;

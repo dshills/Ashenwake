@@ -71,7 +71,7 @@ public partial class Sandbox
             float width = (obstacle.MaxX - obstacle.MinX) * .001f, depth = (obstacle.MaxZ - obstacle.MinZ) * .001f;
             Vector3 center = new((obstacle.MinX + obstacle.MaxX) * .0005f, 0, (obstacle.MinZ + obstacle.MaxZ) * .0005f);
             var builder = new EnvironmentBuilder(_authoredGeometry, "AuthoritativeObstacle_" + index++);
-            if (visualStyle is "verdant_ruins" or "verdant_village" or "verdant_heart" or "verdant_hunt")
+            if (visualStyle is "verdant_ruins" or "verdant_village" or "verdant_heart" or "verdant_hunt" or "verdant_shrine")
                 VerdantObstacleArt.Build(builder, width, depth, center, visualStyle);
             else if (CinderAmbience.CueForStyle(visualStyle).Length != 0)
                 CinderObstacleArt.Build(builder, width, depth, center, visualStyle);

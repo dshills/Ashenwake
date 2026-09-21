@@ -32,6 +32,7 @@ public static class VerdantMawArt
             case "campaign.plague_village": Village(b, x, z); break;
             case "campaign.rootheart": Rootheart(b, x, z); break;
             case "exploration.antler_hunt": AntlerGrove(b, x, z); break;
+            case "exploration.briar_shrine": VerdantExplorationArt.BuildShrine(b, x, z); break;
             default: LivingRuins(b, x, z); break;
         }
         Perimeter(b, x, z, encounterId == "campaign.plague_village");

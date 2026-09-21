@@ -22,7 +22,7 @@ public static class CampaignRuntimeSaveStore
         catch (SaveCompatibilityException) when (OpeningCatalogMigration.TryPrevious(combatJson, policy, campaign,
             out var previousCombat, out var previousPolicy, out var previousCampaign))
         {
-            var original = ReadWithLegendaryUpgrade(previousCombat, adventure, previousPolicy, previousCampaign, json);
+            var original = Read(previousCombat, adventure, previousPolicy, previousCampaign, json);
             return CampaignRuntimeSession.Restore(combatJson, adventure, policy, campaign,
                 OpeningCatalogMigration.Rebind(original.Capture(), combatJson, adventure, policy, campaign));
         }

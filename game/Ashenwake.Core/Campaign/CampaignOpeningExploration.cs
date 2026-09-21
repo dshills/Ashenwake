@@ -111,10 +111,17 @@ public sealed partial class CampaignRuntimeSession
         return new(true, "", [], ["CampaignPassageEntered:" + id]);
     }
 
-    private void CacheOpeningRoom()
+    private void CacheOpeningRoom(bool restoreDeadPlayer = false)
     {
-        if (!HasOpeningExploration || InHub || !OpeningRooms.Contains(ActiveEncounterId) || !EncounterCleared) return;
+        if (InHub || !IsRetainedRoom(ActiveEncounterId) || !EncounterCleared || !restoreDeadPlayer && arena.View.Actors.Single(a => a.Id == 1).Health <= 0 ||
+            ActiveEncounterId == HuntEncounter && !story.CurrentState.CompletedExploration.Contains(HuntEvent)) return;
         var snapshot = arena.Capture();
+        if (restoreDeadPlayer)
+        {
+            var player = snapshot.Actors.Single(a => a.Id == 1);
+            player.Health = player.MaxHealth; player.DeathProcessed = false; player.Barrier = 0;
+            player.InvulnerableUntil = snapshot.Tick;
+        }
         // Revisited cleared rooms contain their remaining loot, not lingering combat effects.
         snapshot.Projectiles.Clear(); snapshot.Areas.Clear();
         snapshot.Campaign?.Hazards.Clear();
@@ -156,24 +163,34 @@ public sealed partial class CampaignRuntimeSession
 
     private void ValidateClearedRooms()
     {
-        if (clearedRooms.Count > OpeningRooms.Length || !HasOpeningExploration && clearedRooms.Count != 0) throw new InvalidDataException("Invalid retained opening rooms.");
-        var owned = Production.Combat.Capture().Inventory.Select(i => i.Id).ToHashSet();
+        int capacity = (HasOpeningExploration ? OpeningRooms.Length : 0) + (HasVerdantExploration ? VerdantRooms.Length : 0);
+        if (clearedRooms.Count > capacity) throw new InvalidDataException("Invalid retained campaign rooms.");
+        var owned = Production.Capture().Progression.Character.Items.Select(i => i.Id).ToHashSet();
         var lootIds = Combat.View.Loot.Select(l => l.Id).ToHashSet();
         long reservedItems = Production.Capture().Progression.Character.NextItemId;
         foreach (var (id, snapshot) in clearedRooms)
         {
-            bool unlocked = id == CryptEncounter ? story.CurrentState.CompletedEncounters.Contains("campaign.road") : story.CurrentState.CompletedEncounters.Contains(id);
-            if (!OpeningRooms.Contains(id) || id == ActiveEncounterId || !unlocked || snapshot is null ||
+            bool unlocked = id switch
+            {
+                CryptEncounter => story.CurrentState.CompletedEncounters.Contains("campaign.road"),
+                ShrineEncounter => story.CurrentState.CompletedEncounters.Contains("campaign.living_ruins"),
+                HuntEncounter => story.CurrentState.CompletedExploration.Contains(HuntEvent),
+                _ => story.CurrentState.CompletedEncounters.Contains(id)
+            };
+            if (!IsRetainedRoom(id) || id == ActiveEncounterId || !unlocked || snapshot is null ||
                 snapshot.EncounterId != id && !(snapshot.EncounterId == "clear" && snapshot.RoomEncounterId == id))
-                throw new InvalidDataException("Invalid retained opening room identity.");
+                throw new InvalidDataException("Invalid retained campaign room identity.");
             var saved = CombatSession.Restore(combatJson, snapshot);
             if (snapshot.NextObjectId > reservedItems || saved.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0) || saved.View.Actors.Single(a => a.Id == 1).Health <= 0)
-                throw new InvalidDataException("A retained opening room must be secured.");
+                throw new InvalidDataException("A retained campaign room must be secured.");
             foreach (var loot in snapshot.Loot)
                 if (owned.Contains(loot.Id) || !lootIds.Add(loot.Id)) throw new InvalidDataException("Retained room loot duplicates another owner.");
         }
         if (story.CurrentState.CompletedExploration.Contains(CryptEvent) != Production.ContainsCampaignReceipt("campaign.crypt.testament") ||
             story.CurrentState.CompletedExploration.Contains(CryptEvent) && !Production.HasCryptTestamentReceipt)
             throw new InvalidDataException("Crypt completion differs from its testament receipt.");
+        if (story.CurrentState.CompletedExploration.Contains(ShrineEvent) != Production.ContainsCampaignReceipt("campaign.briar.testament") ||
+            story.CurrentState.CompletedExploration.Contains(ShrineEvent) && !Production.HasBriarTestamentReceipt)
+            throw new InvalidDataException("Briar shrine completion differs from its testament receipt.");
     }
 }

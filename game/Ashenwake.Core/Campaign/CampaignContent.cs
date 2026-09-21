@@ -29,7 +29,7 @@ public sealed class CampaignContent
     public static CampaignContent Parse(string json) => new(JsonData.Read<CampaignDefinition>(json));
     public static CampaignContent Default() => new(new()
     {
-        Version = "campaign.grey_march.2",
+        Version = "campaign.verdant.3",
         Factions = ["Reliquary Church", "Anatomists", "Cinder Compact", "Children of Ilyra", "Oathbound", "Quiet"],
         Residents = ["Mara Vey", "Torren Bale", "Sister Cael", "Oris Fen", "Kesh", "Pale Child"],
         Acts =
@@ -84,7 +84,9 @@ public sealed class CampaignContent
             new("event.divine_memory", 4, "Memory", "The Promise Before Stone", "exploration.first_oath", 0,
                 ["context:memory", "rule:reversed_fault_order", "return:recorded_anchor"], [], "discovery.divine_seals", 15),
             new("event.wake_hunt", 2, "Hunt", "The Antler That Walks", "exploration.antler_hunt", 0,
-                ["behavior:burrow_then_root_charge", "reward:unique_growth_material"], ["clue.shed_bark", "clue.reversed_tracks", "clue.heartwood_nest"], "discovery.antler", 20)
+                ["behavior:burrow_then_root_charge", "reward:unique_growth_material"], ["clue.shed_bark", "clue.reversed_tracks", "clue.heartwood_nest"], "discovery.antler", 20),
+            new("event.briar_shrine", 2, "Memory", "Briarheart Shrine", "exploration.briar_shrine", 0,
+                ["context:briar_shrine", "reward:oathseal", "return:living_ruins"], [], "discovery.briar_shrine", 30)
         ]
     });
 

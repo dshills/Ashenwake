@@ -10,7 +10,7 @@ using System.Text.Json.Serialization;
 
 namespace Ashenwake.Core.Campaign;
 
-public enum CampaignRuntimeAction { Tick, EnterAct, AdvanceEncounter, ReturnToHub, Choose, BeginExploration, TrackClue, LeaveExploration, Production, RevisitEncounter, InteractOpening, EnableExplorationMap }
+public enum CampaignRuntimeAction { Tick, EnterAct, AdvanceEncounter, ReturnToHub, Choose, BeginExploration, TrackClue, LeaveExploration, Production, RevisitEncounter, InteractOpening, EnableExplorationMap, InteractVerdant }
 public sealed record CampaignRuntimeCommand(CampaignRuntimeAction Action, int Act = 0, string Id = "", string Value = "", CombatCommand[]? Commands = null, ProductionCommand? Production = null);
 public sealed record CampaignRuntimeResult(bool Success, string Reason, CombatEvent[] CombatEvents, string[] WorldEvents);
 public sealed record CampaignRuntimeSnapshot
@@ -50,7 +50,7 @@ public sealed partial class CampaignRuntimeSession
     public string ActiveEncounterId { get; private set; } = "hub";
     public bool InHub => story.CurrentState.InHub;
     public bool EncounterCleared => InHub || ActiveEncounterId == "clear" || story.CurrentState.CompletedEncounters.Contains(ActiveEncounterId) ||
-        ActiveEncounterId == CryptEncounter && !arena.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0);
+        (ActiveEncounterId == CryptEncounter || HasVerdantExploration && ActiveEncounterId is ShrineEncounter or HuntEncounter) && !arena.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0);
     public CampaignView View => story.ViewForResonance(Production.View.Resonance);
     public CampaignView StoryView => View;
     public IReadOnlyList<string> WorldEvents { get; private set; } = [];
@@ -74,6 +74,7 @@ public sealed partial class CampaignRuntimeSession
                 }).ToArray();
             }
             if (OpeningInteractions() is { } opening) return opening;
+            if (VerdantInteractions() is { } verdant) return verdant;
             var current = story.CurrentState.Exploration;
             if (current is null) return [];
             var definition = Content.Data.Exploration.Single(e => e.Id == current.Id);
@@ -180,9 +181,13 @@ public sealed partial class CampaignRuntimeSession
         if (arena.View.Actors.Single(a => a.Id == 1).Health <= 0)
         {
             bool cryptDeath = ActiveEncounterId == CryptEncounter;
+            string? verdantReturn = VerdantBranchReturn();
+            if (HasVerdantExploration) CacheOpeningRoom(restoreDeadPlayer: true);
             var died = story.PlayerDied(); Require(died); messages.AddRange(died.Events); explorationReturnEncounter = "";
             Production.ClearCampaignEffects();
-            if (cryptDeath) ResumeOpeningRoom("campaign.road", restoreAtAnchor: true); else StartExpectedEncounter(restoreAtAnchor: true);
+            if (cryptDeath) ResumeOpeningRoom("campaign.road", restoreAtAnchor: true);
+            else if (verdantReturn is not null) ResumeOpeningRoom(verdantReturn, restoreAtAnchor: true);
+            else StartExpectedEncounter(restoreAtAnchor: true);
             messages.Add("CampaignCombatRestoredAtAnchor");
         }
         else if (state.Exploration is { } exploration)
@@ -191,8 +196,14 @@ public sealed partial class CampaignRuntimeSession
             bool tracking = definition.Kind == "Hunt" && exploration.TrackedClues < definition.Clues.Length;
             if (!tracking && !arena.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0))
             {
+                if (HasVerdantExploration && definition.Id == HuntEvent)
+                {
+                    var completion = story.CompleteExploration(HuntEncounter); Require(completion); messages.AddRange(completion.Events);
+                    messages.AddRange(Award("campaign.exploration." + HuntEvent, completion));
+                    explorationReturnEncounter = "";
+                }
                 // Retain the cleared scoped arena until its visible loot has been picked up. Its timer no longer expires after victory.
-                if (arena.View.Loot.Count == 0 && definition.Id != CryptEvent)
+                else if (arena.View.Loot.Count == 0 && definition.Id != CryptEvent && !(HasVerdantExploration && definition.Id is ShrineEvent or HuntEvent))
                 {
                     var completion = story.CompleteExploration(definition.EncounterId); Require(completion); messages.AddRange(completion.Events);
                     messages.AddRange(Award("campaign.exploration." + definition.Id, completion)); EndExplorationArena();
@@ -219,7 +230,8 @@ public sealed partial class CampaignRuntimeSession
             case CampaignRuntimeAction.EnableExplorationMap:
                 explorationMap ??= new(); return new(true, "", [], []);
             case CampaignRuntimeAction.InteractOpening: return InteractOpening(command.Id);
-            case CampaignRuntimeAction.RevisitEncounter: return RevisitOpeningRoom(command.Id);
+            case CampaignRuntimeAction.InteractVerdant: return InteractVerdant(command.Id);
+            case CampaignRuntimeAction.RevisitEncounter: return HasVerdantExploration && state.CurrentAct == 2 ? RevisitVerdantPassage(command.Id) : RevisitOpeningRoom(command.Id);
             case CampaignRuntimeAction.Production:
                 if (!state.InHub || command.Production is null) return Failed("Permanent services require Greyhaven.");
                 if (command.Production.Action == ProductionAction.Expedition && command.Production.Expedition?.Action is not (ExpeditionAction.Interact or ExpeditionAction.InstallFragment or ExpeditionAction.Manifestation))
@@ -249,6 +261,8 @@ public sealed partial class CampaignRuntimeSession
                 if (HasOpeningExploration && state.CurrentAct == 1 && OpeningRooms.Contains(ActiveEncounterId) &&
                     !((ActiveEncounterId, expected) is ("campaign.road", "campaign.monastery") or ("campaign.monastery", "campaign.bell_saint")))
                     return Failed("Follow the adjoining cleared passages to reach the next encounter.");
+                if (HasVerdantExploration && state.CurrentAct == 2 && !CanAdvanceVerdant(expected))
+                    return Failed("Follow the adjoining forward passage to reach the next encounter.");
                 if (!ChoiceAllows(expected)) return Failed("Resolve this region's central choice before the final confrontation.");
                 ReportUncollectedLoot(messages); StartEncounter(expected, restoreAtAnchor: true); messages.Add("CampaignEncounterEntered:" + expected); break;
             case CampaignRuntimeAction.ReturnToHub:
@@ -260,6 +274,8 @@ public sealed partial class CampaignRuntimeSession
                 result = story.Choose(command.Id, command.Value); if (!result.Success) return Failed(result.Reason); messages.AddRange(result.Events); break;
             case CampaignRuntimeAction.BeginExploration:
                 if (command.Id == CryptEvent) return InteractOpening("opening.crypt.enter");
+                if (HasVerdantExploration && command.Id == ShrineEvent) return InteractVerdant("verdant.shrine.enter");
+                if (HasVerdantExploration && command.Id == HuntEvent) return InteractVerdant("verdant.hunt.enter");
                 if (!EncounterCleared) return Failed("Secure the area before exploring.");
                 string returnTo = ActiveEncounterId; result = story.BeginExploration(command.Id); if (!result.Success) return Failed(result.Reason);
                 explorationReturnEncounter = returnTo; messages.AddRange(result.Events);
@@ -270,9 +286,16 @@ public sealed partial class CampaignRuntimeSession
                 if (point is null || Position.DistanceSquared(arena.View.Actors.Single(a => a.Id == 1).Position, point.Position) > (long)point.Range * point.Range) return Failed("Move within reach of the hunt's next clue.");
                 result = story.TrackClue(command.Id); if (!result.Success) return Failed(result.Reason); messages.AddRange(result.Events);
                 var hunt = story.CurrentState.Exploration!; var huntDefinition = Content.Data.Exploration.Single(e => e.Id == hunt.Id);
-                if (hunt.TrackedClues == huntDefinition.Clues.Length) StartEncounter(huntDefinition.EncounterId, restoreAtAnchor: true); break;
+                if (hunt.TrackedClues == huntDefinition.Clues.Length)
+                {
+                    if (HasVerdantExploration && hunt.Id == HuntEvent) RevealVerdantHunt();
+                    else StartEncounter(huntDefinition.EncounterId, restoreAtAnchor: true);
+                }
+                break;
             case CampaignRuntimeAction.LeaveExploration:
                 if (ActiveEncounterId == CryptEncounter) return InteractOpening("opening.crypt.return");
+                if (HasVerdantExploration && ActiveEncounterId == ShrineEncounter) return InteractVerdant("verdant.shrine.return");
+                if (HasVerdantExploration && (ActiveEncounterId == HuntEncounter || state.Exploration?.Id == HuntEvent)) return InteractVerdant("verdant.hunt.return");
                 if (state.Exploration is null) return Failed("No exploration context is active.");
                 var leavingDefinition = Content.Data.Exploration.Single(e => e.Id == state.Exploration.Id);
                 bool completed = ActiveEncounterId == leavingDefinition.EncounterId && !arena.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0) &&
@@ -305,6 +328,10 @@ public sealed partial class CampaignRuntimeSession
     private void StartExpectedEncounter(bool restoreAtAnchor)
     {
         string? expected = View.EncounterId;
+        if (HasVerdantExploration && story.CurrentState.CurrentAct == 2 && expected is null)
+        { ResumeOpeningRoom("campaign.living_ruins", restoreAtAnchor); return; }
+        if (HasVerdantExploration && story.CurrentState.CurrentAct == 2 && expected == "campaign.rootheart" && !ChoiceAllows(expected))
+        { ResumeOpeningRoom("campaign.plague_village", restoreAtAnchor); return; }
         if (HasOpeningExploration && story.CurrentState.CurrentAct == 1 && expected is null)
         { ResumeOpeningRoom("campaign.road", restoreAtAnchor); return; }
         if (HasOpeningExploration && story.CurrentState.CurrentAct == 1 && expected == "campaign.bell_saint" && !ChoiceAllows(expected))
@@ -327,7 +354,7 @@ public sealed partial class CampaignRuntimeSession
     private void ReportUncollectedLoot(List<string> messages)
     {
         int count = Combat.View.Loot.Count;
-        if (count > 0) messages.Add((HasOpeningExploration && !InHub && OpeningRooms.Contains(ActiveEncounterId) && EncounterCleared
+        if (count > 0) messages.Add((!InHub && IsRetainedRoom(ActiveEncounterId) && EncounterCleared
             ? "GroundLootRetained:" : "GroundLootLeftBehind:") + count);
     }
     private static CampaignRuntimeResult Failed(string reason) => new(false, reason, [], []);
@@ -368,6 +395,7 @@ public sealed partial class CampaignRuntimeSession
             var definition = Content.Data.Exploration.Single(e => e.Id == active.Id);
             string expected = definition.Kind == "Hunt" && active.TrackedClues < definition.Clues.Length ? "clear" : definition.EncounterId;
             if (ActiveEncounterId != expected || arena.EncounterId != expected || explorationReturnEncounter == "" || (explorationReturnEncounter != "clear" && !state.CompletedEncounters.Contains(explorationReturnEncounter))) throw new InvalidDataException("Exploration combat context does not match its scoped story state.");
+            ValidateVerdantExploration(definition.Id, expected);
         }
         else
         {
@@ -378,6 +406,7 @@ public sealed partial class CampaignRuntimeSession
                     throw new InvalidDataException("Completed crypt arena is inconsistent.");
                 return;
             }
+            if (ValidateCompletedVerdantRoom()) return;
             var act = Content.Data.Acts[state.CurrentAct - 1];
             bool cleared = ActiveEncounterId == "clear" || state.CompletedEncounters.Contains(ActiveEncounterId);
             if (ActiveEncounterId != "clear" && !act.Encounters.Any(e => e.Id == ActiveEncounterId)) throw new InvalidDataException("Arena belongs to another campaign act.");

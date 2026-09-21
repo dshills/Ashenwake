@@ -116,7 +116,7 @@ public partial class EndgameDirector : Node3D
     }
     private string LocalMapTitle()
         => _session.InHub ? "Greyhaven" : _session.Combat.View.Endgame is not null ? _session.View.Run?.Name ?? "Expedition" :
-            _combat.Campaign?.Encounters.FirstOrDefault(e => e.Id == _session.Campaign.ActiveEncounterId)?.Name ?? _session.Campaign.View.Region;
+            _combat.Campaign?.Encounters.FirstOrDefault(e => e.Id == _stage.PresentedEncounter)?.Name ?? _session.Campaign.View.Region;
     private void CacheDefinitions()
     {
         _anatomyDefinition = _session.Production.AdventureContent.Capture(); _productionDefinition = _session.Production.Content.Capture();
@@ -208,6 +208,7 @@ public partial class EndgameDirector : Node3D
     {
         if (id == "journey.next") { _campaignHud.RequestNextStep(); return; }
         if (id.StartsWith("opening.", StringComparison.Ordinal)) { Campaign(new(CampaignRuntimeAction.InteractOpening, Id: id)); return; }
+        if (id.StartsWith("verdant.", StringComparison.Ordinal)) { Campaign(new(CampaignRuntimeAction.InteractVerdant, Id: id)); return; }
         if (id == "endgame.gate") { _board.SetOpen(true); return; }
         if (_session.InHub) Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.Interact, id)));
         else Campaign(new(CampaignRuntimeAction.TrackClue, Id: id));

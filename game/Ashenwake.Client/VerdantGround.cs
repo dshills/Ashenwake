@@ -1,3 +1,4 @@
+using Ashenwake.Core.Combat;
 using Ashenwake.Core.Content;
 using Godot;
 
@@ -10,7 +11,8 @@ public static class VerdantGround
     {
         var b = new EnvironmentBuilder(parent, "AuthoredGround");
         float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
-        bool village = style == "verdant_village", heart = style == "verdant_heart", hunt = style == "verdant_hunt";
+        bool village = style == "verdant_village", heart = style == "verdant_heart", hunt = style == "verdant_hunt", shrine = style == "verdant_shrine";
+        var routes = Routes(style);
         b.Box(new(x * 2 + 9, .36f, z * 2 + 9), new(0, -.26f, 0), heart ? "3d4236" : "344338", surface: SurfaceKind.Earth);
         // A bounded grid only seeds irregular islands. It never appears as floor tiles and uses no simulation RNG.
         int columns = Math.Clamp((int)(x * 1.6f), 6, 32), rows = Math.Clamp((int)(z * 1.5f), 6, 28);
@@ -20,11 +22,20 @@ public static class VerdantGround
                 int pattern = (row * 31 + col * 17 + row * col * 7) % 19;
                 float px = -x + (col + .48f + (pattern % 3 - 1) * .16f) * x * 2 / columns;
                 float pz = -z + (row + .48f + (pattern % 5 - 2) * .09f) * z * 2 / rows;
-                float pathCenter = MathF.Sin(pz * .29f) * (hunt ? 1.25f : .72f);
-                bool path = Math.Abs(px - pathCenter) < (village ? 1.6f : 1.24f) || !hunt && !heart && Math.Abs(pz + .3f) < 1.14f;
+                float pathDistance = routes.Min(route => DistanceToRoute(new(px, pz), route));
+                bool path = pathDistance < (village ? 1.15f : 1.25f);
+                // The floor follows the same passages as movement. Stop every paving cell
+                // before actual roots and masonry, including its rotated corners.
+                if (!ClearFloor(room, px, pz, .72f, .74f)) continue;
                 if (path)
                 {
-                    b.Box(new(.83f + pattern * .011f, .019f, .92f), new(px, -.05f, pz), village ? "5b5d46" : "565c43", new(0, pattern - 9, 0));
+                    if (village)
+                    {
+                        for (int plank = 0; plank < 3; plank++)
+                            b.Box(new(1.0f, .02f, .26f), new(px, -.032f, pz + (plank - 1) * .29f), pattern % 3 == 0 ? "858167" : "6e7157", surface: SurfaceKind.Wood);
+                    }
+                    else b.Box(new(.83f + pattern * .011f, .019f, .92f), new(px, -.033f, pz),
+                        shrine ? "7c8370" : hunt ? "73775b" : "758168", new(0, pattern % 7 - 3, 0));
                     continue;
                 }
                 if (pattern % 3 != 0)
@@ -37,8 +48,6 @@ public static class VerdantGround
                     Litter(b, px, pz, pattern, hunt);
             }
         if (heart) Tissue(b, x, z);
-        else if (village) VillageFloor(b, x, z);
-        else if (!hunt) RuinFloor(b, x, z);
         else RootLines(b, x, z);
         // An interrupted pale root seam marks the actual boundary without a bright rectangular arena stripe.
         for (int i = 0; i < 16; i++)
@@ -62,37 +71,38 @@ public static class VerdantGround
         b.Box(new(.2f, .008f, .32f), new(x + .28f, -.022f, z + .24f), "5b6450", new(0, angle + 70, 0));
     }
 
-    private static void RuinFloor(EnvironmentBuilder b, float x, float z)
+    public static Vector2[][] Routes(string style)
     {
-        foreach (float side in new[] { -1f, 1f })
-            for (int row = 0; row < 6; row++)
-                for (int col = 0; col < 3; col++)
-                {
-                    int pattern = row * 5 + col * 3;
-                    if (pattern % 4 == 0) continue;
-                    float px = side * (x * .53f + (col - 1) * .82f), pz = -z * .7f + row * z * .21f;
-                    b.Box(new(.74f, .026f, z * .185f), new(px, -.028f, pz), pattern % 3 == 0 ? "666f59" : "59664f", new(0, pattern % 5 - 2, 0));
-                    if (row % 2 == 0) b.Box(new(.12f, .009f, .64f), new(px + .17f, -.01f, pz), "41533c", new(0, 37, 0));
-                }
+        string encounter = style switch
+        {
+            "verdant_village" => "campaign.plague_village",
+            "verdant_heart" => "campaign.rootheart",
+            "verdant_hunt" => "exploration.antler_hunt",
+            "verdant_shrine" => "exploration.briar_shrine",
+            _ => "campaign.living_ruins"
+        };
+        var entrance = style is "verdant_hunt" or "verdant_shrine" ? VerdantCampaignLayout.BranchReturn : VerdantCampaignLayout.BackExit;
+        var main = VerdantCampaignLayout.Route(encounter).Prepend(entrance).Select(p => new Vector2(p.X * .001f, p.Z * .001f)).ToArray();
+        if (style is not ("verdant_ruins" or "verdant_village")) return [main];
+        var branch = style == "verdant_ruins" ? VerdantCampaignLayout.ShrineEntrance : VerdantCampaignLayout.HuntEntrance;
+        return [main, [new(6, 0), new(branch.X * .001f, branch.Z * .001f)]];
     }
 
-    private static void VillageFloor(EnvironmentBuilder b, float x, float z)
+    private static bool ClearFloor(RoomDefinition room, float x, float z, float halfWidth, float halfDepth)
+        => Math.Abs(x) + halfWidth < room.HalfWidth * .001f && Math.Abs(z) + halfDepth < room.HalfDepth * .001f &&
+            !room.Obstacles.Any(obstacle => x + halfWidth > obstacle.MinX * .001f && x - halfWidth < obstacle.MaxX * .001f &&
+                z + halfDepth > obstacle.MinZ * .001f && z - halfDepth < obstacle.MaxZ * .001f);
+
+    private static float DistanceToRoute(Vector2 point, Vector2[] route)
     {
-        foreach (float side in new[] { -1f, 1f })
+        float distance = float.PositiveInfinity;
+        for (int i = 1; i < route.Length; i++)
         {
-            float px = side * x * .58f;
-            b.Box(new(.24f, .022f, z * 1.74f), new(px - side * .85f, -.027f, -z * .04f), "30423a");
-            for (int plank = 0; plank < 26; plank++)
-            {
-                float pz = -z * .86f + plank * z * 1.7f / 26;
-                b.Box(new(1.12f, .025f, z * 1.7f / 26 - .04f), new(px, -.027f, pz), plank % 4 == 0 ? "74725a" : "686950", new(0, plank % 3 - 1, 0), surface: SurfaceKind.Wood);
-                b.Box(new(.025f, .006f, .07f), new(px + side * .44f, -.01f, pz), "434d3d");
-            }
+            Vector2 segment = route[i] - route[i - 1];
+            float t = Math.Clamp((point - route[i - 1]).Dot(segment) / Math.Max(.001f, segment.LengthSquared()), 0, 1);
+            distance = Math.Min(distance, point.DistanceTo(route[i - 1] + segment * t));
         }
-        // Two little transverse stepping bridges over the channels are painted at ground height.
-        foreach (float pz in new[] { -z * .45f, z * .33f })
-            for (int i = 0; i < 7; i++)
-                b.Box(new(x * 1.3f, .018f, .16f), new(0, -.021f, pz + (i - 3) * .185f), i % 2 == 0 ? "686950" : "74725a", surface: SurfaceKind.Wood);
+        return distance;
     }
 
     private static void Tissue(EnvironmentBuilder b, float x, float z)

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign.verdant.3",
+  "version": "campaign.grey_march.2",
   "acts": [
     {
       "number": 1,
@@ -549,22 +549,6 @@
       ],
       "discovery": "discovery.antler",
       "materials": 20
-    },
-    {
-      "id": "event.briar_shrine",
-      "act": 2,
-      "kind": "Memory",
-      "name": "Briarheart Shrine",
-      "encounterId": "exploration.briar_shrine",
-      "durationTicks": 0,
-      "rules": [
-        "context:briar_shrine",
-        "reward:oathseal",
-        "return:living_ruins"
-      ],
-      "clues": [],
-      "discovery": "discovery.briar_shrine",
-      "materials": 30
     }
   ],
   "factions": [

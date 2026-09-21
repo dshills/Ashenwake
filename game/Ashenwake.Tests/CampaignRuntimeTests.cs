@@ -30,6 +30,17 @@ public sealed class CampaignRuntimeTests
         Assert.True(complete(session), "Bounded public-input driver did not reach its objective: " + session.ActiveEncounterId);
     }
 
+    private static void VerdantInteraction(CampaignRuntimeSession session, string id)
+    {
+        for (int i = 0; i < 1600; i++)
+        {
+            var command = CampaignRuntimeSmoke.AtInteraction(session, id, new(CampaignRuntimeAction.InteractVerdant, Id: id));
+            var result = session.Execute(command); Assert.True(result.Success, result.Reason);
+            if (command.Action == CampaignRuntimeAction.InteractVerdant) return;
+        }
+        Assert.Fail("Could not reach " + id);
+    }
+
     [Theory]
     [InlineData("Vanguard")]
     [InlineData("Veilwalker")]
@@ -82,9 +93,9 @@ public sealed class CampaignRuntimeTests
         RunUntil(session, s => s.Capture().Campaign.Exploration?.Id == "event.wake_hunt");
         Assert.Equal("clear", session.ActiveEncounterId); Assert.False(session.TrackClue("clue.heartwood_nest").Success);
         var before = session.Capture().Campaign.CompletedEncounters.ToArray();
-        Assert.True(session.LeaveExploration().Success); Assert.Null(session.Capture().Campaign.Exploration); Assert.Null(session.Combat.Capture().Campaign);
+        VerdantInteraction(session, "verdant.hunt.return"); Assert.Null(session.Capture().Campaign.Exploration);
         Assert.Equal(before, session.Capture().Campaign.CompletedEncounters); Assert.DoesNotContain("event.wake_hunt", session.Capture().Campaign.CompletedExploration);
-        Assert.True(session.BeginExploration("event.wake_hunt").Success); RunUntil(session, s => s.ActiveEncounterId == "exploration.antler_hunt");
+        VerdantInteraction(session, "verdant.hunt.enter"); RunUntil(session, s => s.ActiveEncounterId == "exploration.antler_hunt");
         Assert.NotNull(session.Combat.Capture().Campaign);
         var huntDeath = session.Capture(); var hunter = huntDeath.Combat.Actors.Single(a => a.Id == 1); hunter.Health = 0; hunter.DeathProcessed = true; hunter.Pending = null;
         var recovered = Restore(huntDeath); recovered.Step(); Assert.Null(recovered.Capture().Campaign.Exploration);
@@ -141,13 +152,14 @@ public sealed class CampaignRuntimeTests
         var next = session.AdvanceEncounter(); Assert.True(next.Success, next.Reason); Assert.Contains(next.WorldEvents, e => e.StartsWith("GroundLootRetained:", StringComparison.Ordinal));
         RunUntil(session, s => s.ActiveEncounterId == "exploration.antler_hunt" && !s.Combat.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0));
         Assert.True(session.Combat.View.Loot.Count > 0); int materials = session.Production.ProgressionView.Materials;
-        var finish = session.LeaveExploration(); Assert.True(finish.Success, finish.Reason);
-        Assert.Contains("event.wake_hunt", session.Capture().Campaign.CompletedExploration); Assert.Equal(materials + 20, session.Production.ProgressionView.Materials);
+        VerdantInteraction(session, "verdant.hunt.return");
+        Assert.Contains("event.wake_hunt", session.Capture().Campaign.CompletedExploration); Assert.Equal(materials, session.Production.ProgressionView.Materials);
         Assert.Equal(512, session.Combat.View.Inventory.Count);
-        // The one-time crypt grant is retained in permanent overflow even when the combat projection is full.
-        Assert.Equal(513, session.Production.Capture().Progression.Character.Items.Length);
+        // Both one-time testaments remain in permanent overflow when the combat projection is full.
+        Assert.Equal(514, session.Production.Capture().Progression.Character.Items.Length);
         Assert.Contains("campaign.crypt.testament", session.Production.Capture().Progression.Character.OperationReceipts.Keys);
-        Assert.Null(session.Combat.Capture().Campaign);
+        Assert.Contains("campaign.briar.testament", session.Production.Capture().Progression.Character.OperationReceipts.Keys);
+        Assert.Equal("campaign.plague_village", session.ActiveEncounterId);
         Assert.Equal(session.StateHash, Restore(session.Capture()).StateHash);
     }
 

@@ -122,6 +122,7 @@ public partial class CampaignDirector : Node3D
     {
         if (id == "journey.next") { _campaign.RequestNextStep(); return; }
         if (id.StartsWith("opening.", StringComparison.Ordinal)) { Apply(() => _session.Execute(new(CampaignRuntimeAction.InteractOpening, Id: id))); return; }
+        if (id.StartsWith("verdant.", StringComparison.Ordinal)) { Apply(() => _session.Execute(new(CampaignRuntimeAction.InteractVerdant, Id: id))); return; }
         if (_session.InHub) Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.Interact, id)));
         else Apply(() => _session.TrackClue(id));
     }
@@ -241,7 +242,8 @@ public partial class CampaignDirector : Node3D
             _session.EncounterCleared && _campaign.CanRequestNextStep && _campaign.CanShowWayForward, _campaign.NextStepLabel);
         if (wayForward is not null) mouseTargets.Add(wayForward);
         _sandbox.SetWorldInteractions(mouseTargets, Interact);
-        _sandbox.PresentLocalMap(_session.LocalMap, _session.InHub ? "Greyhaven" : _session.View.Region, combat);
+        _sandbox.PresentLocalMap(_session.LocalMap, _session.InHub ? "Greyhaven" :
+            _combat.Campaign?.Encounters.FirstOrDefault(e => e.Id == _stage.PresentedEncounter)?.Name ?? _session.View.Region, combat);
         _sandbox.SetManifestationPresentation(manifestations, snapshot.Production.Expedition.Adventure.Anatomy.Values); _sandbox.SetWorldSubtitle($"CAMPAIGN / {_session.View.Region.ToUpperInvariant()}");
         if (_captureCampaign && DisplayServer.GetName() != "headless" && !_session.InHub &&
             combat.CampaignHazards is { Count: > 0 } && _capturedActs.Add(snapshot.Campaign.CurrentAct))

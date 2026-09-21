@@ -58,8 +58,8 @@ public partial class CampaignHud
             JourneyTravelKind.Exploration => _content.Exploration.Single(e => e.Id == request.Id).Name,
             _ => "the regional route"
         };
-        _travelDialog.OkButtonText = OpeningLootRetained ? "Travel & keep drops here" : "Leave loot & travel";
-        string lootNotice = OpeningLootRetained
+        _travelDialog.OkButtonText = RoomLootRetained ? "Travel & keep drops here" : "Leave loot & travel";
+        string lootNotice = RoomLootRetained
             ? $"{_combat.Loot.Count} uncollected ground drops will stay in this cleared room. You can return through its passages to collect them."
             : $"{_combat.Loot.Count} uncollected ground drops will be left behind.";
         _travelDialog.DialogText = $"Travel to {destination}?\n\n{lootNotice} Earned items, discoveries and character progress are preserved.\n\nStay to collect your loot, or confirm departure.";
