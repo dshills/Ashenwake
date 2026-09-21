@@ -57,6 +57,13 @@ public static class CampaignRuntimeSmoke
                 state.CompletedExploration.Contains(CampaignRuntimeSession.ArchiveEvent) ? "spine.archive.return" : "spine.archive.treasure";
             return AtInteraction(session, target, new(CampaignRuntimeAction.InteractSpine, Id: target));
         }
+        bool hollow = definition.Exploration.Any(e => e.Id == CampaignRuntimeSession.VaultEvent);
+        if (hollow && session.ActiveEncounterId == CampaignRuntimeSession.VaultEncounter && session.EncounterCleared)
+        {
+            if (view.Loot.Count > 0 && view.Inventory.Count < 512) return CombatInput(session);
+            string target = state.CompletedExploration.Contains(CampaignRuntimeSession.VaultEvent) ? "hollow.vault.return" : "hollow.vault.treasure";
+            return AtInteraction(session, target, new(CampaignRuntimeAction.InteractHollow, Id: target));
+        }
         if (state.Exploration is { } exploration)
         {
             var eventDefinition = definition.Exploration.Single(e => e.Id == exploration.Id);
@@ -131,7 +138,17 @@ public static class CampaignRuntimeSmoke
                 };
             if (passage is not null) return AtInteraction(session, passage, new(CampaignRuntimeAction.InteractSpine, Id: passage));
         }
-        var optional = definition.Exploration.FirstOrDefault(e => e.Act == state.CurrentAct && !state.CompletedExploration.Contains(e.Id) && !(verdant && e.Act == 2) && !(cinder && e.Act == 3) && !(spine && e.Act == 4));
+        if (hollow && state.CurrentAct == 5 && !state.CompletedExploration.Contains(CampaignRuntimeSession.VaultEvent))
+        {
+            string passage = session.ActiveEncounterId switch
+            {
+                "campaign.identity_memory" => "hollow.back.rooms",
+                "campaign.breach_heart" => "hollow.back.memory",
+                _ => "hollow.vault.enter"
+            };
+            return AtInteraction(session, passage, new(CampaignRuntimeAction.InteractHollow, Id: passage));
+        }
+        var optional = definition.Exploration.FirstOrDefault(e => e.Act == state.CurrentAct && !state.CompletedExploration.Contains(e.Id) && !(verdant && e.Act == 2) && !(cinder && e.Act == 3) && !(spine && e.Act == 4) && !(hollow && e.Act == 5));
         if (optional?.Id == CampaignRuntimeSession.CryptEvent)
         {
             string passage = session.ActiveEncounterId switch
@@ -177,6 +194,16 @@ public static class CampaignRuntimeSmoke
                 if (Position.DistanceSquared(player.Position, SpineCampaignLayout.ForwardExit) > (long)SpineCampaignLayout.InteractionRange * SpineCampaignLayout.InteractionRange)
                 {
                     var direction = CombatProductionSmoke.MovementDirection(player.Position, SpineCampaignLayout.ForwardExit, session.Room);
+                    return new(CampaignRuntimeAction.Tick, Commands: [new(CombatCommandKind.Move, X: direction.X, Z: direction.Z)]);
+                }
+            }
+            if (hollow && state.CurrentAct == 5)
+            {
+                forward = session.Interactions.FirstOrDefault(i => i.ActionId.StartsWith("hollow.forward.", StringComparison.Ordinal));
+                if (forward is not null) return AtInteraction(session, forward.ActionId, new(CampaignRuntimeAction.InteractHollow, Id: forward.ActionId));
+                if (Position.DistanceSquared(player.Position, HollowCampaignLayout.ForwardExit) > (long)HollowCampaignLayout.InteractionRange * HollowCampaignLayout.InteractionRange)
+                {
+                    var direction = CombatProductionSmoke.MovementDirection(player.Position, HollowCampaignLayout.ForwardExit, session.Room);
                     return new(CampaignRuntimeAction.Tick, Commands: [new(CombatCommandKind.Move, X: direction.X, Z: direction.Z)]);
                 }
             }

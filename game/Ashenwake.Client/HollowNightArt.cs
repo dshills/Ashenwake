@@ -22,6 +22,7 @@ public static class HollowNightArt
         {
             case "campaign.identity_memory": RememberedGallery(b, halfWidth, halfDepth); break;
             case "campaign.breach_heart": BreachChamber(b, halfWidth, halfDepth); break;
+            case "exploration.unremembered_vault": HollowExplorationArt.BuildVault(b, halfWidth, halfDepth); break;
             default: RepeatingGallery(b, halfWidth, halfDepth); break;
         }
         Perimeter(b, halfWidth, halfDepth);

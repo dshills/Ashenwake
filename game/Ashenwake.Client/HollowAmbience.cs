@@ -13,7 +13,7 @@ public static class HollowAmbience
     public static IReadOnlyList<string> CueNames { get; } = Array.AsReadOnly<string>(["hollow_rooms", "hollow_memory", "hollow_breach"]);
     public static int CachedStreamCount => Streams.Count;
 
-    public static string CueForStyle(string style) => style is "hollow_rooms" or "hollow_memory" or "hollow_breach" ? style : "";
+    public static string CueForStyle(string style) => style == "hollow_vault" ? "hollow_memory" : style is "hollow_rooms" or "hollow_memory" or "hollow_breach" ? style : "";
 
     public static void Prewarm()
     {

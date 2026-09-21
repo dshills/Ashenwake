@@ -165,7 +165,7 @@ public sealed partial class CampaignRuntimeSession
 
     private void ValidateClearedRooms()
     {
-        int capacity = (HasOpeningExploration ? OpeningRooms.Length : 0) + (HasVerdantExploration ? VerdantRooms.Length : 0) + (HasCinderExploration ? CinderRooms.Length : 0) + (HasSpineExploration ? SpineRooms.Length : 0);
+        int capacity = (HasOpeningExploration ? OpeningRooms.Length : 0) + (HasVerdantExploration ? VerdantRooms.Length : 0) + (HasCinderExploration ? CinderRooms.Length : 0) + (HasSpineExploration ? SpineRooms.Length : 0) + (HasHollowExploration ? HollowRooms.Length : 0);
         if (clearedRooms.Count > capacity) throw new InvalidDataException("Invalid retained campaign rooms.");
         var owned = Production.Capture().Progression.Character.Items.Select(i => i.Id).ToHashSet();
         var lootIds = Combat.View.Loot.Select(l => l.Id).ToHashSet();
@@ -180,6 +180,7 @@ public sealed partial class CampaignRuntimeSession
                 FoundryEncounter => story.CurrentState.CompletedEncounters.Contains("campaign.cinder_pack"),
                 StormEncounter => story.CurrentState.CompletedExploration.Contains(StormEvent),
                 ArchiveEncounter => story.CurrentState.CompletedEncounters.Contains("campaign.bone_causeway"),
+                VaultEncounter => story.CurrentState.CompletedEncounters.Contains("campaign.repeating_rooms"),
                 MemoryEncounter => story.CurrentState.CompletedExploration.Contains(MemoryEvent),
                 _ => story.CurrentState.CompletedEncounters.Contains(id)
             };
@@ -204,5 +205,8 @@ public sealed partial class CampaignRuntimeSession
         if (story.CurrentState.CompletedExploration.Contains(ArchiveEvent) != Production.ContainsCampaignReceipt("campaign.archive.testament") ||
             story.CurrentState.CompletedExploration.Contains(ArchiveEvent) && !Production.HasArchiveTestamentReceipt)
             throw new InvalidDataException("Archive completion differs from its testament receipt.");
+        if (story.CurrentState.CompletedExploration.Contains(VaultEvent) != Production.ContainsCampaignReceipt("campaign.vault.testament") ||
+            story.CurrentState.CompletedExploration.Contains(VaultEvent) && !Production.HasVaultTestamentReceipt)
+            throw new InvalidDataException("Vault completion differs from its testament receipt.");
     }
 }

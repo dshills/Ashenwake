@@ -59,7 +59,8 @@ public partial class Sandbox
             target.Id.StartsWith("opening.forward.", StringComparison.Ordinal) || target.Id.StartsWith("verdant.back.", StringComparison.Ordinal) ||
             target.Id.StartsWith("verdant.forward.", StringComparison.Ordinal) || target.Id.StartsWith("cinder.back.", StringComparison.Ordinal) ||
             target.Id.StartsWith("cinder.forward.", StringComparison.Ordinal) || target.Id.StartsWith("spine.back.", StringComparison.Ordinal) ||
-            target.Id.StartsWith("spine.forward.", StringComparison.Ordinal) || target.Id == "journey.next" ? LocalMapMarkerKind.Exit : LocalMapMarkerKind.Service)).ToList();
+            target.Id.StartsWith("spine.forward.", StringComparison.Ordinal) || target.Id.StartsWith("hollow.back.", StringComparison.Ordinal) ||
+            target.Id.StartsWith("hollow.forward.", StringComparison.Ordinal) || target.Id == "journey.next" ? LocalMapMarkerKind.Exit : LocalMapMarkerKind.Service)).ToList();
         markers.AddRange(combat.Loot.Where(IsLootVisible).Select(loot => new LocalMapMarker("loot." + loot.Id, "Uncollected loot", loot.Position, LocalMapMarkerKind.Loot)));
         if (combat.Endgame is { } endgame)
             markers.AddRange(endgame.Mechanisms.Where(m => m.Available).Select(m => new LocalMapMarker("mechanism." + m.Id, "Mechanism", m.Position, LocalMapMarkerKind.Service)));

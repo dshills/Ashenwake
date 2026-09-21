@@ -12,5 +12,7 @@
     <EmbeddedResource Include="../../fixtures/campaign-combat-verdant.json" LogicalName="Ashenwake.PreviousCinder.Combat.json" />
     <EmbeddedResource Include="../../fixtures/campaign-cinder.json" LogicalName="Ashenwake.PreviousSpine.Campaign.json" />
     <EmbeddedResource Include="../../fixtures/campaign-combat-cinder.json" LogicalName="Ashenwake.PreviousSpine.Combat.json" />
+    <EmbeddedResource Include="../../fixtures/campaign-spine.json" LogicalName="Ashenwake.PreviousHollow.Campaign.json" />
+    <EmbeddedResource Include="../../fixtures/campaign-combat-spine.json" LogicalName="Ashenwake.PreviousHollow.Combat.json" />
   </ItemGroup>
 </Project>

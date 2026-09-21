@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign-combat.hollow.6",
+  "version": "campaign-combat.spine.5",
   "enemies": [
     {
       "id": "enemy.funeral_guard",
@@ -1167,45 +1167,7 @@
           "modifiers": [],
           "hidden": true
         }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -7800,
-            "minZ": -8200,
-            "maxX": -5800,
-            "maxZ": -3200
-          },
-          {
-            "minX": -2000,
-            "minZ": -7600,
-            "maxX": 600,
-            "maxZ": -2200
-          },
-          {
-            "minX": -2100,
-            "minZ": 2800,
-            "maxX": 600,
-            "maxZ": 8000
-          },
-          {
-            "minX": 7800,
-            "minZ": 2700,
-            "maxX": 10400,
-            "maxZ": 7600
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "campaign.identity_memory",
@@ -1240,45 +1202,7 @@
           "modifiers": [],
           "hidden": false
         }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -7800,
-            "minZ": -8200,
-            "maxX": -5600,
-            "maxZ": -3600
-          },
-          {
-            "minX": -7800,
-            "minZ": 3600,
-            "maxX": -5600,
-            "maxZ": 8200
-          },
-          {
-            "minX": 500,
-            "minZ": -8200,
-            "maxX": 1800,
-            "maxZ": -2400
-          },
-          {
-            "minX": 7500,
-            "minZ": 3300,
-            "maxX": 10000,
-            "maxZ": 8000
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "campaign.breach_heart",
@@ -1297,45 +1221,7 @@
           ],
           "hidden": false
         }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -8300,
-            "minZ": -8200,
-            "maxX": -6000,
-            "maxZ": -3800
-          },
-          {
-            "minX": -8300,
-            "minZ": 3800,
-            "maxX": -6000,
-            "maxZ": 8200
-          },
-          {
-            "minX": 7800,
-            "minZ": -8200,
-            "maxX": 10200,
-            "maxZ": -4200
-          },
-          {
-            "minX": 7800,
-            "minZ": 4200,
-            "maxX": 10200,
-            "maxZ": 8200
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "exploration.burning_rain",
@@ -1829,81 +1715,6 @@
           {
             "minX": 8200,
             "minZ": 6000,
-            "maxX": 10700,
-            "maxZ": 8400
-          }
-        ]
-      }
-    },
-    {
-      "id": "exploration.unremembered_vault",
-      "name": "The Unremembered Vault",
-      "rule": "Memory",
-      "durationTicks": 0,
-      "spawns": [
-        {
-          "enemyId": "enemy.breach_echo",
-          "position": {
-            "x": -1200,
-            "z": 0
-          },
-          "modifiers": [
-            "Riftborn"
-          ]
-        },
-        {
-          "enemyId": "enemy.memory_archer",
-          "position": {
-            "x": 4800,
-            "z": -3800
-          },
-          "modifiers": [
-            "Mirrorborn"
-          ]
-        },
-        {
-          "enemyId": "enemy.doubled_shadow",
-          "position": {
-            "x": 6200,
-            "z": 1800
-          },
-          "modifiers": [],
-          "hidden": true
-        }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": 1200,
-            "minZ": -10000,
-            "maxX": 2900,
-            "maxZ": -1800
-          },
-          {
-            "minX": -2100,
-            "minZ": 3100,
-            "maxX": 400,
-            "maxZ": 7800
-          },
-          {
-            "minX": -9100,
-            "minZ": -7500,
-            "maxX": -6500,
-            "maxZ": -3400
-          },
-          {
-            "minX": 8200,
-            "minZ": 5900,
             "maxX": 10700,
             "maxZ": 8400
           }

@@ -10,7 +10,7 @@ using System.Text.Json.Serialization;
 
 namespace Ashenwake.Core.Campaign;
 
-public enum CampaignRuntimeAction { Tick, EnterAct, AdvanceEncounter, ReturnToHub, Choose, BeginExploration, TrackClue, LeaveExploration, Production, RevisitEncounter, InteractOpening, EnableExplorationMap, InteractVerdant, InteractCinder, InteractSpine }
+public enum CampaignRuntimeAction { Tick, EnterAct, AdvanceEncounter, ReturnToHub, Choose, BeginExploration, TrackClue, LeaveExploration, Production, RevisitEncounter, InteractOpening, EnableExplorationMap, InteractVerdant, InteractCinder, InteractSpine, InteractHollow }
 public sealed record CampaignRuntimeCommand(CampaignRuntimeAction Action, int Act = 0, string Id = "", string Value = "", CombatCommand[]? Commands = null, ProductionCommand? Production = null);
 public sealed record CampaignRuntimeResult(bool Success, string Reason, CombatEvent[] CombatEvents, string[] WorldEvents);
 public sealed record CampaignRuntimeSnapshot
@@ -50,7 +50,7 @@ public sealed partial class CampaignRuntimeSession
     public string ActiveEncounterId { get; private set; } = "hub";
     public bool InHub => story.CurrentState.InHub;
     public bool EncounterCleared => InHub || ActiveEncounterId == "clear" || story.CurrentState.CompletedEncounters.Contains(ActiveEncounterId) ||
-        (ActiveEncounterId == CryptEncounter || HasVerdantExploration && ActiveEncounterId is ShrineEncounter or HuntEncounter || HasCinderExploration && ActiveEncounterId is FoundryEncounter or StormEncounter || HasSpineExploration && ActiveEncounterId is ArchiveEncounter or MemoryEncounter) && !arena.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0);
+        (ActiveEncounterId == CryptEncounter || HasVerdantExploration && ActiveEncounterId is ShrineEncounter or HuntEncounter || HasCinderExploration && ActiveEncounterId is FoundryEncounter or StormEncounter || HasSpineExploration && ActiveEncounterId is ArchiveEncounter or MemoryEncounter || HasHollowExploration && ActiveEncounterId == VaultEncounter) && !arena.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0);
     public CampaignView View => story.ViewForResonance(Production.View.Resonance);
     public CampaignView StoryView => View;
     public IReadOnlyList<string> WorldEvents { get; private set; } = [];
@@ -77,6 +77,7 @@ public sealed partial class CampaignRuntimeSession
             if (VerdantInteractions() is { } verdant) return verdant;
             if (CinderInteractions() is { } cinder) return cinder;
             if (SpineInteractions() is { } spine) return spine;
+            if (HollowInteractions() is { } hollow) return hollow;
             var current = story.CurrentState.Exploration;
             if (current is null) return [];
             var definition = Content.Data.Exploration.Single(e => e.Id == current.Id);
@@ -186,13 +187,15 @@ public sealed partial class CampaignRuntimeSession
             string? verdantReturn = VerdantBranchReturn();
             string? cinderReturn = CinderBranchReturn();
             string? spineReturn = SpineBranchReturn();
-            if (HasVerdantExploration || HasCinderExploration || HasSpineExploration) CacheOpeningRoom(restoreDeadPlayer: true);
+            string? hollowReturn = HollowBranchReturn();
+            if (HasVerdantExploration || HasCinderExploration || HasSpineExploration || HasHollowExploration) CacheOpeningRoom(restoreDeadPlayer: true);
             var died = story.PlayerDied(); Require(died); messages.AddRange(died.Events); explorationReturnEncounter = "";
             Production.ClearCampaignEffects();
             if (cryptDeath) ResumeOpeningRoom("campaign.road", restoreAtAnchor: true);
             else if (verdantReturn is not null) ResumeOpeningRoom(verdantReturn, restoreAtAnchor: true);
             else if (cinderReturn is not null) ResumeOpeningRoom(cinderReturn, restoreAtAnchor: true);
             else if (spineReturn is not null) ResumeOpeningRoom(spineReturn, restoreAtAnchor: true);
+            else if (hollowReturn is not null) ResumeOpeningRoom(hollowReturn, restoreAtAnchor: true);
             else StartExpectedEncounter(restoreAtAnchor: true);
             messages.Add("CampaignCombatRestoredAtAnchor");
         }
@@ -221,7 +224,7 @@ public sealed partial class CampaignRuntimeSession
                     // Preserve migrated regional return passages until the player leaves the completed memory.
                 }
                 // Retain the cleared scoped arena until its visible loot has been picked up. Its timer no longer expires after victory.
-                else if (arena.View.Loot.Count == 0 && definition.Id != CryptEvent && !(HasVerdantExploration && definition.Id is ShrineEvent or HuntEvent) && !(HasCinderExploration && definition.Id is FoundryEvent or StormEvent) && !(HasSpineExploration && definition.Id is ArchiveEvent or MemoryEvent))
+                else if (arena.View.Loot.Count == 0 && definition.Id != CryptEvent && !(HasVerdantExploration && definition.Id is ShrineEvent or HuntEvent) && !(HasCinderExploration && definition.Id is FoundryEvent or StormEvent) && !(HasSpineExploration && definition.Id is ArchiveEvent or MemoryEvent) && !(HasHollowExploration && definition.Id == VaultEvent))
                 {
                     var completion = story.CompleteExploration(definition.EncounterId); Require(completion); messages.AddRange(completion.Events);
                     messages.AddRange(Award("campaign.exploration." + definition.Id, completion)); EndExplorationArena();
@@ -251,7 +254,8 @@ public sealed partial class CampaignRuntimeSession
             case CampaignRuntimeAction.InteractVerdant: return InteractVerdant(command.Id);
             case CampaignRuntimeAction.InteractCinder: return InteractCinder(command.Id);
             case CampaignRuntimeAction.InteractSpine: return InteractSpine(command.Id);
-            case CampaignRuntimeAction.RevisitEncounter: return HasSpineExploration && state.CurrentAct == 4 ? RevisitSpinePassage(command.Id) : HasCinderExploration && state.CurrentAct == 3 ? RevisitCinderPassage(command.Id) : HasVerdantExploration && state.CurrentAct == 2 ? RevisitVerdantPassage(command.Id) : RevisitOpeningRoom(command.Id);
+            case CampaignRuntimeAction.InteractHollow: return InteractHollow(command.Id);
+            case CampaignRuntimeAction.RevisitEncounter: return HasHollowExploration && state.CurrentAct == 5 ? RevisitHollowPassage(command.Id) : HasSpineExploration && state.CurrentAct == 4 ? RevisitSpinePassage(command.Id) : HasCinderExploration && state.CurrentAct == 3 ? RevisitCinderPassage(command.Id) : HasVerdantExploration && state.CurrentAct == 2 ? RevisitVerdantPassage(command.Id) : RevisitOpeningRoom(command.Id);
             case CampaignRuntimeAction.Production:
                 if (!state.InHub || command.Production is null) return Failed("Permanent services require Greyhaven.");
                 if (command.Production.Action == ProductionAction.Expedition && command.Production.Expedition?.Action is not (ExpeditionAction.Interact or ExpeditionAction.InstallFragment or ExpeditionAction.Manifestation))
@@ -288,6 +292,8 @@ public sealed partial class CampaignRuntimeSession
                     return Failed("Follow the adjoining forward passage to reach the next encounter.");
                 if (HasSpineExploration && state.CurrentAct == 4 && !CanAdvanceSpine(expected))
                     return Failed("Follow the adjoining forward passage to reach the next encounter.");
+                if (HasHollowExploration && state.CurrentAct == 5 && !CanAdvanceHollow(expected))
+                    return Failed("Follow the adjoining forward passage to reach the next encounter.");
                 if (!ChoiceAllows(expected)) return Failed("Resolve this region's central choice before the final confrontation.");
                 ReportUncollectedLoot(messages); StartEncounter(expected, restoreAtAnchor: true); messages.Add("CampaignEncounterEntered:" + expected); break;
             case CampaignRuntimeAction.ReturnToHub:
@@ -305,6 +311,7 @@ public sealed partial class CampaignRuntimeSession
                 if (HasCinderExploration && command.Id == StormEvent) return InteractCinder("cinder.storm.enter");
                 if (HasSpineExploration && command.Id == ArchiveEvent) return InteractSpine("spine.archive.enter");
                 if (HasSpineExploration && command.Id == MemoryEvent) return InteractSpine("spine.memory.enter");
+                if (HasHollowExploration && command.Id == VaultEvent) return InteractHollow("hollow.vault.enter");
                 if (!EncounterCleared) return Failed("Secure the area before exploring.");
                 string returnTo = ActiveEncounterId; result = story.BeginExploration(command.Id); if (!result.Success) return Failed(result.Reason);
                 explorationReturnEncounter = returnTo; messages.AddRange(result.Events);
@@ -329,6 +336,7 @@ public sealed partial class CampaignRuntimeSession
                 if (HasCinderExploration && ActiveEncounterId == StormEncounter) return InteractCinder("cinder.storm.return");
                 if (HasSpineExploration && ActiveEncounterId == ArchiveEncounter) return InteractSpine("spine.archive.return");
                 if (HasSpineExploration && ActiveEncounterId == MemoryEncounter) return InteractSpine("spine.memory.return");
+                if (HasHollowExploration && ActiveEncounterId == VaultEncounter) return InteractHollow("hollow.vault.return");
                 if (state.Exploration is null) return Failed("No exploration context is active.");
                 var leavingDefinition = Content.Data.Exploration.Single(e => e.Id == state.Exploration.Id);
                 bool completed = ActiveEncounterId == leavingDefinition.EncounterId && !arena.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0) &&
@@ -361,6 +369,10 @@ public sealed partial class CampaignRuntimeSession
     private void StartExpectedEncounter(bool restoreAtAnchor)
     {
         string? expected = View.EncounterId;
+        if (HasHollowExploration && story.CurrentState.CurrentAct == 5 && expected is null)
+        { ResumeOpeningRoom("campaign.repeating_rooms", restoreAtAnchor); return; }
+        if (HasHollowExploration && story.CurrentState.CurrentAct == 5 && expected == "campaign.breach_heart" && !ChoiceAllows(expected))
+        { ResumeOpeningRoom("campaign.identity_memory", restoreAtAnchor); return; }
         if (HasSpineExploration && story.CurrentState.CurrentAct == 4 && expected is null)
         { ResumeOpeningRoom("campaign.bone_causeway", restoreAtAnchor); return; }
         if (HasSpineExploration && story.CurrentState.CurrentAct == 4 && expected == "campaign.covenant_warden" && !ChoiceAllows(expected))
@@ -451,11 +463,13 @@ public sealed partial class CampaignRuntimeSession
             ValidateVerdantExploration(definition.Id, expected);
             ValidateCinderExploration(definition.Id);
             ValidateSpineExploration(definition.Id);
+            ValidateHollowExploration(definition.Id);
         }
         else
         {
             if (ValidateCompletedCinderRoom()) return;
             if (ValidateCompletedSpineRoom()) return;
+            if (ValidateCompletedHollowRoom()) return;
             if (explorationReturnEncounter != "") throw new InvalidDataException("An inactive exploration retained its return context.");
             if (ActiveEncounterId == CryptEncounter && state.CurrentAct == 1 && state.CompletedExploration.Contains(CryptEvent))
             {

@@ -17,6 +17,7 @@ internal static class OpeningCatalogMigration
     private sealed record Release(string Campaign, string Combat, string PreviousCombat, string Resource, string Discovery);
     private static readonly Release[] Releases =
     [
+        new("campaign.hollow.6", "campaign-combat.hollow.6", "campaign-combat.spine.5", "PreviousHollow", "discovery.unremembered_vault"),
         new("campaign.spine.5", "campaign-combat.spine.5", "campaign-combat.cinder.4", "PreviousSpine", "discovery.oathkeeper_archive"),
         new("campaign.cinder.4", "campaign-combat.cinder.4", "campaign-combat.verdant.3", "PreviousCinder", "discovery.sealed_foundry"),
         new("campaign.verdant.3", "campaign-combat.verdant.3", "campaign-combat.grey_march.2", "PreviousVerdant", "discovery.briar_shrine"),
@@ -94,6 +95,15 @@ internal static class OpeningCatalogMigration
     {
         var state = LegendaryCatalogMigration.Rebind(original, combatJson, adventure, policy, campaign);
         var content = CombatContent.Parse(combatJson);
+        if (campaign.Capture().Exploration.Any(e => e.Id == "event.unremembered_vault") &&
+            state.Campaign.CurrentAct == 5 && !state.Campaign.InHub && state.ActiveEncounterId == "clear" && state.Campaign.Exploration is null)
+        {
+            // Earlier builds used a generic room while waiting on the final choice or
+            // revisiting a completed act. Bind those authenticated saves to a secured room.
+            string secured = state.Campaign.CompletedEncounters.Contains("campaign.identity_memory") &&
+                !state.Campaign.CompletedEncounters.Contains("campaign.breach_heart") ? "campaign.identity_memory" : "campaign.repeating_rooms";
+            if (state.Campaign.CompletedEncounters.Contains(secured)) state = state with { ActiveEncounterId = secured };
+        }
         if (campaign.Capture().Exploration.Any(e => e.Id == "event.oathkeeper_archive") &&
             state.Campaign.CurrentAct == 4 && !state.Campaign.InHub)
         {

@@ -5,7 +5,7 @@ namespace Ashenwake.Client;
 
 public static class EnvironmentGround
 {
-    public static string Style(bool inHub, string encounterId, string? explorationId = null, int act = 0) => inHub ? "greyhaven" : explorationId == "event.widow_crypt" ? "crypt" : explorationId == "event.briar_shrine" ? "verdant_shrine" : explorationId == "event.wake_hunt" ? "verdant_hunt" : explorationId == "event.sealed_foundry" ? "cinder_foundry" : explorationId == "event.resonance_storm" ? "cinder_storm" : explorationId == "event.oathkeeper_archive" ? "spine_archive" : explorationId == "event.divine_memory" ? "spine_memory" : encounterId switch
+    public static string Style(bool inHub, string encounterId, string? explorationId = null, int act = 0) => inHub ? "greyhaven" : explorationId == "event.widow_crypt" ? "crypt" : explorationId == "event.briar_shrine" ? "verdant_shrine" : explorationId == "event.wake_hunt" ? "verdant_hunt" : explorationId == "event.sealed_foundry" ? "cinder_foundry" : explorationId == "event.resonance_storm" ? "cinder_storm" : explorationId == "event.oathkeeper_archive" ? "spine_archive" : explorationId == "event.unremembered_vault" ? "hollow_vault" : explorationId == "event.divine_memory" ? "spine_memory" : encounterId switch
     {
         "campaign.road" or "room.ossuary" => "road",
         "campaign.monastery" or "room.cloister" => "monastery",
@@ -32,6 +32,7 @@ public static class EnvironmentGround
         "campaign.repeating_rooms" => "hollow_rooms",
         "campaign.identity_memory" => "hollow_memory",
         "campaign.breach_heart" => "hollow_breach",
+        "exploration.unremembered_vault" => "hollow_vault",
         "clear" when act == 5 => "hollow_rooms",
         _ => "default"
     };

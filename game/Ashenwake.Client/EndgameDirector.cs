@@ -211,6 +211,7 @@ public partial class EndgameDirector : Node3D
         if (id.StartsWith("verdant.", StringComparison.Ordinal)) { Campaign(new(CampaignRuntimeAction.InteractVerdant, Id: id)); return; }
         if (id.StartsWith("cinder.", StringComparison.Ordinal)) { Campaign(new(CampaignRuntimeAction.InteractCinder, Id: id)); return; }
         if (id.StartsWith("spine.", StringComparison.Ordinal)) { Campaign(new(CampaignRuntimeAction.InteractSpine, Id: id)); return; }
+        if (id.StartsWith("hollow.", StringComparison.Ordinal)) { Campaign(new(CampaignRuntimeAction.InteractHollow, Id: id)); return; }
         if (id == "endgame.gate") { _board.SetOpen(true); return; }
         if (_session.InHub) Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.Interact, id)));
         else Campaign(new(CampaignRuntimeAction.TrackClue, Id: id));
@@ -469,6 +470,7 @@ public partial class EndgameDirector : Node3D
             "CryptTestamentClaimed" => "The Widow's Testament is yours: rare armor, 25 materials, and a hidden testimony in your journal.",
             "FoundryTestamentClaimed" => "The Foundry Testament is yours: Cinderwake Saber, 35 materials, and the workers' testimony in your journal.",
             "ArchiveTestamentClaimed" => "The Archive Testament is yours: Vowkeeper's Carapace, 40 materials, and the oathkeepers' testimony in your journal.",
+            "VaultTestamentClaimed" => "The Vault Testament is yours: Choir of the Unburied, 45 materials, and lost testimony in your journal.",
             "CampaignPassageEntered" => "Follow the marked passages. Cleared rooms keep their remaining treasure.",
             "GroundLootLeftBehind" => "Left " + value + " uncollected drops behind.",
             "Crafted" => value + " completed. Your item and material balance have been updated.",

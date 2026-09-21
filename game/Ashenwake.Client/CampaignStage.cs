@@ -72,6 +72,7 @@ public partial class CampaignStage : Node3D
             "event.sealed_foundry" => "exploration.sealed_foundry",
             "event.divine_memory" => "exploration.first_oath",
             "event.oathkeeper_archive" => "exploration.oathkeeper_archive",
+            "event.unremembered_vault" => "exploration.unremembered_vault",
             _ => activeEncounterId ?? view.EncounterId ?? ""
         };
         PresentedEncounter = encounter;
@@ -140,12 +141,14 @@ public partial class CampaignStage : Node3D
                     CinderExplorationArt.BuildMarker(marker, interaction.ActionId);
                 else if (SpineExplorationArt.SupportsMarker(interaction.ActionId))
                     SpineExplorationArt.BuildMarker(marker, interaction.ActionId);
+                else if (HollowExplorationArt.SupportsMarker(interaction.ActionId))
+                    HollowExplorationArt.BuildMarker(marker, interaction.ActionId);
                 else
                 {
                     Mesh(new TorusMesh { InnerRadius = .47f, OuterRadius = .58f }, new(0, .07f, 0), new("d8c790"), marker);
                     Mesh(new CylinderMesh { TopRadius = .16f, BottomRadius = .3f, Height = .5f }, new(0, .25f, 0), new("93d6c9"), marker);
                 }
-                Label(SpineExplorationArt.MarkerLabel(interaction.ActionId, CinderExplorationArt.MarkerLabel(interaction.ActionId, VerdantExplorationArt.MarkerLabel(interaction.ActionId, GreyMarchExplorationArt.MarkerLabel(interaction.ActionId, interaction.Name)))), new(0, 1.3f, 0), new("eee0b8"), marker);
+                Label(HollowExplorationArt.MarkerLabel(interaction.ActionId, SpineExplorationArt.MarkerLabel(interaction.ActionId, CinderExplorationArt.MarkerLabel(interaction.ActionId, VerdantExplorationArt.MarkerLabel(interaction.ActionId, GreyMarchExplorationArt.MarkerLabel(interaction.ActionId, interaction.Name))))), new(0, 1.3f, 0), new("eee0b8"), marker);
             }
         }
         if (_markers.Count > 0)

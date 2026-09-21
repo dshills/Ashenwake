@@ -141,7 +141,7 @@ public sealed class OpeningCatalogMigrationTests
     }
 
     [Fact]
-    public void ActiveLaterActKeepsItsExistingRoomAndOldReplayRemainsBoundToTheOldCatalog()
+    public void ActiveFinalActMigratesItsRoomAndOldReplayRemainsBoundToTheOldCatalog()
     {
         var original = OldJourney();
         for (int i = 0; i < 40000 && original.ActiveEncounterId != "campaign.repeating_rooms"; i++)
@@ -150,8 +150,14 @@ public sealed class OpeningCatalogMigrationTests
         Assert.False(original.EncounterCleared);
         Assert.True(CampaignRuntimeReplayRunner.Run(Journey(true), Adventure, Policy, Campaign(true), original.CaptureReplay()).Success);
         var loaded = Upgrade(Save(original));
-        SameExceptIdentities(original.Capture(), loaded.Capture());
-        Assert.Equal(JsonData.Hash(original.Room), JsonData.Hash(loaded.Room));
+        SameExceptIdentities(original.Capture().Production, loaded.Capture().Production);
+        SameExceptIdentities(original.Capture().Campaign, loaded.Capture().Campaign);
+        Assert.Equal(original.ActiveEncounterId, loaded.ActiveEncounterId);
+        Assert.Equal(JsonData.Hash(original.Combat.Capture().Inventory), JsonData.Hash(loaded.Combat.Capture().Inventory));
+        Assert.Equal(original.Combat.Capture().Rng, loaded.Combat.Capture().Rng);
+        Assert.NotEqual(JsonData.Hash(original.Room), JsonData.Hash(loaded.Room));
+        var space = new SpatialWorld(loaded.Room);
+        Assert.All(loaded.Combat.View.Actors, actor => Assert.True(space.CanOccupy(actor.Position, CombatSession.ActorRadius)));
         Assert.True(loaded.Step().Success);
         Assert.True(CampaignRuntimeReplayRunner.Run(Journey(false), Adventure, Policy, Campaign(false), loaded.CaptureReplay()).Success);
     }

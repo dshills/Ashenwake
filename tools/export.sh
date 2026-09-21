@@ -97,6 +97,12 @@ mkdir -p "$spine_exploration_output"
 python3 tools/check-godot-log.py "$spine_exploration_output/smoke.log"
 rg -q 'SpineExplorationClientSmokePassed' "$spine_exploration_output/smoke.log"
 
+hollow_exploration_output="$package_output/hollow-exploration-client"
+mkdir -p "$hollow_exploration_output"
+"$binary" --headless --quit-after 36000 --log-file "$hollow_exploration_output/smoke.log" -- --hollow-exploration-smoke --discipline=Vanguard --output="$hollow_exploration_output"
+python3 tools/check-godot-log.py "$hollow_exploration_output/smoke.log"
+rg -q 'HollowExplorationClientSmokePassed' "$hollow_exploration_output/smoke.log"
+
 cinder_output="$package_output/cinder-client"
 mkdir -p "$cinder_output"
 "$binary" --headless --quit-after 3600 --log-file "$cinder_output/smoke.log" -- --cinder-smoke --output="$cinder_output"

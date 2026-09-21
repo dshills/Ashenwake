@@ -107,7 +107,7 @@ public partial class Sandbox
         }
         if (hollow)
         {
-            bool memory = style == "hollow_memory", breach = style == "hollow_breach";
+            bool memory = style is "hollow_memory" or "hollow_vault", breach = style == "hollow_breach";
             environment.BackgroundColor = new Color(memory ? "242333" : "181e2c");
             environment.AmbientLightColor = new Color(memory ? "b6acc4" : breach ? "a7b6c9" : "a8afc3");
             environment.AmbientLightEnergy = .38f;
@@ -140,7 +140,7 @@ public partial class Sandbox
             ? style == "verdant_heart" ? "90b68a" : "b9ca86"
             : cinder ? style == "cinder_storm" ? "aeb3c2" : "bc9172"
             : spine ? style == "spine_memory" ? "d0c6a4" : "a6b1c4"
-            : hollow ? style == "hollow_memory" ? "b6a8c5" : "9fbbcb" : hub ? "ffbe76" : "8aafb5");
+            : hollow ? style is "hollow_memory" or "hollow_vault" ? "b6a8c5" : "9fbbcb" : hub ? "ffbe76" : "8aafb5");
         SetRegionalAmbience(style);
         ApplyGraphicsQuality();
         UpdateEnvironmentAtmosphere(0);

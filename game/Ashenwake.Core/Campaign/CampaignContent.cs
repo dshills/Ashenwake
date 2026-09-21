@@ -29,7 +29,7 @@ public sealed class CampaignContent
     public static CampaignContent Parse(string json) => new(JsonData.Read<CampaignDefinition>(json));
     public static CampaignContent Default() => new(new()
     {
-        Version = "campaign.spine.5",
+        Version = "campaign.hollow.6",
         Factions = ["Reliquary Church", "Anatomists", "Cinder Compact", "Children of Ilyra", "Oathbound", "Quiet"],
         Residents = ["Mara Vey", "Torren Bale", "Sister Cael", "Oris Fen", "Kesh", "Pale Child"],
         Acts =
@@ -90,7 +90,9 @@ public sealed class CampaignContent
             new("event.sealed_foundry", 3, "Memory", "The Sealed Foundry", "exploration.sealed_foundry", 0,
                 ["context:sealed_foundry", "reward:cinderwake_saber", "return:cinder_fields"], [], "discovery.sealed_foundry", 35),
             new("event.oathkeeper_archive", 4, "Memory", "The Oathkeeper’s Archive", "exploration.oathkeeper_archive", 0,
-                ["context:oathkeeper_archive", "lore:the_first_witnesses_bound_themselves_to_protect_those_without_a_voice", "reward:archive_testament"], [], "discovery.oathkeeper_archive", 40)
+                ["context:oathkeeper_archive", "lore:the_first_witnesses_bound_themselves_to_protect_those_without_a_voice", "reward:archive_testament"], [], "discovery.oathkeeper_archive", 40),
+            new("event.unremembered_vault", 5, "Memory", "The Unremembered Vault", "exploration.unremembered_vault", 0,
+                ["context:unremembered_vault", "lore:those_erased_from_history_kept_watch_beside_nhal", "reward:vault_testament"], [], "discovery.unremembered_vault", 45)
         ]
     });
 

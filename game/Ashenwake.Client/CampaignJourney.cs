@@ -89,6 +89,8 @@ public partial class CampaignHud
             _rows.AddChild(Label($"Complete Act {act.Number - 1} to open this route. Its encounters and testimony remain undiscovered.", 13));
             return;
         }
+        if (act.Number == 5 && HasHollowExploration)
+            _rows.AddChild(Label("Pale anchor glyphs mark real passages. Repeated dark doorways beyond the room's edge are echoes of places that no longer exist.", 12));
         if (here) MapNextStep(); else JourneyLootNotice();
         _rows.AddChild(Label("Anchor · " + Readable(act.Anchor), 12));
         _rows.AddChild(Label($"{act.Encounters.Count(e => _state.CompletedEncounters.Contains(e.Id))}/{act.Encounters.Length} encounters completed", 13));
@@ -113,7 +115,7 @@ public partial class CampaignHud
 
     private void JourneyHeading(string title, string status)
     { _rows.AddChild(Label(title, 18)); var label = Label(status, 12); label.Modulate = new("9bd4c7"); _rows.AddChild(label); }
-    private bool RoomLootRetained => !_state.InHub && !_engaged && _interactions.Any(i => i.Id.StartsWith("opening.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.", StringComparison.Ordinal) || i.Id.StartsWith("cinder.", StringComparison.Ordinal) || i.Id.StartsWith("spine.", StringComparison.Ordinal));
+    private bool RoomLootRetained => !_state.InHub && !_engaged && _interactions.Any(i => i.Id.StartsWith("opening.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.", StringComparison.Ordinal) || i.Id.StartsWith("cinder.", StringComparison.Ordinal) || i.Id.StartsWith("spine.", StringComparison.Ordinal) || i.Id.StartsWith("hollow.", StringComparison.Ordinal));
     private string LootSuffix => _combat.Loot.Count > 0 ? $" · {_combat.Loot.Count} uncollected drops" : "";
     private void JourneyLootNotice()
     {
@@ -183,6 +185,15 @@ public partial class CampaignHud
                     _rows.AddChild(Label("Inside the memory, the regional faults unfold in reverse order. Watch the numbered warnings before they strike.", 12));
                 continue;
             }
+            if (HasHollowExploration && entry.Id == "event.unremembered_vault")
+            {
+                bool available = _interactions.Any(i => i.Id == "hollow.vault.enter");
+                Button((_state.CompletedExploration.Contains(entry.Id) ? "✓ Revisit " : "Explore ") + entry.Name + " · lost witnesses",
+                    () => RequestInteraction("hollow.vault.enter")).Disabled = !available;
+                if (!available && !InUnrememberedVault)
+                    _rows.AddChild(Label("Follow the northern anchor glyph from the secured Repeating Rooms to the hidden vault.", 12));
+                continue;
+            }
             var request = new JourneyTravelRequest(JourneyTravelKind.Exploration, Id: entry.Id);
             Button((_state.CompletedExploration.Contains(entry.Id) ? "✓ " : "") + entry.Name + " · " + entry.Kind + LootSuffix,
                 () => RequestJourneyTravel(request)).Disabled = JourneyTravelReason(request).Length > 0;
@@ -231,6 +242,12 @@ public partial class CampaignHud
                 : "The memory reward is secured. Remaining drops stay here when you return to the regional route.", 12));
             foreach (string rule in _view.ExplorationRules) _rows.AddChild(Label(Readable(rule), 12));
             Button(MemoryReturnName, () => RequestInteraction("spine.memory.return"));
+            return;
+        }
+        if (HasHollowExploration && definition.Id == "event.unremembered_vault")
+        {
+            _rows.AddChild(Label("Open the Vault Testament after defeating its elite echoes. The western anchor glyph leads back to the Repeating Rooms. Uncollected drops remain in the cleared vault.", 12));
+            Button("Return to the Repeating Rooms", () => RequestInteraction("hollow.vault.return"));
             return;
         }
         _rows.AddChild(Label(definition.Name + (active.RemainingTicks > 0 ? $" · {active.RemainingTicks / 30d:F0}s remaining" : ""), 14));
@@ -284,6 +301,7 @@ public partial class CampaignHud
                     {
                         "event.widow_crypt" => "The widow hid her family beneath the monastery when the bells began calling the dead. Her testament names the first resurrection as an experiment, not a miracle. She left a burial mantle for whoever would carry that truth beyond the crypt.",
                         "event.sealed_foundry" => "The foundry workers sealed their furnace to shelter their families from an extraction surge. Their foreman left the Cinderwake Saber beside a roster of those saved. The city remembered its lost output; this testament remembers its people.",
+                        "event.unremembered_vault" => "Those erased from history kept watch beside Nhal. The vault holds the names the world forgot, preserved by witnesses who surrendered their own remembrance to keep another's story alive. Their ring, Choir of the Unburied, carries the voices that would otherwise have vanished with them.",
                         "event.oathkeeper_archive" => "The oathkeepers preserved the testimony the Contract Hall erased: Orrun's first promise bound the strong to protect the vulnerable, and every vow required consent. Their last keeper left Vowkeeper's Carapace beside the uncensored tablets, trusting a future witness to carry both beyond these walls.",
                         "event.divine_memory" => "Before stone made the law permanent, the first covenant was spoken freely. Its witnesses promised shelter and mutual protection. The founding sanctuary remembers an oath that could be chosen, before the Contract Hall made every life a debt.",
                         "event.briar_shrine" => "Before the roots covered this refuge, an oathstone promised shelter to every plague exile. The names beneath it belong to people the village had turned away. Orrun's Oathseal survived among their offerings: a vow kept even when its keepers were forgotten.",

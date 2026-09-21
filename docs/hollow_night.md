@@ -1,12 +1,14 @@
 # The Hollow Night
 
-Act V now has three distinct settings beneath ordinary reality:
+The original presentation milestone gave Act V three distinct settings beneath ordinary reality. The later [Hollow Night exploration milestone](hollow_exploration.md) connects those rooms through physical passages and adds The Unremembered Vault.
+
+The original settings:
 
 - **Repeating Rooms:** nested blind arches, repeated stonework and displaced shadow outlines surround the existing encounter.
 - **Identity Memory:** asymmetric record galleries and split memorials suggest a room remembering different versions of itself.
 - **Breach Heart:** a chamber of obelisks frames a large suspended aperture, three channel seals and articulated containment rings.
 
-Blue-grey and muted violet paving keep attack warnings and the mint mouse destination ring prominent. The distant architecture has no walkable doors or new collision. The original room boundaries, obstacle footprints and campaign progression remain authoritative.
+Blue-grey and muted violet paving keep attack warnings and the mint mouse destination ring prominent. In this original presentation pass, distant architecture had no walkable doors or new collision. The exploration milestone now supplies authored collision and marked physical passages while retaining the encounter rules and campaign outcomes.
 
 The Breach Heart backdrop follows all three actual boss phases. Each of its three channel seals tracks the same channel actor across deaths. The boss is **SEALED · 3 CHANNELS** while all three live and **BREACH EXPOSED** once that protection breaks, using the Core's read-only `Shielded` projection. Channel actors carry persistent **BREAK SEAL** instructions. Mirrorborn copies are labelled **BREACH ECHO**; only the original boss drives the phase, warning and victory presentation.
 

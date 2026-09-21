@@ -92,9 +92,9 @@ public partial class HollowSmoke : Node
             }
             Check("real_route_completes_campaign_and_returns_to_hub", CampaignRuntimeSmoke.Complete(_session));
             Check("final_choice_and_ending_recorded", _session.Capture().Campaign.Choices.ContainsKey("choice.future") && _session.View.Ending is { FracturesUnlocked: true });
-            Check("all_three_distinct_act_five_contexts_observed", _contexts.SetEquals(new[] { "hollow_rooms", "hollow_memory", "hollow_breach" }));
-            Check("architecture_is_distinct_in_every_context", _environments.Select(e => e.ArchitectureFingerprint).Distinct().Count() == 3);
-            Check("ground_is_distinct_in_every_context", _environments.Select(e => e.GroundFingerprint).Distinct().Count() == 3);
+            Check("all_four_distinct_act_five_contexts_observed", _contexts.SetEquals(new[] { "hollow_rooms", "hollow_memory", "hollow_breach", "hollow_vault" }));
+            Check("architecture_is_distinct_in_every_context", _environments.Select(e => e.ArchitectureFingerprint).Distinct().Count() == 4);
+            Check("ground_is_distinct_in_every_context", _environments.Select(e => e.GroundFingerprint).Distinct().Count() == 4);
             Check("all_actual_breach_phases_observed", _phases.SetEquals(new[] { 1, 2, 3 }));
             Check("seal_channels_all_living_counts_observed", _channels.SetEquals(new[] { 0, 1, 2, 3 }));
             Check("shield_changes_at_actual_channel_threshold", _shields.SetEquals(new[] { true, false }));
@@ -112,7 +112,7 @@ public partial class HollowSmoke : Node
             Refresh(); await Settle();
             CheckHubCleanup("final_return");
             Check("hub_style_takes_precedence_over_stale_region", EnvironmentGround.Style(true, "campaign.breach_heart", "", 5) == "greyhaven");
-            Check("completed_act_five_can_be_revisited", _session.EnterAct(5).Success && _session.ActiveEncounterId == "clear"); _commands++;
+            Check("completed_act_five_can_be_revisited", _session.EnterAct(5).Success && _session.ActiveEncounterId == "campaign.repeating_rooms"); _commands++;
             Refresh(); await Settle();
             Check("completed_act_five_retains_regional_floor_and_atmosphere", _sandbox.EnvironmentStyle == "hollow_rooms" && _sandbox.AmbienceCue == "hollow_rooms" &&
                 Descendants(_stage).OfType<Node3D>().Any(n => n.Name == "HollowNightArchitecture" && n.IsVisibleInTree()));
@@ -661,7 +661,7 @@ public partial class HollowSmoke : Node
             audioFingerprints = _audioFingerprints,
             captures = _captures.Order().ToArray(),
             error,
-            scope = "Real CampaignRuntimeSmoke commands unlock and complete Act V, its final choice, ending and return. Independent snapshots at each Breach Heart phase use ordinary movement, dodge and potion inputs without attacking so actual boss AI completes first/returning echo and phase-three sweep cycles. Another real identity-memory checkpoint independently returns to Greyhaven and takes ordinary incoming attacks until death to verify cleanup. Every branch is replayed and the unchanged live route restored. Echo labels are matched to Core warning identity, geometry, remaining time and lifetime including tick zero. Mesh vertices establish safe scenery/ground placement, shipping mouse planner detours and viewport clicks verify mint destination rings and X cancellation. Boss-owned warnings, exact living seal threshold, all phases, finite victory, restore, pause, reduced effects, audio cache, resource bounds, completed-region revisit and final replay are verified without fabricating combat state."
+            scope = "Real CampaignRuntimeSmoke commands unlock and complete all four Act V contexts including the Unremembered Vault, final choice, ending and return. Independent snapshots at each Breach Heart phase use ordinary movement, dodge and potion inputs without attacking so actual boss AI completes first/returning echo and phase-three sweep cycles. Another real identity-memory checkpoint independently returns to Greyhaven and takes ordinary incoming attacks until death to verify cleanup. Every branch is replayed and the unchanged live route restored. Echo labels are matched to Core warning identity, geometry, remaining time and lifetime including tick zero. Mesh vertices establish safe scenery/ground placement, shipping mouse planner detours and viewport clicks verify mint destination rings and X cancellation. Boss-owned warnings, exact living seal threshold, all phases, finite victory, restore, pause, reduced effects, audio cache, resource bounds, completed-region revisit and final replay are verified without fabricating combat state."
         };
         if (_output.Length > 0) System.IO.File.WriteAllText(Path.Combine(_output, "hollow-review.json"), JsonData.Write(report));
         GD.Print(JsonData.Write(report)); GetTree().Quit(passed ? 0 : 1);

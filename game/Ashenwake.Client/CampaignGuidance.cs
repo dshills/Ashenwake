@@ -28,8 +28,10 @@ public partial class CampaignHud
     private bool InOathkeeperArchive => _interactions.Any(i => i.Id == "spine.archive.return");
     private bool InFirstOath => _interactions.Any(i => i.Id == "spine.memory.return");
     private string MemoryReturnName => _interactions.FirstOrDefault(i => i.Id == "spine.memory.return")?.Name ?? "Return to the Contract Hall";
-    private InteractionDisplay? RegionalForward => _interactions.FirstOrDefault(i => i.Id.StartsWith("opening.forward.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.forward.", StringComparison.Ordinal) || i.Id.StartsWith("cinder.forward.", StringComparison.Ordinal) || i.Id.StartsWith("spine.forward.", StringComparison.Ordinal));
-    public bool CanShowWayForward => !InOpeningCrypt && !InBriarShrine && !InAntlerGrove && !InSealedFoundry && !InBurningRain && !InOathkeeperArchive && !InFirstOath && RegionalForward is null;
+    private bool HasHollowExploration => _content.Exploration.Any(e => e.Id == "event.unremembered_vault");
+    private bool InUnrememberedVault => _interactions.Any(i => i.Id == "hollow.vault.return");
+    private InteractionDisplay? RegionalForward => _interactions.FirstOrDefault(i => i.Id.StartsWith("opening.forward.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.forward.", StringComparison.Ordinal) || i.Id.StartsWith("cinder.forward.", StringComparison.Ordinal) || i.Id.StartsWith("spine.forward.", StringComparison.Ordinal) || i.Id.StartsWith("hollow.forward.", StringComparison.Ordinal));
+    public bool CanShowWayForward => !InOpeningCrypt && !InBriarShrine && !InAntlerGrove && !InSealedFoundry && !InBurningRain && !InOathkeeperArchive && !InFirstOath && !InUnrememberedVault && RegionalForward is null;
 
     private void BuildNextStep()
     {
@@ -200,10 +202,22 @@ public partial class CampaignHud
             SetNextStep(NextAction.Interaction, MemoryReturnName);
             return;
         }
+        if (InUnrememberedVault)
+        {
+            var treasure = _interactions.FirstOrDefault(i => i.Id == "hollow.vault.treasure");
+            _objective.Text = _engaged ? "THE UNREMEMBERED VAULT · Defeat the elite echoes. The western anchor glyph marks your return to the Repeating Rooms."
+                : treasure is not null ? "The Vault Testament is uncovered. Claim Choir of the Unburied, materials, and the lost witnesses' testimony."
+                : "The forgotten witnesses are remembered. Collect remaining drops, then follow the western anchor glyph to the Repeating Rooms.";
+            _nextInteraction = treasure?.Id ?? "hollow.vault.return";
+            SetNextStep(NextAction.Interaction, treasure is not null ? "Approach the Vault Testament" : "Return to the Repeating Rooms");
+            return;
+        }
         if (_engaged) { _objective.Text = _view.Objective; return; }
         if (RegionalForward is { } passage)
         {
-            _objective.Text = "This area is secure. Cleared passages remain open and uncollected treasure stays in its room.";
+            _objective.Text = _state.CurrentAct == 5 && HasHollowExploration
+                ? "This area is secure. Pale anchor glyphs mark real passages. Cleared rooms keep their uncollected treasure."
+                : "This area is secure. Cleared passages remain open and uncollected treasure stays in its room.";
             _nextInteraction = passage.Id; SetNextStep(NextAction.Interaction, passage.Name); return;
         }
         string loot = _combat.Loot.Count > 0 ? $"{_combat.Loot.Count} dropped item{(_combat.Loot.Count == 1 ? " remains" : "s remain")}. " : "";
@@ -245,10 +259,10 @@ public partial class CampaignHud
     {
         _rows.AddChild(new HSeparator());
         _rows.AddChild(Label("NEXT STEP", 14));
-        if (InOpeningCrypt || InBriarShrine || InAntlerGrove || InSealedFoundry || InBurningRain || InOathkeeperArchive || InFirstOath || RegionalForward is not null)
+        if (InOpeningCrypt || InBriarShrine || InAntlerGrove || InSealedFoundry || InBurningRain || InOathkeeperArchive || InFirstOath || InUnrememberedVault || RegionalForward is not null)
         {
-            foreach (var target in _interactions.Where(i => i.Id is "opening.crypt.treasure" or "opening.crypt.return" or "verdant.shrine.treasure" or "verdant.shrine.return" or "verdant.hunt.return" or "cinder.foundry.treasure" or "cinder.foundry.return" or "cinder.storm.return" or "spine.archive.treasure" or "spine.archive.return" or "spine.memory.return" ||
-                i.Id.StartsWith("opening.forward.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.forward.", StringComparison.Ordinal) || i.Id.StartsWith("cinder.forward.", StringComparison.Ordinal) || i.Id.StartsWith("spine.forward.", StringComparison.Ordinal) || i.Id.StartsWith("clue.", StringComparison.Ordinal)))
+            foreach (var target in _interactions.Where(i => i.Id is "opening.crypt.treasure" or "opening.crypt.return" or "verdant.shrine.treasure" or "verdant.shrine.return" or "verdant.hunt.return" or "cinder.foundry.treasure" or "cinder.foundry.return" or "cinder.storm.return" or "spine.archive.treasure" or "spine.archive.return" or "spine.memory.return" or "hollow.vault.treasure" or "hollow.vault.return" ||
+                i.Id.StartsWith("opening.forward.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.forward.", StringComparison.Ordinal) || i.Id.StartsWith("cinder.forward.", StringComparison.Ordinal) || i.Id.StartsWith("spine.forward.", StringComparison.Ordinal) || i.Id.StartsWith("hollow.forward.", StringComparison.Ordinal) || i.Id.StartsWith("clue.", StringComparison.Ordinal)))
                 Button(target.Name, () => RequestInteraction(target.Id));
             Button("Return to Greyhaven" + LootSuffix, () => RequestJourneyTravel(new(JourneyTravelKind.Hub)));
             return;

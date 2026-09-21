@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign.hollow.6",
+  "version": "campaign.spine.5",
   "acts": [
     {
       "number": 1,
@@ -597,22 +597,6 @@
       "clues": [],
       "discovery": "discovery.oathkeeper_archive",
       "materials": 40
-    },
-    {
-      "id": "event.unremembered_vault",
-      "act": 5,
-      "kind": "Memory",
-      "name": "The Unremembered Vault",
-      "encounterId": "exploration.unremembered_vault",
-      "durationTicks": 0,
-      "rules": [
-        "context:unremembered_vault",
-        "lore:those_erased_from_history_kept_watch_beside_nhal",
-        "reward:vault_testament"
-      ],
-      "clues": [],
-      "discovery": "discovery.unremembered_vault",
-      "materials": 45
     }
   ],
   "factions": [

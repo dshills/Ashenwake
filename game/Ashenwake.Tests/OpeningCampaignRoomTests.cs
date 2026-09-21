@@ -19,20 +19,22 @@ public sealed class OpeningCampaignRoomTests
     }.Select(id => new object[] { id });
 
     [Fact]
-    public void OptionalRoomFieldsPreserveLegacySerializationAndLaterRegions()
+    public void OptionalRoomFieldsPreserveLegacySerializationAlongsideAllAuthoredRegions()
     {
         var content = Content(); var registry = CombatContent.Parse(content.CombatJson);
-        Assert.Equal("campaign-combat.spine.5", registry.Campaign!.Version);
+        Assert.Equal("campaign-combat.hollow.6", registry.Campaign!.Version);
         Assert.DoesNotContain("\"room\"", JsonData.Write(new CampaignCombatEncounter("campaign.example", "Example", "Memory", 0, [])));
         Assert.DoesNotContain("roomEncounterId", JsonData.Write(new CombatSnapshot()));
-        var later = registry.Campaign.Encounters.Where(e => !OpeningCampaignLayout.Contains(e.Id) && !VerdantCampaignLayout.Contains(e.Id) && !CinderCampaignLayout.Contains(e.Id) && !SpineCampaignLayout.Contains(e.Id));
-        Assert.All(later, encounter =>
+        var later = registry.Campaign.Encounters.Where(e => !OpeningCampaignLayout.Contains(e.Id) && !VerdantCampaignLayout.Contains(e.Id) && !CinderCampaignLayout.Contains(e.Id) && !SpineCampaignLayout.Contains(e.Id) && !HollowCampaignLayout.Contains(e.Id));
+        Assert.Empty(later);
+        var legacy = CampaignCombatContent.Parse(BaselineJson, File.ReadAllText(Path.Combine(Root, "fixtures/campaign-combat-phase4.json")));
+        Assert.All(CombatContent.Parse(legacy.CombatJson).Campaign!.Encounters, encounter =>
         {
             Assert.Null(encounter.Room);
-            Assert.Equal(JsonData.Hash(registry.Room), JsonData.Hash(content.CreateEncounter(encounter.Id).Room));
+            Assert.Equal(JsonData.Hash(registry.Room), JsonData.Hash(legacy.CreateEncounter(encounter.Id).Room));
         });
         Assert.Equal(JsonData.Hash(registry.Room), JsonData.Hash(content.CreateEncounter("hub").Room));
-        Assert.Equal(19, registry.Campaign.Encounters.Where(e => e.Room is not null).Select(e => JsonData.Hash(e.Room!)).Distinct().Count());
+        Assert.Equal(23, registry.Campaign.Encounters.Where(e => e.Room is not null).Select(e => JsonData.Hash(e.Room!)).Distinct().Count());
     }
 
     [Theory, MemberData(nameof(OpeningRooms))]
@@ -76,7 +78,7 @@ public sealed class OpeningCampaignRoomTests
             Assert.Empty(session.View.CampaignHazards!); Assert.Empty(session.View.Loot);
         }
         Assert.Equal(session.StateHash, restored.StateHash);
-        var later = content.CreateEncounter("campaign.repeating_rooms", previous: session.Capture());
+        var later = content.CreateEncounter("hub", previous: session.Capture());
         Assert.Null(later.Capture().RoomEncounterId);
         Assert.Equal(JsonData.Hash(CombatContent.Parse(content.CombatJson).Room), JsonData.Hash(later.Room));
         var returned = content.CreateEncounter("hub", previous: session.Capture());
@@ -87,11 +89,13 @@ public sealed class OpeningCampaignRoomTests
     public void RetainedRoomIdentityRejectsUnknownActiveAndNonAuthoredLayouts()
     {
         var content = Content(); var valid = content.CreateClearedEncounter("campaign.road").Capture();
-        foreach (var id in new[] { "", "campaign.missing", "campaign.repeating_rooms", "hub" })
+        foreach (var id in new[] { "", "campaign.missing", "hub" })
         {
             Assert.Throws<ArgumentException>(() => content.CreateClearedEncounter(id));
             Assert.Throws<InvalidDataException>(() => CombatSession.Restore(content.CombatJson, valid with { RoomEncounterId = id }));
         }
+        var legacy = CampaignCombatContent.Parse(BaselineJson, File.ReadAllText(Path.Combine(Root, "fixtures/campaign-combat-phase4.json")));
+        Assert.Throws<ArgumentException>(() => legacy.CreateClearedEncounter("campaign.repeating_rooms"));
         Assert.Throws<InvalidDataException>(() => CombatSession.Restore(content.CombatJson, valid with { EncounterId = "hub" }));
         var active = content.CreateEncounter("campaign.road").Capture() with { RoomEncounterId = "campaign.road" };
         Assert.Throws<InvalidDataException>(() => CombatSession.Restore(content.CombatJson, active));

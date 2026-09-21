@@ -7,7 +7,7 @@ public static class HollowObstacleArt
 {
     public static void Build(EnvironmentBuilder b, float width, float depth, Vector3 center, string style)
     {
-        bool memory = style == "hollow_memory", breach = style == "hollow_breach";
+        bool memory = style is "hollow_memory" or "hollow_vault", breach = style == "hollow_breach";
         string baseColor = memory ? "565167" : "4e586a";
         string stone = memory ? "786f8e" : "737e91";
         string edge = memory ? "b0a6bf" : "a0a8bc";
