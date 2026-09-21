@@ -97,9 +97,9 @@ public partial class CinderSmoke : Node
                 }
             }
             Check("real_route_completed_act_three", _session.Capture().Campaign.CompletedActs.Contains(3));
-            Check("all_four_distinct_act_three_contexts_observed", _contexts.SetEquals(new[] { "cinder_fields", "cinder_extraction", "cinder_furnace", "cinder_storm" }));
-            Check("architecture_is_distinct_in_every_context", _environments.Select(e => e.ArchitectureFingerprint).Distinct().Count() == 4);
-            Check("ground_is_distinct_in_every_context", _environments.Select(e => e.GroundFingerprint).Distinct().Count() == 4);
+            Check("all_five_distinct_act_three_contexts_observed", _contexts.SetEquals(new[] { "cinder_fields", "cinder_extraction", "cinder_furnace", "cinder_storm", "cinder_foundry" }));
+            Check("architecture_is_distinct_in_every_context", _environments.Select(e => e.ArchitectureFingerprint).Distinct().Count() == 5);
+            Check("ground_is_distinct_in_every_context", _environments.Select(e => e.GroundFingerprint).Distinct().Count() == 5);
             Check("real_storm_announced_fire_lanes_observed", _stormObserved && _stormWarned && _stormTicks > 36);
             Check("leaving_storm_restores_region_and_removes_scoped_hazards", _stormCleaned);
             Check("furnace_guarded_and_exposed_states_observed", _guards.SetEquals(new[] { true, false }));
@@ -113,7 +113,7 @@ public partial class CinderSmoke : Node
             Check("hub_hides_furnace_and_cinder_architecture", !Descendants(_stage).OfType<FurnaceSpindleVisual>().Any(n => n.IsVisibleInTree()) &&
                 !Descendants(_stage).OfType<Node3D>().Any(n => n.Name == "CinderReachArchitecture" && n.IsVisibleInTree()));
             Check("hub_style_takes_precedence_over_stale_region", EnvironmentGround.Style(true, "clear", "event.resonance_storm", 3) == "greyhaven");
-            Check("completed_act_three_can_be_revisited", _session.EnterAct(3).Success && _session.ActiveEncounterId == "clear"); _commands++;
+            Check("completed_act_three_can_be_revisited", _session.EnterAct(3).Success && _session.ActiveEncounterId == "campaign.cinder_pack"); _commands++;
             Refresh(); await Settle();
             Check("completed_act_three_retains_regional_floor_and_atmosphere", _sandbox.EnvironmentStyle == "cinder_fields" && _sandbox.AmbienceCue == "cinder_wind" &&
                 Descendants(_stage).OfType<Node3D>().Any(n => n.Name == "CinderReachArchitecture" && n.IsVisibleInTree()));
@@ -280,7 +280,7 @@ public partial class CinderSmoke : Node
         Check("storm_timer_expires_without_death_or_combat_victory", timed.Capture().Campaign.Exploration is null && timed.Capture().Campaign.Deaths == live.Capture().Campaign.Deaths &&
             !timed.Capture().Campaign.CompletedExploration.Contains("event.resonance_storm") && warnings);
         _session = timed; Refresh();
-        Check("expired_storm_cleans_visible_environment_immediately", _sandbox.EnvironmentStyle == "cinder_fields" && _sandbox.AmbienceCue == "cinder_wind" &&
+        Check("expired_storm_cleans_visible_environment_immediately", _sandbox.EnvironmentStyle == "cinder_extraction" && _sandbox.AmbienceCue == "cinder_machinery" &&
             !(_session.Combat.View.CampaignHazards ?? []).Any(h => h.ContentId == "rule.storm"));
         _session = live; Refresh();
         Check("storm_timer_branch_does_not_modify_live_campaign", live.StateHash == hash);
@@ -520,7 +520,7 @@ public partial class CinderSmoke : Node
             audioFingerprints = _audioFingerprints,
             captures = _captures.Order().ToArray(),
             error,
-            scope = "Real CampaignRuntimeSmoke commands unlock and complete Act III, including the timed Resonance Storm, Core Furnace guard and vent windows, and victory. An independently restored storm branch exercises timer expiry using ordinary movement and potion inputs. Mesh vertices establish safe scenery and ground placement; shipping mouse planner routes around each room's obstacles. Real viewport clicks show the mint destination ring in each context and X cancels it while AdvanceOverride keeps campaign movement stationary. Runtime state, finite animations, restore, pause, reduced effects, regional audio, resource bounds and deterministic command replay are checked without changing gameplay state for presentation."
+            scope = "Real CampaignRuntimeSmoke commands unlock and complete Act III, including the Sealed Foundry and timed Resonance Storm, Core Furnace guard and vent windows, and victory. An independently restored storm branch exercises timer expiry using ordinary movement and potion inputs. Mesh vertices establish safe scenery and ground placement; shipping mouse planner routes around each room's obstacles. Real viewport clicks show the mint destination ring in each context and X cancels it while AdvanceOverride keeps campaign movement stationary. Runtime state, finite animations, restore, pause, reduced effects, regional audio, resource bounds and deterministic command replay are checked without changing gameplay state for presentation."
         };
         if (_output.Length > 0) System.IO.File.WriteAllText(Path.Combine(_output, "cinder-review.json"), JsonData.Write(report));
         GD.Print(JsonData.Write(report)); GetTree().Quit(passed ? 0 : 1);

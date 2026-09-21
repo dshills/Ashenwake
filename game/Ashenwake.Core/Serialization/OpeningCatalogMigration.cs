@@ -14,13 +14,17 @@ namespace Ashenwake.Core.Serialization;
 /// rooms. Callers authenticate and restore the original archive before applying any changes.</summary>
 internal static class OpeningCatalogMigration
 {
-    private const string CurrentCampaign = "campaign.verdant.3", CurrentCombat = "campaign-combat.verdant.3";
-    private const string OpeningCampaign = "campaign.grey_march.2", OpeningCombat = "campaign-combat.grey_march.2";
-    private const string CryptDiscovery = "discovery.widow_crypt", BriarDiscovery = "discovery.briar_shrine";
-    private static string Frozen(string name, bool verdant = false)
+    private sealed record Release(string Campaign, string Combat, string PreviousCombat, string Resource, string Discovery);
+    private static readonly Release[] Releases =
+    [
+        new("campaign.cinder.4", "campaign-combat.cinder.4", "campaign-combat.verdant.3", "PreviousCinder", "discovery.sealed_foundry"),
+        new("campaign.verdant.3", "campaign-combat.verdant.3", "campaign-combat.grey_march.2", "PreviousVerdant", "discovery.briar_shrine"),
+        new("campaign.grey_march.2", "campaign-combat.grey_march.2", "campaign.combat.1", "PreviousOpening", "discovery.widow_crypt")
+    ];
+    private static string Frozen(string name, Release release)
     {
-        using var stream = typeof(OpeningCatalogMigration).Assembly.GetManifestResourceStream("Ashenwake." + (verdant ? "PreviousVerdant." : "PreviousOpening.") + name + ".json")
-            ?? throw new InvalidOperationException("Missing authenticated opening migration catalog.");
+        using var stream = typeof(OpeningCatalogMigration).Assembly.GetManifestResourceStream("Ashenwake." + release.Resource + "." + name + ".json")
+            ?? throw new InvalidOperationException("Missing authenticated regional migration catalog.");
         using var reader = new StreamReader(stream); return reader.ReadToEnd();
     }
 
@@ -30,13 +34,11 @@ internal static class OpeningCatalogMigration
     internal static CampaignContent CampaignForCombat(string combatJson, CampaignContent campaign)
     {
         string version = campaign.Capture().Version;
-        if (version is not (CurrentCampaign or OpeningCampaign)) return campaign;
-        return CombatContent.Parse(combatJson).Campaign?.Version switch
-        {
-            "campaign.combat.1" => CampaignContent.Parse(Frozen("Campaign")),
-            OpeningCombat when version == CurrentCampaign => CampaignContent.Parse(Frozen("Campaign", verdant: true)),
-            _ => campaign
-        };
+        int current = Array.FindIndex(Releases, release => release.Campaign == version);
+        if (current < 0) return campaign;
+        string? combatVersion = CombatContent.Parse(combatJson).Campaign?.Version;
+        var predecessor = Releases.Skip(current).FirstOrDefault(release => release.PreviousCombat == combatVersion);
+        return predecessor is null ? campaign : CampaignContent.Parse(Frozen("Campaign", predecessor));
     }
 
     internal static bool TryPrevious(string combatJson, ProgressionContent policy, CampaignContent campaign,
@@ -46,17 +48,14 @@ internal static class OpeningCatalogMigration
         var node = JsonNode.Parse(combatJson)!;
         string? version = node["campaign"]?["version"]?.GetValue<string>();
         string storyVersion = campaign.Capture().Version;
-        bool verdant = version == CurrentCombat || storyVersion == CurrentCampaign;
-        string currentCombat = verdant ? CurrentCombat : OpeningCombat;
-        string currentCampaign = verdant ? CurrentCampaign : OpeningCampaign;
-        string previousVersion = verdant ? OpeningCombat : "campaign.combat.1";
-        bool changedCombat = version == currentCombat, changedCampaign = storyVersion == currentCampaign;
-        if (!changedCombat && !changedCampaign) return false;
+        var release = Releases.FirstOrDefault(candidate => version == candidate.Combat || storyVersion == candidate.Campaign);
+        if (release is null) return false;
+        bool changedCombat = version == release.Combat, changedCampaign = storyVersion == release.Campaign;
         // An unrelated campaign overlay is never substituted with a fabricated predecessor.
-        if (version is not (CurrentCombat or OpeningCombat or "campaign.combat.1")) return false;
+        if (version != "campaign.combat.1" && !Releases.Any(candidate => candidate.Combat == version)) return false;
         if (changedCombat)
         {
-            var oldOverlay = JsonNode.Parse(Frozen("Combat", verdant))!;
+            var oldOverlay = JsonNode.Parse(Frozen("Combat", release))!;
             var currentEnemies = node["campaign"]!["enemies"]!.AsArray();
             var campaignIds = currentEnemies.Select(e => e!["id"]!.GetValue<string>()).ToHashSet(StringComparer.Ordinal);
             var enemies = node["enemies"]!.AsArray();
@@ -66,18 +65,20 @@ internal static class OpeningCatalogMigration
             foreach (var enemy in oldOverlay["enemies"]!.AsArray()) enemies.Insert(offset++, enemy!.DeepClone());
             node["campaign"] = oldOverlay;
             string[] versions = node["contentVersion"]!.GetValue<string>().Split('+');
-            if (versions.Count(v => v == currentCombat) != 1) return false;
-            node["contentVersion"] = string.Join('+', versions.Select(v => v == currentCombat ? previousVersion : v));
+            if (versions.Count(v => v == release.Combat) != 1) return false;
+            node["contentVersion"] = string.Join('+', versions.Select(v => v == release.Combat ? release.PreviousCombat : v));
             previousCombat = node.ToJsonString();
         }
-        if (changedCampaign) previousCampaign = CampaignContent.Parse(Frozen("Campaign", verdant));
-        previousPolicy = WithoutDiscovery(policy, verdant ? BriarDiscovery : CryptDiscovery);
+        if (changedCampaign) previousCampaign = CampaignContent.Parse(Frozen("Campaign", release));
+        previousPolicy = WithoutDiscovery(policy, release.Discovery);
         return true;
     }
 
     internal static ProgressionContent PreviousPolicy(ProgressionContent policy)
     {
-        return WithoutDiscovery(policy, policy.Capture().DiscoveryIds.Contains(BriarDiscovery, StringComparer.Ordinal) ? BriarDiscovery : CryptDiscovery);
+        var discoveries = policy.Capture().DiscoveryIds;
+        var release = Releases.FirstOrDefault(candidate => discoveries.Contains(candidate.Discovery, StringComparer.Ordinal));
+        return release is null ? policy : WithoutDiscovery(policy, release.Discovery);
     }
 
     private static ProgressionContent WithoutDiscovery(ProgressionContent policy, string discovery)
@@ -92,6 +93,22 @@ internal static class OpeningCatalogMigration
     {
         var state = LegendaryCatalogMigration.Rebind(original, combatJson, adventure, policy, campaign);
         var content = CombatContent.Parse(combatJson);
+        if (campaign.Capture().Exploration.Any(e => e.Id == CampaignRuntimeSession.FoundryEvent) &&
+            state.Campaign.CurrentAct == 3 && !state.Campaign.InHub)
+        {
+            // Published Act III used a generic cleared arena after storm departure,
+            // or when returning from the hub before a choice/after region completion.
+            // Give that authenticated context a secured physical room before restore.
+            string secured = state.Campaign.CompletedEncounters.Contains("campaign.extraction_floor") &&
+                !state.Campaign.CompletedEncounters.Contains("campaign.furnace_spindle") ? "campaign.extraction_floor" : "campaign.cinder_pack";
+            if (state.Campaign.CompletedEncounters.Contains(secured))
+            {
+                if (state.ActiveEncounterId == "clear" && state.Campaign.Exploration is null)
+                    state = state with { ActiveEncounterId = secured };
+                if (state.Campaign.Exploration?.Id == CampaignRuntimeSession.StormEvent && state.ExplorationReturnEncounter == "clear")
+                    state = state with { ExplorationReturnEncounter = secured };
+            }
+        }
         return state with
         {
             Campaign = state.Campaign with { ContentHash = campaign.Hash },

@@ -10,7 +10,7 @@ public sealed partial class CampaignRuntimeSession
     public const string HuntEvent = "event.wake_hunt", HuntEncounter = "exploration.antler_hunt";
     private static readonly string[] VerdantRooms = ["campaign.living_ruins", "campaign.plague_village", "campaign.rootheart", ShrineEncounter, HuntEncounter];
     private bool HasVerdantExploration => Content.Data.Exploration.Any(e => e.Id == ShrineEvent);
-    private bool IsRetainedRoom(string id) => HasOpeningExploration && OpeningRooms.Contains(id) || HasVerdantExploration && VerdantRooms.Contains(id);
+    private bool IsRetainedRoom(string id) => HasOpeningExploration && OpeningRooms.Contains(id) || HasVerdantExploration && VerdantRooms.Contains(id) || HasCinderExploration && CinderRooms.Contains(id);
     private bool TrackingVerdantHunt => HasVerdantExploration && story.CurrentState.Exploration?.Id == HuntEvent && ActiveEncounterId == "clear";
 
     private IReadOnlyList<ExpeditionInteraction>? VerdantInteractions()

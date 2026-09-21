@@ -113,7 +113,7 @@ public partial class CampaignHud
 
     private void JourneyHeading(string title, string status)
     { _rows.AddChild(Label(title, 18)); var label = Label(status, 12); label.Modulate = new("9bd4c7"); _rows.AddChild(label); }
-    private bool RoomLootRetained => !_state.InHub && !_engaged && _interactions.Any(i => i.Id.StartsWith("opening.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.", StringComparison.Ordinal));
+    private bool RoomLootRetained => !_state.InHub && !_engaged && _interactions.Any(i => i.Id.StartsWith("opening.", StringComparison.Ordinal) || i.Id.StartsWith("verdant.", StringComparison.Ordinal) || i.Id.StartsWith("cinder.", StringComparison.Ordinal));
     private string LootSuffix => _combat.Loot.Count > 0 ? $" · {_combat.Loot.Count} uncollected drops" : "";
     private void JourneyLootNotice()
     {
@@ -155,6 +155,20 @@ public partial class CampaignHud
                     : "Follow the southern passage from secured Plague Village to the Antler's grove.", 12));
                 continue;
             }
+            if (HasCinderExploration && entry.Id is ("event.sealed_foundry" or "event.resonance_storm"))
+            {
+                bool foundry = entry.Id == "event.sealed_foundry";
+                string entrance = foundry ? "cinder.foundry.enter" : "cinder.storm.enter";
+                bool available = _interactions.Any(i => i.Id == entrance);
+                Button((_state.CompletedExploration.Contains(entry.Id) ? "✓ Revisit " : "Explore ") + entry.Name + (foundry ? " · workers' refuge" : _state.CompletedExploration.Contains(entry.Id) ? " · cleared collectors" : " · timed storm"),
+                    () => RequestInteraction(entrance)).Disabled = !available;
+                if (!available && !(foundry ? InSealedFoundry : InBurningRain)) _rows.AddChild(Label(foundry
+                    ? "Its marked entrance branches north from the secured Cinder Fields."
+                    : "Enter Burning Rain through the southern passage from the secured Extraction Floor.", 12));
+                if (!foundry && !_state.CompletedExploration.Contains(entry.Id))
+                    _rows.AddChild(Label($"Defeat its creatures within {entry.DurationTicks / 30d:F0} seconds. The timer starts on entry; expiry returns you to the regional route without the storm reward.", 12));
+                continue;
+            }
             var request = new JourneyTravelRequest(JourneyTravelKind.Exploration, Id: entry.Id);
             Button((_state.CompletedExploration.Contains(entry.Id) ? "✓ " : "") + entry.Name + " · " + entry.Kind + LootSuffix,
                 () => RequestJourneyTravel(request)).Disabled = JourneyTravelReason(request).Length > 0;
@@ -171,6 +185,22 @@ public partial class CampaignHud
         {
             _rows.AddChild(Label("Uncover the oathstone after defeating its guardians. The western passage returns to the Living Ruins; remaining drops stay in cleared rooms.", 12));
             Button("Return to the Living Ruins", () => RequestInteraction("verdant.shrine.return"));
+            return;
+        }
+        if (HasCinderExploration && definition.Id == "event.sealed_foundry")
+        {
+            _rows.AddChild(Label("Open the Foundry Testament after defeating the furnace guardians. The western passage returns to the Cinder Fields; remaining drops stay in cleared rooms.", 12));
+            Button("Return to the Cinder Fields", () => RequestInteraction("cinder.foundry.return"));
+            return;
+        }
+        if (HasCinderExploration && definition.Id == "event.resonance_storm")
+        {
+            _rows.AddChild(Label(_engaged ? $"BURNING RAIN · {Math.Ceiling(active.RemainingTicks / 30d):F0}s remaining" : "BURNING RAIN · COMPLETED", 14));
+            _rows.AddChild(Label(_engaged
+                ? "Defeat the storm creatures before time expires. You can retreat through the western passage at any time; an unfinished attempt restarts on entry. The Journey map pauses the timer."
+                : "The storm reward is secured and its timer has stopped. Remaining drops stay here when you return to the regional route.", 12));
+            foreach (string rule in _view.ExplorationRules) _rows.AddChild(Label(Readable(rule), 12));
+            Button(StormReturnName, () => RequestInteraction("cinder.storm.return"));
             return;
         }
         _rows.AddChild(Label(definition.Name + (active.RemainingTicks > 0 ? $" · {active.RemainingTicks / 30d:F0}s remaining" : ""), 14));
@@ -223,6 +253,7 @@ public partial class CampaignHud
                     any = true; _rows.AddChild(Label("✓ " + exploration.Name, 15)); _rows.AddChild(Label(exploration.Id switch
                     {
                         "event.widow_crypt" => "The widow hid her family beneath the monastery when the bells began calling the dead. Her testament names the first resurrection as an experiment, not a miracle. She left a burial mantle for whoever would carry that truth beyond the crypt.",
+                        "event.sealed_foundry" => "The foundry workers sealed their furnace to shelter their families from an extraction surge. Their foreman left the Cinderwake Saber beside a roster of those saved. The city remembered its lost output; this testament remembers its people.",
                         "event.briar_shrine" => "Before the roots covered this refuge, an oathstone promised shelter to every plague exile. The names beneath it belong to people the village had turned away. Orrun's Oathseal survived among their offerings: a vow kept even when its keepers were forgotten.",
                         _ => Readable(exploration.Discovery)
                     }, 13));

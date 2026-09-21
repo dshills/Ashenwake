@@ -16,7 +16,7 @@ public static class CinderAmbience
     public static string CueForStyle(string style) => style switch
     {
         "cinder_fields" => "cinder_wind",
-        "cinder_extraction" => "cinder_machinery",
+        "cinder_extraction" or "cinder_foundry" => "cinder_machinery",
         "cinder_furnace" => "cinder_furnace",
         "cinder_storm" => "cinder_storm",
         _ => ""

@@ -5,7 +5,7 @@ namespace Ashenwake.Client;
 
 public static class EnvironmentGround
 {
-    public static string Style(bool inHub, string encounterId, string? explorationId = null, int act = 0) => inHub ? "greyhaven" : explorationId == "event.widow_crypt" ? "crypt" : explorationId == "event.briar_shrine" ? "verdant_shrine" : explorationId == "event.wake_hunt" ? "verdant_hunt" : explorationId == "event.resonance_storm" ? "cinder_storm" : explorationId == "event.divine_memory" ? "spine_memory" : encounterId switch
+    public static string Style(bool inHub, string encounterId, string? explorationId = null, int act = 0) => inHub ? "greyhaven" : explorationId == "event.widow_crypt" ? "crypt" : explorationId == "event.briar_shrine" ? "verdant_shrine" : explorationId == "event.wake_hunt" ? "verdant_hunt" : explorationId == "event.sealed_foundry" ? "cinder_foundry" : explorationId == "event.resonance_storm" ? "cinder_storm" : explorationId == "event.divine_memory" ? "spine_memory" : encounterId switch
     {
         "campaign.road" or "room.ossuary" => "road",
         "campaign.monastery" or "room.cloister" => "monastery",
@@ -21,6 +21,7 @@ public static class EnvironmentGround
         "campaign.extraction_floor" => "cinder_extraction",
         "campaign.furnace_spindle" => "cinder_furnace",
         "exploration.burning_rain" => "cinder_storm",
+        "exploration.sealed_foundry" => "cinder_foundry",
         "clear" when act == 3 => "cinder_fields",
         "campaign.bone_causeway" => "spine_causeway",
         "campaign.contract_hall" => "spine_hall",

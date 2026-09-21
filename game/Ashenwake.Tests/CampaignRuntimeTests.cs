@@ -114,7 +114,7 @@ public sealed class CampaignRuntimeTests
         checkpoint.Combat.Actors.Single(a => a.Id == 1).InvulnerableUntil = checkpoint.Combat.Tick + 1000;
         session = Restore(checkpoint); int materials = session.Production.ProgressionView.Materials; long experience = session.Production.ProgressionView.Experience;
         for (int i = 0; i < 900; i++) Assert.True(session.Execute(new(CampaignRuntimeAction.Tick), recordReplay: false).Success);
-        Assert.Null(session.Capture().Campaign.Exploration); Assert.Null(session.Combat.Capture().Campaign); Assert.Empty(session.Combat.View.CampaignHazards!);
+        Assert.Null(session.Capture().Campaign.Exploration); Assert.Equal("campaign.extraction_floor", session.ActiveEncounterId); Assert.Empty(session.Combat.View.CampaignHazards!);
         Assert.DoesNotContain("event.resonance_storm", session.Capture().Campaign.CompletedExploration);
         Assert.Equal(materials, session.Production.ProgressionView.Materials); Assert.Equal(experience, session.Production.ProgressionView.Experience);
         Assert.Equal(session.StateHash, Restore(session.Capture()).StateHash);

@@ -1,3 +1,4 @@
+using Ashenwake.Core.Combat;
 using Ashenwake.Core.Content;
 using Godot;
 
@@ -10,7 +11,7 @@ public static class CinderGround
     {
         var b = new EnvironmentBuilder(parent, "AuthoredGround");
         float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
-        bool extraction = style == "cinder_extraction", furnace = style == "cinder_furnace", storm = style == "cinder_storm";
+        bool extraction = style is "cinder_extraction" or "cinder_foundry", furnace = style == "cinder_furnace", storm = style == "cinder_storm";
         b.Box(new(x * 2 + 11, .36f, z * 2 + 11), new(0, -.26f, 0), "34343a", surface: SurfaceKind.Earth);
         // Offset paving creates volcanic streets, with enough value separation for mint destinations and warm warnings.
         int columns = Math.Clamp((int)(x * 1.15f), 6, 28), rows = Math.Clamp((int)(z * 1.13f), 6, 28);
@@ -20,6 +21,7 @@ public static class CinderGround
             {
                 int pattern = (row * 19 + col * 11 + row * col * 3) % 17;
                 float px = -x + (col + .5f) * width, pz = -z + (row + .5f) * depth;
+                if (!ClearFloor(room, px, pz, width * .5f, depth * .5f)) continue;
                 string color = pattern % 4 == 0 ? "4a4447" : pattern % 3 == 0 ? "454147" : "403e44";
                 b.Box(new(width - .045f, .022f, depth - .045f), new(px, -.052f, pz), color);
                 if (pattern % 5 == 0)
@@ -32,6 +34,7 @@ public static class CinderGround
         else if (furnace) FurnaceFloor(b, x, z);
         else if (storm) StormFloor(b, x, z);
         else StreetFloor(b, x, z);
+        RoutePaving(b, room, style);
         // A subdued kerb seam conveys the true bounds without adding a glowing rectangle beneath hazards.
         for (int i = 0; i < 18; i++)
         {
@@ -42,6 +45,64 @@ public static class CinderGround
             b.Box(new(.11f, .014f, z * 2 / 18 - .08f), new(x, -.017f, pz), "76685f");
         }
         b.Flush();
+    }
+
+    public static Vector2[][] Routes(string style)
+    {
+        string encounter = style switch
+        {
+            "cinder_extraction" => "campaign.extraction_floor",
+            "cinder_furnace" => "campaign.furnace_spindle",
+            "cinder_storm" => "exploration.burning_rain",
+            "cinder_foundry" => "exploration.sealed_foundry",
+            _ => "campaign.cinder_pack"
+        };
+        var entrance = style is "cinder_storm" or "cinder_foundry" ? CinderCampaignLayout.BranchReturn : CinderCampaignLayout.BackExit;
+        var main = CinderCampaignLayout.Route(encounter).Prepend(entrance).Select(p => new Vector2(p.X * .001f, p.Z * .001f)).ToArray();
+        if (style is not ("cinder_fields" or "cinder_extraction")) return [main];
+        var branch = style == "cinder_fields" ? CinderCampaignLayout.FoundryEntrance : CinderCampaignLayout.StormEntrance;
+        return [main, [new(6, 0), new(branch.X * .001f, branch.Z * .001f)]];
+    }
+
+    private static void RoutePaving(EnvironmentBuilder b, RoomDefinition room, string style)
+    {
+        var routes = Routes(style);
+        float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
+        bool metal = style is "cinder_extraction" or "cinder_furnace" or "cinder_foundry";
+        int row = 0;
+        for (float pz = -z + .44f; pz < z - .3f; pz += .81f, row++)
+        {
+            int column = 0;
+            for (float px = -x + .48f + row % 2 * .11f; px < x - .3f; px += .91f, column++)
+            {
+                var point = new Vector2(px, pz);
+                if (!routes.Any(route => DistanceToRoute(point, route) < 1.16f) || !ClearFloor(room, px, pz, .44f, .39f)) continue;
+                string color = (row * 13 + column * 7) % 5 == 0 ? "766b65" : "635e5e";
+                b.Box(new(.84f, .009f, .74f), new(px, -.006f, pz), color, surface: metal ? SurfaceKind.Metal : SurfaceKind.Stone);
+                if (metal)
+                {
+                    b.Box(new(.66f, .0015f, .027f), new(px, -.001f, pz - .22f), "a07753", surface: SurfaceKind.Metal);
+                    b.Box(new(.66f, .0015f, .027f), new(px, -.001f, pz + .22f), "a07753", surface: SurfaceKind.Metal);
+                }
+            }
+        }
+    }
+
+    private static bool ClearFloor(RoomDefinition room, float x, float z, float halfWidth, float halfDepth)
+        => Math.Abs(x) + halfWidth < room.HalfWidth * .001f && Math.Abs(z) + halfDepth < room.HalfDepth * .001f &&
+            !room.Obstacles.Any(obstacle => x + halfWidth > obstacle.MinX * .001f && x - halfWidth < obstacle.MaxX * .001f &&
+                z + halfDepth > obstacle.MinZ * .001f && z - halfDepth < obstacle.MaxZ * .001f);
+
+    private static float DistanceToRoute(Vector2 point, Vector2[] route)
+    {
+        float distance = float.PositiveInfinity;
+        for (int i = 1; i < route.Length; i++)
+        {
+            Vector2 segment = route[i] - route[i - 1];
+            float t = Math.Clamp((point - route[i - 1]).Dot(segment) / Math.Max(.001f, segment.LengthSquared()), 0, 1);
+            distance = Math.Min(distance, point.DistanceTo(route[i - 1] + segment * t));
+        }
+        return distance;
     }
 
     private static void StreetFloor(EnvironmentBuilder b, float x, float z)

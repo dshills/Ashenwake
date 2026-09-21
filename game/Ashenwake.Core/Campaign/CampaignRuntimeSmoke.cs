@@ -41,6 +41,14 @@ public static class CampaignRuntimeSmoke
                 state.CompletedExploration.Contains(CampaignRuntimeSession.ShrineEvent) ? "verdant.shrine.return" : "verdant.shrine.treasure";
             return AtInteraction(session, target, new(CampaignRuntimeAction.InteractVerdant, Id: target));
         }
+        bool cinder = definition.Exploration.Any(e => e.Id == CampaignRuntimeSession.FoundryEvent);
+        if (cinder && session.ActiveEncounterId is CampaignRuntimeSession.FoundryEncounter or CampaignRuntimeSession.StormEncounter && session.EncounterCleared)
+        {
+            if (view.Loot.Count > 0 && view.Inventory.Count < 512) return CombatInput(session);
+            string target = session.ActiveEncounterId == CampaignRuntimeSession.StormEncounter ? "cinder.storm.return" :
+                state.CompletedExploration.Contains(CampaignRuntimeSession.FoundryEvent) ? "cinder.foundry.return" : "cinder.foundry.treasure";
+            return AtInteraction(session, target, new(CampaignRuntimeAction.InteractCinder, Id: target));
+        }
         if (state.Exploration is { } exploration)
         {
             var eventDefinition = definition.Exploration.Single(e => e.Id == exploration.Id);
@@ -75,7 +83,27 @@ public static class CampaignRuntimeSmoke
                 };
             if (passage is not null) return AtInteraction(session, passage, new(CampaignRuntimeAction.InteractVerdant, Id: passage));
         }
-        var optional = definition.Exploration.FirstOrDefault(e => e.Act == state.CurrentAct && !state.CompletedExploration.Contains(e.Id) && !(verdant && e.Act == 2));
+        if (cinder && state.CurrentAct == 3)
+        {
+            string? passage = null;
+            if (!state.CompletedExploration.Contains(CampaignRuntimeSession.FoundryEvent))
+                passage = session.ActiveEncounterId switch
+                {
+                    "campaign.extraction_floor" => "cinder.back.fields",
+                    "campaign.furnace_spindle" => "cinder.back.floor",
+                    _ => "cinder.foundry.enter"
+                };
+            else if (!state.CompletedExploration.Contains(CampaignRuntimeSession.StormEvent))
+                passage = session.ActiveEncounterId switch
+                {
+                    "campaign.extraction_floor" => "cinder.storm.enter",
+                    "campaign.furnace_spindle" => "cinder.back.floor",
+                    "campaign.cinder_pack" when state.CompletedEncounters.Contains("campaign.extraction_floor") => "cinder.forward.floor",
+                    _ => null
+                };
+            if (passage is not null) return AtInteraction(session, passage, new(CampaignRuntimeAction.InteractCinder, Id: passage));
+        }
+        var optional = definition.Exploration.FirstOrDefault(e => e.Act == state.CurrentAct && !state.CompletedExploration.Contains(e.Id) && !(verdant && e.Act == 2) && !(cinder && e.Act == 3));
         if (optional?.Id == CampaignRuntimeSession.CryptEvent)
         {
             string passage = session.ActiveEncounterId switch
@@ -101,6 +129,16 @@ public static class CampaignRuntimeSmoke
                 if (Position.DistanceSquared(player.Position, VerdantCampaignLayout.ForwardExit) > 2000L * 2000)
                 {
                     var direction = CombatProductionSmoke.MovementDirection(player.Position, VerdantCampaignLayout.ForwardExit, session.Room);
+                    return new(CampaignRuntimeAction.Tick, Commands: [new(CombatCommandKind.Move, X: direction.X, Z: direction.Z)]);
+                }
+            }
+            if (cinder && state.CurrentAct == 3)
+            {
+                forward = session.Interactions.FirstOrDefault(i => i.ActionId.StartsWith("cinder.forward.", StringComparison.Ordinal));
+                if (forward is not null) return AtInteraction(session, forward.ActionId, new(CampaignRuntimeAction.InteractCinder, Id: forward.ActionId));
+                if (Position.DistanceSquared(player.Position, CinderCampaignLayout.ForwardExit) > (long)CinderCampaignLayout.InteractionRange * CinderCampaignLayout.InteractionRange)
+                {
+                    var direction = CombatProductionSmoke.MovementDirection(player.Position, CinderCampaignLayout.ForwardExit, session.Room);
                     return new(CampaignRuntimeAction.Tick, Commands: [new(CombatCommandKind.Move, X: direction.X, Z: direction.Z)]);
                 }
             }

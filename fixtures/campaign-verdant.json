@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign.cinder.4",
+  "version": "campaign.verdant.3",
   "acts": [
     {
       "number": 1,
@@ -565,22 +565,6 @@
       "clues": [],
       "discovery": "discovery.briar_shrine",
       "materials": 30
-    },
-    {
-      "id": "event.sealed_foundry",
-      "act": 3,
-      "kind": "Memory",
-      "name": "The Sealed Foundry",
-      "encounterId": "exploration.sealed_foundry",
-      "durationTicks": 0,
-      "rules": [
-        "context:sealed_foundry",
-        "reward:cinderwake_saber",
-        "return:cinder_fields"
-      ],
-      "clues": [],
-      "discovery": "discovery.sealed_foundry",
-      "materials": 35
     }
   ],
   "factions": [

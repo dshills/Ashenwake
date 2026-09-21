@@ -29,7 +29,7 @@ public sealed class CampaignContent
     public static CampaignContent Parse(string json) => new(JsonData.Read<CampaignDefinition>(json));
     public static CampaignContent Default() => new(new()
     {
-        Version = "campaign.verdant.3",
+        Version = "campaign.cinder.4",
         Factions = ["Reliquary Church", "Anatomists", "Cinder Compact", "Children of Ilyra", "Oathbound", "Quiet"],
         Residents = ["Mara Vey", "Torren Bale", "Sister Cael", "Oris Fen", "Kesh", "Pale Child"],
         Acts =
@@ -86,7 +86,9 @@ public sealed class CampaignContent
             new("event.wake_hunt", 2, "Hunt", "The Antler That Walks", "exploration.antler_hunt", 0,
                 ["behavior:burrow_then_root_charge", "reward:unique_growth_material"], ["clue.shed_bark", "clue.reversed_tracks", "clue.heartwood_nest"], "discovery.antler", 20),
             new("event.briar_shrine", 2, "Memory", "Briarheart Shrine", "exploration.briar_shrine", 0,
-                ["context:briar_shrine", "reward:oathseal", "return:living_ruins"], [], "discovery.briar_shrine", 30)
+                ["context:briar_shrine", "reward:oathseal", "return:living_ruins"], [], "discovery.briar_shrine", 30),
+            new("event.sealed_foundry", 3, "Memory", "The Sealed Foundry", "exploration.sealed_foundry", 0,
+                ["context:sealed_foundry", "reward:cinderwake_saber", "return:cinder_fields"], [], "discovery.sealed_foundry", 35)
         ]
     });
 

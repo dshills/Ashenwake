@@ -14,7 +14,9 @@ public sealed class CampaignCombatTests
     {
         var baseline = CombatContent.Parse(File.ReadAllText(Path.Combine(Root, "content/combat.json")));
         baseline = baseline with { Room = baseline.Room with { HalfWidth = 8000, HalfDepth = 8000 } };
-        var content = CampaignCombatContent.Parse(JsonData.Write(baseline), File.ReadAllText(Path.Combine(Root, "content/campaign-combat.json")));
+        var authored = JsonData.Read<CampaignCombatDefinition>(File.ReadAllText(Path.Combine(Root, "content/campaign-combat.json")));
+        authored = authored with { Encounters = authored.Encounters.Select(e => e.Id == "campaign.furnace_spindle" ? e with { Room = baseline.Room } : e).ToArray() };
+        var content = CampaignCombatContent.Parse(JsonData.Write(baseline), JsonData.Write(authored));
         var state = content.CreateEncounter("campaign.furnace_spindle").Capture();
         state.Actors[0].InvulnerableUntil = 1000;
         state.Campaign!.Actors[state.Actors[1].Id] = state.Campaign.Actors[state.Actors[1].Id] with { Modifiers = [] };
@@ -36,7 +38,7 @@ public sealed class CampaignCombatTests
         Assert.Contains(events, e => e.Kind == "CampaignHazardResolved" && e.ContentId == "campaign.furnace_vent");
     }
 
-    public static IEnumerable<object[]> Encounters() => new[] { "campaign.road", "campaign.monastery", "campaign.bell_saint", "campaign.living_ruins", "campaign.plague_village", "campaign.rootheart", "campaign.cinder_pack", "campaign.extraction_floor", "campaign.furnace_spindle", "campaign.bone_causeway", "campaign.contract_hall", "campaign.covenant_warden", "campaign.repeating_rooms", "campaign.identity_memory", "campaign.breach_heart", "exploration.burning_rain", "exploration.first_oath", "exploration.antler_hunt", "exploration.widow_crypt" }.Select(id => new object[] { id });
+    public static IEnumerable<object[]> Encounters() => new[] { "campaign.road", "campaign.monastery", "campaign.bell_saint", "campaign.living_ruins", "campaign.plague_village", "campaign.rootheart", "campaign.cinder_pack", "campaign.extraction_floor", "campaign.furnace_spindle", "campaign.bone_causeway", "campaign.contract_hall", "campaign.covenant_warden", "campaign.repeating_rooms", "campaign.identity_memory", "campaign.breach_heart", "exploration.burning_rain", "exploration.first_oath", "exploration.antler_hunt", "exploration.widow_crypt", "exploration.briar_shrine", "exploration.sealed_foundry" }.Select(id => new object[] { id });
     [Theory, MemberData(nameof(Encounters))]
     public void ActualEncounterPlaysToVictoryAndResumesDeterministically(string id)
     {

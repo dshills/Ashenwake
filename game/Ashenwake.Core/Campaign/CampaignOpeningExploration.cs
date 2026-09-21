@@ -114,7 +114,8 @@ public sealed partial class CampaignRuntimeSession
     private void CacheOpeningRoom(bool restoreDeadPlayer = false)
     {
         if (InHub || !IsRetainedRoom(ActiveEncounterId) || !EncounterCleared || !restoreDeadPlayer && arena.View.Actors.Single(a => a.Id == 1).Health <= 0 ||
-            ActiveEncounterId == HuntEncounter && !story.CurrentState.CompletedExploration.Contains(HuntEvent)) return;
+            ActiveEncounterId == HuntEncounter && !story.CurrentState.CompletedExploration.Contains(HuntEvent) ||
+            HasCinderExploration && ActiveEncounterId == StormEncounter && !story.CurrentState.CompletedExploration.Contains(StormEvent)) return;
         var snapshot = arena.Capture();
         if (restoreDeadPlayer)
         {
@@ -163,7 +164,7 @@ public sealed partial class CampaignRuntimeSession
 
     private void ValidateClearedRooms()
     {
-        int capacity = (HasOpeningExploration ? OpeningRooms.Length : 0) + (HasVerdantExploration ? VerdantRooms.Length : 0);
+        int capacity = (HasOpeningExploration ? OpeningRooms.Length : 0) + (HasVerdantExploration ? VerdantRooms.Length : 0) + (HasCinderExploration ? CinderRooms.Length : 0);
         if (clearedRooms.Count > capacity) throw new InvalidDataException("Invalid retained campaign rooms.");
         var owned = Production.Capture().Progression.Character.Items.Select(i => i.Id).ToHashSet();
         var lootIds = Combat.View.Loot.Select(l => l.Id).ToHashSet();
@@ -175,6 +176,8 @@ public sealed partial class CampaignRuntimeSession
                 CryptEncounter => story.CurrentState.CompletedEncounters.Contains("campaign.road"),
                 ShrineEncounter => story.CurrentState.CompletedEncounters.Contains("campaign.living_ruins"),
                 HuntEncounter => story.CurrentState.CompletedExploration.Contains(HuntEvent),
+                FoundryEncounter => story.CurrentState.CompletedEncounters.Contains("campaign.cinder_pack"),
+                StormEncounter => story.CurrentState.CompletedExploration.Contains(StormEvent),
                 _ => story.CurrentState.CompletedEncounters.Contains(id)
             };
             if (!IsRetainedRoom(id) || id == ActiveEncounterId || !unlocked || snapshot is null ||
@@ -192,5 +195,8 @@ public sealed partial class CampaignRuntimeSession
         if (story.CurrentState.CompletedExploration.Contains(ShrineEvent) != Production.ContainsCampaignReceipt("campaign.briar.testament") ||
             story.CurrentState.CompletedExploration.Contains(ShrineEvent) && !Production.HasBriarTestamentReceipt)
             throw new InvalidDataException("Briar shrine completion differs from its testament receipt.");
+        if (story.CurrentState.CompletedExploration.Contains(FoundryEvent) != Production.ContainsCampaignReceipt("campaign.foundry.testament") ||
+            story.CurrentState.CompletedExploration.Contains(FoundryEvent) && !Production.HasFoundryTestamentReceipt)
+            throw new InvalidDataException("Foundry completion differs from its testament receipt.");
     }
 }

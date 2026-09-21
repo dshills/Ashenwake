@@ -8,5 +8,7 @@
     <EmbeddedResource Include="../../fixtures/campaign-combat-phase4.json" LogicalName="Ashenwake.PreviousOpening.Combat.json" />
     <EmbeddedResource Include="../../fixtures/campaign-grey-march.json" LogicalName="Ashenwake.PreviousVerdant.Campaign.json" />
     <EmbeddedResource Include="../../fixtures/campaign-combat-grey-march.json" LogicalName="Ashenwake.PreviousVerdant.Combat.json" />
+    <EmbeddedResource Include="../../fixtures/campaign-verdant.json" LogicalName="Ashenwake.PreviousCinder.Campaign.json" />
+    <EmbeddedResource Include="../../fixtures/campaign-combat-verdant.json" LogicalName="Ashenwake.PreviousCinder.Combat.json" />
   </ItemGroup>
 </Project>

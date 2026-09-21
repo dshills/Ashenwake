@@ -23,6 +23,10 @@ The only Core presentation addition is a read-only `CombatActorView.Guarded` pro
 
 Cinder-region endgame arenas reuse the city setting, floor and ambience; the campaign boss rig appears only in its authored Furnace encounter. This pass covers solo presentation. [Act IV’s Shattered Spine](shattered_spine.md) now has bone cities and an animated covenant. [Act V’s Hollow Night](hollow_night.md) completes the regional pass. Cooperative arenas retain their previous environment treatment. The assets are repository-authored procedural geometry and synthesized audio.
 
+## Connected exploration
+
+The later [Cinder exploration milestone](cinder_exploration.md) adds authoritative room layouts, physical passages, persistent backtracking and the Sealed Foundry. The presentation-only scope above describes the original regional art pass.
+
 ## Inspection run
 
 After compiling content and building the solution, use Bash and a fresh output folder:

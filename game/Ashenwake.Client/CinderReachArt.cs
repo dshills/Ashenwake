@@ -29,6 +29,7 @@ public static class CinderReachArt
             case "campaign.extraction_floor": Extraction(b, halfWidth, halfDepth); break;
             case "campaign.furnace_spindle": Furnace(b, halfWidth, halfDepth); break;
             case "exploration.burning_rain": Storm(b, halfWidth, halfDepth); break;
+            case "exploration.sealed_foundry": CinderExplorationArt.BuildFoundry(b, halfWidth, halfDepth); break;
             default: City(b, halfWidth, halfDepth); break;
         }
         Perimeter(b, halfWidth, halfDepth, encounterId == "exploration.burning_rain");

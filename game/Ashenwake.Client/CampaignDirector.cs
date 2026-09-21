@@ -123,6 +123,7 @@ public partial class CampaignDirector : Node3D
         if (id == "journey.next") { _campaign.RequestNextStep(); return; }
         if (id.StartsWith("opening.", StringComparison.Ordinal)) { Apply(() => _session.Execute(new(CampaignRuntimeAction.InteractOpening, Id: id))); return; }
         if (id.StartsWith("verdant.", StringComparison.Ordinal)) { Apply(() => _session.Execute(new(CampaignRuntimeAction.InteractVerdant, Id: id))); return; }
+        if (id.StartsWith("cinder.", StringComparison.Ordinal)) { Apply(() => _session.Execute(new(CampaignRuntimeAction.InteractCinder, Id: id))); return; }
         if (_session.InHub) Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.Interact, id)));
         else Apply(() => _session.TrackClue(id));
     }
@@ -201,6 +202,7 @@ public partial class CampaignDirector : Node3D
             "ItemGranted" => "A new item has been added to your permanent inventory.",
             "GroundLootRetained" => "Saved " + value + " uncollected drops in this cleared room. Return through its passages to collect them.",
             "CryptTestamentClaimed" => "The Widow's Testament is yours: rare armor, 25 materials, and a hidden testimony in your journal.",
+            "FoundryTestamentClaimed" => "The Foundry Testament is yours: Cinderwake Saber, 35 materials, and the workers' testimony in your journal.",
             "CampaignPassageEntered" => "Follow the marked passages. Cleared rooms keep their remaining treasure.",
             "GroundLootLeftBehind" => "Left " + value + " uncollected drops behind.",
             "Crafted" => value + " completed. Your permanent item has been updated.",
@@ -212,6 +214,7 @@ public partial class CampaignDirector : Node3D
             "MutationSelected" or "MutationRemoved" => "Skill mutation updated.",
             "ExplorationStarted" => "Exploring " + (_definition.Exploration.FirstOrDefault(e => e.Id == value)?.Name ?? "a new location") + ".",
             "ExplorationCompleted" => "Exploration complete. Your discovery and rewards are preserved.",
+            "ExplorationEnded" when value == "event.resonance_storm" && parts.Length > 2 && parts[2] == "expired" => "Burning Rain expired. You returned to the regional route without the storm reward. Enter again to retry.",
             "ExplorationEnded" => "Returned to the region from exploration.",
             "HuntClueTracked" => "Clue recorded. Follow the next marked trace.",
             "ProfileUnlocked" => "A new activity or discovery is available in your local profile.",

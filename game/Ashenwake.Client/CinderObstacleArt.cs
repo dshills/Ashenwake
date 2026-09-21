@@ -7,7 +7,7 @@ public static class CinderObstacleArt
 {
     public static void Build(EnvironmentBuilder b, float width, float depth, Vector3 center, string style)
     {
-        bool extraction = style == "cinder_extraction", furnace = style == "cinder_furnace", storm = style == "cinder_storm";
+        bool extraction = style is "cinder_extraction" or "cinder_foundry", furnace = style == "cinder_furnace", storm = style == "cinder_storm";
         b.Box(new(width, .91f, depth), center + Vector3.Up * .455f, extraction ? "41454b" : "47424a");
         b.Box(new(width * .96f, .15f, depth * .96f), center + Vector3.Up * .985f, "61575a");
         b.Box(new(width * .86f, .025f, depth * .85f), center + Vector3.Up * 1.074f, "302f35");

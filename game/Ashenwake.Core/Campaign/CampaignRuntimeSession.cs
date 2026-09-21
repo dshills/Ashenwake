@@ -10,7 +10,7 @@ using System.Text.Json.Serialization;
 
 namespace Ashenwake.Core.Campaign;
 
-public enum CampaignRuntimeAction { Tick, EnterAct, AdvanceEncounter, ReturnToHub, Choose, BeginExploration, TrackClue, LeaveExploration, Production, RevisitEncounter, InteractOpening, EnableExplorationMap, InteractVerdant }
+public enum CampaignRuntimeAction { Tick, EnterAct, AdvanceEncounter, ReturnToHub, Choose, BeginExploration, TrackClue, LeaveExploration, Production, RevisitEncounter, InteractOpening, EnableExplorationMap, InteractVerdant, InteractCinder }
 public sealed record CampaignRuntimeCommand(CampaignRuntimeAction Action, int Act = 0, string Id = "", string Value = "", CombatCommand[]? Commands = null, ProductionCommand? Production = null);
 public sealed record CampaignRuntimeResult(bool Success, string Reason, CombatEvent[] CombatEvents, string[] WorldEvents);
 public sealed record CampaignRuntimeSnapshot
@@ -50,7 +50,7 @@ public sealed partial class CampaignRuntimeSession
     public string ActiveEncounterId { get; private set; } = "hub";
     public bool InHub => story.CurrentState.InHub;
     public bool EncounterCleared => InHub || ActiveEncounterId == "clear" || story.CurrentState.CompletedEncounters.Contains(ActiveEncounterId) ||
-        (ActiveEncounterId == CryptEncounter || HasVerdantExploration && ActiveEncounterId is ShrineEncounter or HuntEncounter) && !arena.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0);
+        (ActiveEncounterId == CryptEncounter || HasVerdantExploration && ActiveEncounterId is ShrineEncounter or HuntEncounter || HasCinderExploration && ActiveEncounterId is FoundryEncounter or StormEncounter) && !arena.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0);
     public CampaignView View => story.ViewForResonance(Production.View.Resonance);
     public CampaignView StoryView => View;
     public IReadOnlyList<string> WorldEvents { get; private set; } = [];
@@ -75,6 +75,7 @@ public sealed partial class CampaignRuntimeSession
             }
             if (OpeningInteractions() is { } opening) return opening;
             if (VerdantInteractions() is { } verdant) return verdant;
+            if (CinderInteractions() is { } cinder) return cinder;
             var current = story.CurrentState.Exploration;
             if (current is null) return [];
             var definition = Content.Data.Exploration.Single(e => e.Id == current.Id);
@@ -182,11 +183,13 @@ public sealed partial class CampaignRuntimeSession
         {
             bool cryptDeath = ActiveEncounterId == CryptEncounter;
             string? verdantReturn = VerdantBranchReturn();
-            if (HasVerdantExploration) CacheOpeningRoom(restoreDeadPlayer: true);
+            string? cinderReturn = CinderBranchReturn();
+            if (HasVerdantExploration || HasCinderExploration) CacheOpeningRoom(restoreDeadPlayer: true);
             var died = story.PlayerDied(); Require(died); messages.AddRange(died.Events); explorationReturnEncounter = "";
             Production.ClearCampaignEffects();
             if (cryptDeath) ResumeOpeningRoom("campaign.road", restoreAtAnchor: true);
             else if (verdantReturn is not null) ResumeOpeningRoom(verdantReturn, restoreAtAnchor: true);
+            else if (cinderReturn is not null) ResumeOpeningRoom(cinderReturn, restoreAtAnchor: true);
             else StartExpectedEncounter(restoreAtAnchor: true);
             messages.Add("CampaignCombatRestoredAtAnchor");
         }
@@ -202,8 +205,14 @@ public sealed partial class CampaignRuntimeSession
                     messages.AddRange(Award("campaign.exploration." + HuntEvent, completion));
                     explorationReturnEncounter = "";
                 }
+                else if (HasCinderExploration && definition.Id == StormEvent)
+                {
+                    var completion = story.CompleteExploration(StormEncounter); Require(completion); messages.AddRange(completion.Events);
+                    messages.AddRange(Award("campaign.exploration." + StormEvent, completion));
+                    // Keep historical save return passages until the player physically leaves the won storm.
+                }
                 // Retain the cleared scoped arena until its visible loot has been picked up. Its timer no longer expires after victory.
-                else if (arena.View.Loot.Count == 0 && definition.Id != CryptEvent && !(HasVerdantExploration && definition.Id is ShrineEvent or HuntEvent))
+                else if (arena.View.Loot.Count == 0 && definition.Id != CryptEvent && !(HasVerdantExploration && definition.Id is ShrineEvent or HuntEvent) && !(HasCinderExploration && definition.Id is FoundryEvent or StormEvent))
                 {
                     var completion = story.CompleteExploration(definition.EncounterId); Require(completion); messages.AddRange(completion.Events);
                     messages.AddRange(Award("campaign.exploration." + definition.Id, completion)); EndExplorationArena();
@@ -231,7 +240,8 @@ public sealed partial class CampaignRuntimeSession
                 explorationMap ??= new(); return new(true, "", [], []);
             case CampaignRuntimeAction.InteractOpening: return InteractOpening(command.Id);
             case CampaignRuntimeAction.InteractVerdant: return InteractVerdant(command.Id);
-            case CampaignRuntimeAction.RevisitEncounter: return HasVerdantExploration && state.CurrentAct == 2 ? RevisitVerdantPassage(command.Id) : RevisitOpeningRoom(command.Id);
+            case CampaignRuntimeAction.InteractCinder: return InteractCinder(command.Id);
+            case CampaignRuntimeAction.RevisitEncounter: return HasCinderExploration && state.CurrentAct == 3 ? RevisitCinderPassage(command.Id) : HasVerdantExploration && state.CurrentAct == 2 ? RevisitVerdantPassage(command.Id) : RevisitOpeningRoom(command.Id);
             case CampaignRuntimeAction.Production:
                 if (!state.InHub || command.Production is null) return Failed("Permanent services require Greyhaven.");
                 if (command.Production.Action == ProductionAction.Expedition && command.Production.Expedition?.Action is not (ExpeditionAction.Interact or ExpeditionAction.InstallFragment or ExpeditionAction.Manifestation))
@@ -252,6 +262,7 @@ public sealed partial class CampaignRuntimeSession
                 if (!state.InHub && (!EncounterCleared || state.Exploration is not null)) return Failed("Clear this encounter or return to Greyhaven before changing regions.");
                 CacheOpeningRoom();
                 result = story.EnterAct(command.Act); if (!result.Success) return Failed(result.Reason);
+                explorationReturnEncounter = "";
                 if (state.InHub) arena = CombatSession.Restore(combatJson, Production.Combat.Capture());
                 messages.AddRange(result.Events); messages.AddRange(Award("campaign.visit." + command.Act, result)); ReportUncollectedLoot(messages); StartExpectedEncounter(restoreAtAnchor: true); break;
             case CampaignRuntimeAction.AdvanceEncounter:
@@ -262,6 +273,8 @@ public sealed partial class CampaignRuntimeSession
                     !((ActiveEncounterId, expected) is ("campaign.road", "campaign.monastery") or ("campaign.monastery", "campaign.bell_saint")))
                     return Failed("Follow the adjoining cleared passages to reach the next encounter.");
                 if (HasVerdantExploration && state.CurrentAct == 2 && !CanAdvanceVerdant(expected))
+                    return Failed("Follow the adjoining forward passage to reach the next encounter.");
+                if (HasCinderExploration && state.CurrentAct == 3 && !CanAdvanceCinder(expected))
                     return Failed("Follow the adjoining forward passage to reach the next encounter.");
                 if (!ChoiceAllows(expected)) return Failed("Resolve this region's central choice before the final confrontation.");
                 ReportUncollectedLoot(messages); StartEncounter(expected, restoreAtAnchor: true); messages.Add("CampaignEncounterEntered:" + expected); break;
@@ -276,6 +289,8 @@ public sealed partial class CampaignRuntimeSession
                 if (command.Id == CryptEvent) return InteractOpening("opening.crypt.enter");
                 if (HasVerdantExploration && command.Id == ShrineEvent) return InteractVerdant("verdant.shrine.enter");
                 if (HasVerdantExploration && command.Id == HuntEvent) return InteractVerdant("verdant.hunt.enter");
+                if (HasCinderExploration && command.Id == FoundryEvent) return InteractCinder("cinder.foundry.enter");
+                if (HasCinderExploration && command.Id == StormEvent) return InteractCinder("cinder.storm.enter");
                 if (!EncounterCleared) return Failed("Secure the area before exploring.");
                 string returnTo = ActiveEncounterId; result = story.BeginExploration(command.Id); if (!result.Success) return Failed(result.Reason);
                 explorationReturnEncounter = returnTo; messages.AddRange(result.Events);
@@ -296,6 +311,8 @@ public sealed partial class CampaignRuntimeSession
                 if (ActiveEncounterId == CryptEncounter) return InteractOpening("opening.crypt.return");
                 if (HasVerdantExploration && ActiveEncounterId == ShrineEncounter) return InteractVerdant("verdant.shrine.return");
                 if (HasVerdantExploration && (ActiveEncounterId == HuntEncounter || state.Exploration?.Id == HuntEvent)) return InteractVerdant("verdant.hunt.return");
+                if (HasCinderExploration && ActiveEncounterId == FoundryEncounter) return InteractCinder("cinder.foundry.return");
+                if (HasCinderExploration && ActiveEncounterId == StormEncounter) return InteractCinder("cinder.storm.return");
                 if (state.Exploration is null) return Failed("No exploration context is active.");
                 var leavingDefinition = Content.Data.Exploration.Single(e => e.Id == state.Exploration.Id);
                 bool completed = ActiveEncounterId == leavingDefinition.EncounterId && !arena.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0) &&
@@ -328,6 +345,10 @@ public sealed partial class CampaignRuntimeSession
     private void StartExpectedEncounter(bool restoreAtAnchor)
     {
         string? expected = View.EncounterId;
+        if (HasCinderExploration && story.CurrentState.CurrentAct == 3 && expected is null)
+        { ResumeOpeningRoom("campaign.cinder_pack", restoreAtAnchor); return; }
+        if (HasCinderExploration && story.CurrentState.CurrentAct == 3 && expected == "campaign.furnace_spindle" && !ChoiceAllows(expected))
+        { ResumeOpeningRoom("campaign.extraction_floor", restoreAtAnchor); return; }
         if (HasVerdantExploration && story.CurrentState.CurrentAct == 2 && expected is null)
         { ResumeOpeningRoom("campaign.living_ruins", restoreAtAnchor); return; }
         if (HasVerdantExploration && story.CurrentState.CurrentAct == 2 && expected == "campaign.rootheart" && !ChoiceAllows(expected))
@@ -347,7 +368,13 @@ public sealed partial class CampaignRuntimeSession
     }
     private void EndExplorationArena()
     {
+        string? cinderReturn = CinderBranchReturn();
         string prior = explorationReturnEncounter; explorationReturnEncounter = "";
+        if (cinderReturn is not null)
+        {
+            ResumeOpeningRoom(cinderReturn, restoreAtAnchor: true);
+            return;
+        }
         StartEncounter("clear", restoreAtAnchor: true);
         ActiveEncounterId = prior == "" ? "clear" : prior;
     }
@@ -396,9 +423,11 @@ public sealed partial class CampaignRuntimeSession
             string expected = definition.Kind == "Hunt" && active.TrackedClues < definition.Clues.Length ? "clear" : definition.EncounterId;
             if (ActiveEncounterId != expected || arena.EncounterId != expected || explorationReturnEncounter == "" || (explorationReturnEncounter != "clear" && !state.CompletedEncounters.Contains(explorationReturnEncounter))) throw new InvalidDataException("Exploration combat context does not match its scoped story state.");
             ValidateVerdantExploration(definition.Id, expected);
+            ValidateCinderExploration(definition.Id);
         }
         else
         {
+            if (ValidateCompletedCinderRoom()) return;
             if (explorationReturnEncounter != "") throw new InvalidDataException("An inactive exploration retained its return context.");
             if (ActiveEncounterId == CryptEncounter && state.CurrentAct == 1 && state.CompletedExploration.Contains(CryptEvent))
             {

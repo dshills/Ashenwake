@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign-combat.cinder.4",
+  "version": "campaign-combat.verdant.3",
   "enemies": [
     {
       "id": "enemy.funeral_guard",
@@ -755,39 +755,7 @@
           "modifiers": [],
           "hidden": false
         }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -800,
-            "minZ": -10000,
-            "maxX": 800,
-            "maxZ": -1700
-          },
-          {
-            "minX": 3200,
-            "minZ": 3900,
-            "maxX": 5000,
-            "maxZ": 10000
-          },
-          {
-            "minX": -9000,
-            "minZ": 3200,
-            "maxX": -6500,
-            "maxZ": 5600
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "campaign.extraction_floor",
@@ -822,45 +790,7 @@
           "modifiers": [],
           "hidden": false
         }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -900,
-            "minZ": -10000,
-            "maxX": 600,
-            "maxZ": -1800
-          },
-          {
-            "minX": 2200,
-            "minZ": 4200,
-            "maxX": 3600,
-            "maxZ": 10000
-          },
-          {
-            "minX": -8500,
-            "minZ": 2800,
-            "maxX": -6200,
-            "maxZ": 5100
-          },
-          {
-            "minX": 7400,
-            "minZ": -7600,
-            "maxX": 9500,
-            "maxZ": -4700
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "campaign.furnace_spindle",
@@ -887,45 +817,7 @@
           },
           "modifiers": []
         }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -9000,
-            "minZ": -8000,
-            "maxX": -5800,
-            "maxZ": -5500
-          },
-          {
-            "minX": -9000,
-            "minZ": 5500,
-            "maxX": -5800,
-            "maxZ": 8000
-          },
-          {
-            "minX": 6700,
-            "minZ": -8200,
-            "maxX": 9300,
-            "maxZ": -6100
-          },
-          {
-            "minX": 6700,
-            "minZ": 6100,
-            "maxX": 9300,
-            "maxZ": 8200
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "campaign.bone_causeway",
@@ -1141,45 +1033,7 @@
           },
           "modifiers": []
         }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": -600,
-            "minZ": -10000,
-            "maxX": 800,
-            "maxZ": -2300
-          },
-          {
-            "minX": 2200,
-            "minZ": 4500,
-            "maxX": 3400,
-            "maxZ": 10000
-          },
-          {
-            "minX": -9300,
-            "minZ": 3300,
-            "maxX": -6500,
-            "maxZ": 5600
-          },
-          {
-            "minX": 7900,
-            "minZ": -6500,
-            "maxX": 9800,
-            "maxZ": -3600
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "exploration.first_oath",
@@ -1419,78 +1273,6 @@
             "minZ": 5800,
             "maxX": -5800,
             "maxZ": 8200
-          }
-        ]
-      }
-    },
-    {
-      "id": "exploration.sealed_foundry",
-      "name": "The Sealed Foundry",
-      "rule": "Memory",
-      "durationTicks": 0,
-      "spawns": [
-        {
-          "enemyId": "enemy.forge_sentinel",
-          "position": {
-            "x": -1000,
-            "z": 0
-          },
-          "modifiers": [
-            "Stormbound"
-          ]
-        },
-        {
-          "enemyId": "enemy.heat_tender",
-          "position": {
-            "x": 5000,
-            "z": -4000
-          },
-          "modifiers": []
-        },
-        {
-          "enemyId": "enemy.emberling",
-          "position": {
-            "x": 6200,
-            "z": 1800
-          },
-          "modifiers": []
-        }
-      ],
-      "room": {
-        "halfWidth": 12000,
-        "halfDepth": 10000,
-        "playerSpawn": {
-          "x": -4500,
-          "z": 0
-        },
-        "enemySpawn": {
-          "x": 1500,
-          "z": 0
-        },
-        "obstacles": [
-          {
-            "minX": 1000,
-            "minZ": -10000,
-            "maxX": 2600,
-            "maxZ": -1800
-          },
-          {
-            "minX": -1800,
-            "minZ": 2800,
-            "maxX": 500,
-            "maxZ": 6600
-          },
-          {
-            "minX": -8800,
-            "minZ": -7300,
-            "maxX": -6200,
-            "maxZ": -4100
-          },
-          {
-            "minX": 8000,
-            "minZ": 5700,
-            "maxX": 10500,
-            "maxZ": 8000
           }
         ]
       }

@@ -33,6 +33,12 @@ mkdir -p "$verdant_exploration_output"
 python3 tools/check-godot-log.py "$verdant_exploration_output/smoke.log"
 rg -q 'VerdantExplorationClientSmokePassed' "$verdant_exploration_output/smoke.log"
 
+cinder_exploration_output="$release_soak/cinder-exploration-client"
+mkdir -p "$cinder_exploration_output"
+"$GODOT" --headless --path game/Ashenwake.Client res://CinderExplorationSmoke.tscn --quit-after 24000 --log-file "$cinder_exploration_output/smoke.log" -- --cinder-exploration-smoke --discipline=Vanguard --output="$cinder_exploration_output"
+python3 tools/check-godot-log.py "$cinder_exploration_output/smoke.log"
+rg -q 'CinderExplorationClientSmokePassed' "$cinder_exploration_output/smoke.log"
+
 service_ui="$release_soak/service-client"
 mkdir -p "$service_ui"
 "$GODOT" --headless --path game/Ashenwake.Client res://ServiceInteractionSmoke.tscn --quit-after 600 --log-file "$service_ui/smoke.log" -- --service-interaction-smoke --output="$service_ui"
