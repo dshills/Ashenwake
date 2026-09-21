@@ -2,4 +2,9 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Frozen catalogs authenticate saves from before authored opening rooms. -->
+    <EmbeddedResource Include="../../fixtures/campaign-phase4.json" LogicalName="Ashenwake.PreviousOpening.Campaign.json" />
+    <EmbeddedResource Include="../../fixtures/campaign-combat-phase4.json" LogicalName="Ashenwake.PreviousOpening.Combat.json" />
+  </ItemGroup>
 </Project>

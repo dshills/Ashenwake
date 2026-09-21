@@ -9,10 +9,17 @@ public sealed partial class CombatSession
     private string EndgamePattern => EndgameRoom?.Pattern ?? "";
     private bool EndgameRule(string id) => _state.Endgame?.Manifest.RuleIds.Contains("fracture." + id) == true;
     private bool EndgameOvercharged => EndgameRule("fragment_overcharge") && (Tick - _state.Endgame!.StartedTick) % 120 < 30;
-    public RoomDefinition Room => JsonData.Copy(ResolveRoom(_content, _state));
+    public RoomDefinition Room => JsonData.Copy(_room);
     private static RoomDefinition ResolveRoom(CombatContent content, CombatSnapshot state)
     {
-        if (state.Endgame is null) return content.Room;
+        if (state.RoomEncounterId is { } layout)
+        {
+            if (state.EncounterId != "clear" || state.Endgame is not null || state.Campaign is not null)
+                throw new InvalidDataException("A retained campaign room requires a cleared encounter.");
+            return content.Campaign?.Encounters.FirstOrDefault(e => e.Id == layout)?.Room
+                ?? throw new InvalidDataException("Unknown retained campaign room.");
+        }
+        if (state.Endgame is null) return content.Campaign?.Encounters.FirstOrDefault(e => e.Id == state.EncounterId)?.Room ?? content.Room;
         var e = state.Endgame;
         if (content.Endgame is null || e.Manifest?.Rooms is null || e.EncounterIndex < 0 || e.EncounterIndex >= e.Manifest.Rooms.Length)
             throw new InvalidDataException("Invalid endgame room context.");

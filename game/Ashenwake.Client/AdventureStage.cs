@@ -48,6 +48,7 @@ public partial class AdventureStage : Node3D
                 case "room.greyhaven": GreyhavenArt.Build(_decoration, halfWidth, halfDepth, hubStage); break;
                 case "room.ossuary":
                 case "room.cloister":
+                case "room.widow_crypt":
                 case "room.bell_sanctum": _bell = GreyMarchArt.Build(_decoration, halfWidth, halfDepth, roomId, bellPhase, bossDefeated); break;
             }
         }

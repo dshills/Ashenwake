@@ -65,6 +65,7 @@ public partial class MouseActionsSmoke : Node
             await MaraInteraction();
             await Interruptions();
             await CampaignLoot();
+            await OpeningExploration();
             RecordReplay();
             Check("all_branch_command_replays_match", _replays.Count >= 3 && _replays.All(replay => EndgameRuntimeReplayRunner.Run(
                 Field<string>(_director, "_combatJson"), Field<AdventureContent>(_director, "_adventure"), Field<ProgressionContent>(_director, "_progression"),
@@ -462,8 +463,9 @@ public partial class MouseActionsSmoke : Node
             groundCheckpoints = _groundCheckpoints,
             cameraZoomInputs = _cameraZoomInputs,
             cameraPicks = _cameraPicks,
+            openingLayouts = _openingLayouts,
             error,
-            scope = "The shipping EndgameDirector receives actual viewport NPC and loot clicks, UI/key interruption and save/load input; its Sandbox is stepped at the real fixed interval. Actual campaign commands prepare a build and earn the drops. The real filter widget signal isolates disappearance from modal cancellation. Public presentation invalidation tests a vanished target. No fabricated combat rewards or progression; branch command replays must match. An isolated authored Orrun hunt phase uses the earned character, real mechanism availability and a separately verified combat replay; it does not claim a full endgame unlock journey. Full road-to-Bell-Saint objectives remain covered by the journey diagnostic."
+            scope = "The shipping EndgameDirector receives actual viewport NPC, loot, crypt passage and testament clicks, UI/key interruption and save/load input; its Sandbox is stepped at the real fixed interval. Actual campaign commands prepare a build and earn the drops. The opening side-room route fights the authored crypt, claims its rare testament once, returns with road loot retained, and revisits without respawning enemies or rewards. Native structural checks inspect crypt scenery, floor, obstacles and clickable targets. The real filter widget signal isolates disappearance from modal cancellation. Public presentation invalidation tests vanished and stale targets; a rejected Core command verifies spent-treasure protection. No fabricated combat rewards or progression; branch command replays must match. An isolated authored Orrun hunt phase uses the earned character, real mechanism availability and a separately verified combat replay; it does not claim a full endgame unlock journey. Full road-to-Bell-Saint objectives remain covered by the journey diagnostic."
         };
         if (_writeReport) System.IO.File.WriteAllText(Path.Combine(_output, "mouse-actions-review.json"), JsonData.Write(report));
         GD.Print(JsonData.Write(report));

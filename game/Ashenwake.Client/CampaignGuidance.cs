@@ -16,6 +16,9 @@ public partial class CampaignHud
     public bool CanRequestNextStep => _view is not null && !_engaged && _nextStep is { Visible: true } &&
         _combat.Actors.Any(actor => actor.Id == 1 && actor.Health > 0);
     public void RequestNextStep() { if (CanRequestNextStep) ActivateNextStep(); }
+    private bool InOpeningCrypt => _interactions.Any(i => i.Id == "opening.crypt.return");
+    private InteractionDisplay? OpeningForward => _interactions.FirstOrDefault(i => i.Id.StartsWith("opening.forward.", StringComparison.Ordinal));
+    public bool CanShowWayForward => !InOpeningCrypt && OpeningForward is null;
 
     private void BuildNextStep()
     {
@@ -119,8 +122,23 @@ public partial class CampaignHud
                 : "RITUAL BROKEN · The Bell Saint can be hurt again. Attack it to end the resurrection.";
             return;
         }
+        if (InOpeningCrypt)
+        {
+            var treasure = _interactions.FirstOrDefault(i => i.Id == "opening.crypt.treasure");
+            _objective.Text = _engaged ? "THE WIDOW'S CRYPT · Defeat its guardians. The western passage returns to the road."
+                : treasure is not null ? "The guardians have fallen. Open the Widow's Testament for rare armor, materials, and its hidden testimony."
+                : "The testament is claimed. Collect any remaining drops, then return to the road.";
+            _nextInteraction = treasure?.Id ?? "opening.crypt.return";
+            SetNextStep(NextAction.Interaction, treasure is not null ? "Approach the Widow's Testament" : "Return to the Grey March road");
+            return;
+        }
         if (_engaged) { _objective.Text = _view.Objective; return; }
-        string loot = _combat.Loot.Count > 0 ? $"{_combat.Loot.Count} dropped item{(_combat.Loot.Count == 1 ? "" : "s")} remain. " : "";
+        if (OpeningForward is { } passage)
+        {
+            _objective.Text = "This area is secure. Cleared passages remain open and uncollected treasure stays in its room.";
+            _nextInteraction = passage.Id; SetNextStep(NextAction.Interaction, passage.Name); return;
+        }
+        string loot = _combat.Loot.Count > 0 ? $"{_combat.Loot.Count} dropped item{(_combat.Loot.Count == 1 ? " remains" : "s remain")}. " : "";
         if (_state.Exploration is not null)
         {
             _objective.Text = loot + "Exploration complete. Collect your rewards and return to the region.";
@@ -159,9 +177,16 @@ public partial class CampaignHud
     {
         _rows.AddChild(new HSeparator());
         _rows.AddChild(Label("NEXT STEP", 14));
-        string droppedLoot = _combat.Loot.Count > 0 ? $" · leave {_combat.Loot.Count} uncollected drops" : "";
+        if (InOpeningCrypt || OpeningForward is not null)
+        {
+            foreach (var target in _interactions.Where(i => i.Id is "opening.crypt.treasure" or "opening.crypt.return" || i.Id.StartsWith("opening.forward.", StringComparison.Ordinal)))
+                Button(target.Name, () => RequestInteraction(target.Id));
+            Button("Return to Greyhaven" + LootSuffix, () => RequestJourneyTravel(new(JourneyTravelKind.Hub)));
+            return;
+        }
+        string droppedLoot = _combat.Loot.Count > 0 ? $" · {_combat.Loot.Count} uncollected drops" : "";
         if (_combat.Loot.Count > 0)
-            _rows.AddChild(Label("Click a dropped item to walk over and collect it. E picks up nearby loot; hold Alt to reveal filtered drops. Travel leaves uncollected drops behind.", 12));
+            _rows.AddChild(Label("Click a dropped item to walk over and collect it. E picks up nearby loot; hold Alt to reveal filtered drops. " + (OpeningLootRetained ? "This cleared room keeps remaining drops when you travel." : "Travel leaves uncollected drops behind."), 12));
         if (_state.Exploration is null)
         {
             if (ChoicePending) Button("Resolve the region's choice", () => OpenTab("Story")).Disabled = _engaged;

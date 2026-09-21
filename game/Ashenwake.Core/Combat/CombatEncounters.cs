@@ -12,7 +12,7 @@ public sealed partial class CombatSession
     {
         var original = previous is null ? Create(contentJson, seed) : Restore(contentJson, previous);
         if (encounterId == "" || !original.KnownEncounter(encounterId)) throw new ArgumentException("Unknown combat encounter.", nameof(encounterId));
-        var state = original.Capture() with { EncounterId = encounterId, Preset = "standard", Endgame = null };
+        var state = original.Capture() with { EncounterId = encounterId, Preset = "standard", Endgame = null, RoomEncounterId = null };
         if (state.Experiment?.Status == "Bound") { state.CapturedSkillId = ""; state.CapturedUntil = state.Tick; }
         state.Experiment = null;
         state.Legendary = null;
@@ -29,7 +29,7 @@ public sealed partial class CombatSession
         state.MinionTargetId = 0;
         state.BufferedCommand = null; state.MemoryAttackId = ""; state.MemoryStacks = 0; state.MemoryUntilTick = state.Tick;
         player.Pending = null; player.Statuses.Clear(); player.Barrier = 0; player.MoveX = 0; player.MoveZ = 0;
-        player.Position = original._content.Room.PlayerSpawn; player.InvulnerableUntil = state.Tick; player.RecoveryUntil = state.Tick; player.State = "Idle";
+        player.Position = ResolveRoom(original._content, state).PlayerSpawn; player.InvulnerableUntil = state.Tick; player.RecoveryUntil = state.Tick; player.State = "Idle";
         if (encounterId == "hub" || restoreAtAnchor)
         {
             player.Health = player.MaxHealth; player.DeathProcessed = false; state.PotionCharges = 3;
@@ -110,7 +110,7 @@ public sealed partial class CombatSession
         if (Player.Health <= 0) { actor.State = "Acquire"; return true; }
         var definition = _content.Enemies.Single(e => e.Id == actor.DefinitionId);
         if (actor.Role == "Rusher" && Position.DistanceSquared(actor.Position, Player.Position) > (long)definition.Range * definition.Range)
-        { actor.State = "Rush"; MoveActor(actor, Toward(actor.Position, Player.Position, definition.Speed)); return true; }
+        { actor.State = "Rush"; MoveTowardTarget(actor, Player.Position, definition.Speed); return true; }
         if ((Tick + actor.Id) % 3 != 0) return true;
         var target = Player;
         string skill = actor.Role switch
@@ -127,7 +127,7 @@ public sealed partial class CombatSession
             if (wounded is null) skill = "enemy.projectile"; else target = wounded;
         }
         if (skill is "boss.chain" or "boss.beast_rush" && Position.DistanceSquared(actor.Position, Player.Position) > (long)definition.Range * definition.Range)
-        { actor.State = "Approach"; MoveActor(actor, Toward(actor.Position, Player.Position, definition.Speed)); return true; }
+        { actor.State = "Approach"; MoveTowardTarget(actor, Player.Position, definition.Speed); return true; }
         actor.SpecialCycle++;
         actor.Pending = new(skill, target.Id, skill == "enemy.detonate" ? actor.Position : target.Position, Tick + definition.Windup, _state.NextActionId++);
         actor.RecoveryUntil = Tick + definition.Windup + definition.Recovery; actor.State = "Windup";

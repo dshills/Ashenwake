@@ -79,7 +79,8 @@ public sealed class CultureSerializationTests
         using var scope = new CultureScope(culture);
         var c = Content();
         var previous = CampaignCombatContent.Parse(Read("fixtures/combat-phase4.json"), Read("fixtures/campaign-combat-phase4.json")).CombatJson;
-        var old = CampaignRuntimeSaveStore.Read(previous, c.Adventure, ProgressionContent.Parse(Read("fixtures/progression-phase4.json")), c.Campaign, Read("fixtures/phase4-campaign-complete.json"));
+        var old = CampaignRuntimeSaveStore.Read(previous, c.Adventure, ProgressionContent.Parse(Read("fixtures/progression-phase4.json")),
+            CampaignContent.Parse(Read("fixtures/campaign-phase4.json")), Read("fixtures/phase4-campaign-complete.json"));
         using var manifest = JsonDocument.Parse(Read("fixtures/phase4-migration-manifest.json"));
         Assert.Equal(manifest.RootElement.GetProperty("stateHash").GetString(), old.StateHash);
         var upgraded = EndgameRuntimeMigration.ImportPhaseFour(Read("fixtures/phase4-campaign-complete.json"), previous, c.Combat, c.Adventure, c.Policy, c.Campaign, c.Endgame);

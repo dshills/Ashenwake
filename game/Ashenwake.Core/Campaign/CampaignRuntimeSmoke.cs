@@ -12,7 +12,7 @@ public static class CampaignRuntimeSmoke
     public static bool Complete(CampaignRuntimeSession session)
     {
         var state = session.Capture().Campaign;
-        return state.CompletedActs.Count == 5 && state.CompletedExploration.Count == 3 && state.InHub && session.View.Ending is not null;
+        return state.CompletedActs.Count == 5 && state.CompletedExploration.Count == session.Content.Capture().Exploration.Length && state.InHub && session.View.Ending is not null;
     }
     public static CampaignRuntimeCommand Next(CampaignRuntimeSession session)
     {
@@ -27,6 +27,12 @@ public static class CampaignRuntimeSmoke
             return new(CampaignRuntimeAction.EnterAct, Act: Math.Min(5, state.CompletedActs.Count + 1));
         }
         var view = session.Combat.View; var player = view.Actors.Single(a => a.Id == 1);
+        if (session.ActiveEncounterId == CampaignRuntimeSession.CryptEncounter && session.EncounterCleared)
+        {
+            if (view.Loot.Count > 0 && view.Inventory.Count < 512) return CombatInput(session);
+            string target = state.CompletedExploration.Contains(CampaignRuntimeSession.CryptEvent) ? "opening.crypt.return" : "opening.crypt.treasure";
+            return AtInteraction(session, target, new(CampaignRuntimeAction.InteractOpening, Id: target));
+        }
         if (state.Exploration is { } exploration)
         {
             var eventDefinition = definition.Exploration.Single(e => e.Id == exploration.Id);
@@ -42,11 +48,26 @@ public static class CampaignRuntimeSmoke
         var loot = view.Loot.OrderBy(l => Position.DistanceSquared(l.Position, player.Position)).ThenBy(l => l.Id).FirstOrDefault();
         if (loot is not null && view.Inventory.Count < 512) return CombatInput(session);
         var optional = definition.Exploration.FirstOrDefault(e => e.Act == state.CurrentAct && !state.CompletedExploration.Contains(e.Id));
+        if (optional?.Id == CampaignRuntimeSession.CryptEvent)
+        {
+            string passage = session.ActiveEncounterId switch
+            {
+                "campaign.monastery" => "opening.back.road",
+                "campaign.bell_saint" => "opening.back.monastery",
+                _ => "opening.crypt.enter"
+            };
+            return AtInteraction(session, passage, new(CampaignRuntimeAction.InteractOpening, Id: passage));
+        }
         if (optional is not null) return new(CampaignRuntimeAction.BeginExploration, Id: optional.Id);
         var act = definition.Acts[state.CurrentAct - 1]; var choice = definition.Choices.Single(c => c.Id == act.RequiredChoice);
         if (!state.Choices.ContainsKey(choice.Id) && state.CompletedEncounters.Contains(choice.RequiredEncounter))
             return new(CampaignRuntimeAction.Choose, Id: choice.Id, Value: choice.Outcomes[0].Id);
-        if (!state.CompletedActs.Contains(state.CurrentAct)) return new(CampaignRuntimeAction.AdvanceEncounter);
+        if (!state.CompletedActs.Contains(state.CurrentAct))
+        {
+            var forward = session.Interactions.FirstOrDefault(i => i.ActionId.StartsWith("opening.forward.", StringComparison.Ordinal));
+            if (forward is not null) return AtInteraction(session, forward.ActionId, new(CampaignRuntimeAction.InteractOpening, Id: forward.ActionId));
+            return new(CampaignRuntimeAction.AdvanceEncounter);
+        }
         return state.CurrentAct == 5 ? new(CampaignRuntimeAction.ReturnToHub) : new(CampaignRuntimeAction.EnterAct, Act: state.CurrentAct + 1);
     }
     private static CampaignRuntimeCommand CombatInput(CampaignRuntimeSession session)

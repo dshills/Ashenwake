@@ -29,6 +29,19 @@ public static class ExperimentSaveStore
     public static ExperimentRuntimeSession Read(string combatJson, AdventureContent adventure, ProgressionContent policy,
         CampaignContent campaign, EndgameContent endgame, ExperimentContent experiment, string json)
     {
+        try { return ReadWithLegendaryUpgrade(combatJson, adventure, policy, campaign, endgame, experiment, json); }
+        catch (SaveCompatibilityException) when (OpeningCatalogMigration.TryPrevious(combatJson, policy, campaign,
+            out var previousCombat, out var previousPolicy, out var previousCampaign))
+        {
+            var original = ReadWithLegendaryUpgrade(previousCombat, adventure, previousPolicy, previousCampaign, endgame, experiment, json).Capture();
+            return ExperimentRuntimeSession.Restore(combatJson, adventure, policy, campaign, endgame, experiment,
+                original with { Endgame = OpeningCatalogMigration.Rebind(original.Endgame, combatJson, adventure, policy, campaign) });
+        }
+    }
+
+    private static ExperimentRuntimeSession ReadWithLegendaryUpgrade(string combatJson, AdventureContent adventure, ProgressionContent policy,
+        CampaignContent campaign, EndgameContent endgame, ExperimentContent experiment, string json)
+    {
         try { return ReadExact(combatJson, adventure, policy, campaign, endgame, experiment, json); }
         catch (SaveCompatibilityException) when (LegendaryCatalogMigration.TryPrevious(combatJson, policy, out var previousCombat, out var previousPolicy))
         {
@@ -44,6 +57,7 @@ public static class ExperimentSaveStore
         if (json.Length > 96 * 1024 * 1024) throw new InvalidDataException("Experiment archive exceeds its size bound.");
         using var document = JsonDocument.Parse(json); ArchiveHeaders.Require(document.RootElement, 1);
         Inspect(ArchiveHeaders.Object(document.RootElement, "state"), combatJson, adventure, policy, campaign, endgame, experiment);
+        ArchiveHeaders.Checksum(document.RootElement, "state");
         var save = JsonData.Read<ExperimentSave>(json);
         if (save.State is null || save.StateHash != JsonData.Hash(save.State)) throw new InvalidDataException("Experiment checksum mismatch.");
         return ExperimentRuntimeSession.Restore(combatJson, adventure, policy, campaign, endgame, experiment, save.State);

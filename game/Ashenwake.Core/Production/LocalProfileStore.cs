@@ -26,6 +26,19 @@ public static class LocalProfileStore
 
     public static LocalProfileState Read(ProgressionContent content, string json)
     {
+        try { return ReadWithLegendaryUpgrade(content, json); }
+        catch (SaveCompatibilityException)
+        {
+            var previous = OpeningCatalogMigration.PreviousPolicy(content);
+            if (previous.Hash == content.Hash) throw;
+            var profile = ReadWithLegendaryUpgrade(previous, json);
+            ProgressionSession.ValidateProfile(content, profile);
+            return profile;
+        }
+    }
+
+    private static LocalProfileState ReadWithLegendaryUpgrade(ProgressionContent content, string json)
+    {
         try { return ReadExact(content, json); }
         catch (SaveCompatibilityException)
         {
@@ -46,6 +59,7 @@ public static class LocalProfileStore
             throw new InvalidDataException("Local profile schema is missing or invalid.");
         if (version != 1) throw new SaveCompatibilityException("Unsupported local profile schema; preserve the original file.");
         ArchiveHeaders.Identity(document.RootElement, "contentHash", content.Hash);
+        ArchiveHeaders.Checksum(document.RootElement, "profile");
         var envelope = JsonData.Read<LocalProfileEnvelope>(json);
         if (envelope.ContentHash != content.Hash) throw new SaveCompatibilityException("Local profile content identity changed; use an explicit catalog migration.");
         if (envelope.Profile is null || envelope.StateHash != JsonData.Hash(envelope.Profile)) throw new InvalidDataException("Local profile checksum mismatch.");

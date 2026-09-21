@@ -16,7 +16,7 @@ public sealed partial class CombatSession
         {
             long dx = (long)target.X - actor.Position.X, dz = (long)target.Z - actor.Position.Z;
             long length = Math.Max(1, (long)Math.Ceiling(Math.Sqrt(dx * dx + dz * dz)));
-            target = new(Math.Clamp(actor.Position.X + (int)(dx * skill.Range / length), -_content.Room.HalfWidth + 1, _content.Room.HalfWidth - 1), Math.Clamp(actor.Position.Z + (int)(dz * skill.Range / length), -_content.Room.HalfDepth + 1, _content.Room.HalfDepth - 1));
+            target = new(Math.Clamp(actor.Position.X + (int)(dx * skill.Range / length), -_room.HalfWidth + 1, _room.HalfWidth - 1), Math.Clamp(actor.Position.Z + (int)(dz * skill.Range / length), -_room.HalfDepth + 1, _room.HalfDepth - 1));
         }
         for (int attempt = 0; attempt < 256 && !_spatial.CanOccupy(target, 0); attempt++) target = Toward(target, actor.Position, 100);
         _state.Projectiles.Add(new(_state.NextObjectId++, 1, 1, actor.Position, target, pending.TargetId, skill.Id, damage, family, Tick + 90, pending.ActionId, pending.Depth,

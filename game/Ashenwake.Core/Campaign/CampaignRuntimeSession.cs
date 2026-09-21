@@ -5,10 +5,11 @@ using Ashenwake.Core.Expedition;
 using Ashenwake.Core.Production;
 using Ashenwake.Core.Progression;
 using Ashenwake.Core.Simulation;
+using System.Text.Json.Serialization;
 
 namespace Ashenwake.Core.Campaign;
 
-public enum CampaignRuntimeAction { Tick, EnterAct, AdvanceEncounter, ReturnToHub, Choose, BeginExploration, TrackClue, LeaveExploration, Production }
+public enum CampaignRuntimeAction { Tick, EnterAct, AdvanceEncounter, ReturnToHub, Choose, BeginExploration, TrackClue, LeaveExploration, Production, RevisitEncounter, InteractOpening }
 public sealed record CampaignRuntimeCommand(CampaignRuntimeAction Action, int Act = 0, string Id = "", string Value = "", CombatCommand[]? Commands = null, ProductionCommand? Production = null);
 public sealed record CampaignRuntimeResult(bool Success, string Reason, CombatEvent[] CombatEvents, string[] WorldEvents);
 public sealed record CampaignRuntimeSnapshot
@@ -21,18 +22,19 @@ public sealed record CampaignRuntimeSnapshot
     public CampaignState Campaign { get; init; } = null!;
     public ProductionSnapshot Production { get; init; } = null!;
     public CombatSnapshot Combat { get; init; } = null!;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SortedDictionary<string, CombatSnapshot>? ClearedRooms { get; init; }
 }
 public sealed record CampaignRuntimeFrame(CampaignRuntimeCommand Command, string StateHash, string EventHash);
 public sealed record CampaignRuntimeReplay(int SchemaVersion, CampaignRuntimeSnapshot Initial, CampaignRuntimeFrame[] Frames);
 
 /// <summary>Actual campaign combat drives the narrative ledger and the shared permanent character owner.</summary>
-public sealed class CampaignRuntimeSession
+public sealed partial class CampaignRuntimeSession
 {
     private readonly string combatJson;
     private readonly AdventureContent adventure;
     private readonly ProgressionContent policy;
-    private readonly RoomDefinition room;
-    public RoomDefinition Room => JsonData.Copy(room);
+    public RoomDefinition Room => Combat.Room;
     private CampaignSession story;
     private CombatSession arena;
     private string explorationReturnEncounter = "";
@@ -44,7 +46,8 @@ public sealed class CampaignRuntimeSession
     public long Tick { get; private set; }
     public string ActiveEncounterId { get; private set; } = "hub";
     public bool InHub => story.CurrentState.InHub;
-    public bool EncounterCleared => InHub || ActiveEncounterId == "clear" || story.CurrentState.CompletedEncounters.Contains(ActiveEncounterId);
+    public bool EncounterCleared => InHub || ActiveEncounterId == "clear" || story.CurrentState.CompletedEncounters.Contains(ActiveEncounterId) ||
+        ActiveEncounterId == CryptEncounter && !arena.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0);
     public CampaignView View => story.ViewForResonance(Production.View.Resonance);
     public CampaignView StoryView => View;
     public IReadOnlyList<string> WorldEvents { get; private set; } = [];
@@ -67,6 +70,7 @@ public sealed class CampaignRuntimeSession
                     _ => false
                 }).ToArray();
             }
+            if (OpeningInteractions() is { } opening) return opening;
             var current = story.CurrentState.Exploration;
             if (current is null) return [];
             var definition = Content.Data.Exploration.Single(e => e.Id == current.Id);
@@ -76,7 +80,7 @@ public sealed class CampaignRuntimeSession
         }
     }
     private CampaignRuntimeSession(string combatJson, AdventureContent adventure, ProgressionContent policy, CampaignContent content, ProductionSession production, CampaignSession story, CombatSession arena)
-    { this.combatJson = combatJson; this.adventure = adventure; this.policy = policy; room = CombatContent.Parse(combatJson).Room; Content = content; Production = production; this.story = story; this.arena = arena; }
+    { this.combatJson = combatJson; this.adventure = adventure; this.policy = policy; Content = content; Production = production; this.story = story; this.arena = arena; }
 
     public static ProgressionContent ResolvePolicy(ProgressionContent policy, CampaignContent campaign)
     {
@@ -99,6 +103,7 @@ public sealed class CampaignRuntimeSession
         var story = CampaignSession.Restore(campaign, snapshot.Campaign); var arena = CombatSession.Restore(combatJson, snapshot.Combat);
         var session = new CampaignRuntimeSession(combatJson, adventure, resolved, campaign, production, story, arena)
         { Tick = snapshot.Tick, ActiveEncounterId = snapshot.ActiveEncounterId, explorationReturnEncounter = snapshot.ExplorationReturnEncounter };
+        session.RestoreClearedRooms(snapshot.ClearedRooms);
         session.ValidateRegistry(); session.ValidateState(); session.initial = session.Capture(); return session;
     }
     internal static CampaignRuntimeSession ImportProduction(string combatJson, AdventureContent adventure, ProgressionContent policy, CampaignContent campaign, ProductionSnapshot source)
@@ -115,7 +120,7 @@ public sealed class CampaignRuntimeSession
         production.GrantCampaignOutcome("campaign.begin", 0, 0, [], ["Mara Vey"], []);
         session.ValidateRegistry(); session.ValidateState(); session.initial = session.Capture(); return session;
     }
-    public CampaignRuntimeSnapshot Capture() => new() { Tick = Tick, ActiveEncounterId = ActiveEncounterId, ExplorationReturnEncounter = explorationReturnEncounter, Campaign = story.Capture(), Production = Production.Capture(), Combat = Combat.Capture() };
+    public CampaignRuntimeSnapshot Capture() => new() { Tick = Tick, ActiveEncounterId = ActiveEncounterId, ExplorationReturnEncounter = explorationReturnEncounter, Campaign = story.Capture(), Production = Production.Capture(), Combat = Combat.Capture(), ClearedRooms = clearedRooms.Count == 0 ? null : JsonData.Copy(clearedRooms) };
     public CampaignRuntimeReplay CaptureReplay() => JsonData.Copy(new CampaignRuntimeReplay(1, initial, frames.ToArray()));
     public CampaignRuntimeResult Step(params CombatCommand[] commands) => Execute(new(CampaignRuntimeAction.Tick, Commands: commands));
     public CampaignRuntimeResult EnterAct(int act) => Execute(new(CampaignRuntimeAction.EnterAct, Act: act));
@@ -148,6 +153,7 @@ public sealed class CampaignRuntimeSession
         Production = ProductionSession.Restore(combatJson, adventure, policy, snapshot.Production);
         story = CampaignSession.Restore(Content, snapshot.Campaign); arena = CombatSession.Restore(combatJson, snapshot.Combat);
         Tick = snapshot.Tick; ActiveEncounterId = snapshot.ActiveEncounterId; explorationReturnEncounter = snapshot.ExplorationReturnEncounter;
+        RestoreClearedRooms(snapshot.ClearedRooms);
     }
     private CampaignRuntimeResult Advance(CombatCommand[] commands)
     {
@@ -167,8 +173,11 @@ public sealed class CampaignRuntimeSession
         var state = story.CurrentState;
         if (arena.View.Actors.Single(a => a.Id == 1).Health <= 0)
         {
+            bool cryptDeath = ActiveEncounterId == CryptEncounter;
             var died = story.PlayerDied(); Require(died); messages.AddRange(died.Events); explorationReturnEncounter = "";
-            Production.ClearCampaignEffects(); StartExpectedEncounter(restoreAtAnchor: true); messages.Add("CampaignCombatRestoredAtAnchor");
+            Production.ClearCampaignEffects();
+            if (cryptDeath) ResumeOpeningRoom("campaign.road", restoreAtAnchor: true); else StartExpectedEncounter(restoreAtAnchor: true);
+            messages.Add("CampaignCombatRestoredAtAnchor");
         }
         else if (state.Exploration is { } exploration)
         {
@@ -177,7 +186,7 @@ public sealed class CampaignRuntimeSession
             if (!tracking && !arena.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0))
             {
                 // Retain the cleared scoped arena until its visible loot has been picked up. Its timer no longer expires after victory.
-                if (arena.View.Loot.Count == 0)
+                if (arena.View.Loot.Count == 0 && definition.Id != CryptEvent)
                 {
                     var completion = story.CompleteExploration(definition.EncounterId); Require(completion); messages.AddRange(completion.Events);
                     messages.AddRange(Award("campaign.exploration." + definition.Id, completion)); EndExplorationArena();
@@ -201,6 +210,8 @@ public sealed class CampaignRuntimeSession
         var state = story.CurrentState; var messages = new List<string>(); CampaignResult result;
         switch (command.Action)
         {
+            case CampaignRuntimeAction.InteractOpening: return InteractOpening(command.Id);
+            case CampaignRuntimeAction.RevisitEncounter: return RevisitOpeningRoom(command.Id);
             case CampaignRuntimeAction.Production:
                 if (!state.InHub || command.Production is null) return Failed("Permanent services require Greyhaven.");
                 if (command.Production.Action == ProductionAction.Expedition && command.Production.Expedition?.Action is not (ExpeditionAction.Interact or ExpeditionAction.InstallFragment or ExpeditionAction.Manifestation))
@@ -219,6 +230,7 @@ public sealed class CampaignRuntimeSession
                 return new(permanent.Success, permanent.Reason, permanent.CombatEvents, permanent.WorldEvents);
             case CampaignRuntimeAction.EnterAct:
                 if (!state.InHub && (!EncounterCleared || state.Exploration is not null)) return Failed("Clear this encounter or return to Greyhaven before changing regions.");
+                CacheOpeningRoom();
                 result = story.EnterAct(command.Act); if (!result.Success) return Failed(result.Reason);
                 if (state.InHub) arena = CombatSession.Restore(combatJson, Production.Combat.Capture());
                 messages.AddRange(result.Events); messages.AddRange(Award("campaign.visit." + command.Act, result)); ReportUncollectedLoot(messages); StartExpectedEncounter(restoreAtAnchor: true); break;
@@ -226,15 +238,20 @@ public sealed class CampaignRuntimeSession
                 if (state.InHub || state.Exploration is not null || !EncounterCleared) return Failed("Complete the active encounter first.");
                 var expected = View.EncounterId;
                 if (expected is null) return Failed("This region is complete; choose another unlocked region or return to Greyhaven.");
+                if (HasOpeningExploration && state.CurrentAct == 1 && OpeningRooms.Contains(ActiveEncounterId) &&
+                    !((ActiveEncounterId, expected) is ("campaign.road", "campaign.monastery") or ("campaign.monastery", "campaign.bell_saint")))
+                    return Failed("Follow the adjoining cleared passages to reach the next encounter.");
                 if (!ChoiceAllows(expected)) return Failed("Resolve this region's central choice before the final confrontation.");
                 ReportUncollectedLoot(messages); StartEncounter(expected, restoreAtAnchor: true); messages.Add("CampaignEncounterEntered:" + expected); break;
             case CampaignRuntimeAction.ReturnToHub:
+                CacheOpeningRoom();
                 ReportUncollectedLoot(messages); var previous = Combat.Capture(); result = story.ReturnToHub(); Require(result); messages.AddRange(result.Events);
                 Production.ReturnCampaignToHub(previous); ActiveEncounterId = "hub"; explorationReturnEncounter = ""; arena = Production.Combat; break;
             case CampaignRuntimeAction.Choose:
                 if (!EncounterCleared) return Failed("Secure the area before making this choice.");
                 result = story.Choose(command.Id, command.Value); if (!result.Success) return Failed(result.Reason); messages.AddRange(result.Events); break;
             case CampaignRuntimeAction.BeginExploration:
+                if (command.Id == CryptEvent) return InteractOpening("opening.crypt.enter");
                 if (!EncounterCleared) return Failed("Secure the area before exploring.");
                 string returnTo = ActiveEncounterId; result = story.BeginExploration(command.Id); if (!result.Success) return Failed(result.Reason);
                 explorationReturnEncounter = returnTo; messages.AddRange(result.Events);
@@ -247,6 +264,7 @@ public sealed class CampaignRuntimeSession
                 var hunt = story.CurrentState.Exploration!; var huntDefinition = Content.Data.Exploration.Single(e => e.Id == hunt.Id);
                 if (hunt.TrackedClues == huntDefinition.Clues.Length) StartEncounter(huntDefinition.EncounterId, restoreAtAnchor: true); break;
             case CampaignRuntimeAction.LeaveExploration:
+                if (ActiveEncounterId == CryptEncounter) return InteractOpening("opening.crypt.return");
                 if (state.Exploration is null) return Failed("No exploration context is active.");
                 var leavingDefinition = Content.Data.Exploration.Single(e => e.Id == state.Exploration.Id);
                 bool completed = ActiveEncounterId == leavingDefinition.EncounterId && !arena.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0) &&
@@ -279,11 +297,17 @@ public sealed class CampaignRuntimeSession
     private void StartExpectedEncounter(bool restoreAtAnchor)
     {
         string? expected = View.EncounterId;
+        if (HasOpeningExploration && story.CurrentState.CurrentAct == 1 && expected is null)
+        { ResumeOpeningRoom("campaign.road", restoreAtAnchor); return; }
+        if (HasOpeningExploration && story.CurrentState.CurrentAct == 1 && expected == "campaign.bell_saint" && !ChoiceAllows(expected))
+        { ResumeOpeningRoom("campaign.monastery", restoreAtAnchor); return; }
         StartEncounter(expected is not null && ChoiceAllows(expected) ? expected : "clear", restoreAtAnchor);
     }
     private void StartEncounter(string id, bool restoreAtAnchor)
     {
+        CacheOpeningRoom();
         Production.ClearCampaignEffects(); var source = Production.ProjectCampaignCombat(arena.Capture()).Capture();
+        if (clearedRooms.ContainsKey(id)) { ResumeOpeningRoom(id, restoreAtAnchor); return; }
         arena = CombatSession.CreateEncounter(combatJson, source.Seed, id, source, restoreAtAnchor); ActiveEncounterId = id;
     }
     private void EndExplorationArena()
@@ -295,7 +319,8 @@ public sealed class CampaignRuntimeSession
     private void ReportUncollectedLoot(List<string> messages)
     {
         int count = Combat.View.Loot.Count;
-        if (count > 0) messages.Add("GroundLootLeftBehind:" + count);
+        if (count > 0) messages.Add((HasOpeningExploration && !InHub && OpeningRooms.Contains(ActiveEncounterId) && EncounterCleared
+            ? "GroundLootRetained:" : "GroundLootLeftBehind:") + count);
     }
     private static CampaignRuntimeResult Failed(string reason) => new(false, reason, [], []);
     private static void Require(CampaignResult result) { if (!result.Success) throw new InvalidDataException("Authoritative campaign transition rejected: " + result.Reason); }
@@ -324,6 +349,7 @@ public sealed class CampaignRuntimeSession
         if (!state.Discoveries.All(Production.Capture().Progression.Profile.Discoveries.Contains)) throw new InvalidDataException("Campaign discoveries are missing from the shared profile.");
         if (Production.View.RoomId != "room.greyhaven") throw new InvalidDataException("Campaign permanent owner must remain at its dormant Greyhaven boundary.");
         Production.ValidateCampaignCombat(Combat.Capture());
+        ValidateClearedRooms();
         if (state.InHub)
         {
             if (ActiveEncounterId != "hub" || explorationReturnEncounter != "" || arena.EncounterId != "hub" || JsonData.Hash(arena.Capture()) != JsonData.Hash(Production.Combat.Capture())) throw new InvalidDataException("Invalid campaign hub projection.");
@@ -338,11 +364,19 @@ public sealed class CampaignRuntimeSession
         else
         {
             if (explorationReturnEncounter != "") throw new InvalidDataException("An inactive exploration retained its return context.");
+            if (ActiveEncounterId == CryptEncounter && state.CurrentAct == 1 && state.CompletedExploration.Contains(CryptEvent))
+            {
+                if (!EncounterCleared || arena.EncounterId != CryptEncounter && !(arena.EncounterId == "clear" && arena.Capture().RoomEncounterId == CryptEncounter))
+                    throw new InvalidDataException("Completed crypt arena is inconsistent.");
+                return;
+            }
             var act = Content.Data.Acts[state.CurrentAct - 1];
             bool cleared = ActiveEncounterId == "clear" || state.CompletedEncounters.Contains(ActiveEncounterId);
             if (ActiveEncounterId != "clear" && !act.Encounters.Any(e => e.Id == ActiveEncounterId)) throw new InvalidDataException("Arena belongs to another campaign act.");
             if (!cleared && (View.EncounterId != ActiveEncounterId || !ChoiceAllows(ActiveEncounterId) || arena.EncounterId != ActiveEncounterId)) throw new InvalidDataException("Campaign encounter order/choice gate differs from combat.");
             if (cleared && arena.EncounterId != ActiveEncounterId && arena.EncounterId != "clear") throw new InvalidDataException("Cleared arena identity is inconsistent.");
+            if (cleared && arena.Capture().RoomEncounterId is { } retainedRoom && retainedRoom != ActiveEncounterId)
+                throw new InvalidDataException("Cleared arena layout differs from its active room.");
             if (cleared && arena.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0)) throw new InvalidDataException("Completed encounter retained living enemies.");
         }
 

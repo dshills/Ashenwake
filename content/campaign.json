@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign.greybox.1",
+  "version": "campaign.grey_march.2",
   "acts": [
     {
       "number": 1,
@@ -482,6 +482,22 @@
     }
   ],
   "exploration": [
+    {
+      "id": "event.widow_crypt",
+      "act": 1,
+      "kind": "Memory",
+      "name": "The Widow's Crypt",
+      "encounterId": "exploration.widow_crypt",
+      "durationTicks": 0,
+      "rules": [
+        "context:crypt",
+        "reward:widows_testament",
+        "return:recorded_road"
+      ],
+      "clues": [],
+      "discovery": "discovery.widow_crypt",
+      "materials": 25
+    },
     {
       "id": "event.resonance_storm",
       "act": 3,

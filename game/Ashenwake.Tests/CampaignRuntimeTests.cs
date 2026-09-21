@@ -46,7 +46,7 @@ public sealed class CampaignRuntimeTests
             if (session.View.Act != previousAct) { Assert.Equal(session.StateHash, Restore(session.Capture()).StateHash); previousAct = session.View.Act; }
         }
         Assert.True(CampaignRuntimeSmoke.Complete(session)); var state = session.Capture();
-        Assert.Equal(15, state.Campaign.CompletedEncounters.Count); Assert.Equal(3, state.Campaign.CompletedExploration.Count); Assert.Equal(5, state.Campaign.Choices.Count);
+        Assert.Equal(15, state.Campaign.CompletedEncounters.Count); Assert.Equal(Campaign.Capture().Exploration.Length, state.Campaign.CompletedExploration.Count); Assert.Equal(5, state.Campaign.Choices.Count);
         Assert.Equal(5150, state.Campaign.EarnedExperience); Assert.Equal(5150, session.Production.ProgressionView.Experience); Assert.True(finalUltimateAvailable);
         Assert.Equal(0, state.Campaign.Deaths); Assert.Contains("profile.fractures", state.Production.Progression.Profile.Unlocks); Assert.Contains("profile.god_hunts", state.Production.Progression.Profile.Unlocks);
         Assert.Contains("profile.secret_hunt", state.Production.Progression.Profile.Unlocks); Assert.True(state.Production.Progression.Character.Mastery.Count > 0);
@@ -66,7 +66,7 @@ public sealed class CampaignRuntimeTests
         RunUntil(session, s => s.Capture().Campaign.CompletedActs.Contains(1) && s.Combat.View.Loot.Count == 0);
         long xp = session.Production.ProgressionView.Experience; int materials = session.Production.ProgressionView.Materials;
         Assert.True(session.ReturnToHub().Success); Assert.Contains(session.Interactions, i => i.ActionId == "npc.cael");
-        Assert.True(session.EnterAct(1).Success); Assert.True(session.EncounterCleared); Assert.DoesNotContain(session.Combat.View.Actors, a => a.Faction == CombatFaction.Enemy);
+        Assert.True(session.EnterAct(1).Success); Assert.True(session.EncounterCleared); Assert.DoesNotContain(session.Combat.View.Actors, a => a.Faction == CombatFaction.Enemy && a.Health > 0);
         session.Step(); Assert.Equal(xp, session.Production.ProgressionView.Experience); Assert.Equal(materials, session.Production.ProgressionView.Materials);
         Assert.Equal(session.StateHash, Restore(session.Capture()).StateHash);
     }
@@ -138,12 +138,16 @@ public sealed class CampaignRuntimeTests
         var session = Restore(snapshot);
         RunUntil(session, s => s.Capture().Campaign.CompletedEncounters.Contains("campaign.road"));
         Assert.True(session.Combat.View.Loot.Count > 0); Assert.Equal(512, session.Combat.View.Inventory.Count);
-        var next = session.AdvanceEncounter(); Assert.True(next.Success, next.Reason); Assert.Contains(next.WorldEvents, e => e.StartsWith("GroundLootLeftBehind:", StringComparison.Ordinal));
+        var next = session.AdvanceEncounter(); Assert.True(next.Success, next.Reason); Assert.Contains(next.WorldEvents, e => e.StartsWith("GroundLootRetained:", StringComparison.Ordinal));
         RunUntil(session, s => s.ActiveEncounterId == "exploration.antler_hunt" && !s.Combat.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0));
         Assert.True(session.Combat.View.Loot.Count > 0); int materials = session.Production.ProgressionView.Materials;
         var finish = session.LeaveExploration(); Assert.True(finish.Success, finish.Reason);
         Assert.Contains("event.wake_hunt", session.Capture().Campaign.CompletedExploration); Assert.Equal(materials + 20, session.Production.ProgressionView.Materials);
-        Assert.Equal(512, session.Production.Capture().Progression.Character.Items.Length); Assert.Null(session.Combat.Capture().Campaign);
+        Assert.Equal(512, session.Combat.View.Inventory.Count);
+        // The one-time crypt grant is retained in permanent overflow even when the combat projection is full.
+        Assert.Equal(513, session.Production.Capture().Progression.Character.Items.Length);
+        Assert.Contains("campaign.crypt.testament", session.Production.Capture().Progression.Character.OperationReceipts.Keys);
+        Assert.Null(session.Combat.Capture().Campaign);
         Assert.Equal(session.StateHash, Restore(session.Capture()).StateHash);
     }
 

@@ -15,14 +15,21 @@ public sealed partial class CombatSession
     public const int MaxChainDepth = 6;
     public static IReadOnlyList<string> Presets { get; } = Array.AsReadOnly(new[] { "standard", "dense", "projectiles", "summons", "chain" });
     private readonly CombatContent _content;
+    private readonly RoomDefinition _room;
     private readonly SpatialWorld _spatial;
+    private readonly CombatRoomNavigation? _navigation;
     private readonly CombatSnapshot _state;
     private readonly Queue<Hit> _effects = new();
     private readonly List<CombatEvent> _events = [];
     private readonly HashSet<string> _triggers = new(StringComparer.Ordinal);
     private int _processed;
     private sealed record Hit(int SourceId, int OwnerId, int TargetId, int Damage, DamageFamily Family, string ContentId, long ActionId, int Depth, bool Dot = false, bool Reflected = false, string Status = "", string OriginSkill = "", int SourceGeneration = 0, string FragmentId = "");
-    private CombatSession(CombatContent content, CombatSnapshot state) { _content = content; _spatial = new(ResolveRoom(content, state)); _state = state; }
+    private CombatSession(CombatContent content, CombatSnapshot state)
+    {
+        _content = content; _room = ResolveRoom(content, state); _spatial = new(_room); _state = state;
+        if (content.Campaign?.Encounters.Any(e => e.Id == (state.RoomEncounterId ?? state.EncounterId) && e.Room is not null) == true)
+            _navigation = new(_room);
+    }
     public long Tick => _state.Tick;
     public string ContentHash => _state.ContentHash;
     public string StateHash => JsonData.Hash(_state);
@@ -271,6 +278,7 @@ public sealed partial class CombatSession
     private void Think(CombatActor actor)
     {
         if (actor.Statuses.Any(s => s.Id == "Terrified" && s.ExpiresTick > Tick)) { actor.Pending = null; actor.State = "Flee"; MoveActor(actor, new(actor.Position.X + Math.Sign(actor.Position.X - Player.Position.X) * 100, actor.Position.Z + Math.Sign(actor.Position.Z - Player.Position.Z) * 100)); return; }
+        if (ApproachAuthoredTarget(actor)) return;
         if (ThinkEndgameActor(actor) || ThinkCampaignActor(actor)) return;
         if (ThinkEncounterActor(actor)) return;
         if (Stunned(actor)) { actor.State = "Staggered"; actor.Pending = null; return; }
@@ -283,7 +291,7 @@ public sealed partial class CombatSession
         if (HasElite(actor, "Hunter")) speed = Math.Min(500, speed * 5 / 4);
         if (actor.Statuses.Any(s => s.Id == "Chilled")) speed = speed * 2 / 3;
         long distance = Position.DistanceSquared(actor.Position, target.Position);
-        if (distance > (long)range * range || !_spatial.HasLineOfSight(actor.Position, target.Position)) { actor.State = "Approach"; MoveActor(actor, Toward(actor.Position, target.Position, speed)); return; }
+        if (distance > (long)range * range || !_spatial.HasLineOfSight(actor.Position, target.Position)) { actor.State = "Approach"; MoveTowardTarget(actor, target.Position, speed); return; }
         if (actor.Role == "Ranged" && distance < 2500L * 2500)
         {
             actor.State = "Reposition";
@@ -467,6 +475,7 @@ public sealed partial class CombatSession
             var eligibleItems = _content.Items.Where(i => i.Id != "item.ashcleaver" && !LegendaryEquipment.IsItem(i.Id)).ToArray();
             var definition = eligibleItems[SeededRandom.Range(ref rng, eligibleItems.Length)];
             int roll = SeededRandom.Range(ref rng, 6);
+            if (_state.EncounterId == "exploration.widow_crypt" && target.Elite) roll = Math.Max(3, roll);
             string reward = LegendaryReward();
             if (reward.Length > 0 && !_state.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0 && CampaignRewardEligible(a)))
                 definition = _content.Items.FirstOrDefault(i => i.Id == reward) ?? definition;
@@ -511,6 +520,7 @@ public sealed partial class CombatSession
         Require(_state.Actors is not null && _state.Projectiles is not null && _state.Areas is not null && _state.Inventory is not null && _state.Loot is not null && _state.Fragments is not null && _state.Equipment is not null && _state.Mutations is not null && _state.Cooldowns is not null && _state.Rng is not null, "null collections");
         Require(KnownEncounter(_state.EncounterId) && _state.ResurrectedActorIds is not null && _state.ResurrectedActorIds.Count <= 2 && _state.ResurrectedActorIds.Distinct().Count() == _state.ResurrectedActorIds.Count && _state.ResurrectedActorIds.All(id => _state.Actors.Any(a => a.Id == id && a.Faction == CombatFaction.Enemy)), "encounter/resurrection state");
         Require(_state.Actors!.Count is > 0 and <= MaxActors && _state.Actors.All(a => a is not null) && _state.Actors.Select(a => a.Id).Distinct().Count() == _state.Actors.Count && _state.Actors.Count(a => a.Id == 1 && a.Faction == CombatFaction.Player) == 1, "actor identity");
+        Require(_state.RoomEncounterId is null || !_state.Actors.Any(a => a.Faction == CombatFaction.Enemy), "cleared room enemy state");
         foreach (var actor in _state.Actors)
         {
             Require(actor.Id > 0 && actor.FacingX is >= -1 and <= 1 && actor.FacingZ is >= -1 and <= 1 && actor.SpecialCycle is >= 0 and <= 1000000000 && Enum.IsDefined(actor.Faction) && actor.MaxHealth is > 0 and <= 1000000 && actor.Health >= 0 && actor.Health <= actor.MaxHealth && actor.Barrier is >= 0 and <= 200 && actor.Armor is >= 0 and <= 7500 && actor.Resistance is >= 0 and <= 7500 && actor.MoveX is >= -1 and <= 1 && actor.MoveZ is >= -1 and <= 1 && actor.Generation is >= 0 and <= 2 && _spatial.CanOccupy(actor.Position, ActorRadius), "actor values");

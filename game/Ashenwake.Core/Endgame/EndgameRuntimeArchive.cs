@@ -44,6 +44,11 @@ public static class EndgameRuntimeSaveStore
         var journey = ArchiveHeaders.Object(state, "campaign"); ArchiveHeaders.Require(journey, 1, "campaign-runtime.1");
         var narrative = ArchiveHeaders.Object(journey, "campaign"); ArchiveHeaders.Require(narrative, 1); ArchiveHeaders.Identity(narrative, "contentHash", campaign.Hash);
         CombatHeader(ArchiveHeaders.Object(journey, "combat"));
+        if (journey.TryGetProperty("clearedRooms", out var rooms) && rooms.ValueKind != JsonValueKind.Null)
+        {
+            if (rooms.ValueKind != JsonValueKind.Object) throw new InvalidDataException("Invalid cleared room archive.");
+            foreach (var room in rooms.EnumerateObject()) CombatHeader(room.Value);
+        }
         var permanent = ArchiveHeaders.Object(journey, "production"); ArchiveHeaders.Require(permanent, 1, "production.1");
         var expedition = ArchiveHeaders.Object(permanent, "expedition"); ArchiveHeaders.Require(expedition, 1, "expedition.1");
         ArchiveHeaders.Identity(expedition, "adventureHash", ProductionContent.ResolveAdventure(combatJson, adventure).Hash);
@@ -55,6 +60,19 @@ public static class EndgameRuntimeSaveStore
     }
 
     public static EndgameRuntimeSession Read(string combatJson, AdventureContent adventure, ProgressionContent policy,
+        CampaignContent campaign, EndgameContent endgame, string json)
+    {
+        try { return ReadWithLegendaryUpgrade(combatJson, adventure, policy, campaign, endgame, json); }
+        catch (SaveCompatibilityException) when (OpeningCatalogMigration.TryPrevious(combatJson, policy, campaign,
+            out var previousCombat, out var previousPolicy, out var previousCampaign))
+        {
+            var original = ReadWithLegendaryUpgrade(previousCombat, adventure, previousPolicy, previousCampaign, endgame, json);
+            return EndgameRuntimeSession.Restore(combatJson, adventure, policy, campaign, endgame,
+                OpeningCatalogMigration.Rebind(original.Capture(), combatJson, adventure, policy, campaign));
+        }
+    }
+
+    private static EndgameRuntimeSession ReadWithLegendaryUpgrade(string combatJson, AdventureContent adventure, ProgressionContent policy,
         CampaignContent campaign, EndgameContent endgame, string json)
     {
         try { return ReadExact(combatJson, adventure, policy, campaign, endgame, json); }
@@ -72,6 +90,7 @@ public static class EndgameRuntimeSaveStore
         if (json.Length > 96 * 1024 * 1024) throw new InvalidDataException("Endgame archive exceeds its bounded size.");
         using var document = JsonDocument.Parse(json); ArchiveHeaders.Require(document.RootElement, 1);
         Inspect(ArchiveHeaders.Object(document.RootElement, "state"), combatJson, adventure, policy, campaign, endgame);
+        ArchiveHeaders.Checksum(document.RootElement, "state");
         var save = JsonData.Read<EndgameRuntimeSave>(json);
         if (save.State is null || save.StateHash != JsonData.Hash(save.State)) throw new InvalidDataException("Endgame checksum mismatch.");
         return EndgameRuntimeSession.Restore(combatJson, adventure, policy, campaign, endgame, save.State);

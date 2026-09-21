@@ -5,11 +5,12 @@ namespace Ashenwake.Client;
 
 public static class EnvironmentGround
 {
-    public static string Style(bool inHub, string encounterId, string? explorationId = null, int act = 0) => inHub ? "greyhaven" : explorationId == "event.wake_hunt" ? "verdant_hunt" : explorationId == "event.resonance_storm" ? "cinder_storm" : explorationId == "event.divine_memory" ? "spine_memory" : encounterId switch
+    public static string Style(bool inHub, string encounterId, string? explorationId = null, int act = 0) => inHub ? "greyhaven" : explorationId == "event.widow_crypt" ? "crypt" : explorationId == "event.wake_hunt" ? "verdant_hunt" : explorationId == "event.resonance_storm" ? "cinder_storm" : explorationId == "event.divine_memory" ? "spine_memory" : encounterId switch
     {
         "campaign.road" or "room.ossuary" => "road",
         "campaign.monastery" or "room.cloister" => "monastery",
         "campaign.bell_saint" or "room.bell_sanctum" => "sanctum",
+        "exploration.widow_crypt" or "room.widow_crypt" => "crypt",
         "campaign.living_ruins" => "verdant_ruins",
         "campaign.plague_village" => "verdant_village",
         "campaign.rootheart" => "verdant_heart",

@@ -118,6 +118,7 @@ public partial class CampaignDirector : Node3D
     private void Interact(string id)
     {
         if (id == "journey.next") { _campaign.RequestNextStep(); return; }
+        if (id.StartsWith("opening.", StringComparison.Ordinal)) { Apply(() => _session.Execute(new(CampaignRuntimeAction.InteractOpening, Id: id))); return; }
         if (_session.InHub) Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.Interact, id)));
         else Apply(() => _session.TrackClue(id));
     }
@@ -194,6 +195,9 @@ public partial class CampaignDirector : Node3D
             "ManifestationSelected" => "Manifestation selected. Its benefits and costs follow your current Resonance.",
             "FragmentGranted" => "New fragment: " + (_combat.Fragments.FirstOrDefault(f => f.Id == value)?.Name ?? "a divine relic") + ".",
             "ItemGranted" => "A new item has been added to your permanent inventory.",
+            "GroundLootRetained" => "Saved " + value + " uncollected drops in this cleared room. Return through its passages to collect them.",
+            "CryptTestamentClaimed" => "The Widow's Testament is yours: rare armor, 25 materials, and a hidden testimony in your journal.",
+            "CampaignPassageEntered" => "Follow the marked passages. Cleared rooms keep their remaining treasure.",
             "GroundLootLeftBehind" => "Left " + value + " uncollected drops behind.",
             "Crafted" => value + " completed. Your permanent item has been updated.",
             "ItemEquipped" or "ItemUnequipped" => "Equipment updated.",
@@ -227,11 +231,11 @@ public partial class CampaignDirector : Node3D
             snapshot.Production.Expedition.Adventure.Anatomy.Values));
         bool bellDefeated = !_session.InHub && _session.ActiveEncounterId == "campaign.bell_saint" &&
             (_session.EncounterCleared || combat.Actors.Any(actor => actor.DefinitionId == "boss.bell_saint" && actor.Health <= 0));
-        _stage.Show(snapshot.Campaign, _session.View, _combat.Room, _session.Interactions, manifestations, _session.Production.ProgressionView.HubStage, player.Position, combat.BossPhase, bellDefeated, combat, _session.ActiveEncounterId);
+        _stage.Show(snapshot.Campaign, _session.View, _session.Room, _session.Interactions, manifestations, _session.Production.ProgressionView.HubStage, player.Position, combat.BossPhase, bellDefeated, combat, _session.ActiveEncounterId);
         _sandbox.PresentAuthoredRoom(_session.Room, $"campaign:{_session.ActiveEncounterId}:{snapshot.Campaign.Deaths}", EnvironmentGround.Style(_session.InHub, _session.ActiveEncounterId, snapshot.Campaign.Exploration?.Id, snapshot.Campaign.CurrentAct));
         var mouseTargets = _session.Interactions.Select(i => new WorldInteractionTarget(i.ActionId, i.Name, i.Position, i.Range, _stage.GetInteractionVisual(i.ActionId))).ToList();
         var wayForward = _stage.PresentWayForward(_session.Room, !_session.InHub && snapshot.Campaign.Exploration is null &&
-            _session.EncounterCleared && _campaign.CanRequestNextStep, _campaign.NextStepLabel);
+            _session.EncounterCleared && _campaign.CanRequestNextStep && _campaign.CanShowWayForward, _campaign.NextStepLabel);
         if (wayForward is not null) mouseTargets.Add(wayForward);
         _sandbox.SetWorldInteractions(mouseTargets, Interact);
         _sandbox.SetManifestationPresentation(manifestations, snapshot.Production.Expedition.Adventure.Anatomy.Values); _sandbox.SetWorldSubtitle($"CAMPAIGN / {_session.View.Region.ToUpperInvariant()}");
@@ -271,7 +275,7 @@ public partial class CampaignDirector : Node3D
         try
         {
             VerifyAndWrite(_output); var snapshot = _session.Capture();
-            if (_classes.Count != 5 || snapshot.Campaign.CompletedActs.Count != 5 || snapshot.Campaign.CompletedEncounters.Count != 15 || snapshot.Campaign.CompletedExploration.Count != 3 || snapshot.Campaign.Choices.Count != 5 || _session.View.Ending?.FracturesUnlocked != true)
+            if (_classes.Count != 5 || snapshot.Campaign.CompletedActs.Count != 5 || snapshot.Campaign.CompletedEncounters.Count != 15 || snapshot.Campaign.CompletedExploration.Count != _definition.Exploration.Length || snapshot.Campaign.Choices.Count != 5 || _session.View.Ending?.FracturesUnlocked != true)
                 throw new InvalidDataException("Campaign smoke missed a discipline, encounter, exploration, choice or ending unlock.");
             var report = new
             {

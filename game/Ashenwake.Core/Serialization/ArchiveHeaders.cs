@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Ashenwake.Core.Content;
 
 namespace Ashenwake.Core.Serialization;
 
@@ -6,6 +7,13 @@ namespace Ashenwake.Core.Serialization;
 /// not turn an incompatible save into apparent corruption eligible for overwrite/recovery.</summary>
 public static class ArchiveHeaders
 {
+    internal static void Checksum(JsonElement envelope, string stateField)
+    {
+        var state = Object(envelope, stateField);
+        if (!envelope.TryGetProperty("stateHash", out var hash) || hash.ValueKind != JsonValueKind.String ||
+            hash.GetString() != JsonData.Hash(state)) throw new InvalidDataException("Archive original-state checksum mismatch.");
+    }
+
     public static void Require(JsonElement value, int schemaVersion, string? rulesVersion = null)
     {
         if (value.ValueKind != JsonValueKind.Object || !value.TryGetProperty("schemaVersion", out var schema) || schema.ValueKind != JsonValueKind.Number || !schema.TryGetInt32(out int version))

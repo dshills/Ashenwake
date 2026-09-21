@@ -41,6 +41,20 @@ public partial class Sandbox
         _sun.LightColor = new Color(hub ? "ffe0b7" : sanctum ? "dde3ee" : "dce5e2");
         _sun.LightEnergy = hub ? .85f : .78f;
         _sun.RotationDegrees = new(-58, -35, 0);
+        if (style == "crypt")
+        {
+            environment.BackgroundColor = new Color("171c28");
+            environment.AmbientLightColor = new Color("a7b2ca");
+            environment.AmbientLightEnergy = .4f;
+            environment.FogLightColor = new Color("444d66");
+            environment.FogLightEnergy = .2f;
+            environment.FogDensity = .18f;
+            environment.FogDepthBegin = 35;
+            environment.FogDepthEnd = 64;
+            _sun.LightColor = new Color("c4cfe6");
+            _sun.LightEnergy = .68f;
+            _sun.RotationDegrees = new(-62, -25, 0);
+        }
         bool verdant = VerdantAmbience.CueForStyle(style).Length != 0;
         bool cinder = CinderAmbience.CueForStyle(style).Length != 0;
         bool spine = SpineAmbience.CueForStyle(style).Length != 0;

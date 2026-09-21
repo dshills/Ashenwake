@@ -9,7 +9,7 @@ using Ashenwake.Core.Progression;
 
 namespace Ashenwake.Core.Serialization;
 
-/// <summary>The sole automatic catalog upgrade removes exactly the three additive legendary
+/// <summary>This automatic catalog upgrade removes exactly the three additive legendary
 /// definitions to reconstruct the previous catalog. Callers must fully validate the original
 /// archive against that catalog before rebinding its content identities.</summary>
 internal static class LegendaryCatalogMigration
@@ -68,7 +68,9 @@ internal static class LegendaryCatalogMigration
         => state with
         {
             Production = Rebind(state.Production, combatJson, adventure, CampaignRuntimeSession.ResolvePolicy(policy, campaign)),
-            Combat = RebindCombat(state.Combat, CombatContent.Parse(combatJson).Identity)
+            Combat = RebindCombat(state.Combat, CombatContent.Parse(combatJson).Identity),
+            ClearedRooms = state.ClearedRooms is null ? null : new SortedDictionary<string, CombatSnapshot>(
+                state.ClearedRooms.ToDictionary(pair => pair.Key, pair => RebindCombat(pair.Value, CombatContent.Parse(combatJson).Identity)), StringComparer.Ordinal)
         };
 
     internal static EndgameRuntimeSnapshot Rebind(EndgameRuntimeSnapshot state, string combatJson,

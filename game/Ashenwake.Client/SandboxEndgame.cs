@@ -79,7 +79,7 @@ public partial class Sandbox
                 SpineObstacleArt.Build(builder, width, depth, center, visualStyle);
             else if (HollowAmbience.CueForStyle(visualStyle).Length != 0)
                 HollowObstacleArt.Build(builder, width, depth, center, visualStyle);
-            else if (visualStyle is "greyhaven" or "road" or "monastery" or "sanctum")
+            else if (visualStyle is "greyhaven" or "road" or "monastery" or "sanctum" or "crypt")
                 OpeningObstacleArt.Build(builder, width, depth, center, visualStyle);
             else
             {

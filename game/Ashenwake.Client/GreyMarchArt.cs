@@ -20,6 +20,8 @@ public static class GreyMarchArt
 
     public static BellSanctuaryVisual? Build(Node3D parent, float x, float z, string encounterId, int bellPhase, bool bossDefeated = false)
     {
+        if (encounterId is "exploration.widow_crypt" or "room.widow_crypt")
+        { GreyMarchExplorationArt.Build(parent, x, z); return null; }
         var art = new EnvironmentBuilder(parent, "GreyMarchArchitecture");
         bool sanctum = encounterId is "campaign.bell_saint" or "room.bell_sanctum";
         bool monastery = encounterId is "campaign.monastery" or "room.cloister";

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign.combat.1",
+  "version": "campaign-combat.grey_march.2",
   "enemies": [
     {
       "id": "enemy.funeral_guard",
@@ -343,7 +343,39 @@
           "modifiers": [],
           "hidden": false
         }
-      ]
+      ],
+      "room": {
+        "halfWidth": 12000,
+        "halfDepth": 10000,
+        "playerSpawn": {
+          "x": -4500,
+          "z": 0
+        },
+        "enemySpawn": {
+          "x": 1500,
+          "z": 0
+        },
+        "obstacles": [
+          {
+            "minX": -800,
+            "minZ": -10000,
+            "maxX": 800,
+            "maxZ": 800
+          },
+          {
+            "minX": 4000,
+            "minZ": 3600,
+            "maxX": 5200,
+            "maxZ": 10000
+          },
+          {
+            "minX": -9000,
+            "minZ": 2800,
+            "maxX": -6500,
+            "maxZ": 4500
+          }
+        ]
+      }
     },
     {
       "id": "campaign.monastery",
@@ -380,7 +412,39 @@
           "modifiers": [],
           "hidden": false
         }
-      ]
+      ],
+      "room": {
+        "halfWidth": 12000,
+        "halfDepth": 10000,
+        "playerSpawn": {
+          "x": -4500,
+          "z": 0
+        },
+        "enemySpawn": {
+          "x": 1500,
+          "z": 0
+        },
+        "obstacles": [
+          {
+            "minX": 1000,
+            "minZ": -10000,
+            "maxX": 2200,
+            "maxZ": -1200
+          },
+          {
+            "minX": 1000,
+            "minZ": 1800,
+            "maxX": 2200,
+            "maxZ": 10000
+          },
+          {
+            "minX": 5600,
+            "minZ": -10000,
+            "maxX": 6600,
+            "maxZ": 800
+          }
+        ]
+      }
     },
     {
       "id": "campaign.bell_saint",
@@ -397,7 +461,45 @@
           "modifiers": [],
           "hidden": false
         }
-      ]
+      ],
+      "room": {
+        "halfWidth": 12000,
+        "halfDepth": 10000,
+        "playerSpawn": {
+          "x": -4500,
+          "z": 0
+        },
+        "enemySpawn": {
+          "x": 1500,
+          "z": 0
+        },
+        "obstacles": [
+          {
+            "minX": -3400,
+            "minZ": -5100,
+            "maxX": -2100,
+            "maxZ": -3800
+          },
+          {
+            "minX": 2100,
+            "minZ": -5100,
+            "maxX": 3400,
+            "maxZ": -3800
+          },
+          {
+            "minX": -3400,
+            "minZ": 3800,
+            "maxX": -2100,
+            "maxZ": 5100
+          },
+          {
+            "minX": 2100,
+            "minZ": 3800,
+            "maxX": 3400,
+            "maxZ": 5100
+          }
+        ]
+      }
     },
     {
       "id": "campaign.living_ruins",
@@ -890,6 +992,81 @@
           "modifiers": []
         }
       ]
+    },
+    {
+      "id": "exploration.widow_crypt",
+      "name": "The Widow's Reliquary",
+      "rule": "Memory",
+      "durationTicks": 0,
+      "spawns": [
+        {
+          "enemyId": "enemy.funeral_guard",
+          "position": {
+            "x": -1200,
+            "z": 0
+          },
+          "modifiers": [
+            "Gravewake"
+          ],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.memory_archer",
+          "position": {
+            "x": 2500,
+            "z": -3500
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
+          "enemyId": "enemy.cinder_priest",
+          "position": {
+            "x": 4200,
+            "z": 2500
+          },
+          "modifiers": [],
+          "hidden": false
+        }
+      ],
+      "room": {
+        "halfWidth": 12000,
+        "halfDepth": 10000,
+        "playerSpawn": {
+          "x": -4500,
+          "z": 0
+        },
+        "enemySpawn": {
+          "x": 1500,
+          "z": 0
+        },
+        "obstacles": [
+          {
+            "minX": -1200,
+            "minZ": -5200,
+            "maxX": 1200,
+            "maxZ": -2800
+          },
+          {
+            "minX": -1200,
+            "minZ": 2000,
+            "maxX": 1200,
+            "maxZ": 5400
+          },
+          {
+            "minX": -7500,
+            "minZ": -8500,
+            "maxX": -5800,
+            "maxZ": -6500
+          },
+          {
+            "minX": 5200,
+            "minZ": -8000,
+            "maxX": 7200,
+            "maxZ": -6200
+          }
+        ]
+      }
     }
   ]
 }

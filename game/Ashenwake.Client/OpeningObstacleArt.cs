@@ -2,7 +2,7 @@ using Godot;
 
 namespace Ashenwake.Client;
 
-/// <summary>Readable props whose outer edges match the existing Core obstacle rectangle.</summary>
+/// <summary>Readable props whose outer edges match the Core obstacle rectangle, including authored passage walls.</summary>
 public static class OpeningObstacleArt
 {
     public static void Build(EnvironmentBuilder b, float width, float depth, Vector3 center, string style)
@@ -36,16 +36,74 @@ public static class OpeningObstacleArt
             return;
         }
 
-        Box(new(width, .22f, depth), new(0, .11f, 0), "536258");
-        // Uneven courses stay inside the collision footprint, including the broken cap.
-        for (int row = 0; row < 3; row++)
-            for (int column = 0; column < 3; column++)
+        if (style == "road") { RockBank(b, width, depth, center); return; }
+        if (style == "sanctum")
+        {
+            float radius = Math.Min(width, depth) * .40f;
+            Box(new(width, .25f, depth), new(0, .125f, 0), "53666a");
+            b.Cylinder(radius, radius * .85f, 1.35f, center + Vector3.Up * .94f, "87928b");
+            b.Cylinder(radius * 1.10f, radius * 1.04f, .17f, center + Vector3.Up * 1.70f, "b4b59e");
+            b.Cylinder(radius * .78f, radius * .46f, .39f, center + Vector3.Up * 1.98f, "6f8180");
+            return;
+        }
+        if (style == "crypt")
+        {
+            Box(new(width, .20f, depth), new(0, .10f, 0), "354b54");
+            Box(new(width * .90f, .64f, depth * .91f), new(0, .52f, 0), "697b7c");
+            Box(new(width * .94f, .12f, depth * .95f), new(0, .90f, 0), "a0aaa0");
+            Box(new(width * .70f, .19f, depth * .73f), new(0, 1.055f, 0), "748684");
+            Box(new(width * .12f, .022f, depth * .56f), new(0, 1.161f, 0), "b0ad94");
+            Box(new(width * .42f, .022f, depth * .10f), new(0, 1.161f, -depth * .12f), "b0ad94");
+            // The sealed casket shape makes the entire collision footprint visibly occupied.
+            foreach (float side in new[] { -1f, 1f })
+                Box(new(width * .10f, .42f, depth * .95f), new(side * width * .33f, .49f, 0), "485e65");
+            return;
+        }
+
+        bool alongX = width >= depth;
+        float length = Math.Max(width, depth), thickness = Math.Min(width, depth);
+        int columns = Math.Clamp(Mathf.CeilToInt(length / .95f), 2, 18);
+        float unit = length / columns;
+        Vector3 At(float along, float height) => center + (alongX ? new Vector3(along, height, 0) : new Vector3(0, height, along));
+        Vector3 Size(float along, float height, float across) => alongX ? new(along, height, across) : new(across, height, along);
+        b.Box(new(width, .18f, depth), center + Vector3.Up * .09f, "536258");
+        // Interleaved courses describe the actual wall lengths. A lower broken crown
+        // near the camera preserves an unobstructed view of the narrow passage mouths.
+        for (int column = 0; column < columns; column++)
+        {
+            float along = -length * .5f + (column + .5f) * unit;
+            float top = center.Z < 0 ? 1.55f + column % 3 * .12f : .94f + column % 3 * .12f;
+            for (int row = 0; row < 3; row++)
             {
-                float height = row == 2 ? column == 0 ? .13f : column == 1 ? .28f : .21f : .26f;
-                Box(new(width / 3 - .025f, height, depth * (row == 2 ? .76f : .96f)),
-                    new((column - 1) * width / 3, .22f + row * .28f + height * .5f, 0),
-                    (row + column) % 3 == 0 ? "7c8975" : "657364");
+                float height = (top - .18f) / 3;
+                b.Box(Size(unit - .025f, height - .022f, thickness * (row == 2 ? .87f : .96f)),
+                    At(along, .18f + row * height + height * .5f), (row + column) % 3 == 0 ? "87928b" : "657775");
             }
-        Box(new(width * .8f, .015f, depth * .25f), new(0, .227f, depth * .33f), "4c6042", SurfaceKind.Earth);
+            b.Box(Size(unit * .91f, .09f, thickness), At(along, top + .045f), "a0aa98");
+            if (column % 4 == 1)
+                b.Box(Size(unit * .34f, .11f, thickness * .97f), At(along, .48f), "485e61");
+        }
+    }
+
+    private static void RockBank(EnvironmentBuilder b, float width, float depth, Vector3 center)
+    {
+        bool alongX = width >= depth;
+        float length = Math.Max(width, depth), thickness = Math.Min(width, depth);
+        int count = Math.Clamp(Mathf.CeilToInt(length / 1.28f), 2, 12);
+        float segment = length / count;
+        Vector3 At(float along, float height) => center + (alongX ? new Vector3(along, height, 0) : new Vector3(0, height, along));
+        Vector3 Size(float along, float height, float across) => alongX ? new(along, height, across) : new(across, height, along);
+        b.Box(new(width, .24f, depth), center + Vector3.Up * .12f, "4d6058");
+        for (int rock = 0; rock < count; rock++)
+        {
+            float along = -length * .5f + (rock + .5f) * segment;
+            float height = (center.Z < 0 ? 1.05f : .63f) + rock % 3 * .17f;
+            // Tapered shelves stay inside the bank's exact rectangular base, with no
+            // overhanging corners that could suggest a blocked route through a gap.
+            b.Box(Size(segment - .02f, height * .62f, thickness * .96f), At(along, .24f + height * .31f), rock % 2 == 0 ? "64766a" : "738073");
+            b.Box(Size(segment * .86f, height * .27f, thickness * .77f), At(along, .24f + height * .755f), "879080");
+            b.Box(Size(segment * .57f, height * .11f, thickness * .53f), At(along, .24f + height * .945f), "738073");
+            b.Box(Size(segment * .70f, .02f, thickness * .51f), At(along, .255f + height), "4b6048", surface: SurfaceKind.Earth);
+        }
     }
 }

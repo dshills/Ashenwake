@@ -195,6 +195,7 @@ public partial class EndgameDirector : Node3D
     private void Interact(string id)
     {
         if (id == "journey.next") { _campaignHud.RequestNextStep(); return; }
+        if (id.StartsWith("opening.", StringComparison.Ordinal)) { Campaign(new(CampaignRuntimeAction.InteractOpening, Id: id)); return; }
         if (id == "endgame.gate") { _board.SetOpen(true); return; }
         if (_session.InHub) Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.Interact, id)));
         else Campaign(new(CampaignRuntimeAction.TrackClue, Id: id));
@@ -360,7 +361,7 @@ public partial class EndgameDirector : Node3D
         _effects.Show(combat.Endgame, player.Position, _board.IsOpen);
         var mouseTargets = _session.Interactions.Select(i => new WorldInteractionTarget(i.ActionId, i.Name, i.Position, i.Range, _stage.GetInteractionVisual(i.ActionId))).ToList();
         var wayForward = _stage.PresentWayForward(_session.Room, !_session.InHub && combat.Endgame is null && campaign.Campaign.Exploration is null &&
-            _session.EncounterCleared && _campaignHud.CanRequestNextStep, _campaignHud.NextStepLabel);
+            _session.EncounterCleared && _campaignHud.CanRequestNextStep && _campaignHud.CanShowWayForward, _campaignHud.NextStepLabel);
         if (wayForward is not null) mouseTargets.Add(wayForward);
         _sandbox.SetWorldInteractions(mouseTargets, Interact);
         _sandbox.SetMechanismVisuals(_effects.GetMechanismVisual);
@@ -448,6 +449,9 @@ public partial class EndgameDirector : Node3D
             "ManifestationSelected" => "Manifestation selected. Its benefits and costs follow your Resonance.",
             "FragmentGranted" => "New fragment: " + (_combat.Fragments.FirstOrDefault(f => f.Id == value)?.Name ?? "a divine relic") + ".",
             "ItemGranted" => "A new item has joined your permanent inventory.",
+            "GroundLootRetained" => "Saved " + value + " uncollected drops in this cleared room. Return through its passages to collect them.",
+            "CryptTestamentClaimed" => "The Widow's Testament is yours: rare armor, 25 materials, and a hidden testimony in your journal.",
+            "CampaignPassageEntered" => "Follow the marked passages. Cleared rooms keep their remaining treasure.",
             "GroundLootLeftBehind" => "Left " + value + " uncollected drops behind.",
             "Crafted" => value + " completed. Your item and material balance have been updated.",
             "ItemEquipped" or "ItemUnequipped" => "Equipment updated.",

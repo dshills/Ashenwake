@@ -29,6 +29,7 @@ public sealed class CampaignContent
     public static CampaignContent Parse(string json) => new(JsonData.Read<CampaignDefinition>(json));
     public static CampaignContent Default() => new(new()
     {
+        Version = "campaign.grey_march.2",
         Factions = ["Reliquary Church", "Anatomists", "Cinder Compact", "Children of Ilyra", "Oathbound", "Quiet"],
         Residents = ["Mara Vey", "Torren Bale", "Sister Cael", "Oris Fen", "Kesh", "Pale Child"],
         Acts =
@@ -76,6 +77,8 @@ public sealed class CampaignContent
         ],
         Exploration =
         [
+            new("event.widow_crypt", 1, "Memory", "The Widow's Crypt", "exploration.widow_crypt", 0,
+                ["context:crypt", "reward:widows_testament", "return:recorded_road"], [], "discovery.widow_crypt", 25),
             new("event.resonance_storm", 3, "Storm", "The Burning Rain", "exploration.burning_rain", 900,
                 ["population:stormbound", "hazard:announced_fire_lanes", "fragments:overcharge_windows", "reward:forge_material"], [], "discovery.storm", 10),
             new("event.divine_memory", 4, "Memory", "The Promise Before Stone", "exploration.first_oath", 0,

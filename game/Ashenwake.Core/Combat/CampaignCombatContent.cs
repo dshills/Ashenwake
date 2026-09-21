@@ -1,11 +1,13 @@
 using Ashenwake.Core.Content;
 using Ashenwake.Core.Simulation;
+using System.Text.Json.Serialization;
 
 namespace Ashenwake.Core.Combat;
 
 public sealed record CampaignEnemyBehavior(string EnemyId, string Pattern);
 public sealed record CampaignCombatSpawn(string EnemyId, Position Position, string[] Modifiers, bool Hidden = false);
-public sealed record CampaignCombatEncounter(string Id, string Name, string Rule, int DurationTicks, CampaignCombatSpawn[] Spawns);
+public sealed record CampaignCombatEncounter(string Id, string Name, string Rule, int DurationTicks, CampaignCombatSpawn[] Spawns,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RoomDefinition? Room = null);
 public sealed record CampaignCombatDefinition(int SchemaVersion, string Version, CombatEnemy[] Enemies, CampaignEnemyBehavior[] Behaviors, CampaignCombatEncounter[] Encounters);
 public sealed record CombatHazardView(long Id, string Kind, Position Position, Position End, int Radius, long RemainingTicks, string ContentId, int SourceId);
 public sealed record CampaignHazard(long Id, string Kind, Position Position, Position End, int Radius, long ResolveTick,
@@ -55,6 +57,8 @@ public sealed class CampaignCombatContent
     }
     public CombatSession CreateEncounter(string encounterId, ulong seed = 42, CombatSnapshot? previous = null, bool restoreAtAnchor = false)
         => CombatSession.CreateEncounter(CombatJson, seed, encounterId, previous, restoreAtAnchor);
+    public CombatSession CreateClearedEncounter(string layoutEncounterId, ulong seed = 42, CombatSnapshot? previous = null, bool restoreAtAnchor = false)
+        => CombatSession.CreateClearedEncounter(CombatJson, seed, layoutEncounterId, previous, restoreAtAnchor);
 }
 
 public sealed partial class CombatSession
@@ -73,7 +77,7 @@ public sealed partial class CombatSession
         var campaign = content.Campaign; if (campaign is null) return;
         if (campaign.SchemaVersion != 1 || string.IsNullOrWhiteSpace(campaign.Version) || campaign.Enemies is null || campaign.Behaviors is null || campaign.Encounters is not { Length: > 0 and <= 64 } || campaign.Behaviors.Length > 64)
             throw new InvalidDataException("Invalid campaign combat registry.");
-        var space = new SpatialWorld(content.Room); var ids = new HashSet<string>(StringComparer.Ordinal);
+        var ids = new HashSet<string>(StringComparer.Ordinal);
         foreach (var behavior in campaign.Behaviors)
             if (behavior is null || !ids.Add(behavior.EnemyId) || !content.Enemies.Any(e => e.Id == behavior.EnemyId) || !CampaignPatterns.Contains(behavior.Pattern)) throw new InvalidDataException("Invalid campaign enemy behavior.");
         ids.Clear();
@@ -81,10 +85,15 @@ public sealed partial class CombatSession
         {
             if (encounter is null || string.IsNullOrWhiteSpace(encounter.Id) || !ids.Add(encounter.Id) || !(encounter.Id.StartsWith("campaign.", StringComparison.Ordinal) || encounter.Id.StartsWith("exploration.", StringComparison.Ordinal)) || encounter.Id.Length > 100 || !encounter.Id.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c is '.' or '_') || string.IsNullOrWhiteSpace(encounter.Name) || !CampaignRules.Contains(encounter.Rule) || encounter.DurationTicks is < 0 or > 9000 || encounter.Spawns is not { Length: > 0 and <= 32 })
                 throw new InvalidDataException("Invalid campaign encounter.");
-            var positions = new List<Position> { content.Room.PlayerSpawn };
+            var room = encounter.Room ?? content.Room;
+            if (encounter.Room is not null) ValidateCampaignRoom(room);
+            var space = new SpatialWorld(room);
+            var navigation = encounter.Room is null ? null : new CombatRoomNavigation(room);
+            var positions = new List<Position> { room.PlayerSpawn };
             foreach (var spawn in encounter.Spawns)
             {
                 if (spawn is null || !content.Enemies.Any(e => e.Id == spawn.EnemyId) || !space.CanOccupy(spawn.Position, ActorRadius) || positions.Any(p => Position.DistanceSquared(p, spawn.Position) < 4L * ActorRadius * ActorRadius)) throw new InvalidDataException("Invalid campaign spawn.");
+                if (navigation is not null && !navigation.TryWaypoint(room.PlayerSpawn, spawn.Position, out _)) throw new InvalidDataException("Campaign spawn cannot be reached from the room entrance.");
                 ValidateEliteModifiers(spawn.Modifiers); positions.Add(spawn.Position);
             }
         }

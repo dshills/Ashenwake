@@ -36,17 +36,17 @@ public sealed class CampaignCombatTests
         Assert.Contains(events, e => e.Kind == "CampaignHazardResolved" && e.ContentId == "campaign.furnace_vent");
     }
 
-    public static IEnumerable<object[]> Encounters() => new[] { "campaign.road", "campaign.monastery", "campaign.bell_saint", "campaign.living_ruins", "campaign.plague_village", "campaign.rootheart", "campaign.cinder_pack", "campaign.extraction_floor", "campaign.furnace_spindle", "campaign.bone_causeway", "campaign.contract_hall", "campaign.covenant_warden", "campaign.repeating_rooms", "campaign.identity_memory", "campaign.breach_heart", "exploration.burning_rain", "exploration.first_oath", "exploration.antler_hunt" }.Select(id => new object[] { id });
+    public static IEnumerable<object[]> Encounters() => new[] { "campaign.road", "campaign.monastery", "campaign.bell_saint", "campaign.living_ruins", "campaign.plague_village", "campaign.rootheart", "campaign.cinder_pack", "campaign.extraction_floor", "campaign.furnace_spindle", "campaign.bone_causeway", "campaign.contract_hall", "campaign.covenant_warden", "campaign.repeating_rooms", "campaign.identity_memory", "campaign.breach_heart", "exploration.burning_rain", "exploration.first_oath", "exploration.antler_hunt", "exploration.widow_crypt" }.Select(id => new object[] { id });
     [Theory, MemberData(nameof(Encounters))]
     public void ActualEncounterPlaysToVictoryAndResumesDeterministically(string id)
     {
-        var content = Content(); var room = CombatContent.Parse(content.CombatJson).Room;
+        var content = Content();
         var hub = content.CreateEncounter("hub"); hub.ApplyProgressionBuild(new(Level: 8, Offense: 2, Defense: 2));
         var session = content.CreateEncounter(id, previous: hub.Capture()); var other = CombatSession.Restore(content.CombatJson, session.Capture());
         var phases = new HashSet<int>(); int ticks = 0;
         while (ticks++ < 9000 && session.View.Actors[0].Health > 0 && session.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0))
         {
-            var commands = CampaignCombatSmoke.Commands(session.View, room); var events = session.Step(commands); var replay = other.Step(commands);
+            var commands = CampaignCombatSmoke.Commands(session.View, session.Room); var events = session.Step(commands); var replay = other.Step(commands);
             Assert.Equal(JsonData.Hash(events), JsonData.Hash(replay));
             foreach (var e in events.Where(e => e.Kind == "BossPhaseChanged")) phases.Add(e.Amount);
             if (ticks % 75 == 0) other = CombatSession.Restore(content.CombatJson, other.Capture());
@@ -101,10 +101,10 @@ public sealed class CampaignCombatTests
     [InlineData("Warden")]
     public void BellSaintIsPlayableAtEarlyCampaignLevelWithoutUnlockedUltimate(string discipline)
     {
-        var content = Content(); var room = CombatContent.Parse(content.CombatJson).Room;
+        var content = Content();
         var hub = content.CreateEncounter("hub"); hub.ApplyProgressionBuild(new(Discipline: discipline, Level: 2, UltimateUnlocked: false, UnlockedMutations: []));
         var session = content.CreateEncounter("campaign.bell_saint", previous: hub.Capture());
-        for (int i = 0; i < 5000 && session.View.Actors[0].Health > 0 && session.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0); i++) session.Step(CampaignCombatSmoke.Commands(session.View, room));
+        for (int i = 0; i < 5000 && session.View.Actors[0].Health > 0 && session.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0); i++) session.Step(CampaignCombatSmoke.Commands(session.View, session.Room));
         Assert.True(session.View.Actors[0].Health > 0, discipline + " died");
         Assert.DoesNotContain(session.View.Actors, a => a.Faction == CombatFaction.Enemy && a.Health > 0);
     }

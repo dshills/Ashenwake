@@ -113,7 +113,8 @@ public partial class CampaignHud
 
     private void JourneyHeading(string title, string status)
     { _rows.AddChild(Label(title, 18)); var label = Label(status, 12); label.Modulate = new("9bd4c7"); _rows.AddChild(label); }
-    private string LootSuffix => _combat.Loot.Count > 0 ? $" · leave {_combat.Loot.Count} uncollected drops" : "";
+    private bool OpeningLootRetained => !_state.InHub && !_engaged && _interactions.Any(i => i.Id.StartsWith("opening.", StringComparison.Ordinal));
+    private string LootSuffix => _combat.Loot.Count > 0 ? $" · {_combat.Loot.Count} uncollected drops" : "";
     private void JourneyLootNotice()
     {
         if (_combat.Loot.Count == 0) return;
@@ -134,12 +135,26 @@ public partial class CampaignHud
         _rows.AddChild(new HSeparator()); _rows.AddChild(Label("OPTIONAL EXPLORATION", 14));
         foreach (var entry in entries)
         {
+            if (entry.Id == "event.widow_crypt")
+            {
+                bool available = _interactions.Any(i => i.Id == "opening.crypt.enter");
+                Button((_state.CompletedExploration.Contains(entry.Id) ? "✓ Revisit " : "Explore ") + entry.Name + " · side crypt",
+                    () => RequestInteraction("opening.crypt.enter")).Disabled = !available;
+                if (!available && !InOpeningCrypt) _rows.AddChild(Label("Its marked entrance branches north from the secured Grey March road.", 12));
+                continue;
+            }
             var request = new JourneyTravelRequest(JourneyTravelKind.Exploration, Id: entry.Id);
             Button((_state.CompletedExploration.Contains(entry.Id) ? "✓ " : "") + entry.Name + " · " + entry.Kind + LootSuffix,
                 () => RequestJourneyTravel(request)).Disabled = JourneyTravelReason(request).Length > 0;
         }
         if (_state.Exploration is not { } active) return;
         var definition = entries.Single(e => e.Id == active.Id);
+        if (definition.Id == "event.widow_crypt")
+        {
+            _rows.AddChild(Label("Open the testament after defeating its guardians. The western passage returns to the road; remaining drops stay in cleared rooms.", 12));
+            Button("Return to the Grey March road", () => RequestInteraction("opening.crypt.return"));
+            return;
+        }
         _rows.AddChild(Label(definition.Name + (active.RemainingTicks > 0 ? $" · {active.RemainingTicks / 30d:F0}s remaining" : ""), 14));
         foreach (var (clue, index) in definition.Clues.Select((id, index) => (id, index)))
             _rows.AddChild(Label((index < active.TrackedClues ? "✓ " : "○ ") + Readable(clue), 12));
@@ -180,7 +195,11 @@ public partial class CampaignHud
                     _rows.AddChild(Label(_state.CompletedEncounters.Contains(act.Encounters[^2].Id) ? act.Revelation : "This region's testimony has not yet been recovered.", 13));
                 }
                 foreach (var exploration in _content.Exploration.Where(e => _state.CompletedExploration.Contains(e.Id)))
-                { any = true; _rows.AddChild(Label("✓ " + exploration.Name, 15)); _rows.AddChild(Label(Readable(exploration.Discovery), 13)); }
+                {
+                    any = true; _rows.AddChild(Label("✓ " + exploration.Name, 15)); _rows.AddChild(Label(exploration.Id == "event.widow_crypt"
+                    ? "The widow hid her family beneath the monastery when the bells began calling the dead. Her testament names the first resurrection as an experiment, not a miracle. She left a burial mantle for whoever would carry that truth beyond the crypt."
+                    : Readable(exploration.Discovery), 13));
+                }
                 if (!any) _rows.AddChild(Label("Discoveries will appear as you explore Edrath. Unvisited regions keep their secrets.", 14));
                 break;
             case "Choices":

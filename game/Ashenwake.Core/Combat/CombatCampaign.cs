@@ -100,7 +100,7 @@ public sealed partial class CombatSession
         if (_state.Campaign!.Hazards.Count >= 32) { Budget(0); return; }
         // Warning geometry is not an actor spawn: it may cross pillars. Keep fixed
         // lanes visible in smaller authored arenas instead of dropping the attack.
-        Position Clip(Position p) => new(Math.Clamp(p.X, -_content.Room.HalfWidth, _content.Room.HalfWidth), Math.Clamp(p.Z, -_content.Room.HalfDepth, _content.Room.HalfDepth));
+        Position Clip(Position p) => new(Math.Clamp(p.X, -_room.HalfWidth, _room.HalfWidth), Math.Clamp(p.Z, -_room.HalfDepth, _room.HalfDepth));
         center = Clip(center);
         if (end is { } endpoint) end = Clip(endpoint);
         long action = _state.NextActionId++;
@@ -108,7 +108,7 @@ public sealed partial class CombatSession
         Emit("CampaignHazardWarned", source.Id, amount: delay, content: id, action: action);
     }
     private bool CampaignHazardPointInBounds(Position position)
-        => Math.Abs((long)position.X) <= _content.Room.HalfWidth && Math.Abs((long)position.Z) <= _content.Room.HalfDepth;
+        => Math.Abs((long)position.X) <= _room.HalfWidth && Math.Abs((long)position.Z) <= _room.HalfDepth;
     private void ScheduleCampaignRule()
     {
         var source = _state.Actors.First(a => a.Faction == CombatFaction.Enemy && a.Health > 0);
@@ -151,7 +151,7 @@ public sealed partial class CombatSession
         var definition = _content.Enemies.Single(e => e.Id == actor.DefinitionId);
         bool close = pattern is "Swarm" or "PoisonBurst" or "ForgeSweep" or "Fault" or "ShadowDouble" or "Antler";
         if (close && Position.DistanceSquared(actor.Position, Player.Position) > (long)definition.Range * definition.Range)
-        { actor.State = pattern == "Antler" ? "BurrowApproach" : "Approach"; MoveActor(actor, Toward(actor.Position, Player.Position, HasElite(actor, "Hunter") ? Math.Min(500, definition.Speed * 5 / 4) : definition.Speed)); return true; }
+        { actor.State = pattern == "Antler" ? "BurrowApproach" : "Approach"; MoveTowardTarget(actor, Player.Position, HasElite(actor, "Hunter") ? Math.Min(500, definition.Speed * 5 / 4) : definition.Speed); return true; }
         if ((Tick + actor.Id) % 3 != 0) return true;
         if (IsCampaignBoss(actor)) { BeginCampaignBoss(actor, pattern); return true; }
         string status = pattern is "VenomPod" or "Swarm" or "PoisonBurst" ? "Poisoned" : pattern == "OathMark" ? "Rooted" : pattern == "ShadowDouble" ? "Vulnerable" : "";

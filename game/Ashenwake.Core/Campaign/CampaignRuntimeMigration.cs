@@ -39,6 +39,7 @@ public static class CampaignRuntimeMigration
         var checkpoint = validated.Capture();
         if (checkpoint.Expedition.EncounterId != "hub" || checkpoint.Expedition.Adventure.RoomId != "room.greyhaven" || checkpoint.Expedition.Combat.EncounterId != "hub")
             throw new SaveCompatibilityException("Return to Greyhaven in the production build before importing this character.");
-        return CampaignRuntimeSession.ImportProduction(composedCombatJson, adventure, policy, campaign, checkpoint);
+        return CampaignRuntimeSession.ImportProduction(composedCombatJson, adventure, policy,
+            OpeningCatalogMigration.CampaignForCombat(composedCombatJson, campaign), checkpoint);
     }
 }

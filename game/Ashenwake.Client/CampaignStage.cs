@@ -58,6 +58,7 @@ public partial class CampaignStage : Node3D
         // to the actual occupied arena, including its loot and finite victory sequence.
         string encounter = state.Exploration?.Id switch
         {
+            "event.widow_crypt" => "exploration.widow_crypt",
             "event.wake_hunt" => "exploration.antler_hunt",
             "event.resonance_storm" => "exploration.burning_rain",
             "event.divine_memory" => "exploration.first_oath",
@@ -121,12 +122,14 @@ public partial class CampaignStage : Node3D
                         _trails[interaction.ActionId] = trail; _region.AddChild(trail); _lastTrailPoint = marker.Position;
                     }
                 }
+                else if (GreyMarchExplorationArt.SupportsMarker(interaction.ActionId))
+                    GreyMarchExplorationArt.BuildMarker(marker, interaction.ActionId, encounter == "exploration.widow_crypt");
                 else
                 {
                     Mesh(new TorusMesh { InnerRadius = .47f, OuterRadius = .58f }, new(0, .07f, 0), new("d8c790"), marker);
                     Mesh(new CylinderMesh { TopRadius = .16f, BottomRadius = .3f, Height = .5f }, new(0, .25f, 0), new("93d6c9"), marker);
                 }
-                Label(interaction.Name, new(0, 1.3f, 0), new("eee0b8"), marker);
+                Label(GreyMarchExplorationArt.MarkerLabel(interaction.ActionId, interaction.Name), new(0, 1.3f, 0), new("eee0b8"), marker);
             }
         }
         if (_markers.Count > 0)

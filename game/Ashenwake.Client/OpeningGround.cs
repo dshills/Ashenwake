@@ -1,3 +1,4 @@
+using Ashenwake.Core.Combat;
 using Ashenwake.Core.Content;
 using Godot;
 
@@ -6,18 +7,20 @@ namespace Ashenwake.Client;
 /// <summary>Walkable courts and connecting paths, all below the authoritative floor and its warnings.</summary>
 public static class OpeningGround
 {
-    public static bool Supports(string style) => style is "greyhaven" or "road" or "monastery";
+    public static bool Supports(string style) => style is "greyhaven" or "road" or "monastery" or "sanctum" or "crypt";
 
     public static void Build(Node3D parent, RoomDefinition room, string style)
     {
         var b = new EnvironmentBuilder(parent, "AuthoredGround");
         float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
-        bool hub = style == "greyhaven", road = style == "road";
+        bool hub = style == "greyhaven", road = style == "road", crypt = style == "crypt", sanctum = style == "sanctum";
         // The inhabited floor meets a narrow weathered shoulder; distant terrain supplies
         // the silhouette instead of a single oversized rectangular slab.
-        b.Box(new(x * 2 + .8f, .5f, z * 2 + .8f), new(0, -.35f, 0), hub ? "303f36" : "303c37", surface: SurfaceKind.Earth);
-        var route = Route(x, style);
-        float stepX = hub ? .72f : 1.03f, stepZ = hub ? .57f : .76f;
+        b.Box(new(x * 2 + .8f, .5f, z * 2 + .8f), new(0, -.35f, 0), crypt ? "303e45" : hub ? "303f36" : "303c37", surface: SurfaceKind.Earth);
+        var route = Route(room, style);
+        var cryptEntrance = OpeningCampaignLayout.CryptEntrance;
+        Vector2[] cryptApproach = road ? [new(4, 0), new(cryptEntrance.X * .001f, -2.4f), new(cryptEntrance.X * .001f, cryptEntrance.Z * .001f)] : [];
+        float stepX = hub ? .72f : crypt ? .91f : 1.03f, stepZ = hub ? .57f : crypt ? .64f : .76f;
         int row = 0;
         for (float pz = -z + .42f; pz < z - .25f; pz += stepZ, row++)
         {
@@ -26,10 +29,10 @@ public static class OpeningGround
             {
                 int variation = (row * 31 + column * 17) % 23;
                 Vector2 point = new(px, pz);
-                float pathDistance = DistanceToRoute(point, route);
+                float pathDistance = Math.Min(DistanceToRoute(point, route), DistanceToRoute(point, cryptApproach));
                 int court = hub ? Court(point) : 0;
-                bool courtyard = !hub && !road && Math.Abs(px) < x * .65f && Math.Abs(pz) < z * .65f;
-                bool paved = court != 0 || pathDistance < (hub ? 1.15f : road ? 1.65f : 1.9f) || courtyard;
+                bool courtyard = style == "monastery" && px > -x + 1.6f && px < .6f && Math.Abs(pz) < z * .65f;
+                bool paved = crypt || sanctum || court != 0 || pathDistance < (hub ? 1.15f : road ? 1.25f : 1.35f) || courtyard;
                 if (!paved)
                 {
                     // Isolated stones sit near the worn shoulders, not across a patterned lawn.
@@ -47,6 +50,13 @@ public static class OpeningGround
                 float width = Math.Min(stepX - .05f, (x - px) * 2 - .05f);
                 float depth = Math.Min(stepZ - .055f, (z - pz) * 2 - .05f);
                 if (!paved) { width *= .55f; depth *= .7f; color = "4b5c51"; }
+                if (crypt) color = variation % 3 == 0 ? "66777d" : variation % 3 == 1 ? "536670" : "4d5d65";
+                if (sanctum) color = variation % 3 == 0 ? "77817d" : variation % 3 == 1 ? "5c6d6c" : "536465";
+                // Paving ends at actual masonry and rock banks, making openings read as passages.
+                // Include the tiny rotated corners when testing the cell against the obstacle.
+                if (room.Obstacles.Any(obstacle => px + width * .5f + .035f > obstacle.MinX * .001f &&
+                    px - width * .5f - .035f < obstacle.MaxX * .001f && pz + depth * .5f + .035f > obstacle.MinZ * .001f &&
+                    pz - depth * .5f - .035f < obstacle.MaxZ * .001f)) continue;
                 b.Box(new(width, .055f, depth), new(px, -.051f, pz), color,
                     new(0, paved && hub ? 0 : variation % 5 - 2, 0));
             }
@@ -60,39 +70,49 @@ public static class OpeningGround
             Drain(b, -1.45f, -z + .4f, -2.2f);
             Drain(b, -1.45f, 2.1f, z - .4f);
         }
-        else if (!road)
+        else if (style == "monastery")
         {
-            // The cloister is a broken courtyard with planted outer aisles and a clear center.
-            float hx = x * .67f, hz = z * .67f;
-            foreach (float side in new[] { -1f, 1f })
-            {
-                b.Box(new(.16f, .015f, hz * 2), new(side * hx, -.017f, 0), "909b87");
-                b.Box(new(hx * 2, .015f, .16f), new(0, -.017f, side * hz), "909b87");
-                for (int i = 0; i < 7; i++)
-                    b.Box(new(.12f, .008f, .46f), new(-hx + .8f + i * (hx * 2 - 1.6f) / 6, -.011f, side * (hz - .45f)), "75816f");
-            }
+            // The open west court feeds the true gaps in the east cloister walls.
+            CourtInlay(b, new(-x * .40f, 0), new(x * .38f, z * .60f), "909b87");
         }
+        else if (sanctum) SanctuaryInlay(b);
+        else if (crypt) CryptInlay(b, x, z);
         Boundary(b, x, z, hub);
         b.Flush();
-        GroundField(parent.GetNode<Node3D>("AuthoredGround"), x, z, route, hub);
+        GroundField(parent.GetNode<Node3D>("AuthoredGround"), x, z, route, style);
     }
+
+    public static Vector2[] Route(RoomDefinition room, string style) => Route(room.HalfWidth * .001f, style);
 
     public static Vector2[] Route(float halfWidth, string style)
     {
         float end = Math.Max(.5f, halfWidth - 1.4f);
-        return style == "road"
-            ? [new(-end, 0), new(-end * .57f, 0), new(-end * .19f, -1.15f), new(end * .19f, 1.9f), new(end * .57f, 0), new(end, 0)]
-            : [new(-end, 0), new(-end * .43f, 0), new(0, 0), new(end * .62f, 0), new(end, 0)];
+        string encounter = style switch
+        {
+            "road" => "campaign.road",
+            "monastery" => "campaign.monastery",
+            "sanctum" => "campaign.bell_saint",
+            "crypt" => "exploration.widow_crypt",
+            _ => ""
+        };
+        if (encounter.Length != 0)
+        {
+            var entrance = style == "crypt" ? OpeningCampaignLayout.CryptReturn : OpeningCampaignLayout.BackExit;
+            return OpeningCampaignLayout.Route(encounter).Prepend(entrance)
+                .Select(p => new Vector2(Math.Clamp(p.X * .001f, -end, end), p.Z * .001f)).ToArray();
+        }
+        return [new(-end, 0), new(-end * .43f, 0), new(0, 0), new(end * .62f, 0), new(end, 0)];
     }
 
-    private static void GroundField(Node3D root, float x, float z, Vector2[] route, bool hub)
+    private static void GroundField(Node3D root, float x, float z, Vector2[] route, string style)
     {
         // A single softly varying earth surface connects the courts and the scenery.
         // Vertex tinting avoids tiled patch props and keeps the material/texture count fixed.
         const int columns = 48, rows = 40;
         using var surface = new SurfaceTool();
         surface.Begin(Mesh.PrimitiveType.Triangles);
-        Color soil = new(hub ? "4c4b3c" : "4e5144"), grass = new(hub ? "3e4d39" : "394d40");
+        bool hub = style == "greyhaven", stone = style is "crypt" or "sanctum";
+        Color soil = new(stone ? "43545a" : hub ? "4c4b3c" : "4e5144"), grass = new(stone ? "35464e" : hub ? "3e4d39" : "394d40");
         for (int row = 0; row <= rows; row++)
             for (int column = 0; column <= columns; column++)
             {
@@ -111,11 +131,34 @@ public static class OpeningGround
                 int a = row * (columns + 1) + column, b = a + 1, c = a + columns + 1, d = c + 1;
                 foreach (int index in new[] { a, b, c, b, d, c }) surface.AddIndex(index);
             }
-        var material = SurfaceMaterials.Create("ffffff", SurfaceKind.Earth, worldScale: true);
+        var material = SurfaceMaterials.Create("ffffff", stone ? SurfaceKind.Stone : SurfaceKind.Earth, worldScale: true);
         material.VertexColorUseAsAlbedo = true;
         material.VertexColorIsSrgb = true;
         surface.GenerateTangents(); surface.SetMaterial(material);
-        root.AddChild(new MeshInstance3D { Name = "EarthAndGrass", Mesh = surface.Commit() });
+        root.AddChild(new MeshInstance3D { Name = stone ? "BurialStone" : "EarthAndGrass", Mesh = surface.Commit() });
+    }
+
+    private static void SanctuaryInlay(EnvironmentBuilder b)
+    {
+        // Faded burial geometry stays subordinate to the Saint's live area warnings.
+        for (int i = 0; i < 48; i++)
+        {
+            float angle = i * Mathf.Tau / 48;
+            b.Box(new(.44f, .008f, .055f), new(Mathf.Sin(angle) * 3.5f, -.012f, Mathf.Cos(angle) * 3.5f), "7e8b82", new(0, i * 7.5f, 0));
+        }
+    }
+
+    private static void CryptInlay(EnvironmentBuilder b, float x, float z)
+    {
+        // Quiet rectangular grave inscriptions leave the chamber's central fighting aisle empty.
+        foreach (float side in new[] { -1f, 1f })
+            for (int grave = 0; grave < 4; grave++)
+            {
+                Vector2 center = new(side * x * .77f, -z * .55f + grave * z * .37f);
+                CourtInlay(b, center, new(.63f, 1.05f), "8b9991");
+                for (int line = 0; line < 3; line++)
+                    b.Box(new(.46f - line * .07f, .008f, .025f), new(center.X, -.012f, center.Y + line * .15f), "728986");
+            }
     }
 
     private static int Court(Vector2 point)

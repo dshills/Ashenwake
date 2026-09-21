@@ -300,13 +300,13 @@ public sealed class LegendaryEquipmentTests
     [InlineData("campaign.covenant_warden", LegendaryEquipment.Oath)]
     public void ActualCampaignVictoryAwardsExactlyOneNamedLegendary(string encounter, string item)
     {
-        var content = CampaignCombatContent.Parse(Content, Read("campaign-combat.json")); var room = CombatContent.Parse(content.CombatJson).Room;
+        var content = CampaignCombatContent.Parse(Content, Read("campaign-combat.json"));
         var hub = content.CreateEncounter("hub"); hub.ApplyProgressionBuild(new(Level: 8, Offense: 2, Defense: 2));
         var session = content.CreateEncounter(encounter, previous: hub.Capture());
         List<CombatEvent> events = [];
         for (int tick = 0; tick < 9000 && session.View.Actors[0].Health > 0 && session.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0); tick++)
         {
-            events.AddRange(session.Step(CampaignCombatSmoke.Commands(session.View, room)));
+            events.AddRange(session.Step(CampaignCombatSmoke.Commands(session.View, session.Room)));
             if (session.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0)) Assert.DoesNotContain(session.View.Loot, l => l.Item.DefinitionId == item);
         }
         Assert.True(session.View.Actors[0].Health > 0); Assert.DoesNotContain(session.View.Actors, a => a.Faction == CombatFaction.Enemy && a.Health > 0);

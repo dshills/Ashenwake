@@ -7,6 +7,15 @@ namespace Ashenwake.Core.Production;
 
 public sealed partial class ProductionSession
 {
+    internal ProgressionResult GrantCryptTestament()
+    {
+        SynchronizeItemSequence();
+        var result = progression.GrantItem("campaign.crypt.testament", "item.serath_shroud", ItemRarity.Rare);
+        if (result.Success) ProjectPermanentInventory();
+        return result;
+    }
+    internal bool HasCryptTestamentReceipt => progression.CharacterState.OperationReceipts.TryGetValue("campaign.crypt.testament", out string? hash) &&
+        hash == JsonData.Hash(new { Action = "GrantItem", definitionId = "item.serath_shroud", rarity = ItemRarity.Rare, Affixes = new SortedDictionary<string, int>() });
     internal bool ContainsCampaignReceipt(string receipt) => progression.CharacterState.OperationReceipts.ContainsKey(receipt);
     internal bool HasCampaignReward(string receipt, int amount, int materials)
         => progression.CharacterState.OperationReceipts.TryGetValue(receipt, out string? hash) && hash == JsonData.Hash(new { Action = "Experience", amount, materials });

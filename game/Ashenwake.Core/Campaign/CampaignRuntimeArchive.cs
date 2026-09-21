@@ -17,6 +17,18 @@ public static class CampaignRuntimeSaveStore
     public static string ProfilePath(string savePath) => ProductionSaveStore.ProfilePath(savePath);
     public static CampaignRuntimeSession Read(string combatJson, AdventureContent adventure, ProgressionContent policy, CampaignContent campaign, string json)
     {
+        try { return ReadWithLegendaryUpgrade(combatJson, adventure, policy, campaign, json); }
+        catch (SaveCompatibilityException) when (OpeningCatalogMigration.TryPrevious(combatJson, policy, campaign,
+            out var previousCombat, out var previousPolicy, out var previousCampaign))
+        {
+            var original = ReadWithLegendaryUpgrade(previousCombat, adventure, previousPolicy, previousCampaign, json);
+            return CampaignRuntimeSession.Restore(combatJson, adventure, policy, campaign,
+                OpeningCatalogMigration.Rebind(original.Capture(), combatJson, adventure, policy, campaign));
+        }
+    }
+
+    private static CampaignRuntimeSession ReadWithLegendaryUpgrade(string combatJson, AdventureContent adventure, ProgressionContent policy, CampaignContent campaign, string json)
+    {
         try { return ReadExact(combatJson, adventure, policy, campaign, json); }
         catch (SaveCompatibilityException) when (LegendaryCatalogMigration.TryPrevious(combatJson, policy, out var previousCombat, out var previousPolicy))
         {
@@ -34,6 +46,12 @@ public static class CampaignRuntimeSaveStore
         var narrative = ArchiveHeaders.Object(state, "campaign"); ArchiveHeaders.Require(narrative, 1); ArchiveHeaders.Identity(narrative, "contentHash", campaign.Hash);
         string identity = CombatContent.Parse(combatJson).Identity;
         var arena = ArchiveHeaders.Object(state, "combat"); ArchiveHeaders.Require(arena, 1, "combat.1"); ArchiveHeaders.Identity(arena, "contentHash", identity);
+        if (state.TryGetProperty("clearedRooms", out var rooms) && rooms.ValueKind != JsonValueKind.Null)
+        {
+            if (rooms.ValueKind != JsonValueKind.Object) throw new InvalidDataException("Invalid cleared room archive.");
+            foreach (var room in rooms.EnumerateObject())
+            { ArchiveHeaders.Require(room.Value, 1, "combat.1"); ArchiveHeaders.Identity(room.Value, "contentHash", identity); }
+        }
         var permanent = ArchiveHeaders.Object(state, "production"); ArchiveHeaders.Require(permanent, 1, "production.1");
         var expedition = ArchiveHeaders.Object(permanent, "expedition"); ArchiveHeaders.Require(expedition, 1, "expedition.1");
         ArchiveHeaders.Identity(expedition, "adventureHash", ProductionContent.ResolveAdventure(combatJson, adventure).Hash);
@@ -41,6 +59,7 @@ public static class CampaignRuntimeSaveStore
         var character = ArchiveHeaders.Object(ArchiveHeaders.Object(permanent, "progression"), "character"); ArchiveHeaders.Require(character, 1);
         var resolved = ProductionContent.Resolve(combatJson, CampaignRuntimeSession.ResolvePolicy(policy, campaign), adventure);
         ArchiveHeaders.Identity(character, "contentHash", resolved.Hash);
+        ArchiveHeaders.Checksum(document.RootElement, "state");
         var save = JsonData.Read<CampaignRuntimeSave>(json);
         if (save.State is null || save.StateHash != JsonData.Hash(save.State)) throw new InvalidDataException("Campaign checksum mismatch.");
         return CampaignRuntimeSession.Restore(combatJson, adventure, policy, campaign, save.State);
