@@ -22,6 +22,7 @@ internal static class SandboxCommands
                 string policy = File.ReadAllText("content/progression.json");
                 var text = TextCatalog.Parse(names);
                 text.RequireKeys(CombatContent.Parse(content).Items.SelectMany(item => new[] { "equipment." + item.Id[5..], "lore." + item.Id[5..] }));
+                text.RequireKeys(["source.pyrebound_treads", "source.oathkeeper_reprisal", "source.widows_last_echo"]);
                 text.RequireKeys(ProgressionContent.Parse(policy).Capture().Properties.SelectMany(p => new[] { "power." + p.Id + ".name", "power." + p.Id + ".description" }));
                 AtomicFile.Write("game/Ashenwake.Client/combat.json", content);
                 AtomicFile.Write("game/Ashenwake.Client/text.en.json", names);

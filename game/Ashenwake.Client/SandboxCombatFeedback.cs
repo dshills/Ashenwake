@@ -49,7 +49,8 @@ public partial class Sandbox
             if (replaced && e.Kind is "AbilityStarted" or "BossPatternStarted" or "CampaignHazardWarned" or
                 "AbilityResolved" or "EliteAbilityResolved" or "CampaignHazardResolved" or "Dodged" or
                 "DamageApplied" or "BarrierAbsorbed" or "Healed" or "EntityKilled" or "EliteCopyKilled" or
-                "MechanismDestroyed" or "BossPhaseChanged" or "LootDropped") continue;
+                "MechanismDestroyed" or "BossPhaseChanged" or "LootDropped" or
+                "LegendaryReadied" or "LegendaryCharged" or "LegendaryTriggered") continue;
             if (e.Kind is "CampaignHazardWarned" or "CampaignHazardResolved" && e.ContentId.StartsWith("rule.", StringComparison.Ordinal))
             { if (e.Kind == "CampaignHazardWarned") PlayTone("tell"); continue; }
             _actors.TryGetValue(e.ActorId, out var actor);
@@ -110,6 +111,10 @@ public partial class Sandbox
                     if (target is not null) _combatEffects.Emit("block", target.Current, direction, _mint, _reduceEffects);
                     Feedback(targetId, $"BLOCK {e.Amount}", "heal"); PlayTone("armor"); break;
                 case "Healed": Feedback(targetId, $"+{e.Amount}", "heal"); PlayTone("heal"); break;
+                case "LegendaryReadied":
+                case "LegendaryCharged":
+                case "LegendaryTriggered":
+                    PresentLegendaryEvent(e, actor, direction); break;
                 case "EntityKilled":
                 case "EliteCopyKilled":
                 case "MechanismDestroyed":

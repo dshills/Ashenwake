@@ -29,6 +29,18 @@ public static class ExperimentSaveStore
     public static ExperimentRuntimeSession Read(string combatJson, AdventureContent adventure, ProgressionContent policy,
         CampaignContent campaign, EndgameContent endgame, ExperimentContent experiment, string json)
     {
+        try { return ReadExact(combatJson, adventure, policy, campaign, endgame, experiment, json); }
+        catch (SaveCompatibilityException) when (LegendaryCatalogMigration.TryPrevious(combatJson, policy, out var previousCombat, out var previousPolicy))
+        {
+            var original = ReadExact(previousCombat, adventure, previousPolicy, campaign, endgame, experiment, json).Capture();
+            return ExperimentRuntimeSession.Restore(combatJson, adventure, policy, campaign, endgame, experiment,
+                original with { Endgame = LegendaryCatalogMigration.Rebind(original.Endgame, combatJson, adventure, policy, campaign) });
+        }
+    }
+
+    private static ExperimentRuntimeSession ReadExact(string combatJson, AdventureContent adventure, ProgressionContent policy,
+        CampaignContent campaign, EndgameContent endgame, ExperimentContent experiment, string json)
+    {
         if (json.Length > 96 * 1024 * 1024) throw new InvalidDataException("Experiment archive exceeds its size bound.");
         using var document = JsonDocument.Parse(json); ArchiveHeaders.Require(document.RootElement, 1);
         Inspect(ArchiveHeaders.Object(document.RootElement, "state"), combatJson, adventure, policy, campaign, endgame, experiment);

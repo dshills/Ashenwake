@@ -21,11 +21,13 @@ public sealed partial class CombatSession
         for (int attempt = 0; attempt < 256 && !_spatial.CanOccupy(target, 0); attempt++) target = Toward(target, actor.Position, 100);
         _state.Projectiles.Add(new(_state.NextObjectId++, 1, 1, actor.Position, target, pending.TargetId, skill.Id, damage, family, Tick + 90, pending.ActionId, pending.Depth,
             Pierce: pierce, Fork: fork, Chain: chain, HitIds: [], ImpactRadius: mutation?.Radius > 0 ? mutation.Radius : skill.Radius));
+        LaunchWidow(pending, target, damage);
     }
     private void UpdateProjectiles()
     {
         foreach (var projectile in _state.Projectiles.ToArray())
         {
+            if (projectile.LaunchTick > Tick) continue;
             var source = _state.Actors.FirstOrDefault(a => a.Id == projectile.SourceId);
             var next = Toward(projectile.Position, projectile.Target, 650);
             if (source is null || projectile.ExpiresTick <= Tick || !_spatial.HasLineOfSight(projectile.Position, next)) { _state.Projectiles.Remove(projectile); continue; }
@@ -38,7 +40,7 @@ public sealed partial class CombatSession
                 int radius = projectile.ImpactRadius > 0 ? projectile.ImpactRadius : skill?.Radius ?? (projectile.SkillId == "effect.ashcleaver_wave" ? 1600 : 0);
                 var targets = radius > 0 ? Hostiles(source, target.Position, radius).Where(a => !hitIds.Contains(a.Id)).ToArray() : [target];
                 string status = skill?.Status ?? (projectile.SkillId == "effect.ashcleaver_wave" || source.DefinitionId is "summon.fire_spirit" or "summon.flaming_revenant" ? "Burning" : "");
-                foreach (var victim in targets) Enqueue(new(projectile.SourceId, projectile.OwnerId, victim.Id, projectile.Damage, projectile.Family, projectile.SkillId, projectile.ActionId, projectile.Depth, Status: status, FragmentId: projectile.FragmentId));
+                foreach (var victim in targets) Enqueue(new(projectile.SourceId, projectile.OwnerId, victim.Id, projectile.Damage, projectile.Family, projectile.SkillId, projectile.ActionId, projectile.Depth, Reflected: LegendaryEquipment.IsEffect(projectile.SkillId), Status: status, FragmentId: projectile.FragmentId));
                 var visited = hitIds.Concat(targets.Select(a => a.Id)).Distinct().ToArray();
                 var continuations = Hostiles(source, target.Position, 5000).Where(a => !visited.Contains(a.Id)).OrderBy(a => Position.DistanceSquared(a.Position, target.Position)).ThenBy(a => a.Id).ToArray();
                 if (projectile.Fork > 0 && projectile.Depth < MaxChainDepth)

@@ -6,9 +6,9 @@ namespace Ashenwake.Client;
 public static class CombatAudio
 {
     private const int SampleRate = 22050;
-    private enum Sound { Blade, Bow, Arcane, Bone, Spear, Enemy, Hit, Armor, Death, Dodge, Bell, Chain, Victory, Heal, Loot, Tell, Legendary, Godwrought }
+    private enum Sound { Blade, Bow, Arcane, Bone, Spear, Enemy, Hit, Armor, Death, Dodge, Bell, Chain, Victory, Heal, Loot, Tell, Legendary, Godwrought, Pyre, Reprisal, Widow }
     public static IReadOnlyList<string> CueNames { get; } = Array.AsReadOnly<string>(
-        ["blade", "bow", "arcane", "bone", "spear", "enemy", "hit", "armor", "death", "dodge", "bell", "chain", "victory", "heal", "loot", "tell", "loot_legendary", "loot_godwrought"]);
+        ["blade", "bow", "arcane", "bone", "spear", "enemy", "hit", "armor", "death", "dodge", "bell", "chain", "victory", "heal", "loot", "tell", "loot_legendary", "loot_godwrought", "legendary_pyre", "legendary_oath", "legendary_widow"]);
 
     public static byte[] CreateSamples(string cue)
     {
@@ -32,6 +32,9 @@ public static class CombatAudio
             "tell" => (Sound.Tell, .22),
             "loot_legendary" => (Sound.Legendary, 1.25),
             "loot_godwrought" => (Sound.Godwrought, 1.85),
+            "legendary_pyre" => (Sound.Pyre, .48),
+            "legendary_oath" => (Sound.Reprisal, .58),
+            "legendary_widow" => (Sound.Widow, .68),
             _ => throw new ArgumentException($"Unknown combat audio cue: {cue}", nameof(cue))
         };
         int count = (int)Math.Ceiling(duration * SampleRate);
@@ -84,6 +87,12 @@ public static class CombatAudio
                     .30 * Note(t, .22, 1318.51, 4.5) + .12 * Bell(t, 329.63, 6),
                 Sound.Godwrought => .48 * Bell(t, 130.81, 2.8) + .32 * Note(t, .12, 392, 2.6) +
                     .26 * Note(t, .30, 523.25, 2.8) + .20 * Note(t, .48, 783.99, 3.2) + .12 * lowNoise * Swell(t, .02, 1.2),
+                Sound.Pyre => .68 * warmNoise * Swell(t, .005, .43) + .26 * Sweep(195, 63, t, duration) * Envelope(t, .004, 8) +
+                    .20 * highNoise * (Burst(t, .04, 45) + Burst(t, .15, 40) + Burst(t, .27, 50)),
+                Sound.Reprisal => .48 * Bell(t, 246.94, 8) + .24 * Bell(t, 493.88, 10) +
+                    .34 * lowNoise * Envelope(t, .002, 16),
+                Sound.Widow => .25 * Note(t, 0, 783.99, 7) + .24 * Note(t, .19, 587.33, 6) +
+                    .17 * Note(t, .29, 1174.66, 7) + .30 * highNoise * Swell(t, .03, .5),
                 _ => 0
             };
             // Smooth saturation keeps layered transients below full scale; both ends taper to zero.

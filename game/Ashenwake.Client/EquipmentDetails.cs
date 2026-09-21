@@ -10,6 +10,7 @@ internal static class EquipmentDetails
     public static void Preload() => _ = InnateProperties.Value;
     public static string InnateProperty(string id) => InnateProperties.Value.GetValueOrDefault(id, "");
     public static string Lore(string id) => id.StartsWith("item.", StringComparison.Ordinal) ? EquipmentNames.Message("lore." + id[5..]) : "";
+    public static string Source(string id) => id.StartsWith("item.", StringComparison.Ordinal) ? EquipmentNames.Message("source." + id[5..]) : "";
     public static string PowerName(string? id) => string.IsNullOrEmpty(id) ? "none" : EquipmentNames.Message("power." + id + ".name") is { Length: > 0 } name ? name : id;
     public static string Power(string? id) => string.IsNullOrEmpty(id) ? "none" : PowerName(id) +
         (EquipmentNames.Message("power." + id + ".description") is { Length: > 0 } text ? "\n" + text : "");
@@ -19,6 +20,7 @@ internal static class EquipmentDetails
     public static string Inspect(PermanentItem item, ProgressionDefinition content)
     {
         var lines = new List<string> { Lore(item.DefinitionId) };
+        if (Source(item.DefinitionId) is { Length: > 0 } source) lines.Add(source);
         string property = content.Items.Single(d => d.Id == item.DefinitionId).Property;
         if (property.Length > 0) lines.Add("Property: " + Power(property));
         if (item.Engraving.Length > 0) lines.Add("Engraving: " + Power(item.Engraving));

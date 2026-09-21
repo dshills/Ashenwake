@@ -57,6 +57,18 @@ public static class EndgameRuntimeSaveStore
     public static EndgameRuntimeSession Read(string combatJson, AdventureContent adventure, ProgressionContent policy,
         CampaignContent campaign, EndgameContent endgame, string json)
     {
+        try { return ReadExact(combatJson, adventure, policy, campaign, endgame, json); }
+        catch (SaveCompatibilityException) when (LegendaryCatalogMigration.TryPrevious(combatJson, policy, out var previousCombat, out var previousPolicy))
+        {
+            var original = ReadExact(previousCombat, adventure, previousPolicy, campaign, endgame, json);
+            return EndgameRuntimeSession.Restore(combatJson, adventure, policy, campaign, endgame,
+                LegendaryCatalogMigration.Rebind(original.Capture(), combatJson, adventure, policy, campaign));
+        }
+    }
+
+    private static EndgameRuntimeSession ReadExact(string combatJson, AdventureContent adventure, ProgressionContent policy,
+        CampaignContent campaign, EndgameContent endgame, string json)
+    {
         if (json.Length > 96 * 1024 * 1024) throw new InvalidDataException("Endgame archive exceeds its bounded size.");
         using var document = JsonDocument.Parse(json); ArchiveHeaders.Require(document.RootElement, 1);
         Inspect(ArchiveHeaders.Object(document.RootElement, "state"), combatJson, adventure, policy, campaign, endgame);

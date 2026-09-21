@@ -8,6 +8,9 @@ public sealed record CombatProgressionBuild(string Discipline = "Vanguard", int 
     int ResourceBonus = 0, int FlatDamage = 0, int Armor = 0, int CriticalBasisPoints = 0, int ForkCount = 0, int ChainCount = 0,
     bool BarrierOnDodge = false, bool SummonBurst = false, bool UltimateUnlocked = true, string[]? UnlockedMutations = null, string[]? PurifiedFragments = null)
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public bool PyreTrail { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public bool OathReprisal { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public bool WidowEcho { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public SortedDictionary<DamageFamily, int>? Resistances { get; init; }
 }
@@ -33,6 +36,7 @@ public sealed partial class CombatSession
             foreach (var mutation in _state.Mutations.Keys.Where(id => _content.Skills.Single(s => s.Id == id).Discipline != build.Discipline).ToArray()) _state.Mutations.Remove(mutation);
         }
         _state.ProgressionBuild = JsonData.Copy(build);
+        ClearInactiveLegendaryEffects();
         foreach (var mutation in _state.Mutations.Where(pair => !MutationUnlocked(pair.Value)).Select(pair => pair.Key).ToArray()) _state.Mutations.Remove(mutation);
     }
     private void ValidateProgressionBuild(CombatProgressionBuild build)
@@ -66,6 +70,7 @@ public sealed partial class CombatSession
     }
     private void TickProductionState()
     {
+        TrimLegendaryState();
         foreach (var id in _state.ResourceActions.Where(p => p.Value <= Tick).Select(p => p.Key).ToArray()) _state.ResourceActions.Remove(id);
         if (_state.TemporaryLife > 0 && _state.TemporaryLifeUntil <= Tick)
         {

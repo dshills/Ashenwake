@@ -33,6 +33,8 @@ public partial class GearComparison : PanelContainer
             new(candidate.Rarity + " · #" + candidate.Id, equipped is null ? "No item equipped" : equipped.Rarity + " · #" + equipped.Id, MutedColor, MutedColor)
         };
         rows.Add(new(EquipmentDetails.Lore(candidate.DefinitionId), equipped is null ? "" : EquipmentDetails.Lore(equipped.DefinitionId), MutedColor, MutedColor));
+        if (EquipmentDetails.Source(candidate.DefinitionId).Length > 0 || equipped is not null && EquipmentDetails.Source(equipped.DefinitionId).Length > 0)
+            rows.Add(new(EquipmentDetails.Source(candidate.DefinitionId), equipped is null ? "" : EquipmentDetails.Source(equipped.DefinitionId), MutedColor, MutedColor));
         AddStat(rows, "Damage", candidate.BaseDamage + Roll(candidate, "affix.damage"), (equipped?.BaseDamage ?? 0) + Roll(equipped, "affix.damage"));
         AddStat(rows, "Armor", candidate.BaseArmor + Roll(candidate, "affix.armor"), (equipped?.BaseArmor ?? 0) + Roll(equipped, "affix.armor"));
         AddStat(rows, "Critical", candidate.BaseCriticalBasisPoints + Roll(candidate, "affix.critical"), (equipped?.BaseCriticalBasisPoints ?? 0) + Roll(equipped, "affix.critical"), percent: true);
@@ -55,7 +57,8 @@ public partial class GearComparison : PanelContainer
             notes.Add("Disciplines: " + string.Join(", ", definition.Disciplines) + ". Current: " + state.Character.Discipline + ".");
         if (restriction.Length > 0) notes.Add(restriction);
         string note = string.Join(" ", notes);
-        float width = !string.IsNullOrEmpty(candidate.Evolution) || !string.IsNullOrEmpty(equipped?.Evolution) ? 640 : 520;
+        float width = !string.IsNullOrEmpty(candidate.Evolution) || !string.IsNullOrEmpty(equipped?.Evolution) ||
+            Ashenwake.Core.Combat.LegendaryEquipment.IsItem(candidate.DefinitionId) || Ashenwake.Core.Combat.LegendaryEquipment.IsItem(equipped?.DefinitionId ?? "") ? 640 : 520;
         string comparison = heading + "\n" + string.Join("\n", rows.Select(row => row.Candidate + " | " + row.Equipped)) + "\n" + note;
         if (ComparisonKey == key && ComparisonText == comparison) return;
         ComparisonKey = key; ComparisonText = comparison;

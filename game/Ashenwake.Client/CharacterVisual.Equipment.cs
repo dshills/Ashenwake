@@ -232,11 +232,11 @@ public partial class CharacterVisual
     private void EquippedChest(Node3D parent, ItemAppearance item, string kind)
     {
         string chest = ItemKind(item);
-        bool plate = chest is "march_plate" or "oath_plate" || (chest == "starter_chest" && kind == "vanguard");
+        bool plate = chest is "march_plate" or "oath_plate" or "oathkeeper_reprisal" || (chest == "starter_chest" && kind == "vanguard");
         bool robe = chest is "ash_weave" or "serath_shroud" || (chest == "starter_chest" && kind is "arcanist" or "gravecaller");
         Material fabric = chest switch
-        { "ash_weave" => SharedMaterial("473e50"), "serath_shroud" => SharedMaterial("743f3b"), "oath_plate" => SharedMaterial("c2ae7c", metallic: true), "march_plate" => SharedMaterial("899398", metallic: true), _ => Main };
-        Material trim = chest == "serath_shroud" ? SharedMaterial("e69b61", emissive: true) : Accent;
+        { "ash_weave" => SharedMaterial("473e50"), "serath_shroud" => SharedMaterial("743f3b"), "oath_plate" => SharedMaterial("c2ae7c", metallic: true), "oathkeeper_reprisal" => SharedMaterial("526b78", metallic: true), "march_plate" => SharedMaterial("899398", metallic: true), _ => Main };
+        Material trim = chest == "serath_shroud" ? SharedMaterial("e69b61", emissive: true) : chest == "oathkeeper_reprisal" ? SharedMaterial("e0c181", metallic: true) : Accent;
         var torso = Cone(parent, new(0, 1.37f, 0), .29f, plate ? .40f : .37f, .62f, plate && chest == "starter_chest" ? Metal : fabric);
         torso.Scale = new(1, 1, .75f);
         Box(parent, new(0, 1.38f, -.3f), new(plate ? .43f : .36f, .46f, .065f), plate ? Main : fabric);
@@ -257,6 +257,20 @@ public partial class CharacterVisual
         {
             Box(parent, new(0, 1.41f, -.354f), new(.29f, .055f, .035f), Metal);
             Ring(parent, new(0, 1.42f, -.37f), .07f, .105f, fabric, new(90, 0, 0));
+        }
+        if (chest == "oathkeeper_reprisal")
+        {
+            // An inset shield and outstretched oath bars distinguish this breastplate in every discipline.
+            Box(parent, new(0, 1.43f, -.37f), new(.30f, .30f, .065f), trim);
+            Cone(parent, new(0, 1.245f, -.37f), 0, .17f, .17f, trim);
+            Box(parent, new(0, 1.44f, -.415f), new(.22f, .22f, .032f), fabric);
+            Rod(parent, new(0, 1.55f, -.443f), new(0, 1.24f, -.443f), .024f, Bone);
+            Rod(parent, new(-.105f, 1.45f, -.443f), new(.105f, 1.45f, -.443f), .022f, Bone);
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Rod(parent, new(side * .18f, 1.50f, -.32f), new(side * .35f, 1.63f, -.20f), .04f, trim);
+                Box(parent, new(side * .23f, .96f, -.24f), new(.14f, .37f, .055f), fabric, new(0, 0, side * 9));
+            }
         }
         if (kind == "gravecaller" && chest == "starter_chest")
             for (int side = -1; side <= 1; side += 2)

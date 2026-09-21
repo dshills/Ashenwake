@@ -43,6 +43,8 @@ public partial class CombatFeedbackSmoke : Node3D
             await ReleaseGallery();
             await EarnedLegendaryDiscovery();
             await ReleaseGallery();
+            await LegendaryPowerFeedback();
+            await ReleaseGallery();
             Finish(true, "");
         }
         catch (Exception ex) { GD.PushError(ex.ToString()); Finish(false, ex.Message); }
@@ -169,7 +171,7 @@ public partial class CombatFeedbackSmoke : Node3D
         AddChild(effects);
         try
         {
-            foreach (string cue in new[] { "slash", "thrust", "spell", "hit", "block", "dodge", "dust", "death", "phase", "victory", "loot_legendary", "loot_godwrought" })
+            foreach (string cue in new[] { "slash", "thrust", "spell", "hit", "block", "dodge", "dust", "death", "phase", "victory", "loot_legendary", "loot_godwrought", "legendary_pyre", "legendary_oath", "legendary_widow", "legendary_ready" })
             {
                 effects.Clear(); effects.Emit(cue, new(2, .1f, -1), Vector3.Forward, new Color("f7c786"));
                 Check(cue + "_effect_builds_visible_geometry", effects.Count > 0 && Descendants(effects).OfType<MeshInstance3D>().Any(m => m.IsVisibleInTree()));
@@ -178,6 +180,8 @@ public partial class CombatFeedbackSmoke : Node3D
                 Check(cue + "_effect_pauses", effects.Count == count && Same(before, Pose(effects)));
                 for (int frame = 0; frame < 360; frame++) effects.Advance(1.0 / 60, false, false);
                 Check(cue + "_effect_expires", effects.Count == 0);
+                effects.Emit(cue, Vector3.Zero, Vector3.Forward, new Color("f7c786"), reducedEffects: true);
+                Check(cue + "_effect_respects_reduced_effects", effects.Count == 0);
             }
             for (int i = 0; i < 400; i++) effects.Emit("hit", new(i % 7, .1f, i % 5), Vector3.Forward, new Color("f7c786"));
             Check("effect_burst_is_bounded", effects.Count <= CombatEffects.Maximum && effects.PoolCount <= CombatEffects.Maximum &&
@@ -318,7 +322,7 @@ public partial class CombatFeedbackSmoke : Node3D
             captures = _captures,
             legendaryReplay = new { file = "legendary-drop.replay.json", commands = _legendaryCommands, hash = _legendaryHash },
             error,
-            scope = "Cosmetic attack, dodge, hit, death, monster windup/recovery, pause, root motion, material isolation, sanctuary phase sequences and special-loot cues. A separate fresh Vanguard fights the authored road encounter at seed 20, earning a Legendary drop through ordinary commands and unchanged reward tables. Its independent combat replay verifies exact delivery, duplicate suppression and a quiet restored-loot baseline. Godwrought drop visuals use detached presentation fixtures; no Godwrought reward is earned here."
+            scope = "Cosmetic attack, dodge, hit, death, monster windup/recovery, pause, root motion, material isolation, sanctuary phase sequences, special-loot cues and Legendary equipment feedback. A fresh Vanguard fights the authored road at seed20, earning Pyrebound Treads through ordinary commands. Its independent replay verifies exact delivery, duplicate suppression and a quiet restored-loot baseline. Isolated equipped combat fixtures verify Pyre, Oath and Widow trigger presentation and readiness without advancing Core from the renderer. Godwrought drop visuals use detached presentation fixtures; no Godwrought reward is earned here."
         };
         if (_writeReport) System.IO.File.WriteAllText(Path.Combine(_output, "combat-feedback-smoke.json"), JsonData.Write(report));
         GD.Print(JsonData.Write(report)); GetTree().Quit(passed ? 0 : 1);

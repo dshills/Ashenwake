@@ -50,6 +50,7 @@ public partial class CharacterVisual
 
     private void EquippedGlove(Node3D parent, int side, ItemAppearance item, string kind)
     {
+        if (ItemKind(item) == "widows_last_echo") { EquippedWidowGlove(parent, side, item); return; }
         var palette = ArmorPalette.For(kind);
         Material leather = SharedMaterial(ArmorPalette.Leather), trim = SharedMaterial(palette.Trim);
         // Gravesoil Grips: soil-dark palms, wrapped cuffs and ivory knuckle guards.
@@ -102,6 +103,7 @@ public partial class CharacterVisual
 
     private void EquippedBoot(Node3D parent, int side, ItemAppearance item, string kind)
     {
+        if (ItemKind(item) == "pyrebound_treads") { EquippedPyreBoot(parent, side, item); return; }
         var palette = ArmorPalette.For(kind);
         Material leather = SharedMaterial(ArmorPalette.Leather), shell = ArmorShell(kind), ember = SharedMaterial(ArmorPalette.Ember);
         // Cindertrail Boots: reinforced toes and copper-ember seams, without a light or particle emitter.
@@ -114,6 +116,42 @@ public partial class CharacterVisual
             Rod(parent, new(-.06f, -.55f - i * .062f, -.135f), new(.06f, -.58f - i * .062f, -.135f), .015f, SharedMaterial(palette.Trim));
         Rod(parent, new(side * .151f, -.85f, -.28f), new(side * .151f, -.85f, .10f), .015f, ember);
         ArmorJewel(parent, new(side * .15f, -.58f, -.03f), item);
+    }
+
+    private void EquippedWidowGlove(Node3D parent, int side, ItemAppearance item)
+    {
+        Material silk = SharedMaterial("353049"), silver = SharedMaterial("a7adc4", metallic: true), echo = SharedMaterial("c9b5ef", emissive: true);
+        Cone(parent, new(side * .04f, -.46f, -.015f), .105f, .15f, .33f, silk);
+        Orb(parent, new(side * .04f, -.65f, -.045f), new(.20f, .23f, .23f), silk);
+        // Crossed silver thread and a split silk cuff remain readable without particles.
+        for (int i = 0; i < 3; i++)
+        {
+            float y = -.35f - i * .09f;
+            Rod(parent, new(side * .04f - .09f, y, -.15f), new(side * .04f + .09f, y - .10f, -.15f), .013f, silver);
+            Rod(parent, new(side * .04f + .09f, y, -.15f), new(side * .04f - .09f, y - .10f, -.15f), .013f, echo);
+        }
+        for (int i = -1; i <= 1; i += 2)
+            Box(parent, new(side * .08f + i * .07f, -.47f, .08f), new(.055f, .40f, .025f), silk, new(0, 0, i * 13));
+        Orb(parent, new(side * .04f, -.59f, -.17f), new(.075f, .115f, .045f), echo);
+        ArmorJewel(parent, new(side * .04f, -.37f, -.174f), item);
+    }
+
+    private void EquippedPyreBoot(Node3D parent, int side, ItemAppearance item)
+    {
+        Material charred = SharedMaterial("343133", metallic: true), copper = SharedMaterial("bd7344", metallic: true), fire = SharedMaterial("ffa457", emissive: true);
+        Cone(parent, new(0, -.60f, 0), .14f, .18f, .34f, charred);
+        Box(parent, new(0, -.81f, -.10f), new(.31f, .23f, .49f), charred);
+        Box(parent, new(0, -.91f, -.10f), new(.33f, .04f, .50f), copper);
+        Box(parent, new(0, -.82f, -.29f), new(.28f, .14f, .17f), copper, new(-12, 0, 0));
+        Ring(parent, new(0, -.435f, 0), .145f, .188f, copper);
+        for (int edge = -1; edge <= 1; edge += 2)
+        {
+            Rod(parent, new(edge * .14f, -.84f, -.34f), new(edge * .14f, -.73f, -.11f), .020f, fire);
+            Rod(parent, new(edge * .14f, -.73f, -.11f), new(edge * .10f, -.54f, -.135f), .020f, fire);
+            Cone(parent, new(edge * .10f, -.51f, -.13f), .038f, 0, .17f, copper, new(0, 0, edge * -20));
+        }
+        Rod(parent, new(side * .166f, -.88f, -.31f), new(side * .166f, -.88f, .13f), .018f, fire);
+        ArmorJewel(parent, new(0, -.60f, -.16f), item);
     }
 
     private static void ArmorJewel(Node3D parent, Vector3 at, ItemAppearance item)

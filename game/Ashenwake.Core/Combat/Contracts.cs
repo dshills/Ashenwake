@@ -18,6 +18,7 @@ public sealed record CombatSkillView(string Id, string Name, string Shape, int C
 public sealed record CombatFragmentView(string Id, string Name, AnatomySlot Slot, string Lineage, int Resonance, string Description, bool Equipped);
 public sealed record CombatBuildModifiers(string Manifestation = "", int AshcleaverStacks = 0, bool AshcleaverAwakened = false, string AshcleaverEvolution = "", int TemperLevel = 0, bool AshcleaverEquipped = false, string SecondaryManifestation = "");
 public sealed record CombatMutationView(string Id, string SkillId, string Name, string Description);
+public sealed record CombatLegendaryView(int OathCharge, long OathRemainingTicks, long WidowRemainingTicks);
 public sealed record CombatView(long Tick, string Preset, IReadOnlyList<CombatActorView> Actors, IReadOnlyList<CombatProjectileView> Projectiles,
     IReadOnlyList<CombatAreaView> Areas, IReadOnlyList<CombatLoot> Loot, IReadOnlyList<CombatItem> Inventory,
     IReadOnlyList<CombatSkillView> Skills, IReadOnlyList<CombatFragmentView> Fragments, IReadOnlyList<CombatMutationView> Mutations,
@@ -26,6 +27,7 @@ public sealed record CombatView(long Tick, string Preset, IReadOnlyList<CombatAc
 {
     public int Resource => Momentum;
     public int MaxResource => MaxMomentum;
+    public CombatLegendaryView? Legendary { get; init; }
 }
 
 public sealed record CombatStatus
@@ -73,10 +75,14 @@ public sealed record CombatActor
     public CombatPending? Pending { get; set; }
     public List<CombatStatus> Statuses { get; init; } = [];
 }
-public sealed record CombatProjectile(long Id, int OwnerId, int SourceId, Position Position, Position Target, int TargetId, string SkillId, int Damage, DamageFamily Family, long ExpiresTick, long ActionId, int Depth, string FragmentId = "", int Pierce = 0, int Fork = 0, int Chain = 0, int[]? HitIds = null, int ImpactRadius = 0);
+public sealed record CombatProjectile(long Id, int OwnerId, int SourceId, Position Position, Position Target, int TargetId, string SkillId, int Damage, DamageFamily Family, long ExpiresTick, long ActionId, int Depth, string FragmentId = "", int Pierce = 0, int Fork = 0, int Chain = 0, int[]? HitIds = null, int ImpactRadius = 0)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public long LaunchTick { get; init; }
+}
 public sealed record CombatArea(long Id, int OwnerId, int SourceId, Position Position, int Radius, string SkillId, int Damage, DamageFamily Family, long NextTick, long ExpiresTick, long ActionId, int Depth);
 public sealed record CombatSnapshot
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public LegendaryCombatState? Legendary { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public BorrowedMemoryState? Experiment { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public EndgameCombatState? Endgame { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public CampaignCombatState? Campaign { get; set; }

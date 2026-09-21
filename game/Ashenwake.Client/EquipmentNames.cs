@@ -27,7 +27,7 @@ internal static class EquipmentNames
         var catalog = TextCatalog.Parse(Godot.FileAccess.GetFileAsString("res://text.en.json"));
         if (Godot.OS.GetCmdlineUserArgs().Contains("--pseudo-locale")) catalog = catalog.PseudoLocalize();
         return catalog.Capture().Messages.Keys.Where(key => key.StartsWith("equipment.", StringComparison.Ordinal) ||
-                key.StartsWith("lore.", StringComparison.Ordinal) || key.StartsWith("power.", StringComparison.Ordinal))
+                key.StartsWith("lore.", StringComparison.Ordinal) || key.StartsWith("power.", StringComparison.Ordinal) || key.StartsWith("source.", StringComparison.Ordinal))
             .ToDictionary(key => key, key => catalog.Format(key), StringComparer.Ordinal);
     }
 }

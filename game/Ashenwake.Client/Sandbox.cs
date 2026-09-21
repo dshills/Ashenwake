@@ -301,9 +301,10 @@ public partial class Sandbox : Node3D
             foreach (var hazard in _view.CampaignHazards)
                 PresentCampaignWarning(hazard.Id, hazard.Kind, hazard.Position.X, hazard.Position.Z, hazard.End.X, hazard.End.Z, hazard.Radius, hazard.RemainingTicks, hazard.ContentId);
         foreach (var projectile in _view.Projectiles)
-            PresentEffect($"p{projectile.Id}", projectile.Position.X, projectile.Position.Z, .15f, new("ffc178"), true);
+            PresentCombatProjectile(projectile);
         foreach (var area in _view.Areas)
-            PresentEffect($"a{area.Id}", area.Position.X, area.Position.Z, area.Radius * .001f, new Color(1, .38f, .13f, .24f));
+            PresentCombatArea(area);
+        PresentLegendaryReadiness();
         SynchronizeLootVisuals();
         EndEffects();
         if (!_view.Actors.Any(a => a.Id == _target && a.Health > 0 && a.Visible)) _target = NearestEnemy()?.Id ?? 0;

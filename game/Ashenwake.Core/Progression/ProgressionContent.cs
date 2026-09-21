@@ -76,14 +76,20 @@ public sealed class ProgressionContent
             Items = [.. all.Select(s => new ProductionItemDefinition("item.starter_" + s.ToString().ToLowerInvariant(), [s], s is EquipmentSlot.MainHand or EquipmentSlot.OffHand ? 1 : 0, [], "")),
                 new("item.ashcleaver", [EquipmentSlot.MainHand], 1, [], "property.burning_stacks"),
                 new("item.echo_ring", [EquipmentSlot.Ring1, EquipmentSlot.Ring2], 0, [], "property.summon_burst"),
-                new("item.greatstaff", [EquipmentSlot.MainHand], 2, ["Arcanist", "Gravecaller", "Warden"], "")],
+                new("item.greatstaff", [EquipmentSlot.MainHand], 2, ["Arcanist", "Gravecaller", "Warden"], ""),
+                new("item.pyrebound_treads", [EquipmentSlot.Boots], 0, [], "property.pyre_trail"),
+                new("item.oathkeeper_reprisal", [EquipmentSlot.Chest], 0, [], "property.oath_reprisal"),
+                new("item.widows_last_echo", [EquipmentSlot.Gloves], 0, [], "property.widow_echo")],
             Properties =
             [
                 new("property.burning_stacks", [EquipmentSlot.MainHand], "burning_kill_attack_speed"),
                 new("property.summon_burst", jewelry, "summons_explode_on_expiry"),
                 new("rune.guard", all, "barrier_on_dodge"),
                 new("evolution.serath", [EquipmentSlot.MainHand], "flaming_revenants"),
-                new("evolution.orrun", [EquipmentSlot.MainHand], "molten_seismic_wave")
+                new("evolution.orrun", [EquipmentSlot.MainHand], "molten_seismic_wave"),
+                new("property.pyre_trail", [EquipmentSlot.Boots, EquipmentSlot.Legs], "dodge_burning_trail"),
+                new("property.oath_reprisal", [EquipmentSlot.Chest, EquipmentSlot.OffHand], "barrier_absorption_melee_shockwave"),
+                new("property.widow_echo", [EquipmentSlot.Gloves, EquipmentSlot.Amulet], "dodge_next_projectile_echo")
             ],
             Objectives =
             [

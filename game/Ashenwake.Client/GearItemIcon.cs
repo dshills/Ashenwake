@@ -6,7 +6,7 @@ namespace Ashenwake.Client;
 /// <summary>Small equipment silhouettes drawn locally; inspecting an item creates no world or preview resources.</summary>
 public partial class GearItemIcon : Control
 {
-    private enum Silhouette { Sword, Dagger, Axe, Ashcleaver, Hammer, Pike, Staff, BoneStaff, Shield, Focus, Skull, Helmet, Hood, Plate, Robe, Tunic, Shoulders, Gloves, Belt, Legs, Boots, Ring, Amulet }
+    private enum Silhouette { Sword, Dagger, Axe, Ashcleaver, Hammer, Pike, Staff, BoneStaff, Shield, Focus, Skull, Helmet, Hood, Plate, OathPlate, Robe, Tunic, Shoulders, Gloves, WidowGloves, Belt, Legs, Boots, PyreBoots, Ring, Amulet }
     private static readonly Color Steel = new("c2d1d3"), SteelShade = new("536e7d"), Ink = new("15252f");
     private static readonly Color Leather = new("886048"), Bone = new("e4d5b1"), Ember = new("ff9166");
     private static readonly Color EmptyFill = new("30465099"), EmptyEdge = new("6c8793aa");
@@ -85,13 +85,16 @@ public partial class GearItemIcon : Control
             case Silhouette.Helmet: Helmet(false); break;
             case Silhouette.Hood: Helmet(true); break;
             case Silhouette.Plate: Chest(false, false); break;
+            case Silhouette.OathPlate: OathPlate(); break;
             case Silhouette.Robe: Chest(true, false); break;
             case Silhouette.Tunic: Chest(false, true); break;
             case Silhouette.Shoulders: Shoulders(); break;
             case Silhouette.Gloves: Gloves(); break;
+            case Silhouette.WidowGloves: Gloves(widow: true); break;
             case Silhouette.Belt: Belt(); break;
             case Silhouette.Legs: Legs(); break;
             case Silhouette.Boots: Boots(); break;
+            case Silhouette.PyreBoots: Boots(pyre: true); break;
             case Silhouette.Ring: Ring(); break;
             case Silhouette.Amulet: Amulet(); break;
         }
@@ -136,15 +139,16 @@ public partial class GearItemIcon : Control
             EquipmentSlot.Head => discipline is "veilwalker" or "arcanist" or "gravecaller" or "warden" ? Silhouette.Hood : Silhouette.Helmet,
             EquipmentSlot.Chest => id switch
             {
+                "oathkeeper_reprisal" => Silhouette.OathPlate,
                 "ash_weave" or "serath_shroud" => Silhouette.Robe,
                 "march_plate" or "oath_plate" => Silhouette.Plate,
                 _ => discipline switch { "arcanist" or "gravecaller" => Silhouette.Robe, "veilwalker" or "warden" => Silhouette.Tunic, _ => Silhouette.Plate }
             },
             EquipmentSlot.Shoulders => Silhouette.Shoulders,
-            EquipmentSlot.Gloves => Silhouette.Gloves,
+            EquipmentSlot.Gloves => id == "widows_last_echo" ? Silhouette.WidowGloves : Silhouette.Gloves,
             EquipmentSlot.Belt => Silhouette.Belt,
             EquipmentSlot.Legs => Silhouette.Legs,
-            EquipmentSlot.Boots => Silhouette.Boots,
+            EquipmentSlot.Boots => id == "pyrebound_treads" ? Silhouette.PyreBoots : Silhouette.Boots,
             EquipmentSlot.Ring1 or EquipmentSlot.Ring2 => Silhouette.Ring,
             EquipmentSlot.Amulet => Silhouette.Amulet,
             _ => Silhouette.Sword
@@ -299,17 +303,28 @@ public partial class GearItemIcon : Control
         }
     }
 
-    private void Gloves()
+    private void OathPlate()
+    {
+        Chest(false, false);
+        Shape(new("e0c181"), new(12, 11), new(20, 9), new(28, 11), new(27, 24), new(20, 30), new(13, 24));
+        Shape(new("526b78"), new(15, 13), new(20, 12), new(25, 13), new(24, 23), new(20, 26), new(16, 23));
+        Line(new(20, 14), new(20, 24), Bone, 2);
+        Line(new(16, 18), new(24, 18), Bone, 2);
+    }
+
+    private void Gloves(bool widow = false)
     {
         foreach (int x in new[] { 4, 22 })
         {
-            Shape(new(ArmorPalette.Leather), new(x + 2, 8), new(x + 10, 8), new(x + 11, 19), new(x + 14, 17), new(x + 15, 20), new(x + 11, 26), new(x + 10, 33), new(x + 1, 33), new(x, 18));
-            Shape(new(_armor.Shell), new(x + 1, 6), new(x + 11, 6), new(x + 11, 18), new(x + 1, 18));
+            Shape(new(widow ? "353049" : ArmorPalette.Leather), new(x + 2, 8), new(x + 10, 8), new(x + 11, 19), new(x + 14, 17), new(x + 15, 20), new(x + 11, 26), new(x + 10, 33), new(x + 1, 33), new(x, 18));
+            Shape(new(widow ? "57506e" : _armor.Shell), new(x + 1, 6), new(x + 11, 6), new(x + 11, 18), new(x + 1, 18));
             for (int i = 0; i < 3; i++)
             {
-                Line(new(x + 2, 9 + i * 3), new(x + 10, 8 + i * 3), new(_armor.Trim), 1.3f);
-                Line(new(x + 3 + i * 3, 22), new(x + 3 + i * 3, 25), Bone, 2);
+                Line(new(x + 2, 9 + i * 3), new(x + 10, 8 + i * 3), new(widow ? "c9b5ef" : _armor.Trim), 1.3f);
+                if (widow) Line(new(x + 10, 9 + i * 3), new(x + 2, 8 + i * 3), new("a7adc4"), 1);
+                else Line(new(x + 3 + i * 3, 22), new(x + 3 + i * 3, 25), Bone, 2);
             }
+            if (widow) Gem(new(x + 6, 24), 4, new("c9b5ef"));
             Line(new(x + 5, 28), new(x + 5, 31), SteelShade, 1);
         }
     }
@@ -344,14 +359,20 @@ public partial class GearItemIcon : Control
         Line(new(31, 18), new(31, 31), new(_armor.Trim), 1.4f);
     }
 
-    private void Boots()
+    private void Boots(bool pyre = false)
     {
         foreach (int x in new[] { 4, 22 })
         {
-            Shape(new(ArmorPalette.Leather), new(x + 3, 6), new(x + 12, 6), new(x + 11, 26), new(x + 15, 28), new(x + 15, 33), new(x, 33), new(x, 28), new(x + 3, 24));
-            Line(new(x + 3, 8), new(x + 12, 8), new(_armor.Shell), 4);
-            Shape(new(_armor.Shell), new(x + 2, 27), new(x + 10, 27), new(x + 14, 29), new(x + 14, 32), new(x + 1, 32));
-            Line(new(x + 1, 33), new(x + 14, 33), new(ArmorPalette.Ember), 1.7f);
+            Shape(new(pyre ? "343133" : ArmorPalette.Leather), new(x + 3, 6), new(x + 12, 6), new(x + 11, 26), new(x + 15, 28), new(x + 15, 33), new(x, 33), new(x, 28), new(x + 3, 24));
+            Line(new(x + 3, 8), new(x + 12, 8), new(pyre ? "bd7344" : _armor.Shell), 4);
+            Shape(new(pyre ? "bd7344" : _armor.Shell), new(x + 2, 27), new(x + 10, 27), new(x + 14, 29), new(x + 14, 32), new(x + 1, 32));
+            Line(new(x + 1, 33), new(x + 14, 33), new(pyre ? "ffa457" : ArmorPalette.Ember), 1.7f);
+            if (pyre)
+            {
+                Line(new(x + 3, 27), new(x + 7, 19), Ember, 2.2f);
+                Line(new(x + 7, 19), new(x + 5, 12), Ember, 2.2f);
+                Shape(new("ffa457"), new(x + 6, 21), new(x + 10, 12), new(x + 10, 23));
+            }
             for (int i = 0; i < 3; i++)
                 Line(new(x + 4, 13 + i * 4), new(x + 10, 15 + i * 4), new(_armor.Trim), 1.2f);
         }

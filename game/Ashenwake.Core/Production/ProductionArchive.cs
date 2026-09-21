@@ -17,6 +17,17 @@ public static class ProductionSaveStore
 {
     public static ProductionSession Read(string combatJson, AdventureContent adventure, ProgressionContent policy, string json)
     {
+        try { return ReadExact(combatJson, adventure, policy, json); }
+        catch (SaveCompatibilityException) when (LegendaryCatalogMigration.TryPrevious(combatJson, policy, out var previousCombat, out var previousPolicy))
+        {
+            var original = ReadExact(previousCombat, adventure, previousPolicy, json);
+            return ProductionSession.Restore(combatJson, adventure, policy,
+                LegendaryCatalogMigration.Rebind(original.Capture(), combatJson, adventure, policy));
+        }
+    }
+
+    private static ProductionSession ReadExact(string combatJson, AdventureContent adventure, ProgressionContent policy, string json)
+    {
         if (json.Length > 64 * 1024 * 1024) throw new InvalidDataException("Production save exceeds the bounded archive size.");
         using var headers = JsonDocument.Parse(json);
         ArchiveHeaders.Require(headers.RootElement, 1);

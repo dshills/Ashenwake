@@ -5,6 +5,7 @@ using Ashenwake.Core.Content;
 using Ashenwake.Core.Endgame;
 using Ashenwake.Core.Production;
 using Ashenwake.Core.Progression;
+using Ashenwake.Core.Serialization;
 
 namespace Ashenwake.Core.Diagnostics;
 
@@ -25,7 +26,11 @@ public static class ReleaseUpgradeAudit
         {
             var originalSave = JsonData.Read<EndgameRuntimeSave>(original);
             var previousSession = EndgameRuntimeSaveStore.Read(currentCombat, adventure, progression, campaign, endgame, original);
-            if (previousSession.StateHash != originalSave.StateHash || !previousSession.InHub || previousSession.View.HighestClearedTier != 10 || previousSession.View.CompletedGodHunts != 5)
+            // The loader authenticates the old catalog and state before the additive upgrade.
+            // Compare every logical field after replacing only the catalog identities.
+            var rebound = LegendaryCatalogMigration.Rebind(originalSave.State, currentCombat, adventure, progression, campaign);
+            if (originalSave.StateHash != JsonData.Hash(originalSave.State) || previousSession.StateHash != JsonData.Hash(rebound) ||
+                !previousSession.InHub || previousSession.View.HighestClearedTier != 10 || previousSession.View.CompletedGodHunts != 5)
                 throw new InvalidDataException("Prior exported endgame state changed during upgrade.");
             var restored = EndgameRuntimeSaveStore.Read(currentCombat, adventure, progression, campaign, endgame,
                 JsonData.Write(new EndgameRuntimeSave(1, previousSession.StateHash, previousSession.Capture())));

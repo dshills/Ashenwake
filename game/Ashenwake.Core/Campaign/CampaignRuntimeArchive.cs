@@ -17,6 +17,17 @@ public static class CampaignRuntimeSaveStore
     public static string ProfilePath(string savePath) => ProductionSaveStore.ProfilePath(savePath);
     public static CampaignRuntimeSession Read(string combatJson, AdventureContent adventure, ProgressionContent policy, CampaignContent campaign, string json)
     {
+        try { return ReadExact(combatJson, adventure, policy, campaign, json); }
+        catch (SaveCompatibilityException) when (LegendaryCatalogMigration.TryPrevious(combatJson, policy, out var previousCombat, out var previousPolicy))
+        {
+            var original = ReadExact(previousCombat, adventure, previousPolicy, campaign, json);
+            return CampaignRuntimeSession.Restore(combatJson, adventure, policy, campaign,
+                LegendaryCatalogMigration.Rebind(original.Capture(), combatJson, adventure, policy, campaign));
+        }
+    }
+
+    private static CampaignRuntimeSession ReadExact(string combatJson, AdventureContent adventure, ProgressionContent policy, CampaignContent campaign, string json)
+    {
         if (json.Length > 64 * 1024 * 1024) throw new InvalidDataException("Campaign archive exceeds its bounded size.");
         using var document = JsonDocument.Parse(json); ArchiveHeaders.Require(document.RootElement, 1);
         var state = ArchiveHeaders.Object(document.RootElement, "state"); ArchiveHeaders.Require(state, 1, "campaign-runtime.1");

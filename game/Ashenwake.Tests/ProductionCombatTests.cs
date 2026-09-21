@@ -174,7 +174,7 @@ public sealed class ProductionCombatTests
     [Fact]
     public void NaturalLootCoversAllConventionalRaritiesWithUnchangedTwoDrawStream()
     {
-        var definitions = CombatContent.Parse(Content()).Items.Where(i => i.Id != "item.ashcleaver").ToArray();
+        var definitions = CombatContent.Parse(Content()).Items.Where(i => i.Id != "item.ashcleaver" && !LegendaryEquipment.IsItem(i.Id)).ToArray();
         var rarities = new HashSet<string>();
         for (ulong seed = 1; seed <= 64; seed++)
         {

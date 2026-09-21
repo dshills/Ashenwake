@@ -22,6 +22,7 @@ internal static class AuthoringCommands
         text.RequireKeys(["production.title", "production.level", "production.materials", "production.discipline", "production.equipment", "production.mastery", "production.crafting", "production.profile"]);
         text.RequireKeys(combat.Items.SelectMany(item => new[] { "equipment." + item.Id[5..], "lore." + item.Id[5..] }));
         text.RequireKeys(progression.Properties.SelectMany(property => new[] { "power." + property.Id + ".name", "power." + property.Id + ".description" }));
+        text.RequireKeys(["source.pyrebound_treads", "source.oathkeeper_reprisal", "source.widows_last_echo"]);
         text.RequireKeys(["power.awakening.dormant.name", "power.awakening.dormant.description", "power.awakening.awakened.name", "power.awakening.awakened.description"]);
         switch (args[1])
         {

@@ -24,6 +24,7 @@ internal static class ProductionCommands
             ExpeditionSession.ValidateContent(combat, adventure);
             text.RequireKeys(CombatContent.Parse(combat).Items.SelectMany(item => new[] { "equipment." + item.Id[5..], "lore." + item.Id[5..] }));
             text.RequireKeys(progression.Capture().Properties.SelectMany(property => new[] { "power." + property.Id + ".name", "power." + property.Id + ".description" }));
+            text.RequireKeys(["source.pyrebound_treads", "source.oathkeeper_reprisal", "source.widows_last_echo"]);
             text.RequireKeys(["power.awakening.dormant.name", "power.awakening.dormant.description", "power.awakening.awakened.name", "power.awakening.awakened.description"]);
             if (args[1] == "compile")
                 foreach (string file in new[] { "combat", "adventure", "progression", "text.en" })

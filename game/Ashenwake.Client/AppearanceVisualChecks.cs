@@ -20,6 +20,7 @@ public static partial class AppearanceVisualChecks
         CheckManifestations(require);
         CheckAnatomy(require);
         CheckArmor(require);
+        CheckLegendaryArmor(require);
         CheckLoot(require);
         require(CharacterVisual.CachedEquipmentResourceCount <= 160 && CharacterVisual.CachedResourceCounts.Models <= 96 &&
             CharacterVisual.CachedResourceCounts.Materials <= 256, "appearance_character_caches_are_bounded");
@@ -32,6 +33,35 @@ public static partial class AppearanceVisualChecks
     { Shoulders = new("item.starter_shoulders"), Gloves = new("item.starter_gloves"), Belt = new("item.starter_belt"), Legs = new("item.starter_legs"), Boots = new("item.starter_boots") };
     private static CharacterVisual Hero(CharacterAppearance appearance)
         => CharacterVisual.Create("player." + appearance.Discipline.ToLowerInvariant(), "", appearance.Discipline, appearance: appearance);
+
+    private static void CheckLegendaryArmor(Action<bool, string> require)
+    {
+        foreach (string discipline in Disciplines)
+        {
+            var common = Equipped(discipline);
+            var legendary = common with
+            {
+                Chest = new(LegendaryEquipment.Oath, "Legendary"),
+                Gloves = new(LegendaryEquipment.Widow, "Legendary"),
+                Boots = new(LegendaryEquipment.Pyre, "Legendary")
+            };
+            var baseline = Hero(common); var equipped = Hero(legendary);
+            try
+            {
+                foreach (string slot in new[] { "Chest", "Gloves", "Boots" })
+                    require(Geometry(Module(baseline, "Equipment" + slot)!) != Geometry(Module(equipped, "Equipment" + slot)!),
+                        "appearance_" + discipline + "_legendary_" + slot + "_changes_geometry");
+                require(CosmeticOnly(equipped) && Descendants(equipped).OfType<MeshInstance3D>().Count() <= 100,
+                    "appearance_" + discipline + "_legendary_armor_is_bounded_and_cosmetic");
+                var meshes = MeshIdentities(equipped);
+                equipped.SetReducedEffects(true);
+                equipped.Animate(.1, Vector3.Right);
+                require(meshes.SequenceEqual(MeshIdentities(equipped)) && HasGeometry(Module(equipped, "EquipmentChest")),
+                    "appearance_" + discipline + "_legendary_identity_survives_reduced_effects");
+            }
+            finally { baseline.Free(); equipped.Free(); }
+        }
+    }
 
     private static void CheckEquipment(Action<bool, string> require)
     {

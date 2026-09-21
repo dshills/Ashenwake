@@ -39,6 +39,7 @@ public partial class CraftingWorkbench
         {
             Line($"{EquipmentNames.For(current.DefinitionId)} · {current.Rarity} · #{current.Id}", LootVisual.RarityColor(current.Rarity.ToString()), 13);
             Line(EquipmentDetails.Lore(current.DefinitionId), PreviewMuted);
+            if (EquipmentDetails.Source(current.DefinitionId) is { Length: > 0 } source) Line(source, PreviewMuted);
             Line("Item totals include base values and rolled affixes.", PreviewMuted);
             foreach (var stat in ItemStatRows(current, preview.Success ? projected : null))
                 Line(stat.Text, stat.Delta is null ? PreviewNeutral : ChangeColor(stat.Delta.Value));

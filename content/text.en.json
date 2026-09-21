@@ -79,6 +79,21 @@
     "power.awakening.dormant.name": { "other": "Dormant" },
     "power.awakening.dormant.description": { "other": "Awakens after 1,000 burning kills while equipped. Then direct skill hits at 5 stacks can release a fire wave once per second." },
     "power.awakening.awakened.name": { "other": "Awakened" },
-    "power.awakening.awakened.description": { "other": "Direct skill hits at 5 stacks release a fire wave, at most once per second. A permanent evolution can alter this power." }
+    "power.awakening.awakened.description": { "other": "Direct skill hits at 5 stacks release a fire wave, at most once per second. A permanent evolution can alter this power." },
+    "equipment.pyrebound_treads": { "other": "Pyrebound Treads" },
+    "equipment.oathkeeper_reprisal": { "other": "Oathkeeper’s Reprisal" },
+    "equipment.widows_last_echo": { "other": "Widow’s Last Echo" },
+    "lore.pyrebound_treads": { "other": "The condemned walked from the pyre. Every step remembered the fire." },
+    "lore.oathkeeper_reprisal": { "other": "Each blow denied was a promise. Every promise would be returned." },
+    "lore.widows_last_echo": { "other": "She stitched a second shadow into her gloves, so no arrow would travel alone." },
+    "power.property.pyre_trail.name": { "other": "Wake of Embers" },
+    "power.property.pyre_trail.description": { "other": "A moving dodge leaves three burning patches for 2 seconds. Each patch pulses for 6 Fire damage and applies Burning. Copies do not stack." },
+    "power.property.oath_reprisal.name": { "other": "Debt of Iron" },
+    "power.property.oath_reprisal.description": { "other": "Enemy damage absorbed by your barrier stores up to 60 charge for 8 seconds. Your next melee hit releases it as Crush damage within 2.4m. Copies do not stack." },
+    "power.property.widow_echo.name": { "other": "The Second Shadow" },
+    "power.property.widow_echo.description": { "other": "After dodging, your next projectile skill within 5 seconds fires a delayed Void echo at half its base damage. The echo cannot fork, chain, or trigger other hit powers. Copies do not stack." },
+    "source.pyrebound_treads": { "other": "Found: clear the Road ambush in Act I; also Grey March Fracture final rooms." },
+    "source.oathkeeper_reprisal": { "other": "Found: defeat the Covenant Warden in Act IV; also Shattered Spine Fracture final rooms." },
+    "source.widows_last_echo": { "other": "Found: defeat Rootheart in Act II; also Verdant Maw Fracture final rooms." }
   }
 }

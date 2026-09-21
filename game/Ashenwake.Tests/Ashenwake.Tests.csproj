@@ -37,5 +37,6 @@
     <None Include="../../fixtures/progression-phase4.json" Link="fixtures/progression-phase4.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/campaign-phase4.json" Link="fixtures/campaign-phase4.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/phase4-migration-manifest.json" Link="fixtures/phase4-migration-manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/phase5-endgame-complete.json" Link="fixtures/phase5-endgame-complete.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

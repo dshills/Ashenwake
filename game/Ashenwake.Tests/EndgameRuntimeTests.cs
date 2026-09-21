@@ -61,7 +61,7 @@ public sealed class EndgameRuntimeTests
         using var manifest = JsonDocument.Parse(Read("fixtures/phase4-migration-manifest.json"));
         foreach (var entry in manifest.RootElement.GetProperty("files").EnumerateObject())
             Assert.Equal(entry.Value.GetString()!.ToUpperInvariant(), Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures", entry.Name)))));
-        var previous = CampaignRuntimeSaveStore.Read(Previous.Value, Adventure, Policy, Campaign, Read("fixtures/phase4-campaign-complete.json"));
+        var previous = CampaignRuntimeSaveStore.Read(Previous.Value, Adventure, ProgressionContent.Parse(Read("fixtures/progression-phase4.json")), Campaign, Read("fixtures/phase4-campaign-complete.json"));
         Assert.Equal(manifest.RootElement.GetProperty("stateHash").GetString(), previous.StateHash);
         var session = Import(); Assert.True(session.InHub); Assert.True(session.View.Unlocked); Assert.Empty(session.View.AvailableSigils); Assert.Empty(session.View.Catalysts);
         Assert.Equal(JsonData.Hash(previous.Capture().Campaign), JsonData.Hash(session.Campaign.Capture().Campaign));

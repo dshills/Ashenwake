@@ -1225,6 +1225,45 @@
         "Gravecaller",
         "Warden"
       ]
+    },
+    {
+      "id": "item.pyrebound_treads",
+      "name": "Pyrebound Treads",
+      "slot": "Boots",
+      "damage": 0,
+      "armor": 350,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Boots"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.oathkeeper_reprisal",
+      "name": "Oathkeeper’s Reprisal",
+      "slot": "Chest",
+      "damage": 0,
+      "armor": 2200,
+      "criticalBasisPoints": 0,
+      "compatibleSlots": [
+        "Chest"
+      ],
+      "hands": 0,
+      "disciplines": []
+    },
+    {
+      "id": "item.widows_last_echo",
+      "name": "Widow’s Last Echo",
+      "slot": "Gloves",
+      "damage": 2,
+      "armor": 200,
+      "criticalBasisPoints": 400,
+      "compatibleSlots": [
+        "Gloves"
+      ],
+      "hands": 0,
+      "disciplines": []
     }
   ],
   "loadouts": [

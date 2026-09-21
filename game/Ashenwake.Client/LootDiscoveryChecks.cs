@@ -25,21 +25,22 @@ public partial class CombatFeedbackSmoke
         sandbox.PresentAuthoredRoom(combat.Room, "legendary-discovery", "default");
         sandbox.SetWorldSubtitle("THE ROAD · EARNED LEGENDARY DISCOVERY");
         IReadOnlyList<CombatEvent> last = [];
-        for (int tick = 0; tick < 900 && sandbox.SpecialLootDropCount == 0; tick++)
+        for (int tick = 0; tick < 900 && !combat.View.Loot.Any(l => l.Item.DefinitionId == LegendaryEquipment.Pyre); tick++)
         {
             last = recorder.Step(combat, CampaignCombatSmoke.Commands(combat.View, combat.Room));
             sandbox.PresentCombatEvents(last, combat); sandbox.AdoptSession(combat);
             if (tick % 60 == 0) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }
-        Check("real_legendary_drop_reaches_shipping_feedback", sandbox.SpecialLootDropCount == 1 && sandbox.LastSpecialLootCue == "loot_legendary" &&
-            last.Any(e => e.Kind == "LootDropped" && combat.View.Loot.Any(l => l.Id == e.Amount && l.Item.DefinitionId == e.ContentId && l.Item.Rarity == "Legendary")));
+        int discoveries = sandbox.SpecialLootDropCount;
+        Check("real_legendary_drop_reaches_shipping_feedback", discoveries >= 1 && sandbox.LastSpecialLootCue == "loot_legendary" &&
+            last.Any(e => e.Kind == "LootDropped" && e.ContentId == LegendaryEquipment.Pyre && combat.View.Loot.Any(l => l.Id == e.Amount && l.Item.DefinitionId == e.ContentId && l.Item.Rarity == "Legendary")));
         _legendaryHash = combat.StateHash; _legendaryCommands = recorder.FrameCount;
         sandbox.PresentCombatEvents(last, combat);
-        Check("real_duplicate_drop_does_not_replay_discovery", sandbox.SpecialLootDropCount == 1 && combat.StateHash == _legendaryHash);
+        Check("real_duplicate_drop_does_not_replay_discovery", sandbox.SpecialLootDropCount == discoveries && combat.StateHash == _legendaryHash);
         await Capture("earned-legendary-discovery.png");
         var restored = CombatSession.Restore(combatJson, combat.Capture());
         sandbox.SetSession(restored); sandbox.PresentCombatEvents(last, restored);
-        Check("real_restored_ground_loot_stays_quiet", sandbox.SpecialLootDropCount == 1 && restored.StateHash == _legendaryHash);
+        Check("real_restored_ground_loot_stays_quiet", sandbox.SpecialLootDropCount == discoveries && restored.StateHash == _legendaryHash);
         var replay = recorder.Capture(); var result = CombatReplayRunner.Run(combatJson, replay);
         Check("legendary_discovery_combat_replays_exactly", result.Success && result.FinalHash == _legendaryHash);
         System.IO.File.WriteAllText(Path.Combine(_output, "legendary-drop.replay.json"), JsonData.Write(replay));
@@ -84,7 +85,7 @@ public partial class CombatFeedbackSmoke
     private async Task LootDiscoveryGallery()
     {
         _heading.Text = "A VOICE IN THE ASH";
-        _caption.Text = "Legendary: rising golden sparks · Godwrought: a brief ember crown\nPresentation fixtures show both cues; gameplay reward tables are unchanged.";
+        _caption.Text = "Legendary: rising golden sparks · Godwrought: a brief ember crown\nPresentation fixtures show both discovery cues; the road encounter separately verifies an earned Pyrebound drop.";
         var effects = new CombatEffects(); _gallery.AddChild(effects);
         for (int i = 0; i < 2; i++)
         {

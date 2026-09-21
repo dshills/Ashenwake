@@ -243,6 +243,7 @@ public partial class AppearanceSmoke : Node3D
         var title = new Label { Text = "DIVINE MANIFESTATIONS", Position = new(55, 42) }; title.AddThemeFontSizeOverride("font_size", 30); canvas.AddChild(title);
         var subtitle = new Label { Text = "Burning Blood · Whispering Shadow · Stone Memory · Voracious Renewal", Position = new(55, 89) }; canvas.AddChild(subtitle);
         await ArmorGallery(gallery, camera, canvas, title, subtitle);
+        await LegendaryArmorGallery(gallery, camera, canvas, title, subtitle);
         title.Text = "DIVINE MANIFESTATIONS"; subtitle.Text = "Burning Blood · Whispering Shadow · Stone Memory · Voracious Renewal";
         var appearance = CharacterAppearance.FromProgression(_session.Capture().Progression);
         var actors = new Node3D(); gallery.AddChild(actors);

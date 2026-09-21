@@ -26,6 +26,19 @@ public static class LocalProfileStore
 
     public static LocalProfileState Read(ProgressionContent content, string json)
     {
+        try { return ReadExact(content, json); }
+        catch (SaveCompatibilityException)
+        {
+            var previous = LegendaryCatalogMigration.PreviousPolicy(content);
+            if (previous.Hash == content.Hash) throw;
+            var profile = ReadExact(previous, json);
+            ProgressionSession.ValidateProfile(content, profile);
+            return profile;
+        }
+    }
+
+    private static LocalProfileState ReadExact(ProgressionContent content, string json)
+    {
         using var document = JsonDocument.Parse(json);
         if (document.RootElement.ValueKind != JsonValueKind.Object ||
             !document.RootElement.TryGetProperty("schemaVersion", out var schema) ||
@@ -52,7 +65,8 @@ public static class LocalProfileStore
             if (previous.Profile.ProfileId != incoming.ProfileId) throw new InvalidDataException("Cannot merge different local profile identities.");
             merged.Unlocks.UnionWith(previous.Profile.Unlocks); merged.Discoveries.UnionWith(previous.Profile.Discoveries);
             ProgressionSession.ValidateProfile(content, merged);
-            if (!previous.RecoveredBackup) AtomicWrite(full + ".bak", Serialize(content, previous.Profile));
+            // Preserve the validated original bytes, including its previous catalog identity.
+            if (!previous.RecoveredBackup) AtomicWrite(full + ".bak", File.ReadAllText(full));
         }
         AtomicWrite(full, Serialize(content, merged)); return JsonData.Copy(merged);
     }
