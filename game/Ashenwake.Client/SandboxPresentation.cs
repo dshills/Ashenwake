@@ -61,19 +61,29 @@ public partial class Sandbox
                 BackgroundColor = new Color("111722"),
                 AmbientLightSource = Godot.Environment.AmbientSource.Color,
                 AmbientLightColor = new Color("96b2c0"),
-                AmbientLightEnergy = .7f,
+                AmbientLightEnergy = .4f,
                 TonemapMode = Godot.Environment.ToneMapper.Filmic
             }
         };
+        GraphicsProfile.TrackEnvironment(_worldEnvironment);
         AddChild(_worldEnvironment);
         _sun = new DirectionalLight3D
         {
             RotationDegrees = new(-65, -30, 0),
             LightColor = new Color("ffe0b0"),
-            LightEnergy = 1.5f,
+            LightEnergy = 1.05f,
             ShadowEnabled = true
         };
         AddChild(_sun);
+        AddChild(new DirectionalLight3D
+        {
+            Name = "CoolRimLight",
+            RotationDegrees = new(-24, 145, 0),
+            LightColor = new("8faeca"),
+            LightEnergy = .16f,
+            LightSpecular = .4f
+        });
+        ApplyGraphicsQuality();
         _camera = new Camera3D
         {
             Projection = Camera3D.ProjectionType.Orthogonal,

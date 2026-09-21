@@ -12,7 +12,7 @@ The [combat HUD](../docs/combat_hud.md) now groups vitals, skills, status effect
 
 The [main menu and character browser](../docs/front_menu.md) add visual discipline previews, separate new-character save slots, validated save cards and safe resume/return/quit flows.
 
-The [Settings & Controls screen](../docs/settings_controls.md) adds organized preferences, readable rebinding with conflict detection, independent audio channels, explicit accessibility guidance and tab-specific defaults.
+The [Settings & Controls screen](../docs/settings_controls.md) adds organized preferences, readable rebinding with conflict detection, independent audio channels, explicit accessibility guidance and tab-specific defaults. The [graphics polish pass](../docs/graphics_polish.md) adds textured materials, beveled character geometry, improved lighting and High/Performance presets.
 
 Build a small, satisfying, replayable single-player game loop first. Prove that Divine Anatomy creates surprising build interactions, then establish a repeatable content pipeline, produce the campaign and endgame, and release a reliable single-player game. Cooperative play follows as a separately gated expansion.
 

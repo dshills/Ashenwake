@@ -48,7 +48,7 @@ public static class EnvironmentGround
         bool hub = style == "greyhaven", road = style == "road", sanctum = style == "sanctum";
         string soil = hub ? "303b38" : "252e30";
         string[] stone = hub ? ["535e59", "5b645e", "626a61", "485750"] : ["49575b", "536164", "5a6667", "424f55"];
-        b.Box(new(x * 2 + 9, .4f, z * 2 + 9), new(0, -.29f, 0), soil);
+        b.Box(new(x * 2 + 9, .4f, z * 2 + 9), new(0, -.29f, 0), soil, surface: SurfaceKind.Earth);
         // Offset rows and restrained variations replace the diagnostic grid. They never alter collision.
         const float stepX = 1.18f, stepZ = .86f;
         int row = 0;
@@ -65,7 +65,7 @@ public static class EnvironmentGround
                 float depth = Math.Min(stepZ - .065f, (z - pz) * 2 - .03f);
                 b.Box(new(width, .065f, depth), new(px, -.052f, pz), stone[variation % stone.Length], new(0, variation % 3 - 1, 0));
                 if (!hub && !path && variation == 7)
-                    b.Box(new(width * .58f, .007f, depth * .36f), new(px, -.015f, pz), "384b43", new(0, 17, 0));
+                    b.Box(new(width * .58f, .007f, depth * .36f), new(px, -.015f, pz), "384b43", new(0, 17, 0), surface: SurfaceKind.Earth);
             }
         }
         // Low contrasting coping marks the exact navigable edge, with the outlying scenery behind it.

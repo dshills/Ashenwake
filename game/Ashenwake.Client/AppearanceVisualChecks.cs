@@ -16,6 +16,8 @@ public static partial class AppearanceVisualChecks
 
     public static void Run(Action<bool, string> require)
     {
+        CheckSurfaces(require);
+        CheckPolishedGeometry(require);
         CheckEquipment(require);
         CheckManifestations(require);
         CheckAnatomy(require);
@@ -23,7 +25,7 @@ public static partial class AppearanceVisualChecks
         CheckLegendaryArmor(require);
         CheckLoot(require);
         require(CharacterVisual.CachedEquipmentResourceCount <= 160 && CharacterVisual.CachedResourceCounts.Models <= 96 &&
-            CharacterVisual.CachedResourceCounts.Materials <= 256, "appearance_character_caches_are_bounded");
+            CharacterVisual.CachedResourceCounts.Materials <= 256 && CharacterVisual.CachedShapeResourceCount <= 128, "appearance_character_caches_are_bounded");
         require(LootVisual.CachedResourceCounts.Models <= LootVisual.MaximumModelTemplates && LootVisual.CachedResourceCounts.Materials == 12,
             "appearance_loot_caches_are_bounded");
     }
@@ -33,6 +35,73 @@ public static partial class AppearanceVisualChecks
     { Shoulders = new("item.starter_shoulders"), Gloves = new("item.starter_gloves"), Belt = new("item.starter_belt"), Legs = new("item.starter_legs"), Boots = new("item.starter_boots") };
     private static CharacterVisual Hero(CharacterAppearance appearance)
         => CharacterVisual.Create("player." + appearance.Discipline.ToLowerInvariant(), "", appearance.Discipline, appearance: appearance);
+
+    private static void CheckPolishedGeometry(Action<bool, string> require)
+    {
+        using var nativeBox = new BoxMesh();
+        var nativeArrays = nativeBox.SurfaceGetArrays(0);
+        var nativeVertices = nativeArrays[(int)Mesh.ArrayType.Vertex].AsVector3Array();
+        var nativeNormals = nativeArrays[(int)Mesh.ArrayType.Normal].AsVector3Array();
+        var nativeIndices = nativeArrays[(int)Mesh.ArrayType.Index].AsInt32Array();
+        float nativeFacing = (nativeVertices[nativeIndices[1]] - nativeVertices[nativeIndices[0]])
+            .Cross(nativeVertices[nativeIndices[2]] - nativeVertices[nativeIndices[0]]).Dot(nativeNormals[nativeIndices[0]]);
+        require(float.IsFinite(nativeFacing) && Math.Abs(nativeFacing) > .000001f, "polished_winding_reference_has_a_non_degenerate_native_box_face");
+        GD.Print("Polished geometry native BoxMesh cross/normal reference: " + nativeFacing);
+        Vector3[] shapes = [new(.42f, .46f, .08f), new(.31f, .23f, .49f), new(.012f, .12f, .022f)];
+        for (int shape = 0; shape < shapes.Length; shape++)
+        {
+            var mesh = CharacterVisual.PolishedBoxMesh(shapes[shape]);
+            var arrays = mesh.SurfaceGetArrays(0);
+            var vertices = arrays[(int)Mesh.ArrayType.Vertex].AsVector3Array();
+            var normals = arrays[(int)Mesh.ArrayType.Normal].AsVector3Array();
+            var uv = arrays[(int)Mesh.ArrayType.TexUV].AsVector2Array();
+            var indices = arrays[(int)Mesh.ArrayType.Index].AsInt32Array();
+            require(indices.Length == 132 && vertices.Length <= 132 && mesh.GetAabb().Size.IsEqualApprox(shapes[shape]) &&
+                vertices.All(v => v.IsFinite()) && normals.All(n => n.IsFinite() && Math.Abs(n.LengthSquared() - 1) < .001f) &&
+                uv.Length == vertices.Length && uv.All(p => p.IsFinite()), "polished_shape_" + shape + "_has_finite_bounded_surface_and_uvs");
+            bool facing = normals.Length == vertices.Length;
+            for (int i = 0; i < indices.Length && facing; i += 3)
+            {
+                Vector3 a = vertices[indices[i]], b = vertices[indices[i + 1]], c = vertices[indices[i + 2]];
+                Vector3 normal = normals[indices[i]];
+                facing &= (b - a).Cross(c - a).Dot(normal) * nativeFacing > 0 && normal.Dot((a + b + c) / 3) > 0;
+            }
+            require(facing, "polished_shape_" + shape + "_faces_outward_with_native_box_winding");
+            require(CharacterVisual.PolishedBoxMesh(shapes[shape]).GetInstanceId() == mesh.GetInstanceId(),
+                "polished_shape_" + shape + "_reuses_immutable_geometry");
+        }
+        var tapered = CharacterVisual.PolishedBoxMesh(new(.5f, .5f, .1f), .7f).GetFaces();
+        float lower = tapered.Where(v => v.Y < -.23f).Max(v => Math.Abs(v.X));
+        float upper = tapered.Where(v => v.Y > .23f).Max(v => Math.Abs(v.X));
+        require(lower < upper * .8f, "polished_breastplate_has_a_narrower_waist");
+        CheckPolishedBatching(require);
+    }
+
+    private static void CheckPolishedBatching(Action<bool, string> require)
+    {
+        using var native = new SphereMesh { Radius = .3f, Height = .6f, RadialSegments = 12, Rings = 6 };
+        using var material = new StandardMaterial3D();
+        var polished = CharacterVisual.PolishedBoxMesh(new(.31f, .23f, .49f));
+        foreach (bool polishedFirst in new[] { false, true })
+        {
+            var parent = new Node3D();
+            try
+            {
+                Mesh[] sources = polishedFirst ? [polished, native] : [native, polished];
+                for (int i = 0; i < sources.Length; i++)
+                    parent.AddChild(new MeshInstance3D { Mesh = sources[i], Position = Vector3.Right * (i * 4 - 2), MaterialOverride = material });
+                int expectedCorners = sources.Sum(source => source.GetFaces().Length);
+                var generated = new List<Mesh>(); int groupIndex = 0;
+                CharacterVisual.Batch(parent, generated, null, ref groupIndex);
+                var result = parent.GetChildren().OfType<MeshInstance3D>().Single();
+                var faces = result.Mesh.GetFaces();
+                require(groupIndex == 1 && generated.Count == 1 && faces.Length == expectedCorners &&
+                    faces.Any(vertex => vertex.X < -1) && faces.Any(vertex => vertex.X > 1),
+                    "polished_batch_preserves_native_and_beveled_triangles_" + (polishedFirst ? "polished_first" : "native_first"));
+            }
+            finally { parent.Free(); }
+        }
+    }
 
     private static void CheckLegendaryArmor(Action<bool, string> require)
     {

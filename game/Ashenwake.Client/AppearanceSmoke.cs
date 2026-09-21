@@ -219,11 +219,33 @@ public partial class AppearanceSmoke : Node3D
         Check("equipment_and_dungeon_replay_match", replay.Success);
     }
 
+    private async Task CheckGalleryBackground(Godot.Environment environment, DirectionalLight3D key)
+    {
+        if (DisplayServer.GetName() == "headless") return;
+        var colors = new List<Color>();
+        foreach (var profile in new[] { ("High", false), ("Performance", false), ("High", true) })
+        {
+            GraphicsProfile.Apply(GetViewport(), environment, key, profile.Item1, profile.Item2);
+            await Frames(6);
+            // Native exported windows can stop automatic draws while inactive.
+            // Use the same explicit capture contract as the rest of this diagnostic.
+            RenderingServer.ForceDraw(false); RenderingServer.ForceSync();
+            using var image = GetViewport().GetTexture().GetImage();
+            colors.Add(image.GetPixel(8, 8));
+        }
+        Check("bloom_preserves_dark_gallery_background", colors.All(c => Math.Max(c.R, Math.Max(c.G, c.B)) < .25f));
+        Check("high_and_performance_preserve_background_palette", Math.Abs(colors[0].R - colors[1].R) < .035f &&
+            Math.Abs(colors[0].G - colors[1].G) < .035f && Math.Abs(colors[0].B - colors[1].B) < .035f);
+        Check("reduced_effects_preserves_background_palette", Math.Abs(colors[0].R - colors[2].R) < .035f &&
+            Math.Abs(colors[0].G - colors[2].G) < .035f && Math.Abs(colors[0].B - colors[2].B) < .035f);
+        GraphicsProfile.Apply(GetViewport(), environment, key, "High", false);
+    }
+
     private async Task Gallery()
     {
         RemoveChild(_sandbox); _sandbox.QueueFree(); RemoveChild(_stage); _stage.QueueFree();
         var gallery = new Node3D(); AddChild(gallery);
-        gallery.AddChild(new WorldEnvironment
+        var lighting = new WorldEnvironment
         {
             Environment = new Godot.Environment
             {
@@ -231,17 +253,27 @@ public partial class AppearanceSmoke : Node3D
                 BackgroundColor = new("101925"),
                 AmbientLightSource = Godot.Environment.AmbientSource.Color,
                 AmbientLightColor = new("a8c0d0"),
-                AmbientLightEnergy = .72f,
+                AmbientLightEnergy = .4f,
                 TonemapMode = Godot.Environment.ToneMapper.Filmic
             }
-        });
-        gallery.AddChild(new DirectionalLight3D { RotationDegrees = new(-40, -30, 0), LightColor = new("ffe2bc"), LightEnergy = 1.15f });
-        gallery.AddChild(new DirectionalLight3D { RotationDegrees = new(-20, 140, 0), LightColor = new("8cc9dd"), LightEnergy = .5f });
+        };
+        GraphicsProfile.TrackEnvironment(lighting);
+        gallery.AddChild(lighting);
+        var key = new DirectionalLight3D { RotationDegrees = new(-40, -30, 0), LightColor = new("ffe2bc"), LightEnergy = 1.15f, ShadowEnabled = true };
+        gallery.AddChild(key);
+        gallery.AddChild(new DirectionalLight3D { RotationDegrees = new(-20, 140, 0), LightColor = new("8cc9dd"), LightEnergy = .3f });
+        GraphicsProfile.Apply(GetViewport(), lighting.Environment, key, "High", false);
         var camera = new Camera3D { Current = true, Projection = Camera3D.ProjectionType.Orthogonal, Position = new(0, 4, -14), Size = 11.8f };
         gallery.AddChild(camera); camera.LookAt(new(0, 1.3f, 0));
         var canvas = new CanvasLayer(); AddChild(canvas);
         var title = new Label { Text = "DIVINE MANIFESTATIONS", Position = new(55, 42) }; title.AddThemeFontSizeOverride("font_size", 30); canvas.AddChild(title);
         var subtitle = new Label { Text = "Burning Blood · Whispering Shadow · Stone Memory · Voracious Renewal", Position = new(55, 89) }; canvas.AddChild(subtitle);
+        ulong initialSky = lighting.Environment.Sky.GetInstanceId();
+        gallery.RemoveChild(lighting);
+        Check("detached_world_releases_its_sky", lighting.Environment.Sky is null);
+        gallery.AddChild(lighting);
+        Check("reattached_world_recreates_its_sky", lighting.Environment.Sky is not null && lighting.Environment.Sky.GetInstanceId() != initialSky);
+        await CheckGalleryBackground(lighting.Environment, key);
         await ArmorGallery(gallery, camera, canvas, title, subtitle);
         await LegendaryArmorGallery(gallery, camera, canvas, title, subtitle);
         title.Text = "DIVINE MANIFESTATIONS"; subtitle.Text = "Burning Blood · Whispering Shadow · Stone Memory · Voracious Renewal";

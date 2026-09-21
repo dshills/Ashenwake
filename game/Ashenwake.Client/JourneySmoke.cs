@@ -63,7 +63,8 @@ public partial class JourneySmoke : Node
             await Click("Map");
             Check("leaving_anatomy_transfers_to_journey_modal_pause", _sandbox.IsPaused && JourneyPauseOwners.Contains("journey-panel") &&
                 !JourneyPauseOwners.Contains("divine-anatomy") && _session.StateHash == beforeAnatomy);
-            await Click("Close"); await CheckAtmosphere(); await Capture("greyhaven-environment.png"); await Click("Journey map & anatomy");
+            await Click("Close"); await CheckAtmosphere(); await Capture("greyhaven-environment.png");
+            await CheckGraphicsProfiles(); await Click("Journey map & anatomy");
             await ClickNode(JourneyControl<Button>("JourneyRegion1"));
             await ClickNode(JourneyControl<Button>("JourneyTravel"));
             Check("map_starts_first_encounter", _session.ActiveEncounterId == "campaign.road" && !VisibleLabel("EDRATH ·"));
@@ -196,6 +197,48 @@ public partial class JourneySmoke : Node
         _environments.Add(new(district, meshes.Length, materials, groundMeshes.Length, top, cosmeticOnly));
     }
     private sealed record EnvironmentEvidence(string District, int ArchitectureMeshes, int ArchitectureMaterials, int GroundMeshes, float? GroundTop, bool CosmeticOnly);
+    private async Task CheckGraphicsProfiles()
+    {
+        string quality = _sandbox.GraphicsQuality, hash = _session.StateHash;
+        var environment = _sandbox.GetChildren().OfType<WorldEnvironment>().Single().Environment;
+        var samples = new List<object>();
+        foreach (string preset in new[] { "High", "Performance" })
+        {
+            _sandbox.SetGraphicsQuality(preset);
+            // Warm up each rendering configuration before measuring this fixed hub view.
+            for (int i = 0; i < 30; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var times = new List<double>();
+            long previous = System.Diagnostics.Stopwatch.GetTimestamp();
+            for (int i = 0; i < 90; i++)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                long current = System.Diagnostics.Stopwatch.GetTimestamp();
+                times.Add((current - previous) * 1000.0 / System.Diagnostics.Stopwatch.Frequency); previous = current;
+            }
+            times.Sort();
+            samples.Add(new
+            {
+                quality = preset,
+                frameCap = Engine.MaxFps,
+                sampleCount = times.Count,
+                medianFrameMilliseconds = times[times.Count / 2],
+                p95FrameMilliseconds = times[(int)(times.Count * .95)],
+                drawCalls = Performance.GetMonitor(Performance.Monitor.RenderTotalDrawCallsInFrame),
+                primitives = Performance.GetMonitor(Performance.Monitor.RenderTotalPrimitivesInFrame)
+            });
+            Check(preset.ToLowerInvariant() + "_graphics_preserves_campaign_state", _session.StateHash == hash);
+            Check(preset.ToLowerInvariant() + "_graphics_applies_to_gameplay_view", environment.SsaoEnabled == (preset == "High") &&
+                GetViewport().Msaa3D == (preset == "High" ? Viewport.Msaa.Msaa4X : Viewport.Msaa.Msaa2X));
+            await Capture("greyhaven-graphics-" + preset.ToLowerInvariant() + ".png");
+        }
+        _sandbox.SetGraphicsQuality(quality);
+        System.IO.File.WriteAllText(Path.Combine(_output, "graphics-frame-samples.json"), JsonData.Write(new
+        {
+            scope = "Fixed Greyhaven view, capped at 60 FPS; local frame pacing samples, not a GPU benchmark or hardware certification.",
+            renderer = DisplayServer.GetName(),
+            samples
+        }));
+    }
     private async Task CheckAtmosphere()
     {
         var motes = Descendants(_sandbox).OfType<MultiMeshInstance3D>().Single(n => n.Name == "AmbientMotes");

@@ -12,7 +12,7 @@ namespace Ashenwake.Client;
 public partial class Sandbox : Node3D
 {
     private sealed record Preferences(bool ReducedEffects, bool ReducedShake, Dictionary<string, long> Keys, int MinimumLootRarity = 0, bool CompatibleLootOnly = false,
-        float MasterVolume = 1, float MusicVolume = 1, float EffectsVolume = 1, float InterfaceVolume = 1);
+        float MasterVolume = 1, float MusicVolume = 1, float EffectsVolume = 1, float InterfaceVolume = 1, string GraphicsQuality = "High");
     public CombatSession Session => _session;
     public string CombatContentJson => _contentJson;
     public string? ContentJsonOverride { get; set; }

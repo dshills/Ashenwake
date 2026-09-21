@@ -151,7 +151,7 @@ public partial class VisualSmoke : Node3D
     {
         GetWindow().Size = new(1440, 900);
         GetWindow().ContentScaleSize = new(1440, 900);
-        AddChild(new WorldEnvironment
+        var lighting = new WorldEnvironment
         {
             Environment = new Godot.Environment
             {
@@ -159,12 +159,16 @@ public partial class VisualSmoke : Node3D
                 BackgroundColor = new("111a25"),
                 AmbientLightSource = Godot.Environment.AmbientSource.Color,
                 AmbientLightColor = new("a8bfd0"),
-                AmbientLightEnergy = .72f,
+                AmbientLightEnergy = .4f,
                 TonemapMode = Godot.Environment.ToneMapper.Filmic
             }
-        });
-        AddChild(new DirectionalLight3D { RotationDegrees = new(-48, -35, 0), LightColor = new("ffe2b1"), LightEnergy = 1.1f, ShadowEnabled = true });
-        AddChild(new DirectionalLight3D { RotationDegrees = new(-20, 145, 0), LightColor = new("80bfc9"), LightEnergy = .4f });
+        };
+        GraphicsProfile.TrackEnvironment(lighting);
+        AddChild(lighting);
+        var key = new DirectionalLight3D { RotationDegrees = new(-48, -35, 0), LightColor = new("ffe2b1"), LightEnergy = 1.1f, ShadowEnabled = true };
+        AddChild(key);
+        AddChild(new DirectionalLight3D { RotationDegrees = new(-20, 145, 0), LightColor = new("80bfc9"), LightEnergy = .3f });
+        GraphicsProfile.Apply(GetViewport(), lighting.Environment, key, "High", false);
         AddChild(new MeshInstance3D
         {
             Mesh = new PlaneMesh { Size = new(200, 200) },

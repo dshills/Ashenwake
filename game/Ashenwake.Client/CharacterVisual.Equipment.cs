@@ -18,7 +18,7 @@ public partial class CharacterVisual
         Height = 2.3f;
         _equipmentLegLeft = HumanLeg(-1, false, underclothes: true);
         _equipmentLegRight = HumanLeg(1, false, underclothes: true);
-        Box(BodyRoot, new(0, .96f, 0), new(.48f, .25f, .3f), Dark);
+        TaperedBox(BodyRoot, new(0, .96f, 0), new(.48f, .25f, .3f), Dark, .88f);
         var shirt = Cone(BodyRoot, new(0, 1.34f, 0), .27f, .34f, .64f, Main);
         shirt.Scale = new(1, 1, .65f);
         Cone(BodyRoot, new(0, 1.77f, 0), .105f, .105f, .16f, Skin);
@@ -239,11 +239,11 @@ public partial class CharacterVisual
         Material trim = chest == "serath_shroud" ? SharedMaterial("e69b61", emissive: true) : chest == "oathkeeper_reprisal" ? SharedMaterial("e0c181", metallic: true) : Accent;
         var torso = Cone(parent, new(0, 1.37f, 0), .29f, plate ? .40f : .37f, .62f, plate && chest == "starter_chest" ? Metal : fabric);
         torso.Scale = new(1, 1, .75f);
-        Box(parent, new(0, 1.38f, -.3f), new(plate ? .43f : .36f, .46f, .065f), plate ? Main : fabric);
+        TaperedBox(parent, new(0, 1.38f, -.3f), new(plate ? .47f : .38f, .46f, .075f), plate ? Main : fabric, plate ? .72f : .84f);
         Rod(parent, new(0, 1.6f, -.345f), new(0, 1.19f, -.345f), .03f, trim);
         if (plate)
         {
-            Box(parent, new(0, .86f, -.22f), new(.30f, .39f, .06f), trim);
+            TaperedBox(parent, new(0, .86f, -.22f), new(.30f, .39f, .06f), trim, .75f);
             for (int side = -1; side <= 1; side += 2)
                 Box(parent, new(side * .28f, .98f, 0), new(.17f, .26f, .32f), fabric, new(0, 0, side * 13));
         }
@@ -252,7 +252,7 @@ public partial class CharacterVisual
             EquippedRobeSkirt(parent, chest == "serath_shroud" ? .51f : .46f, fabric, trim);
         }
         float capeLength = robe ? 1.26f : kind == "veilwalker" ? 1.15f : .80f;
-        Box(parent, new(0, 1.68f - capeLength * .5f, .33f), new(chest == "serath_shroud" ? .73f : .62f, capeLength, .065f), (chest == "starter_chest" && kind is "vanguard" or "warden") ? Accent : fabric, new(10, 0, 0));
+        TaperedBox(parent, new(0, 1.68f - capeLength * .5f, .33f), new(chest == "serath_shroud" ? .73f : .62f, capeLength, .065f), (chest == "starter_chest" && kind is "vanguard" or "warden") ? Accent : fabric, 1.10f, new(10, 0, 0));
         if (chest == "oath_plate")
         {
             Box(parent, new(0, 1.41f, -.354f), new(.29f, .055f, .035f), Metal);

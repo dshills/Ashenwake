@@ -11,7 +11,7 @@ public static class CinderGround
         var b = new EnvironmentBuilder(parent, "AuthoredGround");
         float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
         bool extraction = style == "cinder_extraction", furnace = style == "cinder_furnace", storm = style == "cinder_storm";
-        b.Box(new(x * 2 + 11, .36f, z * 2 + 11), new(0, -.26f, 0), "34343a");
+        b.Box(new(x * 2 + 11, .36f, z * 2 + 11), new(0, -.26f, 0), "34343a", surface: SurfaceKind.Earth);
         // Offset paving creates volcanic streets, with enough value separation for mint destinations and warm warnings.
         int columns = Math.Clamp((int)(x * 1.15f), 6, 28), rows = Math.Clamp((int)(z * 1.13f), 6, 28);
         float width = x * 2 / columns, depth = z * 2 / rows;
@@ -50,9 +50,9 @@ public static class CinderGround
         {
             float px = side * x * .53f;
             b.Box(new(.21f, .012f, z * 1.85f), new(px, -.03f, 0), "32373d");
-            b.Box(new(.07f, .014f, z * 1.85f), new(px + side * .18f, -.025f, 0), "675e58");
+            b.Box(new(.07f, .014f, z * 1.85f), new(px + side * .18f, -.025f, 0), "675e58", surface: SurfaceKind.Metal);
             for (int i = 0; i < 11; i++)
-                b.Box(new(.43f, .01f, .035f), new(px, -.018f, -z * .85f + i * z * .17f), "575659");
+                b.Box(new(.43f, .01f, .035f), new(px, -.018f, -z * .85f + i * z * .17f), "575659", surface: SurfaceKind.Metal);
         }
         for (int row = 0; row < 13; row++)
         {
@@ -66,16 +66,16 @@ public static class CinderGround
         foreach (float side in new[] { -1f, 1f })
         {
             float px = side * x * .55f;
-            b.Box(new(x * .43f, .012f, z * 1.82f), new(px, -.033f, 0), "363a3f");
+            b.Box(new(x * .43f, .012f, z * 1.82f), new(px, -.033f, 0), "363a3f", surface: SurfaceKind.Metal);
             for (int i = 0; i < 19; i++)
-                b.Box(new(x * .41f, .012f, .09f), new(px, -.023f, -z * .86f + i * z * .095f), "575659");
+                b.Box(new(x * .41f, .012f, .09f), new(px, -.023f, -z * .86f + i * z * .095f), "575659", surface: SurfaceKind.Metal);
             foreach (float rail in new[] { -1f, 1f })
-                b.Box(new(.085f, .012f, z * 1.86f), new(px + rail * x * .225f, -.019f, 0), "675e58");
+                b.Box(new(.085f, .012f, z * 1.86f), new(px + rail * x * .225f, -.019f, 0), "675e58", surface: SurfaceKind.Metal);
         }
         // Static maintenance hatches have square seams; no arrow or illuminated conveyor implies extra mechanics.
         foreach (float pz in new[] { -z * .55f, z * .55f })
         {
-            b.Box(new(2.1f, .012f, 1.45f), new(0, -.028f, pz), "575659");
+            b.Box(new(2.1f, .012f, 1.45f), new(0, -.028f, pz), "575659", surface: SurfaceKind.Metal);
             b.Box(new(1.92f, .012f, 1.27f), new(0, -.019f, pz), "403e44");
             for (int i = 0; i < 5; i++) b.Box(new(1.7f, .006f, .045f), new(0, -.009f, pz + (i - 2) * .21f), "514b4d");
         }
@@ -97,12 +97,12 @@ public static class CinderGround
         }
         foreach (float side in new[] { -1f, 1f })
         {
-            b.Box(new(.38f, .014f, z * 1.7f), new(side * x * .9f, -.026f, 0), "363a3f");
-            b.Box(new(x * 1.7f, .014f, .38f), new(0, -.026f, side * z * .9f), "363a3f");
+            b.Box(new(.38f, .014f, z * 1.7f), new(side * x * .9f, -.026f, 0), "363a3f", surface: SurfaceKind.Metal);
+            b.Box(new(x * 1.7f, .014f, .38f), new(0, -.026f, side * z * .9f), "363a3f", surface: SurfaceKind.Metal);
             for (int i = 0; i < 16; i++)
             {
-                b.Box(new(.31f, .008f, .05f), new(side * x * .9f, -.013f, -z * .77f + i * z * 1.54f / 15), "675e58");
-                b.Box(new(.05f, .008f, .31f), new(-x * .77f + i * x * 1.54f / 15, -.013f, side * z * .9f), "675e58");
+                b.Box(new(.31f, .008f, .05f), new(side * x * .9f, -.013f, -z * .77f + i * z * 1.54f / 15), "675e58", surface: SurfaceKind.Metal);
+                b.Box(new(.05f, .008f, .31f), new(-x * .77f + i * x * 1.54f / 15, -.013f, side * z * .9f), "675e58", surface: SurfaceKind.Metal);
             }
         }
     }

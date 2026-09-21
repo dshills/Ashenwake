@@ -7,11 +7,11 @@ public partial class CharacterVisual : Node3D
 {
     private sealed record Limb(Node3D Node, string Motion, float Amplitude, Vector3 Rest, Vector3 Origin);
     private static readonly Dictionary<string, Mesh[]> MeshTemplates = new(StringComparer.Ordinal);
-    private static readonly Dictionary<(string Color, bool Metallic, bool Emissive), StandardMaterial3D> SharedMaterials = [];
+    private static readonly Dictionary<(string Color, SurfaceKind Kind, bool Emissive), StandardMaterial3D> SharedMaterials = [];
     private const int MeshTemplateLimit = 96, MaterialTemplateLimit = 256;
     private readonly List<Limb> _limbs = [];
     private readonly Node3D BodyRoot = new();
-    private readonly StandardMaterial3D Accent = new();
+    private StandardMaterial3D Accent = null!;
     private StandardMaterial3D Main = null!, Dark = null!, Metal = null!, Bone = null!, Skin = null!, Glow = null!;
     private double _time;
     private float _stride, _windup, _recovery, _facing = -2.7f;
@@ -91,22 +91,14 @@ public partial class CharacterVisual : Node3D
     private void Palette(string main, string accent, string dark, string metal, string bone, string skin, string glow)
     {
         Main = SharedMaterial(main); Dark = SharedMaterial(dark); Metal = SharedMaterial(metal, metallic: true);
-        Bone = SharedMaterial(bone); Skin = SharedMaterial(skin); Glow = SharedMaterial(glow, emissive: true);
-        Accent.AlbedoColor = new(accent); Accent.Roughness = .82f;
+        Bone = SharedMaterial(bone, kind: SurfaceKind.Bone); Skin = SharedMaterial(skin, kind: SurfaceKind.Skin); Glow = SharedMaterial(glow, emissive: true);
+        Accent = SurfaceMaterials.Create(accent, SurfaceKind.Cloth);
     }
-    private static StandardMaterial3D SharedMaterial(string color, bool metallic = false, bool emissive = false)
+    private static StandardMaterial3D SharedMaterial(string color, bool metallic = false, bool emissive = false, SurfaceKind kind = SurfaceKind.Cloth)
     {
-        var key = (color, metallic, emissive);
+        var key = (color, metallic ? SurfaceKind.Metal : kind, emissive);
         if (SharedMaterials.TryGetValue(key, out var existing)) return existing;
-        var material = new StandardMaterial3D
-        {
-            AlbedoColor = new(color),
-            Roughness = metallic ? .48f : .82f,
-            Metallic = metallic ? .55f : 0,
-            EmissionEnabled = emissive,
-            Emission = new(color),
-            EmissionEnergyMultiplier = 1.2f
-        };
+        var material = SurfaceMaterials.Create(color, key.Item2, emissive);
         if (SharedMaterials.Count < MaterialTemplateLimit) SharedMaterials.Add(key, material);
         return material;
     }
@@ -118,7 +110,7 @@ public partial class CharacterVisual : Node3D
     }
 
     private static MeshInstance3D Box(Node parent, Vector3 at, Vector3 size, Material mat, Vector3? rotationDegrees = null)
-        => Part(parent, new BoxMesh { Size = size }, at, mat, rotationDegrees);
+        => Part(parent, PolishedBoxMesh(size), at, mat, rotationDegrees);
     private static MeshInstance3D Orb(Node parent, Vector3 at, Vector3 scale, Material mat)
     {
         var mesh = Part(parent, new SphereMesh { Radius = .5f, Height = 1, RadialSegments = 10, Rings = 5 }, at, mat);
@@ -169,7 +161,7 @@ public partial class CharacterVisual : Node3D
         foreach (var child in node.GetChildren().OfType<Node3D>()) top = Math.Max(top, Top(child, transform));
         return top;
     }
-    private static void Batch(Node3D parent, List<Mesh> generated, IReadOnlyList<Mesh>? cached, ref int groupIndex)
+    internal static void Batch(Node3D parent, List<Mesh> generated, IReadOnlyList<Mesh>? cached, ref int groupIndex)
     {
         foreach (var child in parent.GetChildren().OfType<Node3D>().Where(n => n is not MeshInstance3D).ToArray())
             Batch(child, generated, cached, ref groupIndex);

@@ -17,7 +17,8 @@ public partial class SettingsSmoke : Node3D
     private string _output = "";
     private bool _writeReport;
     private int _restarts;
-    private static readonly string[] Tabs = ["Controls", "Audio", "Accessibility", "Gameplay"];
+    private int _worldTeardowns;
+    private static readonly string[] Tabs = ["Controls", "Graphics", "Audio", "Accessibility", "Gameplay"];
     private static readonly string[] Channels = ["Master", "Music", "Effects", "UI"];
     private static readonly string[] VolumeProperties = ["masterVolume", "musicVolume", "effectsVolume", "interfaceVolume"];
     private Dictionary<string, Key> Keys => Field<Dictionary<string, Key>>(_sandbox, "_keys");
@@ -41,6 +42,7 @@ public partial class SettingsSmoke : Node3D
             await RecoveryAndLayout();
             await BindingAndRestore();
             await AudioAndPreferences();
+            await GraphicsAndPreferences();
             await BlockedSettingsWrite();
             await RestartPersistenceAndInvalidRecovery();
             await InGamePause();
@@ -82,6 +84,7 @@ public partial class SettingsSmoke : Node3D
             Value<bool>(_sandbox, "_reduceEffects") && Value<bool>(_sandbox, "_reduceShake") && Near(Value<float>(_sandbox, "_masterVolume"), .8));
         Check("recovery_preserves_primary_and_backup_until_deliberate_change", ReadSettings() == primary && System.IO.File.ReadAllText(SettingsPath + ".bak") == backup);
         Check("legacy_partial_key_map_keeps_defaults_for_other_actions", Keys["left"] == Key.A && Keys["right"] == Key.D && Keys["interact"] == Key.F);
+        Check("legacy_settings_default_to_high_graphics", _sandbox.GraphicsQuality == "High" && Find<OptionButton>("SettingsGraphicsQuality").Selected == 0);
         foreach (var size in new[] { (1280, 800), (1000, 720), (780, 720) })
         {
             Resize(size.Item1, size.Item2); await Frames(5);
@@ -214,6 +217,39 @@ public partial class SettingsSmoke : Node3D
         Check("next_successful_change_persists_and_clears_failure", Near(JsonNode.Parse(ReadSettings())!["masterVolume"]!.GetValue<double>(), .72) && !Status.Text.Contains("could not be saved", StringComparison.OrdinalIgnoreCase));
     }
 
+    private async Task GraphicsAndPreferences()
+    {
+        string hash = Session.StateHash; int frames = Session.CaptureReplay().Frames.Length;
+        await Click("SettingsTabGraphics");
+        Check("graphics_selector_offers_high_and_performance", Find<OptionButton>("SettingsGraphicsQuality").ItemCount == 2 &&
+            Find<OptionButton>("SettingsGraphicsQuality").GetItemText(0) == "High" && Find<OptionButton>("SettingsGraphicsQuality").GetItemText(1) == "Performance");
+        await SelectGraphics("Performance");
+        Check("graphics_selection_applies_and_persists", _sandbox.GraphicsQuality == "Performance" &&
+            JsonNode.Parse(ReadSettings())!["graphicsQuality"]!.GetValue<string>() == "Performance");
+        var environment = Field<WorldEnvironment>(_sandbox, "_worldEnvironment").Environment;
+        Check("performance_reduces_actual_rendering_work", GetViewport().Msaa3D == Viewport.Msaa.Msaa2X &&
+            !environment.SsaoEnabled && !environment.GlowEnabled);
+        await Capture("settings-graphics-performance.png");
+        await Click("SettingsRestore");
+        Check("graphics_restore_updates_live_quality_and_selector", _sandbox.GraphicsQuality == "High" && Find<OptionButton>("SettingsGraphicsQuality").Selected == 0 &&
+            JsonNode.Parse(ReadSettings())!["graphicsQuality"]!.GetValue<string>() == "High");
+        Check("high_enables_antialiasing_and_contact_shadows_but_respects_reduced_effects", GetViewport().Msaa3D == Viewport.Msaa.Msaa4X &&
+            environment.SsaoEnabled && !environment.GlowEnabled && environment.Sky is not null);
+        Check("graphics_restore_preserves_all_other_preferences", Keys["left"] == Key.O && Value<bool>(_sandbox, "_reduceEffects") && Value<bool>(_sandbox, "_reduceShake") &&
+            Near(Value<float>(_sandbox, "_masterVolume"), .72) && Near(Value<float>(_sandbox, "_musicVolume"), .41) &&
+            Near(Value<float>(_sandbox, "_effectsVolume"), .63) && Near(Value<float>(_sandbox, "_interfaceVolume"), .54) &&
+            Value<int>(_sandbox, "_minimumLootRarity") == 3 && Value<bool>(_sandbox, "_compatibleLootOnly"));
+        await Click("SettingsTabAccessibility"); await Click("SettingsReducedEffects");
+        Check("high_restores_gentle_bloom_when_reduced_effects_is_disabled", environment.GlowEnabled && environment.SsaoEnabled);
+        await Click("SettingsReducedEffects");
+        Check("reduced_effects_disables_bloom_immediately", !environment.GlowEnabled && environment.SsaoEnabled);
+        await Click("SettingsTabGraphics");
+        await SelectGraphics("Performance");
+        AdvanceWhilePaused();
+        Check("graphics_selection_and_restore_do_not_change_gameplay", Session.StateHash == hash && Session.CaptureReplay().Frames.Length == frames &&
+            !Directory.EnumerateFiles(_output, "*.save.json").Any() && _sandbox.IsPaused);
+    }
+
     private async Task RestartPersistenceAndInvalidRecovery()
     {
         string saved = ReadSettings(); await RestartDirector(); await Click("FrontSettings");
@@ -222,9 +258,23 @@ public partial class SettingsSmoke : Node3D
         Check("restart_applies_all_persisted_audio_values", Near(Value<float>(_sandbox, "_masterVolume"), .72) && Near(Value<float>(_sandbox, "_musicVolume"), .41) &&
             Near(Value<float>(_sandbox, "_effectsVolume"), .63) && Near(Value<float>(_sandbox, "_interfaceVolume"), .54) &&
             Near(Mathf.DbToLinear(AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex("Music"))), .41));
+        Check("restart_loads_persisted_graphics_quality_and_selector", _sandbox.GraphicsQuality == "Performance" && Find<OptionButton>("SettingsGraphicsQuality").Selected == 1);
+        Check("restart_applies_persisted_quality_to_renderer", GetViewport().Msaa3D == Viewport.Msaa.Msaa2X &&
+            !Field<WorldEnvironment>(_sandbox, "_worldEnvironment").Environment.SsaoEnabled);
         Check("restart_is_read_only_for_valid_preferences", ReadSettings() == saved);
         await Click("SettingsTabAudio"); await Capture("settings-restored-after-restart.png");
         await RemoveDirector();
+        foreach (string? quality in new string?[] { "UnsupportedQuality", null })
+        {
+            var normalized = JsonNode.Parse(saved)!.AsObject(); normalized["graphicsQuality"] = quality;
+            System.IO.File.WriteAllText(SettingsPath, normalized.ToJsonString());
+            string bytes = ReadSettings(); await StartDirector(); _restarts++; await Click("FrontSettings");
+            Check("invalid_graphics_" + (quality is null ? "null" : "name") + "_normalizes_without_resetting_or_rewriting_other_preferences",
+                _sandbox.GraphicsQuality == "High" && Find<OptionButton>("SettingsGraphicsQuality").Selected == 0 &&
+                Keys["left"] == Key.O && Value<bool>(_sandbox, "_reduceEffects") && Near(Value<float>(_sandbox, "_masterVolume"), .72) &&
+                Value<int>(_sandbox, "_minimumLootRarity") == 3 && ReadSettings() == bytes);
+            await RemoveDirector();
+        }
         var invalid = JsonNode.Parse(saved)!.AsObject(); invalid["musicVolume"] = 1.01;
         System.IO.File.WriteAllText(SettingsPath, invalid.ToJsonString());
         System.IO.File.WriteAllText(SettingsPath + ".bak", saved);
@@ -238,11 +288,12 @@ public partial class SettingsSmoke : Node3D
         Check("nonfinite_volume_and_invalid_backup_leave_safe_defaults", Near(Value<float>(_sandbox, "_masterVolume"), 1) && Near(Value<float>(_sandbox, "_musicVolume"), 1) &&
             !Value<bool>(_sandbox, "_reduceEffects") && Keys["left"] == Key.A && ReadSettings() == nonfiniteBytes && Status.Text.Length > 0);
         await RemoveDirector();
-        var legacy = JsonNode.Parse(saved)!.AsObject(); foreach (string key in VolumeProperties) legacy.Remove(key);
+        var legacy = JsonNode.Parse(saved)!.AsObject(); foreach (string key in VolumeProperties) legacy.Remove(key); legacy.Remove("graphicsQuality");
         System.IO.File.WriteAllText(SettingsPath, legacy.ToJsonString());
         string legacyBytes = ReadSettings(); await StartDirector(); _restarts++; await Click("FrontSettings");
         Check("legacy_settings_without_audio_fields_keep_options_and_default_volume", Keys["left"] == Key.O && Value<bool>(_sandbox, "_reduceEffects") &&
             Value<int>(_sandbox, "_minimumLootRarity") == 3 && Channels.All(c => Near(AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex(c)), 0)) && ReadSettings() == legacyBytes);
+        Check("legacy_settings_without_graphics_field_load_high_read_only", _sandbox.GraphicsQuality == "High" && Find<OptionButton>("SettingsGraphicsQuality").Selected == 0 && ReadSettings() == legacyBytes);
         Check("all_settings_restarts_leave_character_archives_absent", !Directory.EnumerateFiles(_output, "*.save.json").Any() && !System.IO.File.Exists(Path.Combine(_output, "current-character.txt")));
         await Click("SettingsClose");
     }
@@ -255,6 +306,9 @@ public partial class SettingsSmoke : Node3D
         var files = Directory.EnumerateFiles(_output, "*.save.json").ToDictionary(p => Path.GetFileName(p)!, System.IO.File.ReadAllText);
         await KeyPress(Key.Escape);
         Check("in_game_escape_opens_settings_and_pauses", Find<Control>("SettingsPanel").Visible && _sandbox.IsPaused);
+        await Click("SettingsTabGraphics"); await SelectGraphics("Performance"); await Click("SettingsRestore");
+        Check("in_game_graphics_changes_preserve_character_and_replay", Session.StateHash == hash && Session.CaptureReplay().Frames.Length == 0 &&
+            files.All(p => System.IO.File.ReadAllText(Path.Combine(_output, p.Key!)) == p.Value) && _sandbox.GraphicsQuality == "High");
         await Click("SettingsTabAudio");
         foreach (Key key in new[] { Key.O, Key.F, Key.C, Key.J, Key.B, Key.H, Key.P, Key.F5, Key.F9, Key.F6 }) await KeyPress(key);
         AdvanceWhilePaused();
@@ -285,7 +339,13 @@ public partial class SettingsSmoke : Node3D
         _sandbox = Field<Sandbox>(_director, "_sandbox"); _sandbox.SetProcess(false); _sandbox.AutomaticStep = true;
         await Frames(8);
     }
-    private async Task RemoveDirector() { _director.QueueFree(); await Frames(5); }
+    private async Task RemoveDirector()
+    {
+        // Hold the managed wrappers deliberately: GPU cleanup must not depend on GC timing.
+        var environments = Descendants(_director).OfType<WorldEnvironment>().Select(world => world.Environment).ToArray();
+        _director.QueueFree(); await Frames(5);
+        Check("scene_teardown_" + ++_worldTeardowns + "_releases_owned_sky_resources", environments.Length > 0 && environments.All(environment => environment.Sky is null));
+    }
     private async Task RestartDirector() { await RemoveDirector(); await StartDirector(); _restarts++; }
     private void AdvanceWhilePaused() { for (int i = 0; i < 12; i++) _sandbox._Process(FixedStepClock.SecondsPerTick); }
     private OptionButton Rarity() => Descendants(_sandbox).OfType<OptionButton>().Single(n => n.Name == "SettingsMinimumRarity" || n.Name == "LootRarityFilter");
@@ -306,6 +366,13 @@ public partial class SettingsSmoke : Node3D
         for (int i = 0; i < value; i++) PushKey(Key.Right);
         await Frames(3);
         if (!Near(slider.Value, value)) throw new InvalidDataException($"Native slider {name} expected {value}, received {slider.Value}.");
+    }
+    private async Task SelectGraphics(string quality)
+    {
+        var selector = Find<OptionButton>("SettingsGraphicsQuality"); await EnsureVisible(selector);
+        int index = quality == "Performance" ? 1 : 0;
+        // Popup-window keyboard dispatch is unavailable in headless; use the same public selection contract as loot rarity.
+        selector.Select(index); selector.EmitSignal(OptionButton.SignalName.ItemSelected, (long)index); await Frames(3);
     }
     private async Task Click(string name) => await ClickControl(Find<Control>(name));
     private async Task ClickText(string text) => await ClickControl(Descendants(_director).OfType<Button>().Single(b => b.Text == text && b.IsVisibleInTree()));
@@ -361,7 +428,7 @@ public partial class SettingsSmoke : Node3D
             captures = _captures,
             restarts = _restarts,
             error,
-            scope = "Shipping EndgameDirector ordinary startup and native viewport settings clicks/keys at 1280x800, 1000x720 and 780x720; duplicate and cancelled bindings, tab restores, actual bus gain/mute and existing combat/interface voice routing (regional bed routing is covered by the regional diagnostics), session-only write failure, fresh director preference reloads, invalid-volume backup/default recovery, legacy settings, and in-game/manual pause isolation. The rarity OptionButton uses its public Select/ItemSelected contract because headless input does not dispatch popup-window keyboard events; sliders and all other changes use viewport input. Settings fixtures and one new native character are confined to this fresh artifact directory. No existing player saves are edited; audible quality and physical controllers are not certified."
+            scope = "Shipping EndgameDirector ordinary startup and native viewport settings clicks/keys at 1280x800, 1000x720 and 780x720; duplicate and cancelled bindings, tab restores, High/Performance selection and persistence, invalid graphics normalization, actual bus gain/mute and existing combat/interface voice routing (regional bed routing is covered by the regional diagnostics), session-only write failure, fresh director preference reloads, invalid-volume backup/default recovery, legacy settings, and in-game/manual pause isolation. The graphics and rarity OptionButtons use their public Select/ItemSelected contract because headless input does not dispatch popup-window keyboard events; sliders and all other changes use viewport input. Graphics preferences are checked for gameplay-state isolation; rendered quality is covered by the graphics diagnostic. Settings fixtures and one new native character are confined to this fresh artifact directory. No existing player saves are edited; audible quality and physical controllers are not certified."
         };
         if (_writeReport) System.IO.File.WriteAllText(Path.Combine(_output, "settings-review.json"), JsonData.Write(report));
         GD.Print(JsonData.Write(report)); GetTree().Quit(passed ? 0 : 1);

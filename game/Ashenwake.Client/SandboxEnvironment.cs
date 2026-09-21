@@ -125,6 +125,7 @@ public partial class Sandbox
             : spine ? style == "spine_memory" ? "d0c6a4" : "a6b1c4"
             : hollow ? style == "hollow_memory" ? "b6a8c5" : "9fbbcb" : hub ? "ffbe76" : "8aafb5");
         SetRegionalAmbience(style);
+        ApplyGraphicsQuality();
         UpdateEnvironmentAtmosphere(0);
     }
 

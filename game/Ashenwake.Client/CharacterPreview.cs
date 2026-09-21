@@ -8,6 +8,10 @@ public partial class CharacterPreview : VBoxContainer
     private SubViewport _viewport = null!;
     private SubViewportContainer _surface = null!;
     private Camera3D _camera = null!;
+    private Godot.Environment _environment = null!;
+    private DirectionalLight3D _keyLight = null!;
+    private string _appliedGraphics = "";
+    private bool _appliedReducedEffects;
     private Node3D _turntable = null!;
     private CharacterVisual? _model;
     private CharacterAppearance? _appearance;
@@ -49,22 +53,25 @@ public partial class CharacterPreview : VBoxContainer
             RenderTargetUpdateMode = SubViewport.UpdateMode.Disabled
         };
         _surface.AddChild(_viewport);
-        _viewport.AddChild(new WorldEnvironment
+        var lighting = new WorldEnvironment
         {
-            Environment = new Godot.Environment
+            Environment = _environment = new Godot.Environment
             {
                 BackgroundMode = Godot.Environment.BGMode.Color,
                 BackgroundColor = new("101b24"),
                 AmbientLightSource = Godot.Environment.AmbientSource.Color,
                 AmbientLightColor = new("a5b8c5"),
-                AmbientLightEnergy = .64f,
+                AmbientLightEnergy = .4f,
                 TonemapMode = Godot.Environment.ToneMapper.Filmic
             }
-        });
+        };
+        GraphicsProfile.TrackEnvironment(lighting);
+        _viewport.AddChild(lighting);
         _camera = new Camera3D { Name = "PreviewCamera", Projection = Camera3D.ProjectionType.Orthogonal, Size = 3.65f, Position = new(0, 2.05f, 5.5f), Current = true };
         _viewport.AddChild(_camera); _camera.LookAt(new(0, 1.32f, 0));
-        _viewport.AddChild(new DirectionalLight3D { RotationDegrees = new(-34, -32, 0), LightColor = new("ffe2b6"), LightEnergy = 1.25f });
-        _viewport.AddChild(new DirectionalLight3D { RotationDegrees = new(-18, 135, 0), LightColor = new("89c7dd"), LightEnergy = .65f });
+        _keyLight = new DirectionalLight3D { RotationDegrees = new(-34, -32, 0), LightColor = new("ffe2b6"), LightEnergy = 1.1f, ShadowEnabled = true };
+        _viewport.AddChild(_keyLight);
+        _viewport.AddChild(new DirectionalLight3D { RotationDegrees = new(-18, 135, 0), LightColor = new("89c7dd"), LightEnergy = .35f });
         var floor = new MeshInstance3D
         {
             Mesh = new CylinderMesh { TopRadius = 1.13f, BottomRadius = 1.2f, Height = .08f, RadialSegments = 48 },
@@ -109,6 +116,12 @@ public partial class CharacterPreview : VBoxContainer
     {
         if (!IsVisibleInTree()) { UpdateActivity(); return; }
         if (_sandbox is not null) SetReducedEffects(_sandbox.ReducedEffects);
+        string quality = _sandbox?.GraphicsQuality ?? "High";
+        if (_appliedGraphics != quality || _appliedReducedEffects != _reducedEffects)
+        {
+            GraphicsProfile.Apply(_viewport, _environment, _keyLight, quality, _reducedEffects);
+            _appliedGraphics = quality; _appliedReducedEffects = _reducedEffects;
+        }
         _model?.Animate(delta, Vector3.Zero, paused: _sandbox?.IsPaused ?? false, facing: Vector3.Back);
     }
 

@@ -39,7 +39,7 @@ public partial class Sandbox
         ["load"] = Key.F9,
         ["replay"] = Key.F6
     };
-    private static readonly string[] SettingsPages = ["Controls", "Audio", "Accessibility", "Gameplay"];
+    private static readonly string[] SettingsPages = ["Controls", "Graphics", "Audio", "Accessibility", "Gameplay"];
     private readonly Dictionary<string, VBoxContainer> _settingsPages = [];
     private readonly Dictionary<string, Button> _settingsTabs = [];
     private readonly Dictionary<string, HSlider> _volumeSliders = [];
@@ -49,6 +49,7 @@ public partial class Sandbox
     private Label _settingsStatus = null!, _settingsDescription = null!;
     private Button _settingsRestore = null!;
     private CheckButton _settingsEffects = null!, _settingsShake = null!;
+    private OptionButton _settingsGraphicsQuality = null!;
     private string _settingsPage = "Controls";
     private Vector2 _settingsViewport = new(-1, -1), _settingsLayoutSize, _settingsLayoutOrigin;
     private bool _syncingSettings, _settingsSaveFailed;
@@ -92,7 +93,7 @@ public partial class Sandbox
         var pages = SettingsStack(0); pages.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill; _settingsScroll.AddChild(pages);
         foreach (string page in SettingsPages)
         { var body = SettingsStack(12); body.Name = "SettingsPage" + page; pages.AddChild(body); _settingsPages[page] = body; }
-        BuildSettingsControls(_settingsPages["Controls"]); BuildSettingsAudio(_settingsPages["Audio"]);
+        BuildSettingsControls(_settingsPages["Controls"]); BuildSettingsGraphics(_settingsPages["Graphics"]); BuildSettingsAudio(_settingsPages["Audio"]);
         BuildSettingsAccessibility(_settingsPages["Accessibility"]); BuildSettingsGameplay(_settingsPages["Gameplay"]);
         _settingsStatus = SettingsText(_settingsRecoveryNotice, 13, new("e8c286")); _settingsStatus.Name = "SettingsStatus";
         _settingsStatus.CustomMinimumSize = new(0, 42); column.AddChild(_settingsStatus);
@@ -166,13 +167,39 @@ public partial class Sandbox
         body.AddChild(SettingsButton("SettingsTestSound", "Test interface sound", () => { }));
     }
 
+    private void BuildSettingsGraphics(VBoxContainer body)
+    {
+        body.AddChild(SettingsText("Light, shadow & atmosphere", 22, new("eee1c8")));
+        body.AddChild(SettingsText("Choose the detail level that feels smooth on your device. Changes apply immediately.", 14));
+        body.AddChild(SettingsText("Graphics quality", 16, new("eee1c8")));
+        _settingsGraphicsQuality = new OptionButton
+        {
+            Name = "SettingsGraphicsQuality",
+            CustomMinimumSize = new(0, 44),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            TooltipText = "High adds smoother edges, contact shadows and gentle bloom. Performance reduces rendering work."
+        };
+        _settingsGraphicsQuality.AddItem("High"); _settingsGraphicsQuality.AddItem("Performance");
+        _settingsGraphicsQuality.Select(_graphicsQuality == "Performance" ? 1 : 0);
+        _settingsGraphicsQuality.ItemSelected += index =>
+        {
+            if (_syncingSettings) return;
+            SetGraphicsQuality(index == 1 ? "Performance" : "High"); SavePreferences();
+        };
+        body.AddChild(_settingsGraphicsQuality);
+        body.AddChild(SettingsText("HIGH · Smoother edges, richer contact shadows and gentle bloom bring out the shapes of characters, equipment and the world.", 14));
+        body.AddChild(SettingsText("PERFORMANCE · Lighter rendering with simpler shadows and less post-processing, suited to devices that need a smoother frame rate.", 14));
+        body.AddChild(new HSeparator());
+        body.AddChild(SettingsText("Reduced visual effects in Accessibility also suppresses bloom, whichever quality you choose.", 13, new("add7ca")));
+    }
+
     private void BuildSettingsAccessibility(VBoxContainer body)
     {
         body.AddChild(SettingsText("Comfort & clarity", 22, new("eee1c8")));
         _settingsEffects = new CheckButton { Name = "SettingsReducedEffects", Text = "Reduced visual effects", ButtonPressed = _reduceEffects };
-        _settingsEffects.Toggled += enabled => { if (_syncingSettings) return; _reduceEffects = enabled; SavePreferences(); };
+        _settingsEffects.Toggled += enabled => { if (_syncingSettings) return; _reduceEffects = enabled; ApplyGraphicsQuality(); SavePreferences(); };
         body.AddChild(_settingsEffects);
-        body.AddChild(SettingsText("Reduces optional particles, debris and atmospheric effects. Enemy warning areas, attack poses and combat information remain visible.", 14));
+        body.AddChild(SettingsText("Reduces optional particles, debris and atmospheric effects, and suppresses bloom. Enemy warning areas, attack poses and combat information remain visible.", 14));
         _settingsShake = new CheckButton { Name = "SettingsReducedShake", Text = "Reduced camera shake", ButtonPressed = _reduceShake };
         _settingsShake.Toggled += enabled => { if (_syncingSettings) return; _reduceShake = enabled; SavePreferences(); };
         body.AddChild(_settingsShake);
@@ -206,6 +233,7 @@ public partial class Sandbox
         _settingsDescription.Text = page switch
         {
             "Controls" => "FIND YOUR RHYTHM · movement, combat and menus",
+            "Graphics" => "SHAPE THE WORLD · lighting, detail and performance",
             "Audio" => "SET THE BALANCE · independent sound channels",
             "Accessibility" => "PLAY COMFORTABLY · effects, motion and pause",
             _ => "YOUR PREFERENCES · loot and local tools"
@@ -223,12 +251,13 @@ public partial class Sandbox
             switch (_settingsPage)
             {
                 case "Controls": foreach (var pair in DefaultKeys) SetKey(pair.Key, pair.Value); RefreshSettingsBindings(); break;
+                case "Graphics": SetGraphicsQuality("High"); _settingsGraphicsQuality.Select(0); break;
                 case "Audio":
                     _masterVolume = _musicVolume = _effectsVolume = _interfaceVolume = 1;
                     foreach (var slider in _volumeSliders.Values) slider.Value = 100;
                     ApplySettingsAudio(); break;
                 case "Accessibility":
-                    _reduceEffects = _reduceShake = false; _settingsEffects.SetPressedNoSignal(false); _settingsShake.SetPressedNoSignal(false); break;
+                    _reduceEffects = _reduceShake = false; _settingsEffects.SetPressedNoSignal(false); _settingsShake.SetPressedNoSignal(false); ApplyGraphicsQuality(); break;
                 case "Gameplay":
                     _minimumLootRarity = 0; _compatibleLootOnly = false;
                     ((OptionButton)_settingsPanel.FindChild("LootRarityFilter", true, false)).Select(0);

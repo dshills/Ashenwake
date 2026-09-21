@@ -30,7 +30,7 @@ public partial class Sandbox
         foreach (var pair in preferences.Keys) if (effectiveKeys.ContainsKey(pair.Key)) effectiveKeys[pair.Key] = (Key)pair.Value;
         if (effectiveKeys.Values.Distinct().Count() != effectiveKeys.Count || effectiveKeys.Values.Any(key => !CanBindSettingsKey(key)))
             throw new InvalidDataException("Settings contain conflicting or reserved key bindings.");
-        return preferences;
+        return preferences with { GraphicsQuality = preferences.GraphicsQuality == "Performance" ? "Performance" : "High" };
     }
 
     private void LoadReleasePreferences()
@@ -48,6 +48,7 @@ public partial class Sandbox
         _effectsVolume = preferences.EffectsVolume; _interfaceVolume = preferences.InterfaceVolume;
         ApplySettingsAudio();
         _reduceEffects = preferences.ReducedEffects; _reduceShake = preferences.ReducedShake;
+        _graphicsQuality = preferences.GraphicsQuality;
         _minimumLootRarity = preferences.MinimumLootRarity; _compatibleLootOnly = preferences.CompatibleLootOnly;
         foreach (var pair in preferences.Keys) if (_keys.ContainsKey(pair.Key)) SetKey(pair.Key, (Key)pair.Value);
     }
@@ -63,7 +64,7 @@ public partial class Sandbox
             }
             AtomicFile.Write(_preferencesPath, JsonData.Write(new Preferences(_reduceEffects, _reduceShake,
                 _keys.ToDictionary(p => p.Key, p => (long)p.Value), _minimumLootRarity, _compatibleLootOnly,
-                _masterVolume, _musicVolume, _effectsVolume, _interfaceVolume)));
+                _masterVolume, _musicVolume, _effectsVolume, _interfaceVolume, _graphicsQuality)));
             _settingsSaveFailed = false; SettingsNotice("Settings saved on this device.");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

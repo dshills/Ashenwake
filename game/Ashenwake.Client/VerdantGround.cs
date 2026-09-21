@@ -11,7 +11,7 @@ public static class VerdantGround
         var b = new EnvironmentBuilder(parent, "AuthoredGround");
         float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
         bool village = style == "verdant_village", heart = style == "verdant_heart", hunt = style == "verdant_hunt";
-        b.Box(new(x * 2 + 9, .36f, z * 2 + 9), new(0, -.26f, 0), heart ? "3d4236" : "344338");
+        b.Box(new(x * 2 + 9, .36f, z * 2 + 9), new(0, -.26f, 0), heart ? "3d4236" : "344338", surface: SurfaceKind.Earth);
         // A bounded grid only seeds irregular islands. It never appears as floor tiles and uses no simulation RNG.
         int columns = Math.Clamp((int)(x * 1.6f), 6, 32), rows = Math.Clamp((int)(z * 1.5f), 6, 28);
         for (int row = 0; row < rows; row++)
@@ -30,8 +30,8 @@ public static class VerdantGround
                 if (pattern % 3 != 0)
                 {
                     float radius = .29f + pattern * .018f;
-                    b.Cylinder(radius, radius, .022f, new(px, -.057f, pz), pattern % 2 == 0 ? "41533c" : "4b5d3e");
-                    b.Cylinder(radius * .62f, radius * .62f, .016f, new(px + radius * .57f, -.038f, pz + radius * .36f), "526143");
+                    b.Cylinder(radius, radius, .022f, new(px, -.057f, pz), pattern % 2 == 0 ? "41533c" : "4b5d3e", surface: SurfaceKind.Earth);
+                    b.Cylinder(radius * .62f, radius * .62f, .016f, new(px + radius * .57f, -.038f, pz + radius * .36f), "526143", surface: SurfaceKind.Earth);
                 }
                 if (pattern % 4 == 0 || hunt && pattern % 2 == 0)
                     Litter(b, px, pz, pattern, hunt);
@@ -85,14 +85,14 @@ public static class VerdantGround
             for (int plank = 0; plank < 26; plank++)
             {
                 float pz = -z * .86f + plank * z * 1.7f / 26;
-                b.Box(new(1.12f, .025f, z * 1.7f / 26 - .04f), new(px, -.027f, pz), plank % 4 == 0 ? "74725a" : "686950", new(0, plank % 3 - 1, 0));
+                b.Box(new(1.12f, .025f, z * 1.7f / 26 - .04f), new(px, -.027f, pz), plank % 4 == 0 ? "74725a" : "686950", new(0, plank % 3 - 1, 0), surface: SurfaceKind.Wood);
                 b.Box(new(.025f, .006f, .07f), new(px + side * .44f, -.01f, pz), "434d3d");
             }
         }
         // Two little transverse stepping bridges over the channels are painted at ground height.
         foreach (float pz in new[] { -z * .45f, z * .33f })
             for (int i = 0; i < 7; i++)
-                b.Box(new(x * 1.3f, .018f, .16f), new(0, -.021f, pz + (i - 3) * .185f), i % 2 == 0 ? "686950" : "74725a");
+                b.Box(new(x * 1.3f, .018f, .16f), new(0, -.021f, pz + (i - 3) * .185f), i % 2 == 0 ? "686950" : "74725a", surface: SurfaceKind.Wood);
     }
 
     private static void Tissue(EnvironmentBuilder b, float x, float z)

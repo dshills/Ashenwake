@@ -170,8 +170,13 @@ public partial class CharacterVisual
             .035f + MathF.Cos(angle) * (bottom ? radius : .28f) * .76f);
         void Triangle(Vector3 a, Vector3 b, Vector3 c)
         {
-            surface.AddVertex(a); surface.AddVertex(b); surface.AddVertex(c);
-            surface.AddVertex(c); surface.AddVertex(b); surface.AddVertex(a);
+            void Vertex(Vector3 point)
+            {
+                surface.SetUV(new(Mathf.Atan2(point.X, point.Z - .035f) / Mathf.Tau + .5f, (1.13f - point.Y) / .95f));
+                surface.AddVertex(point);
+            }
+            Vertex(a); Vertex(b); Vertex(c);
+            Vertex(c); Vertex(b); Vertex(a);
         }
         const int panels = 8;
         for (int i = 0; i < panels; i++)
@@ -182,6 +187,8 @@ public partial class CharacterVisual
             Rod(parent, Point(a, true), Point(b, true), .019f, trim);
         }
         surface.GenerateNormals();
+        surface.GenerateTangents();
+        surface.Index();
         parent.AddChild(new MeshInstance3D { Mesh = surface.Commit(), MaterialOverride = fabric });
         foreach (float angle in new[] { -Mathf.Pi * 2 / 3, Mathf.Pi * 2 / 3 })
             Rod(parent, Point(angle, false), Point(angle, true), .018f, trim);

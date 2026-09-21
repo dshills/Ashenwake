@@ -54,7 +54,7 @@ public partial class CharacterVisual : Node3D
         // Feet stay at the model origin. Only these cosmetic joints move; the Core owns locomotion.
         HumanLeg(-1, plate);
         HumanLeg(1, plate);
-        Box(BodyRoot, new Vector3(0, .96f, 0), new Vector3(.48f, .25f, .3f), Dark);
+        TaperedBox(BodyRoot, new Vector3(0, .96f, 0), new Vector3(.48f, .25f, .3f), Dark, .88f);
         var chest = Cone(BodyRoot, new Vector3(0, 1.34f, 0), .27f, .37f, .64f, torso);
         chest.Scale = new Vector3(1, 1, .67f);
         Box(BodyRoot, new Vector3(0, 1.03f, -.025f), new Vector3(.6f, .11f, .38f), Dark);
@@ -132,18 +132,33 @@ public partial class CharacterVisual : Node3D
         arm.RotationDegrees = new Vector3(0, 0, side * 7);
         Cone(arm, new Vector3(side * .025f, -.17f, 0), .11f, .14f, .35f, plate ? Metal : Main);
         Cone(arm, new Vector3(side * .04f, -.46f, -.015f), .085f, .11f, .28f, plate ? Metal : Dark);
-        Orb(arm, new Vector3(side * .04f, -.64f, -.035f), new Vector3(.18f, .19f, .19f), plate ? Dark : Skin);
+        TaperedBox(arm, new(side * .04f, -.64f, -.035f), new(.16f, .20f, .15f), plate ? Dark : Skin, .82f);
+        Orb(arm, new(side * -.04f, -.60f, -.065f), new(.065f, .11f, .075f), plate ? Dark : Skin);
         return arm;
     }
 
     private void HumanFace(bool hair = true)
     {
-        Orb(BodyRoot, new Vector3(0, 1.99f, -.01f), new Vector3(.40f, .46f, .38f), Skin);
+        // Brow, cheek and jaw planes keep a human profile at the close inventory camera.
+        // Their small facets share the original head bounds and material batches.
+        Orb(BodyRoot, new(0, 2.025f, .008f), new(.38f, .40f, .34f), Skin);
+        TaperedBox(BodyRoot, new(0, 1.885f, -.015f), new(.265f, .21f, .255f), Skin, .74f);
         if (hair)
-            Cone(BodyRoot, new Vector3(0, 2.15f, .015f), .215f, .14f, .17f, Dark);
-        Box(BodyRoot, new Vector3(-.075f, 2.035f, -.192f), new Vector3(.047f, .035f, .025f), Dark);
-        Box(BodyRoot, new Vector3(.075f, 2.035f, -.192f), new Vector3(.047f, .035f, .025f), Dark);
-        Orb(BodyRoot, new Vector3(0, 1.98f, -.205f), new Vector3(.075f, .105f, .085f), Skin);
+        {
+            Orb(BodyRoot, new(0, 2.16f, .025f), new(.415f, .20f, .355f), Dark);
+            for (int lockIndex = -1; lockIndex <= 1; lockIndex++)
+                TaperedBox(BodyRoot, new(lockIndex * .083f, 2.10f - lockIndex * .012f, -.125f), new(.09f, .15f, .06f), Dark, .48f, new(0, 0, -14));
+        }
+        for (int side = -1; side <= 1; side += 2)
+        {
+            Orb(BodyRoot, new(side * .19f, 1.985f, .015f), new(.060f, .11f, .055f), Skin);
+            Rod(BodyRoot, new(side * .035f, 2.05f, -.177f), new(side * .12f, 2.065f, -.159f), .014f, Dark);
+            Orb(BodyRoot, new(side * .073f, 2.028f, -.173f), new(.046f, .025f, .024f), Dark);
+            Orb(BodyRoot, new(side * .069f, 2.032f, -.184f), new(.012f, .012f, .008f), Bone);
+            TaperedBox(BodyRoot, new(side * .103f, 1.96f, -.137f), new(.10f, .10f, .046f), Skin, .68f, new(0, 0, side * 10));
+        }
+        TaperedBox(BodyRoot, new(0, 1.99f, -.175f), new(.05f, .115f, .065f), Skin, .8f);
+        Box(BodyRoot, new(0, 1.91f, -.149f), new(.075f, .012f, .016f), Dark);
     }
 
     private void HumanHood(Material fabric, Material face)
@@ -158,7 +173,7 @@ public partial class CharacterVisual : Node3D
     private void HumanCape(float length, Material fabric)
     {
         var cape = Joint(BodyRoot, new Vector3(0, 1.68f, .19f), "sway", .4f);
-        Box(cape, new Vector3(0, -length * .5f, .085f), new Vector3(.61f, length, .055f), fabric, new Vector3(10, 0, 0));
+        TaperedBox(cape, new Vector3(0, -length * .5f, .085f), new Vector3(.61f, length, .055f), fabric, 1.12f, new Vector3(10, 0, 0));
         Box(BodyRoot, new Vector3(0, 1.61f, -.26f), new Vector3(.3f, .14f, .08f), fabric);
         Orb(BodyRoot, new Vector3(.13f, 1.63f, -.315f), new Vector3(.09f, .09f, .05f), Metal);
     }
@@ -166,7 +181,7 @@ public partial class CharacterVisual : Node3D
     private void HumanVanguard(Node3D left, Node3D right)
     {
         HumanCape(.78f, Accent);
-        Box(BodyRoot, new Vector3(0, 1.39f, -.275f), new Vector3(.42f, .46f, .08f), Main);
+        TaperedBox(BodyRoot, new Vector3(0, 1.39f, -.275f), new Vector3(.42f, .46f, .08f), Main);
         Rod(BodyRoot, new Vector3(0, 1.6f, -.33f), new Vector3(0, 1.2f, -.33f), .035f, Accent);
         Orb(left, new Vector3(-.02f, -.025f, 0), new Vector3(.43f, .25f, .44f), Metal);
         Orb(right, new Vector3(.02f, -.025f, 0), new Vector3(.43f, .25f, .44f), Metal);
@@ -176,8 +191,8 @@ public partial class CharacterVisual : Node3D
         Box(BodyRoot, new Vector3(0, 2.25f, .015f), new Vector3(.095f, .15f, .34f), Accent);
         Height = 2.45f;
 
-        Box(left, new Vector3(-.08f, -.41f, -.245f), new Vector3(.6f, .78f, .10f), Metal, new Vector3(0, -10, 0));
-        Box(left, new Vector3(-.08f, -.4f, -.31f), new Vector3(.47f, .62f, .055f), Main, new Vector3(0, -10, 0));
+        TaperedBox(left, new Vector3(-.08f, -.41f, -.245f), new Vector3(.6f, .78f, .10f), Metal, .58f, new Vector3(0, -10, 0));
+        TaperedBox(left, new Vector3(-.08f, -.4f, -.31f), new Vector3(.47f, .62f, .055f), Main, .58f, new Vector3(0, -10, 0));
         Box(left, new Vector3(-.08f, -.4f, -.348f), new Vector3(.065f, .52f, .025f), Accent);
         Box(left, new Vector3(-.08f, -.4f, -.348f), new Vector3(.36f, .065f, .025f), Accent);
         Orb(left, new Vector3(-.08f, -.4f, -.385f), new Vector3(.16f, .16f, .075f), Metal);
@@ -247,7 +262,7 @@ public partial class CharacterVisual : Node3D
     {
         HumanHood(Dark, Skin);
         HumanCape(.95f, Accent);
-        Box(BodyRoot, new Vector3(0, 1.35f, -.28f), new Vector3(.43f, .47f, .06f), Main);
+        TaperedBox(BodyRoot, new Vector3(0, 1.35f, -.28f), new Vector3(.43f, .47f, .06f), Main);
         Orb(left, new Vector3(-.04f, -.025f, 0), new Vector3(.42f, .27f, .39f), Accent);
         Orb(right, new Vector3(.04f, -.025f, 0), new Vector3(.42f, .27f, .39f), Accent);
         for (var side = -1; side <= 1; side += 2)
