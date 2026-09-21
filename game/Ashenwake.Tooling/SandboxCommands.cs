@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Ashenwake.Core.Authoring;
 using Ashenwake.Core.Combat;
 using Ashenwake.Core.Content;
+using Ashenwake.Core.Progression;
 using Ashenwake.Core.Serialization;
 
 namespace Ashenwake.Tooling;
@@ -18,9 +19,13 @@ internal static class SandboxCommands
             if (args[1] == "compile")
             {
                 string names = File.ReadAllText("content/text.en.json");
-                TextCatalog.Parse(names).RequireKeys(CombatContent.Parse(content).Items.Select(item => "equipment." + item.Id[5..]));
+                string policy = File.ReadAllText("content/progression.json");
+                var text = TextCatalog.Parse(names);
+                text.RequireKeys(CombatContent.Parse(content).Items.SelectMany(item => new[] { "equipment." + item.Id[5..], "lore." + item.Id[5..] }));
+                text.RequireKeys(ProgressionContent.Parse(policy).Capture().Properties.SelectMany(p => new[] { "power." + p.Id + ".name", "power." + p.Id + ".description" }));
                 AtomicFile.Write("game/Ashenwake.Client/combat.json", content);
                 AtomicFile.Write("game/Ashenwake.Client/text.en.json", names);
+                AtomicFile.Write("game/Ashenwake.Client/progression.json", policy);
             }
             Console.WriteLine(JsonData.Write(new { kind = "SandboxContentValidated", session.View.ContentVersion, session.Capture().ContentHash }));
             return 0;

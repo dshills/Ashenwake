@@ -350,9 +350,10 @@ public partial class HudSmoke : Node3D
     {
         var feed = Find<CombatRewardFeed>("RewardFeed");
         Check(label + "_first_presentation_is_quiet", feed.AcceptedCount == 0 && feed.VisibleNotices.Count == 0 && feed.PendingCount == 0);
-        long count = _sandbox.RewardNoticeCount; string hash = _session.StateHash;
+        long count = _sandbox.RewardNoticeCount; int drops = _sandbox.SpecialLootDropCount; string hash = _session.StateHash;
         Refresh(); Refresh();
         Check(label + "_repeated_progression_projection_is_read_only", _sandbox.RewardNoticeCount == count && _session.StateHash == hash);
+        Check(label + "_loot_refresh_does_not_replay_discovery", _sandbox.SpecialLootDropCount == drops);
         Check(label + "_xp_strip_uses_authoritative_level_floor", _sandbox.ExperienceIntoLevel == _session.Production.ProgressionView.Experience - _session.Production.CurrentLevelExperience &&
             _sandbox.ExperienceForNextLevel == _session.Production.ProgressionView.NextLevelExperience - _session.Production.CurrentLevelExperience);
     }

@@ -252,7 +252,7 @@ public partial class CraftingInventory : VBoxContainer
                 string name = ItemName(item);
                 card.Text = name + "\n" + item.Rarity + (equipped ? "\nEquipped" : "");
                 card.DragLabel = name + " · " + item.Rarity + (equipped ? " · Equipped" : "");
-                card.TooltipText = name + " · #" + item.Id + (equipped ? " · Equipped" : "") + "\nSelect to inspect crafting options.";
+                card.TooltipText = name + " · #" + item.Id + (equipped ? " · Equipped" : "") + "\n" + EquipmentDetails.Lore(item.DefinitionId) + "\nSelect to inspect crafting options.";
                 card.SetItemVisual(item.DefinitionId, _definitions[item.DefinitionId].Slots[0], _state.Character.Discipline, item.Rarity);
                 card.AddThemeStyleboxOverride("hover_pressed", card.GetThemeStylebox("pressed"));
             }

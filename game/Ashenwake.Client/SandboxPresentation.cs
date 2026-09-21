@@ -385,6 +385,7 @@ public partial class Sandbox
         foreach (var mesh in _effects.Values) mesh.QueueFree(); _effects.Clear();
         foreach (var node in _transientNodes) node.QueueFree(); _transientNodes.Clear();
         _floatingActors.Clear(); _floatingLabels.Clear(); _combatEffects?.Clear(); _lastSounds.Clear();
+        _lootDropCues.Reset(_session.View.Loot);
         foreach (var voice in _voices) voice.Stop();
         _shake = 0;
     }

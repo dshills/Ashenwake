@@ -22,7 +22,9 @@ internal static class ProductionCommands
         if (args[1] is "validate" or "compile")
         {
             ExpeditionSession.ValidateContent(combat, adventure);
-            text.RequireKeys(CombatContent.Parse(combat).Items.Select(item => "equipment." + item.Id[5..]));
+            text.RequireKeys(CombatContent.Parse(combat).Items.SelectMany(item => new[] { "equipment." + item.Id[5..], "lore." + item.Id[5..] }));
+            text.RequireKeys(progression.Capture().Properties.SelectMany(property => new[] { "power." + property.Id + ".name", "power." + property.Id + ".description" }));
+            text.RequireKeys(["power.awakening.dormant.name", "power.awakening.dormant.description", "power.awakening.awakened.name", "power.awakening.awakened.description"]);
             if (args[1] == "compile")
                 foreach (string file in new[] { "combat", "adventure", "progression", "text.en" })
                     AtomicFile.Write("game/Ashenwake.Client/" + file + ".json", File.ReadAllText("content/" + file + ".json"));

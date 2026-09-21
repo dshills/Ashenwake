@@ -32,6 +32,7 @@ public partial class GearComparison : PanelContainer
             new(ItemName(candidate), equipped is null ? "Empty slot" : ItemName(equipped), RarityColor(candidate.Rarity), equipped is null ? MutedColor : RarityColor(equipped.Rarity)),
             new(candidate.Rarity + " · #" + candidate.Id, equipped is null ? "No item equipped" : equipped.Rarity + " · #" + equipped.Id, MutedColor, MutedColor)
         };
+        rows.Add(new(EquipmentDetails.Lore(candidate.DefinitionId), equipped is null ? "" : EquipmentDetails.Lore(equipped.DefinitionId), MutedColor, MutedColor));
         AddStat(rows, "Damage", candidate.BaseDamage + Roll(candidate, "affix.damage"), (equipped?.BaseDamage ?? 0) + Roll(equipped, "affix.damage"));
         AddStat(rows, "Armor", candidate.BaseArmor + Roll(candidate, "affix.armor"), (equipped?.BaseArmor ?? 0) + Roll(equipped, "affix.armor"));
         AddStat(rows, "Critical", candidate.BaseCriticalBasisPoints + Roll(candidate, "affix.critical"), (equipped?.BaseCriticalBasisPoints ?? 0) + Roll(equipped, "affix.critical"), percent: true);
@@ -40,12 +41,12 @@ public partial class GearComparison : PanelContainer
             .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
         foreach (string id in rolled) AddStat(rows, Readable(id), Roll(candidate, id), Roll(equipped, id));
         if (rolled.Length == 0) rows.Add(new("Other rolls: none", "Other rolls: none", MutedColor, MutedColor));
-        rows.Add(new("Property: " + OptionalName(definition.Property), "Property: " + OptionalName(equippedDefinition?.Property), TextColor, TextColor));
-        rows.Add(new("Engraving: " + OptionalName(candidate.Engraving), "Engraving: " + OptionalName(equipped?.Engraving), TextColor, TextColor));
+        rows.Add(new("Property: " + EquipmentDetails.Power(definition.Property), "Property: " + EquipmentDetails.Power(equippedDefinition?.Property), TextColor, TextColor));
+        rows.Add(new("Engraving: " + EquipmentDetails.Power(candidate.Engraving), "Engraving: " + EquipmentDetails.Power(equipped?.Engraving), TextColor, TextColor));
         if (HasAwakening(candidate) || HasAwakening(equipped))
         {
             rows.Add(new(AwakeningText(candidate), AwakeningText(equipped), TextColor, TextColor));
-            rows.Add(new("Evolution: " + OptionalName(candidate.Evolution), "Evolution: " + OptionalName(equipped?.Evolution), TextColor, TextColor));
+            rows.Add(new("Evolution: " + EquipmentDetails.Evolution(candidate.Evolution), "Evolution: " + EquipmentDetails.Evolution(equipped?.Evolution), TextColor, TextColor));
         }
         var notes = new List<string> { "This slot only; other gear, skills and properties are excluded from numeric deltas." };
         if (definition.Hands == 2 || equippedDefinition?.Hands == 2)
@@ -54,9 +55,11 @@ public partial class GearComparison : PanelContainer
             notes.Add("Disciplines: " + string.Join(", ", definition.Disciplines) + ". Current: " + state.Character.Discipline + ".");
         if (restriction.Length > 0) notes.Add(restriction);
         string note = string.Join(" ", notes);
+        float width = !string.IsNullOrEmpty(candidate.Evolution) || !string.IsNullOrEmpty(equipped?.Evolution) ? 640 : 520;
         string comparison = heading + "\n" + string.Join("\n", rows.Select(row => row.Candidate + " | " + row.Equipped)) + "\n" + note;
         if (ComparisonKey == key && ComparisonText == comparison) return;
         ComparisonKey = key; ComparisonText = comparison;
+        CustomMinimumSize = new(width, 0);
         foreach (Node child in GetChildren()) { RemoveChild(child); child.QueueFree(); }
         var layout = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         layout.AddThemeConstantOverride("separation", 6); AddChild(layout);
@@ -66,12 +69,12 @@ public partial class GearComparison : PanelContainer
         layout.AddChild(columns);
         foreach (var row in rows)
         {
-            columns.AddChild(Caption(row.Candidate, row.CandidateColor, 238));
-            columns.AddChild(Caption(row.Equipped, row.EquippedColor, 238));
+            columns.AddChild(Caption(row.Candidate, row.CandidateColor, (width - 42) / 2));
+            columns.AddChild(Caption(row.Equipped, row.EquippedColor, (width - 42) / 2));
         }
         layout.AddChild(Caption(note, restriction.Length > 0 ? WorseColor : MutedColor));
         // Discard the previous tooltip's dimensions so a shorter comparison can shrink immediately.
-        Size = new(520, 0);
+        Size = new(width, 0);
     }
 
     private void EnsureStyle()
@@ -118,6 +121,7 @@ public partial class GearComparison : PanelContainer
             CustomMinimumSize = new(minimumWidth, 0),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            VerticalAlignment = VerticalAlignment.Top,
             MouseFilter = MouseFilterEnum.Ignore,
             FocusMode = FocusModeEnum.None
         };
@@ -131,7 +135,6 @@ public partial class GearComparison : PanelContainer
     private static string AwakeningText(PermanentItem? item) => HasAwakening(item)
         ? $"{(item!.Awakened ? "Awakened" : "Dormant")} · {item.BurningKills}/{GodwroughtProgress.AwakeningKills} burning kills" : "Awakening: none";
     private static string ItemName(PermanentItem item) => EquipmentNames.For(item.DefinitionId);
-    private static string OptionalName(string? id) => string.IsNullOrEmpty(id) ? "none" : Readable(id);
     private static string Readable(string id) => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(id.Split('.').Last().Replace('_', ' '));
     private static string SlotName(EquipmentSlot slot) => slot switch { EquipmentSlot.MainHand => "Main hand", EquipmentSlot.OffHand => "Off hand", EquipmentSlot.Ring1 => "Ring 1", EquipmentSlot.Ring2 => "Ring 2", _ => slot.ToString() };
     private static Color RarityColor(ItemRarity rarity) => LootVisual.RarityColor(rarity.ToString());

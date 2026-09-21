@@ -21,6 +21,7 @@ public partial class Sandbox
         (!_compatibleLootOnly || LootCompatibility?.Invoke(loot.Item) != false);
     private void BuildLootSettings(VBoxContainer column)
     {
+        EquipmentDetails.Preload();
         column.AddChild(new HSeparator()); column.AddChild(TextLabel("GROUND LOOT", 14));
         var rarity = new OptionButton();
         for (int i = 0; i < LootRarities.Length; i++) rarity.AddItem(i == 0 ? "Show all rarities" : LootRarities[i] + " and above");
@@ -35,9 +36,10 @@ public partial class Sandbox
         rows.AddChild(TextLabel("Inspect visible items and compare their base stats. Permanent affix rolls are inspected after collection in Character → Gear.", 12));
         var all = new CheckButton { Text = "Inspect all drops, including filtered items" };
         all.Toggled += value => { _inspectAllLoot = value; _lootSignature = ""; RefreshLootInspector(); }; rows.AddChild(all);
-        var scroll = new ScrollContainer { CustomMinimumSize = new(369, 224) }; rows.AddChild(scroll);
+        var scroll = new ScrollContainer { CustomMinimumSize = new(369, 150) }; rows.AddChild(scroll);
         _lootRows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; scroll.AddChild(_lootRows);
-        _lootDescription = TextLabel("Choose a drop to inspect its actual base statistics.", 12); rows.AddChild(_lootDescription);
+        var details = new ScrollContainer { CustomMinimumSize = new(369, 170), SizeFlagsVertical = Control.SizeFlags.ExpandFill }; rows.AddChild(details);
+        _lootDescription = TextLabel("Choose a drop to inspect its actual base statistics.", 12); _lootDescription.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill; details.AddChild(_lootDescription);
         AddButton(rows, "Collect inspected drop", () =>
         {
             if (_view.Loot.Any(l => l.Id == _inspectedLoot)) ApplyWhilePaused(new(CombatCommandKind.Pickup, ItemId: _inspectedLoot));
@@ -70,7 +72,9 @@ public partial class Sandbox
         var selected = _view.Loot.FirstOrDefault(l => l.Id == _inspectedLoot);
         if (selected is null) { _lootDescription.Text = $"{_view.Loot.Count} ground drops. Nothing is destroyed by the filter."; return; }
         var item = selected.Item;
+        string property = EquipmentDetails.InnateProperty(item.DefinitionId);
         _view.Equipment.TryGetValue(item.Slot, out long equippedId); var equipped = _view.Inventory.FirstOrDefault(i => i.Id == equippedId);
-        _lootDescription.Text = $"{EquipmentNames.For(item)} · {item.Slot}\nDamage {item.Damage} ({item.Damage - (equipped?.Damage ?? 0):+0;-0;0}) · Armor {item.Armor} ({item.Armor - (equipped?.Armor ?? 0):+0;-0;0})\nCritical {item.CriticalBasisPoints / 100d:F1}% ({(item.CriticalBasisPoints - (equipped?.CriticalBasisPoints ?? 0)) / 100d:+0.0;-0.0;0.0}%)";
+        _lootDescription.Text = $"{EquipmentNames.For(item)} · {item.Slot}\nDamage {item.Damage} ({item.Damage - (equipped?.Damage ?? 0):+0;-0;0}) · Armor {item.Armor} ({item.Armor - (equipped?.Armor ?? 0):+0;-0;0})\nCritical {item.CriticalBasisPoints / 100d:F1}% ({(item.CriticalBasisPoints - (equipped?.CriticalBasisPoints ?? 0)) / 100d:+0.0;-0.0;0.0}%)" + "\n\n" + EquipmentDetails.Lore(item.DefinitionId) +
+            (property.Length > 0 ? "\n\nProperty: " + EquipmentDetails.Power(property) : "");
     }
 }

@@ -19,6 +19,9 @@ public partial class Sandbox
     private CombatEffects _combatEffects = null!;
     private double _cosmeticTime;
     private int _importantVoiceIndex;
+    private readonly LootDropCues _lootDropCues = new();
+    internal int SpecialLootDropCount { get; private set; }
+    internal string LastSpecialLootCue { get; private set; } = "";
     public bool ReducedEffects => _reduceEffects;
 
     /// <summary>Present each batch once after Core advances. This never advances or changes combat.</summary>
@@ -37,6 +40,7 @@ public partial class Sandbox
     {
         _view = _session.View;
         SynchronizeWorld();
+        _lootDropCues.Trim(_view.Loot);
         foreach (var e in events)
         {
             _eventLog.Add(e); if (_eventLog.Count > 8192) _eventLog.RemoveAt(0);
@@ -45,7 +49,7 @@ public partial class Sandbox
             if (replaced && e.Kind is "AbilityStarted" or "BossPatternStarted" or "CampaignHazardWarned" or
                 "AbilityResolved" or "EliteAbilityResolved" or "CampaignHazardResolved" or "Dodged" or
                 "DamageApplied" or "BarrierAbsorbed" or "Healed" or "EntityKilled" or "EliteCopyKilled" or
-                "MechanismDestroyed" or "BossPhaseChanged") continue;
+                "MechanismDestroyed" or "BossPhaseChanged" or "LootDropped") continue;
             if (e.Kind is "CampaignHazardWarned" or "CampaignHazardResolved" && e.ContentId.StartsWith("rule.", StringComparison.Ordinal))
             { if (e.Kind == "CampaignHazardWarned") PlayTone("tell"); continue; }
             _actors.TryGetValue(e.ActorId, out var actor);
@@ -119,7 +123,14 @@ public partial class Sandbox
                     if (actor is null) break;
                     _combatEffects.Emit("phase", actor.Current, Vector3.Forward, new Color("cfb1e6"), _reduceEffects);
                     PlayTone(e.Amount >= 3 ? "chain" : "bell"); break;
-                case "LootPickedUp": PresentLootReward(e); Message($"Collected {Readable(e.ContentId)}. Open inventory to compare."); PlayTone("loot"); break;
+                case "LootDropped":
+                    var drop = _lootDropCues.Observe(e, _view.Loot);
+                    if (drop is null || !IsLootVisible(drop)) break;
+                    string dropCue = LootDropCues.Cue(drop.Item.Rarity);
+                    _combatEffects.Emit(dropCue, PositionOf(drop.Position.X, drop.Position.Z), Vector3.Forward, LootVisual.RarityColor(drop.Item.Rarity), _reduceEffects);
+                    PlayTone(dropCue); SpecialLootDropCount++; LastSpecialLootCue = dropCue;
+                    Message($"{drop.Item.Rarity} discovered · {EquipmentNames.For(drop.Item)}"); break;
+                case "LootPickedUp": PresentLootReward(e); Message($"Collected {EquipmentNames.For(e.ContentId)}. Open inventory to compare."); PlayTone("loot"); break;
                 case "FragmentTriggered": Message($"{Readable(e.ContentId)} triggered · action {e.ActionId} / chain {e.Depth}"); break;
                 case "SummonSpawned": Message("A Serath spirit rises from a damage-over-time death."); break;
                 case "StatusApplied": if (e.ContentId is "Burning" or "Poisoned") Message($"{e.ContentId} → actor {e.TargetId} · owner {e.ActorId}"); break;

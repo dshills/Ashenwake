@@ -34,10 +34,14 @@ public partial class CombatFeedbackSmoke : Node3D
             CheckBell();
             CheckEffects();
             CheckAudio();
+            CheckLootDiscovery();
             BuildGallery();
+            await LootDiscoveryGallery();
             await HeroGallery();
             await MonsterGallery();
             await BellGallery();
+            await ReleaseGallery();
+            await EarnedLegendaryDiscovery();
             await ReleaseGallery();
             Finish(true, "");
         }
@@ -165,7 +169,7 @@ public partial class CombatFeedbackSmoke : Node3D
         AddChild(effects);
         try
         {
-            foreach (string cue in new[] { "slash", "thrust", "spell", "hit", "block", "dodge", "dust", "death", "phase", "victory" })
+            foreach (string cue in new[] { "slash", "thrust", "spell", "hit", "block", "dodge", "dust", "death", "phase", "victory", "loot_legendary", "loot_godwrought" })
             {
                 effects.Clear(); effects.Emit(cue, new(2, .1f, -1), Vector3.Forward, new Color("f7c786"));
                 Check(cue + "_effect_builds_visible_geometry", effects.Count > 0 && Descendants(effects).OfType<MeshInstance3D>().Any(m => m.IsVisibleInTree()));
@@ -312,8 +316,9 @@ public partial class CombatFeedbackSmoke : Node3D
             passed,
             checks = _checks,
             captures = _captures,
+            legendaryReplay = new { file = "legendary-drop.replay.json", commands = _legendaryCommands, hash = _legendaryHash },
             error,
-            scope = "Cosmetic attack, dodge, hit, death, monster windup/recovery, pause, root motion, material isolation, and sanctuary phase sequences. Captures show gameplay rigs; real event delivery is checked separately by JourneySmoke."
+            scope = "Cosmetic attack, dodge, hit, death, monster windup/recovery, pause, root motion, material isolation, sanctuary phase sequences and special-loot cues. A separate fresh Vanguard fights the authored road encounter at seed 20, earning a Legendary drop through ordinary commands and unchanged reward tables. Its independent combat replay verifies exact delivery, duplicate suppression and a quiet restored-loot baseline. Godwrought drop visuals use detached presentation fixtures; no Godwrought reward is earned here."
         };
         if (_writeReport) System.IO.File.WriteAllText(Path.Combine(_output, "combat-feedback-smoke.json"), JsonData.Write(report));
         GD.Print(JsonData.Write(report)); GetTree().Quit(passed ? 0 : 1);

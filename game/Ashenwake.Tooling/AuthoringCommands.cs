@@ -20,7 +20,9 @@ internal static class AuthoringCommands
             if (!combat.Skills.Any(s => s.Id == discipline.StartingSkill) || !combat.Skills.Any(s => s.Id == discipline.UltimateSkill))
                 throw new InvalidDataException("Discipline references an unauthored combat skill: " + discipline.Id);
         text.RequireKeys(["production.title", "production.level", "production.materials", "production.discipline", "production.equipment", "production.mastery", "production.crafting", "production.profile"]);
-        text.RequireKeys(combat.Items.Select(item => "equipment." + item.Id[5..]));
+        text.RequireKeys(combat.Items.SelectMany(item => new[] { "equipment." + item.Id[5..], "lore." + item.Id[5..] }));
+        text.RequireKeys(progression.Properties.SelectMany(property => new[] { "power." + property.Id + ".name", "power." + property.Id + ".description" }));
+        text.RequireKeys(["power.awakening.dormant.name", "power.awakening.dormant.description", "power.awakening.awakened.name", "power.awakening.awakened.description"]);
         switch (args[1])
         {
             case "validate":

@@ -209,6 +209,9 @@ public partial class CraftingSmoke : Node3D
         if (preview.RequiresConfirmation)
         {
             Check("destructive_craft_waits_for_confirmation_" + service, confirmation.Visible && _craftCalls == calls && JsonData.Hash(before) == JsonData.Hash(_session.Capture().Progression));
+            Check("permanent_confirmation_shows_exact_selected_item_and_materials_" + service,
+                confirmation.DialogText.Contains("#" + Workbench.SelectedItemId, StringComparison.Ordinal) &&
+                confirmation.DialogText.Contains($"Materials: {preview.Before.Character.Materials} → {preview.After.Character.Materials}", StringComparison.Ordinal));
             await Capture("crafting-confirm-" + service.ToString().ToLowerInvariant() + ".png");
             // Modal button keyboard dispatch is a window boundary in Godot headless runs.
             // Exercise the native dialog's public confirmation signal after real commit input.

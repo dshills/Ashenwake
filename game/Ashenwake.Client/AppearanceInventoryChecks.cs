@@ -118,6 +118,9 @@ public partial class AppearanceSmoke
         Check("inventory_comparison_displays_content_backed_damage_and_armor_deltas_" + suffix,
             comparison.ComparisonText.Contains($"Damage  {damage}  ({(damage - oldDamage).ToString("+0;-0;0", CultureInfo.InvariantCulture)}) | Damage  {oldDamage}", StringComparison.Ordinal) &&
             comparison.ComparisonText.Contains($"Armor  {armor}  ({(armor - oldArmor).ToString("+0;-0;0", CultureInfo.InvariantCulture)}) | Armor  {oldArmor}", StringComparison.Ordinal));
+        Check("inventory_comparison_includes_authored_lore_" + suffix, comparison.ComparisonText.Contains(EquipmentDetails.Lore(candidate.DefinitionId), StringComparison.Ordinal));
+        string property = _session.Content.Capture().Items.Single(item => item.Id == candidate.DefinitionId).Property;
+        if (property.Length > 0) Check("inventory_comparison_explains_special_power_" + suffix, comparison.ComparisonText.Contains(EquipmentDetails.Power(property), StringComparison.Ordinal));
         Check("inventory_comparison_fits_viewport_" + suffix, GetViewport().GetVisibleRect().Encloses(comparison.GetGlobalRect()));
         await Capture("inventory-" + suffix + "-comparison.png");
         if (suffix == "earned_arcanist") await CheckComparisonSizes(card, comparison);

@@ -113,6 +113,7 @@ public partial class AppearanceSmoke : Node3D
         Check("equipping_ashcleaver_updates_both_models", _equips == 1 && _sandbox.CurrentAppearance.MainHand.DefinitionId == "item.ashcleaver" && preview.AppearanceKey == _sandbox.CurrentAppearance.Key);
         await Capture("equipment-ashcleaver-equipped.png");
         await AnatomyEvolutionPreview();
+        await EquipmentDescriptionChecks();
         var window = GetWindow();
         window.ContentScaleSize = new(1280, 720); window.Size = new(1280, 720); await Frames(5);
         var close = Descendants(_hud).OfType<Button>().Single(b => b.Text == "Close character");

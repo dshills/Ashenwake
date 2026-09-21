@@ -47,7 +47,7 @@ public partial class CombatEffects : Node3D
         }
         burst ??= _pool.MinBy(b => b.Serial)!;
         burst.Active = true; burst.Serial = ++_serial; burst.Age = 0; burst.Cue = cue; burst.Color = color;
-        burst.Duration = cue switch { "victory" => 1.3f, "phase" => .85f, "death" => .65f, "spell" => .4f, "dodge" or "dust" => .32f, _ => .24f };
+        burst.Duration = cue switch { "loot_legendary" => 1.1f, "loot_godwrought" => 1.6f, "victory" => 1.3f, "phase" => .85f, "death" => .65f, "spell" => .4f, "dodge" or "dust" => .32f, _ => .24f };
         burst.Root.Position = origin;
         burst.Root.Rotation = new(0, direction.LengthSquared() > .001f ? Mathf.Atan2(direction.X, direction.Z) : 0, 0);
         burst.Root.Visible = true;
@@ -83,6 +83,14 @@ public partial class CombatEffects : Node3D
             piece.Rotation = Vector3.Zero;
             switch (burst.Cue)
             {
+                case "loot_legendary":
+                    a += t * .65f;
+                    piece.Position = new(MathF.Sin(a) * (.20f + t * .50f), .12f + t * (1.0f + i * .08f), MathF.Cos(a) * (.20f + t * .50f));
+                    piece.Rotation = new(0, a, .25f); piece.Scale = new(.035f, .22f * (1 - t) + .04f, .035f); break;
+                case "loot_godwrought":
+                    a -= t * .4f;
+                    piece.Position = new(MathF.Sin(a) * (.35f + t * .25f), .18f + t * .65f, MathF.Cos(a) * (.35f + t * .25f));
+                    piece.Rotation = new(0, -a, 0); piece.Scale = new(.055f, (.65f + i % 2 * .4f) * (1 - t) + .08f, .055f); break;
                 case "slash":
                     a = -.95f + i * .32f + t * .6f;
                     piece.Position = new(MathF.Sin(a) * 1.05f, .95f + i * .025f, MathF.Cos(a) * 1.05f);

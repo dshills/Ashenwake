@@ -129,7 +129,7 @@ public partial class CraftingWorkbench : VBoxContainer
                 Choice("CraftReplacementAffix", "Replace with", _definition.Affixes.Where(a => definition.Slots.All(a.Slots.Contains) && !item.Affixes.ContainsKey(a.Id)).Select(a => a.Id));
             }
         }
-        if (_service == CraftingService.Engraving) Choice("CraftProperty", "Learned property", _state.Character.PropertyLibrary.Where(p => !p.StartsWith("evolution.", StringComparison.Ordinal)));
+        if (_service == CraftingService.Engraving) Choice("CraftProperty", "Learned property", _state.Character.PropertyLibrary.Where(p => !p.StartsWith("evolution.", StringComparison.Ordinal)), EquipmentDetails.PowerName);
         if (_service == CraftingService.Purification) Choice("CraftFragment", "Owned fragment", _state.Character.OwnedFragments.Where(p => !_state.Character.PurifiedFragments.Contains(p)));
         if (_service == CraftingService.DivineGrafting) Choice("CraftLineage", "Permanent evolution", ["Serath", "Orrun"]);
         if (_service == CraftingService.Tempering && item?.Rarity == ItemRarity.Godwrought && _state.Character.Endgame is { } endgame)
@@ -169,9 +169,9 @@ public partial class CraftingWorkbench : VBoxContainer
     {
         if (_state is null) return;
         if (_service == CraftingService.DivineGrafting)
-            _description.Text = _values.GetValueOrDefault("CraftLineage") == "Orrun"
-                ? "Orrun replaces the awakened flame wave with an igniting molten seismic attack, retaining defense and on-hit barrier benefits."
-                : "Serath raises burning victims as temporary flaming revenants and retains its direct-hit healing benefit.";
+            _description.Text = EquipmentDetails.Evolution(_values.GetValueOrDefault("CraftLineage", "Serath"));
+        else if (_service == CraftingService.Engraving)
+            _description.Text = "Engrave an empty slot. " + EquipmentDetails.Power(_values.GetValueOrDefault("CraftProperty"));
         Preview = ProgressionSession.Restore(_content, _state).PreviewCraft(Request());
         ShowPreview(Preview, Request());
         string reason = Eligibility();
@@ -200,7 +200,7 @@ public partial class CraftingWorkbench : VBoxContainer
         if (Preview.RequiresConfirmation)
         {
             _pending = request; _pendingKey = _stateKey;
-            _confirmation.DialogText = (_service == CraftingService.Extraction ? "This permanently destroys the selected item, including equipped gear, and learns its property." : "This permanently evolves Ashcleaver. The other evolution branch will be unavailable for this item.") + "\n\n" + PreviewText;
+            _confirmation.DialogText = ConfirmationText(Preview, request, _definition);
             _confirmation.PopupCentered(new(Math.Min(560, (int)GetViewportRect().Size.X - 40), 320));
         }
         else Submit(request);

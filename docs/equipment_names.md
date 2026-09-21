@@ -33,6 +33,6 @@ The stable item IDs and serialized combat names remain unchanged so existing cha
 | `item.echo_ring` | Choir of the Unburied |
 | `item.greatstaff` | Hollowstar Greatstaff |
 
-`aw authoring validate`, `aw sandbox compile` and `aw production compile` require a catalog entry for every authored item. Both compilers include the catalog in the client. When adding equipment, add its `equipment.<id suffix>` text entry too.
+`aw authoring validate`, `aw sandbox compile` and `aw production compile` require name and lore catalog entries for every authored item. Both compilers include the catalog in the client. When adding equipment, add its `equipment.<id suffix>` and `lore.<id suffix>` text entries too. See [equipment lore and discovery](equipment_discovery.md) for power descriptions and discovery feedback.
 
 Verification: solution build and formatting pass; all 26 names are present and unique. Rendered Appearance, Crafting and HUD diagnostics pass 407, 90 and 104 checks respectively, with compact layouts and confirmation text visually inspected. The refreshed macOS package passes the same three headless suites (385, 74 and 86 checks), including save/replay. Prism/Gemini reviewed the staged changes twice; individual candidate dispositions are retained under `artifacts/equipment-names/`. Gameplay content and maintained archive fixtures are unchanged.
