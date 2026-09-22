@@ -89,7 +89,7 @@ public sealed partial class CampaignRuntimeSession
             story.CurrentState.CompletedExploration.Contains(CryptEvent)) return Failed("Secure the crypt before opening its testament.");
         // Execute's transaction covers the chest, story ledger and permanent reward together.
         Production.ReserveCampaignItemSequence(arena.Capture().NextObjectId);
-        var reward = Production.GrantCryptTestament();
+        var reward = Production.GrantCryptTestament(Content.Data.Version);
         if (!reward.Success) return Failed(reward.Reason);
         var completion = story.CompleteExploration(CryptEncounter); Require(completion);
         var messages = completion.Events.Concat(reward.Events).Concat(Award("campaign.exploration." + CryptEvent, completion)).ToList();

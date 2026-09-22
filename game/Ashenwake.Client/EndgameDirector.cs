@@ -157,6 +157,7 @@ public partial class EndgameDirector : Node3D
         _board.RetryRequested += () => Apply(new(EndgameRuntimeAction.RetryEncounter));
         _board.AbandonRequested += () => Apply(new(EndgameRuntimeAction.Abandon));
         _board.HubRequested += ReturnHub;
+        _board.GateApproachRequested += () => { UpdatePanelVisibility(); _sandbox.RequestWorldInteraction("endgame.gate"); };
         _board.SaveRequested += () => Safely(Save); _board.LoadRequested += () => Safely(Load);
         _board.ReplayRequested += () => Safely(VerifyReplay); _board.ImportRequested += () => _importDialog.PopupCentered(new(860, 560));
         _board.VisibilityChangedByPlayer += open => { if (open) { _campaignHud.SetOpen(false); _character.Close(); } UpdatePanelVisibility(); };

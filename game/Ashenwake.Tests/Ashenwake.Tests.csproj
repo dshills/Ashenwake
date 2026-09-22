@@ -26,6 +26,8 @@
     <None Include="../../fixtures/campaign-combat-verdant.json" Link="fixtures/campaign-combat-verdant.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/campaign-cinder.json" Link="fixtures/campaign-cinder.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/campaign-combat-cinder.json" Link="fixtures/campaign-combat-cinder.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/campaign-hollow.json" Link="fixtures/campaign-hollow.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/campaign-combat-hollow.json" Link="fixtures/campaign-combat-hollow.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/campaign-spine.json" Link="fixtures/campaign-spine.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/campaign-combat-spine.json" Link="fixtures/campaign-combat-spine.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/experiments.json" Link="experiments.json" CopyToOutputDirectory="PreserveNewest" />

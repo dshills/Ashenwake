@@ -10,7 +10,7 @@ Every permanent command takes a caller-assigned operation ID. The receipt record
 
 ## Progression and equipment
 
-XP thresholds are `100 × level × (level − 1) / 2` by default, with a level cap of 50. Each level after the first grants one point in Offense, Defense, or Resource. Mastery reaches its first behavioral-unlock eligibility at 100 and caps at 1,000. Ultimates unlock at level ten. Retraining begins at level five, costs five common materials, retains learned disciplines/mastery, and unequips weapons incompatible with the new discipline. Respec refunds all passive points for five materials without erasing mastery. These are explicit tunable prototype balance values, not established campaign pacing.
+XP thresholds are `100 × level × (level − 1) / 2` by default, with a level cap of 50. Each level after the first grants one point in Offense, Defense, or Resource. Mastery reaches its first behavioral-unlock eligibility at 100 and caps at 1,000. Ultimates unlock at level ten. Retraining begins at level five, costs five common materials, retains learned disciplines/mastery, and unequips weapons incompatible with the new discipline. Respec refunds all passive points for five materials without erasing mastery. These remain tunable prototype values; the [campaign pacing schedule](campaign_pacing.md) distributes 5,150 XP across its fifteen main encounters.
 
 The five discipline definitions name Vanguard/Momentum, Veilwalker/Exposure, Arcanist/Instability, Gravecaller/Remains, and Warden/Adaptation. This module owns permanent identity and unlocks. The combat simulation owns resource generation, spending, cap/decay, summons, corpse arbitration, and adaptation timing.
 

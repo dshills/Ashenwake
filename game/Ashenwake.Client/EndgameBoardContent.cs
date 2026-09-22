@@ -149,7 +149,11 @@ public partial class EndgameHud
     {
         if (_view!.Run is { Status: "Active" }) Row("Finish or abandon your current expedition before starting another.");
         else if (!_view.InHub) Row("Return to Greyhaven to prepare an expedition.");
-        else if (!_view.AtGate) Row("Approach the Fracture gate in eastern Greyhaven to enter, recover or attune a Sigil.");
+        else if (!_view.AtGate)
+        {
+            Row("Approach the Fracture gate in eastern Greyhaven to enter, recover or attune a Sigil.");
+            ActionButton("Walk to the Fracture gate", RequestGateApproach, "ExpeditionApproachGate").Disabled = !_view.Alive;
+        }
         else Row("At the Fracture gate · ready to prepare your next expedition.", 12);
     }
     private void ReturnAction()

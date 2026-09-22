@@ -225,6 +225,7 @@ public partial class HollowExplorationSmoke : Node
         Check(label + "_hub_return_retains_final_boss_floor_loot", Session.Capture().Campaign.ClearedRooms!.TryGetValue("campaign.breach_heart", out var saved) &&
             JsonData.Hash(saved.Loot) == breachLoot);
         await Capture("hollow-" + label + "-fractures.png");
+        await ApproachFractureGateFromBoard(label, board);
         await CloseEndgameBoard(); await CloseJourney();
         // The expedition gate is a client menu action. A real native approach must reach
         // its ordinary marker and open the same board without consuming a Sigil.
@@ -241,6 +242,42 @@ public partial class HollowExplorationSmoke : Node
         Check(label + "_native_gate_opens_board_without_starting_expedition", board.IsOpen && Session.InHub && Session.View.Run is null &&
             Session.View.AvailableSigils.Length == sigils && NoIntent);
         await CloseEndgameBoard(); await CloseJourney();
+    }
+
+    private async Task ApproachFractureGateFromBoard(string label, EndgameHud board)
+    {
+        string progression = JsonData.Hash(Session.Capture().Campaign.Production.Progression);
+        int sigils = Session.View.AvailableSigils.Length;
+        var origin = Player;
+        var action = Descendants(board).OfType<Button>().Single(button => button.Name == "ExpeditionApproachGate" && button.IsVisibleInTree());
+        Check(label + "_unlocked_board_has_enabled_gate_approach", !action.Disabled &&
+            Descendants(board).OfType<Button>().Any(button => button.Name == "ExpeditionRecovery" && button.Disabled));
+        string beforeClick = Session.StateHash;
+        await Click(action.GetGlobalRect().GetCenter());
+        Check(label + "_board_gate_action_closes_modal_and_queues_walk_without_spend", !board.IsOpen && !_sandbox.IsPaused &&
+            _sandbox.PendingWorldActionId == "endgame.gate" && _sandbox.ClickMoveDestination is not null && Session.StateHash == beforeClick);
+        await KeyPress(Key.X); Ticks(); await Frames();
+        Check(label + "_board_gate_walk_can_be_stopped", NoIntent && Player == origin && Session.View.Run is null &&
+            Session.View.AvailableSigils.Length == sigils && JsonData.Hash(Session.Capture().Campaign.Production.Progression) == progression);
+        await KeyPress(Key.B);
+        Check(label + "_stopped_walk_can_reopen_board", board.IsOpen);
+        for (int attempt = 0; attempt < 4; attempt++)
+        {
+            await RecoverFocusPause();
+            if (!board.IsOpen) await KeyPress(Key.B);
+            await ClickButton("Walk to the Fracture gate");
+            await WalkUntilStopped();
+            if (await RecoverFocusPause() && !board.IsOpen) continue;
+            if (board.IsOpen) break;
+        }
+        var gate = Targets.Single(target => target.Id == "endgame.gate");
+        Check(label + "_board_gate_walk_arrives_and_reopens_board", board.IsOpen && _sandbox.IsPaused && NoIntent &&
+            CorePosition.DistanceSquared(Player, gate.Position) <= (long)gate.Range * gate.Range);
+        Check(label + "_arrival_enables_recovery_without_claiming_or_entering", Session.View.Run is null &&
+            Session.View.AvailableSigils.Length == sigils && JsonData.Hash(Session.Capture().Campaign.Production.Progression) == progression &&
+            Descendants(board).OfType<Button>().Any(button => button.Name == "ExpeditionRecovery" && button.IsVisibleInTree() && !button.Disabled) &&
+            !Descendants(board).OfType<Button>().Any(button => button.Name == "ExpeditionApproachGate" && button.IsVisibleInTree()));
+        await Capture("hollow-" + label + "-fracture-gate-arrival.png");
     }
 
     private async Task CloseEndgameBoard()
@@ -522,7 +559,7 @@ public partial class HollowExplorationSmoke : Node
             endings = _endings,
             routes = _routes,
             error,
-            scope = "The shipping EndgameDirector receives native clicks for Hollow passages, Vault Testament, local map movement and the Fracture gate. Ordinary campaign inputs earn all Acts I–V victories. F5/F9 preserve the vault reward and branch from an unchanged saved choice.future checkpoint to earn both final outcomes through the actual three-seal Breach fight. Checks cover one named vault reward, retained floor loot and discovery, choice gating, physical backtracking, four room maps, visible ending stories, Fracture unlock and deterministic branch replays. No fabricated character, kills, progression, rewards or victories."
+            scope = "The shipping EndgameDirector receives native clicks for Hollow passages, Vault Testament, local map movement, the Fracture gate, and the board's cancellable approach action. Ordinary campaign inputs earn all Acts I–V victories. F5/F9 preserve the vault reward and branch from an unchanged saved choice.future checkpoint to earn both final outcomes through the actual three-seal Breach fight. Checks cover one named vault reward, retained floor loot and discovery, choice gating, physical backtracking, four room maps, visible ending stories, Fracture unlock and deterministic branch replays. No fabricated character, kills, progression, rewards or victories."
         };
         if (_writeReport && !passed && _director is not null && _sandbox is not null)
             System.IO.File.WriteAllText(Path.Combine(_output, "hollow-exploration-failed-state.json"), JsonData.Write(Session.Capture()));

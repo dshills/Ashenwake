@@ -17,6 +17,7 @@ internal static class OpeningCatalogMigration
     private sealed record Release(string Campaign, string Combat, string PreviousCombat, string Resource, string Discovery);
     private static readonly Release[] Releases =
     [
+        new("campaign.pacing.7", "campaign-combat.pacing.7", "campaign-combat.hollow.6", "PreviousPacing", ""),
         new("campaign.hollow.6", "campaign-combat.hollow.6", "campaign-combat.spine.5", "PreviousHollow", "discovery.unremembered_vault"),
         new("campaign.spine.5", "campaign-combat.spine.5", "campaign-combat.cinder.4", "PreviousSpine", "discovery.oathkeeper_archive"),
         new("campaign.cinder.4", "campaign-combat.cinder.4", "campaign-combat.verdant.3", "PreviousCinder", "discovery.sealed_foundry"),
@@ -136,7 +137,7 @@ internal static class OpeningCatalogMigration
                     state = state with { ExplorationReturnEncounter = secured };
             }
         }
-        return state with
+        state = state with
         {
             Campaign = state.Campaign with { ContentHash = campaign.Hash },
             ExplorationMap = LocalMapAtlas.Rebind(state.ExplorationMap, id => CampaignRuntimeSession.ResolveMapRoom(content, id)),
@@ -145,13 +146,15 @@ internal static class OpeningCatalogMigration
             ClearedRooms = state.ClearedRooms is null ? null : new SortedDictionary<string, CombatSnapshot>(
                 state.ClearedRooms.ToDictionary(pair => pair.Key, pair => Relocate(pair.Value, content, pair.Key)), StringComparer.Ordinal)
         };
+        return CampaignPacingMigration.Rebind(original, state, combatJson, adventure, policy, campaign);
     }
 
     internal static EndgameRuntimeSnapshot Rebind(EndgameRuntimeSnapshot original, string combatJson,
         AdventureContent adventure, ProgressionContent policy, CampaignContent campaign)
     {
         var state = LegendaryCatalogMigration.Rebind(original, combatJson, adventure, policy, campaign);
-        return state with { Campaign = Rebind(original.Campaign, combatJson, adventure, EndgameProgression.Resolve(policy), campaign) };
+        var rebound = state with { Campaign = Rebind(original.Campaign, combatJson, adventure, EndgameProgression.Resolve(policy), campaign) };
+        return CampaignPacingMigration.RebindEndgameArena(original, rebound, combatJson, adventure, policy, campaign);
     }
 
     private static CombatSnapshot Relocate(CombatSnapshot snapshot, CombatContent content, string activeEncounter)

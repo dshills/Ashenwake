@@ -131,6 +131,7 @@ public sealed class CampaignCinderExplorationTests
         Assert.Contains(CampaignRuntimeSession.FoundryEvent, session.Capture().Campaign.CompletedExploration);
         Assert.Contains("discovery.sealed_foundry", session.Capture().Production.Progression.Profile.Discoveries);
         var reward = Assert.Single(session.Capture().Production.Progression.Character.Items, i => i.DefinitionId == "item.cinder_edge" && i.Rarity == ItemRarity.Rare);
+        Assert.Equal(8, reward.Affixes["affix.damage"]); Assert.Equal(6, reward.Affixes["affix.resource"]);
         string claimed = session.StateHash;
         Assert.False(session.Execute(new(CampaignRuntimeAction.InteractCinder, Id: "cinder.foundry.treasure")).Success); Assert.Equal(claimed, session.StateHash);
         session = RoundTrip(session); Interact(session, "cinder.foundry.return");

@@ -51,6 +51,15 @@ public partial class EndgameHud
             _ => ""
         };
     }
+    private void RequestGateApproach()
+    {
+        if (!IsOpen || !IsVisibleInTree() || _view is not { Unlocked: true, InHub: true, AtGate: false, Alive: true } ||
+            _view.Run is { Status: "Active" }) return;
+        // Close the board before requesting ordinary, cancellable world movement.
+        // Arrival opens this same board; recovery and entry remain explicit actions.
+        SetOpen(false);
+        GateApproachRequested?.Invoke();
+    }
     private Button RequestButton(string text, BoardRequest request, string name)
     {
         var button = ActionButton(text, () => Request(request), name);

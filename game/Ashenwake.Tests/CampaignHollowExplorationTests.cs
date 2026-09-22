@@ -125,6 +125,7 @@ public sealed class CampaignHollowExplorationTests
         var owned = initial.Production.Progression.Character.Items.Select(i => i.Id).ToHashSet();
         var reward = Assert.Single(session.Capture().Production.Progression.Character.Items, i => !owned.Contains(i.Id));
         Assert.Equal("item.echo_ring", reward.DefinitionId); Assert.Equal(ItemRarity.Legendary, reward.Rarity);
+        Assert.Equal(1200, reward.Affixes["affix.critical"]); Assert.Equal(12, reward.Affixes["affix.resource"]);
         string claimed = session.StateHash;
         Assert.False(session.Execute(new(CampaignRuntimeAction.InteractHollow, Id: "hollow.vault.treasure")).Success); Assert.Equal(claimed, session.StateHash);
         session = RoundTrip(session); Interact(session, "hollow.vault.return");

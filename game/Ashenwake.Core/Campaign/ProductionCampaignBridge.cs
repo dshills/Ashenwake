@@ -1,4 +1,5 @@
 using Ashenwake.Core.Adventure;
+using Ashenwake.Core.Campaign;
 using Ashenwake.Core.Combat;
 using Ashenwake.Core.Content;
 using Ashenwake.Core.Progression;
@@ -7,51 +8,46 @@ namespace Ashenwake.Core.Production;
 
 public sealed partial class ProductionSession
 {
-    internal ProgressionResult GrantCryptTestament()
+    internal ProgressionResult GrantCryptTestament(string campaignVersion)
     {
         SynchronizeItemSequence();
-        var result = progression.GrantItem("campaign.crypt.testament", "item.serath_shroud", ItemRarity.Rare);
+        var result = CampaignTestaments.Grant(progression, "campaign.crypt.testament", campaignVersion);
         if (result.Success) ProjectPermanentInventory();
         return result;
     }
-    internal bool HasCryptTestamentReceipt => progression.CharacterState.OperationReceipts.TryGetValue("campaign.crypt.testament", out string? hash) &&
-        hash == JsonData.Hash(new { Action = "GrantItem", definitionId = "item.serath_shroud", rarity = ItemRarity.Rare, Affixes = new SortedDictionary<string, int>() });
-    internal ProgressionResult GrantBriarTestament()
+    internal bool HasCryptTestamentReceipt => CampaignTestaments.HasReceipt(progression.CharacterState.OperationReceipts, "campaign.crypt.testament");
+    internal ProgressionResult GrantBriarTestament(string campaignVersion)
     {
         SynchronizeItemSequence();
-        var result = progression.GrantItem("campaign.briar.testament", "item.stone_seal", ItemRarity.Rare);
+        var result = CampaignTestaments.Grant(progression, "campaign.briar.testament", campaignVersion);
         if (result.Success) ProjectPermanentInventory();
         return result;
     }
-    internal bool HasBriarTestamentReceipt => progression.CharacterState.OperationReceipts.TryGetValue("campaign.briar.testament", out string? hash) &&
-        hash == JsonData.Hash(new { Action = "GrantItem", definitionId = "item.stone_seal", rarity = ItemRarity.Rare, Affixes = new SortedDictionary<string, int>() });
-    internal ProgressionResult GrantFoundryTestament()
+    internal bool HasBriarTestamentReceipt => CampaignTestaments.HasReceipt(progression.CharacterState.OperationReceipts, "campaign.briar.testament");
+    internal ProgressionResult GrantFoundryTestament(string campaignVersion)
     {
         SynchronizeItemSequence();
-        var result = progression.GrantItem("campaign.foundry.testament", "item.cinder_edge", ItemRarity.Rare);
+        var result = CampaignTestaments.Grant(progression, "campaign.foundry.testament", campaignVersion);
         if (result.Success) ProjectPermanentInventory();
         return result;
     }
-    internal bool HasFoundryTestamentReceipt => progression.CharacterState.OperationReceipts.TryGetValue("campaign.foundry.testament", out string? hash) &&
-        hash == JsonData.Hash(new { Action = "GrantItem", definitionId = "item.cinder_edge", rarity = ItemRarity.Rare, Affixes = new SortedDictionary<string, int>() });
-    internal ProgressionResult GrantArchiveTestament()
+    internal bool HasFoundryTestamentReceipt => CampaignTestaments.HasReceipt(progression.CharacterState.OperationReceipts, "campaign.foundry.testament");
+    internal ProgressionResult GrantArchiveTestament(string campaignVersion)
     {
         SynchronizeItemSequence();
-        var result = progression.GrantItem("campaign.archive.testament", "item.oath_plate", ItemRarity.Rare);
+        var result = CampaignTestaments.Grant(progression, "campaign.archive.testament", campaignVersion);
         if (result.Success) ProjectPermanentInventory();
         return result;
     }
-    internal bool HasArchiveTestamentReceipt => progression.CharacterState.OperationReceipts.TryGetValue("campaign.archive.testament", out string? hash) &&
-        hash == JsonData.Hash(new { Action = "GrantItem", definitionId = "item.oath_plate", rarity = ItemRarity.Rare, Affixes = new SortedDictionary<string, int>() });
-    internal ProgressionResult GrantVaultTestament()
+    internal bool HasArchiveTestamentReceipt => CampaignTestaments.HasReceipt(progression.CharacterState.OperationReceipts, "campaign.archive.testament");
+    internal ProgressionResult GrantVaultTestament(string campaignVersion)
     {
         SynchronizeItemSequence();
-        var result = progression.GrantItem("campaign.vault.testament", "item.echo_ring", ItemRarity.Legendary);
+        var result = CampaignTestaments.Grant(progression, "campaign.vault.testament", campaignVersion);
         if (result.Success) ProjectPermanentInventory();
         return result;
     }
-    internal bool HasVaultTestamentReceipt => progression.CharacterState.OperationReceipts.TryGetValue("campaign.vault.testament", out string? hash) &&
-        hash == JsonData.Hash(new { Action = "GrantItem", definitionId = "item.echo_ring", rarity = ItemRarity.Legendary, Affixes = new SortedDictionary<string, int>() });
+    internal bool HasVaultTestamentReceipt => CampaignTestaments.HasReceipt(progression.CharacterState.OperationReceipts, "campaign.vault.testament");
     internal bool ContainsCampaignReceipt(string receipt) => progression.CharacterState.OperationReceipts.ContainsKey(receipt);
     internal bool HasCampaignReward(string receipt, int amount, int materials)
         => progression.CharacterState.OperationReceipts.TryGetValue(receipt, out string? hash) && hash == JsonData.Hash(new { Action = "Experience", amount, materials });

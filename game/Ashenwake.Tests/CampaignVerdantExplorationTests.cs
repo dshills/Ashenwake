@@ -118,6 +118,7 @@ public sealed class CampaignVerdantExplorationTests
         Assert.Contains(CampaignRuntimeSession.ShrineEvent, session.Capture().Campaign.CompletedExploration);
         Assert.Contains("discovery.briar_shrine", session.Capture().Production.Progression.Profile.Discoveries);
         var reward = Assert.Single(session.Capture().Production.Progression.Character.Items, i => i.DefinitionId == "item.stone_seal" && i.Rarity == ItemRarity.Rare);
+        Assert.Equal(500, reward.Affixes["affix.critical"]); Assert.Equal(5, reward.Affixes["affix.resource"]);
         string claimed = session.StateHash;
         Assert.False(session.Execute(new(CampaignRuntimeAction.InteractVerdant, Id: "verdant.shrine.treasure")).Success); Assert.Equal(claimed, session.StateHash);
         session = RoundTrip(session); Interact(session, "verdant.shrine.return");

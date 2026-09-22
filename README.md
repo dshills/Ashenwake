@@ -32,6 +32,8 @@ Press **J** for the connected Journey map. Select Greyhaven or a campaign region
 
 Press **B** for the visual expedition board: inspect Sigil cards and connected routes, preview attunement, browse God Hunt emblems and unlock requirements, and track rooms, attempts and earned rewards. Sigil consumption, hunt entry, abandonment and leaving ground loot have explicit confirmation controls. See [Fractures & God Hunts controls](docs/expedition_board.md).
 
+The [campaign pacing pass](docs/campaign_pacing.md) smooths level gains across all five acts, gives optional testaments useful craftable affixes, and adds **Walk to the Fracture gate** to the expedition board. Existing saves retain earned equipment and receive any earlier XP difference once.
+
 ## Start here
 
 Requires Git/Git LFS, Python 3, `curl`, `unzip`, `ripgrep`, and **Go 1.27.1**. The bootstrap installs **.NET SDK 8.0.425** and **Godot 4.6.2 Mono** inside ignored `.tools/`; it does not replace the system Godot. Supported bootstrap hosts are macOS Apple Silicon and Linux x86_64.
@@ -155,6 +157,8 @@ aw authoring templates artifacts/new-templates
 aw authoring pseudo artifacts/text.qps-ploc.json
 aw balance run
 aw balance loot
+aw balance campaign artifacts/balance/new-campaign 1 --managed-build
+aw balance campaign artifacts/balance/new-main-route 1 --main-path --managed-build
 bash tools/export.sh
 ```
 

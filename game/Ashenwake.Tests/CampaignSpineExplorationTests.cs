@@ -131,6 +131,7 @@ public sealed class CampaignSpineExplorationTests
         Assert.Contains(CampaignRuntimeSession.ArchiveEvent, session.Capture().Campaign.CompletedExploration);
         Assert.Contains("discovery.oathkeeper_archive", session.Capture().Production.Progression.Profile.Discoveries);
         var reward = Assert.Single(session.Capture().Production.Progression.Character.Items, i => i.DefinitionId == "item.oath_plate" && i.Rarity == ItemRarity.Rare);
+        Assert.Equal(350, reward.Affixes["affix.armor"]); Assert.Equal(8, reward.Affixes["affix.resource"]);
         string claimed = session.StateHash;
         Assert.False(session.Execute(new(CampaignRuntimeAction.InteractSpine, Id: "spine.archive.treasure")).Success); Assert.Equal(claimed, session.StateHash);
         session = RoundTrip(session); Interact(session, "spine.archive.return");

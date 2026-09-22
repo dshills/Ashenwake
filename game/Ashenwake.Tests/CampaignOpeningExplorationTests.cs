@@ -221,6 +221,7 @@ public sealed class CampaignOpeningExplorationTests
         var after = session.Capture().Production.Progression.Character;
         var reward = Assert.Single(after.Items, i => !ownedIds.Contains(i.Id));
         Assert.Equal("item.serath_shroud", reward.DefinitionId); Assert.Equal(ItemRarity.Rare, reward.Rarity);
+        Assert.Equal(150, reward.Affixes["affix.armor"]); Assert.Equal(3, reward.Affixes["affix.resource"]);
         Assert.Equal(before.Materials + 25, after.Materials);
         Assert.Contains(Event, session.Capture().Campaign.CompletedExploration);
         Assert.Contains("discovery.widow_crypt", session.Capture().Production.Progression.Profile.Discoveries);

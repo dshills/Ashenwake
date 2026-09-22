@@ -120,7 +120,7 @@ public sealed partial class CampaignRuntimeSession
         if (ActiveEncounterId != ArchiveEncounter || !EncounterCleared || story.CurrentState.Exploration?.Id != ArchiveEvent || story.CurrentState.CompletedExploration.Contains(ArchiveEvent))
             return Failed("Secure the Oathkeeper’s Archive before opening its testament.");
         Production.ReserveCampaignItemSequence(arena.Capture().NextObjectId);
-        var reward = Production.GrantArchiveTestament(); if (!reward.Success) return Failed(reward.Reason);
+        var reward = Production.GrantArchiveTestament(Content.Data.Version); if (!reward.Success) return Failed(reward.Reason);
         var completion = story.CompleteExploration(ArchiveEncounter); Require(completion);
         var messages = completion.Events.Concat(reward.Events).Concat(Award("campaign.exploration." + ArchiveEvent, completion)).ToList();
         explorationReturnEncounter = ""; messages.Add("ArchiveTestamentClaimed");

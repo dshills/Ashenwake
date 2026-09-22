@@ -120,7 +120,7 @@ public sealed partial class CampaignRuntimeSession
         if (ActiveEncounterId != FoundryEncounter || !EncounterCleared || story.CurrentState.Exploration?.Id != FoundryEvent || story.CurrentState.CompletedExploration.Contains(FoundryEvent))
             return Failed("Secure the Sealed Foundry before opening its testament.");
         Production.ReserveCampaignItemSequence(arena.Capture().NextObjectId);
-        var reward = Production.GrantFoundryTestament(); if (!reward.Success) return Failed(reward.Reason);
+        var reward = Production.GrantFoundryTestament(Content.Data.Version); if (!reward.Success) return Failed(reward.Reason);
         var completion = story.CompleteExploration(FoundryEncounter); Require(completion);
         var messages = completion.Events.Concat(reward.Events).Concat(Award("campaign.exploration." + FoundryEvent, completion)).ToList();
         explorationReturnEncounter = ""; messages.Add("FoundryTestamentClaimed");

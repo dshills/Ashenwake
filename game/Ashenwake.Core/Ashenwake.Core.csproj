@@ -3,7 +3,9 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Frozen catalogs authenticate saves from before authored opening rooms. -->
+    <!-- Frozen catalogs authenticate published campaign releases before upgrades. -->
+    <EmbeddedResource Include="../../fixtures/campaign-hollow.json" LogicalName="Ashenwake.PreviousPacing.Campaign.json" />
+    <EmbeddedResource Include="../../fixtures/campaign-combat-hollow.json" LogicalName="Ashenwake.PreviousPacing.Combat.json" />
     <EmbeddedResource Include="../../fixtures/campaign-phase4.json" LogicalName="Ashenwake.PreviousOpening.Campaign.json" />
     <EmbeddedResource Include="../../fixtures/campaign-combat-phase4.json" LogicalName="Ashenwake.PreviousOpening.Combat.json" />
     <EmbeddedResource Include="../../fixtures/campaign-grey-march.json" LogicalName="Ashenwake.PreviousVerdant.Campaign.json" />

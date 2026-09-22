@@ -92,7 +92,7 @@ public sealed partial class CampaignRuntimeSession
         if (ActiveEncounterId != VaultEncounter || !EncounterCleared || story.CurrentState.Exploration?.Id != VaultEvent || story.CurrentState.CompletedExploration.Contains(VaultEvent))
             return Failed("Secure the Unremembered Vault before opening its testament.");
         Production.ReserveCampaignItemSequence(arena.Capture().NextObjectId);
-        var reward = Production.GrantVaultTestament(); if (!reward.Success) return Failed(reward.Reason);
+        var reward = Production.GrantVaultTestament(Content.Data.Version); if (!reward.Success) return Failed(reward.Reason);
         var completion = story.CompleteExploration(VaultEncounter); Require(completion);
         var messages = completion.Events.Concat(reward.Events).Concat(Award("campaign.exploration." + VaultEvent, completion)).ToList();
         explorationReturnEncounter = ""; messages.Add("VaultTestamentClaimed");

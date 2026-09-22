@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign.pacing.7",
+  "version": "campaign.hollow.6",
   "acts": [
     {
       "number": 1,
@@ -33,7 +33,7 @@
           "eliteModifiers": [
             "Mirrorborn"
           ],
-          "experience": 100,
+          "experience": 75,
           "materials": 5,
           "rescuedResident": "Sister Cael"
         },
@@ -45,7 +45,7 @@
           "mechanic": "chains_ritual_anchors_released_creature",
           "counterplay": "Evade chains, destroy ritual anchors during resurrection, then use quiet gaps between independent bells.",
           "eliteModifiers": [],
-          "experience": 175,
+          "experience": 150,
           "materials": 15,
           "rescuedResident": ""
         }
@@ -70,7 +70,7 @@
           "eliteModifiers": [
             "Devourer"
           ],
-          "experience": 175,
+          "experience": 150,
           "materials": 8,
           "rescuedResident": "Oris Fen"
         },
@@ -83,7 +83,7 @@
           "mechanic": "protect_quarantine_channels",
           "counterplay": "Rotate between announced breaches; choose the village's treatment after securing the channels.",
           "eliteModifiers": [],
-          "experience": 200,
+          "experience": 175,
           "materials": 8,
           "rescuedResident": ""
         },
@@ -97,7 +97,7 @@
           "eliteModifiers": [
             "Gravewake"
           ],
-          "experience": 300,
+          "experience": 250,
           "materials": 20,
           "rescuedResident": ""
         }
@@ -124,7 +124,7 @@
           "eliteModifiers": [
             "Stormbound"
           ],
-          "experience": 300,
+          "experience": 250,
           "materials": 10,
           "rescuedResident": "Kesh"
         },
@@ -137,7 +137,7 @@
           "mechanic": "alternating_conveyor_heat",
           "counterplay": "Use cooled platforms during the machine's announced vent cycle.",
           "eliteModifiers": [],
-          "experience": 325,
+          "experience": 275,
           "materials": 10,
           "rescuedResident": ""
         },
@@ -151,7 +151,7 @@
           "eliteModifiers": [
             "Martyr"
           ],
-          "experience": 400,
+          "experience": 350,
           "materials": 25,
           "rescuedResident": ""
         }
@@ -176,7 +176,7 @@
           "eliteModifiers": [
             "Hunter"
           ],
-          "experience": 400,
+          "experience": 350,
           "materials": 12,
           "rescuedResident": ""
         },
@@ -189,7 +189,7 @@
           "mechanic": "visible_oath_zones",
           "counterplay": "Break the keeper's channel from an unmarked zone; no damage family is mandatory.",
           "eliteModifiers": [],
-          "experience": 425,
+          "experience": 375,
           "materials": 12,
           "rescuedResident": ""
         },
@@ -203,7 +203,7 @@
           "eliteModifiers": [
             "Null"
           ],
-          "experience": 500,
+          "experience": 450,
           "materials": 30,
           "rescuedResident": ""
         }
@@ -228,7 +228,7 @@
           "eliteModifiers": [
             "Riftborn"
           ],
-          "experience": 550,
+          "experience": 450,
           "materials": 15,
           "rescuedResident": "Pale Child"
         },
@@ -241,7 +241,7 @@
           "mechanic": "causal_echo_warnings",
           "counterplay": "Future attack outlines appear before their source; follow the timing marks rather than decorative perspective.",
           "eliteModifiers": [],
-          "experience": 650,
+          "experience": 1200,
           "materials": 15,
           "rescuedResident": ""
         },

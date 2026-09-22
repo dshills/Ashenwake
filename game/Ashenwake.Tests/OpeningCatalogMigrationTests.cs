@@ -32,9 +32,9 @@ public sealed class OpeningCatalogMigrationTests
     private static EndgameRuntimeSession OldEndgame() => EndgameRuntimeMigration.ImportPhaseFour(
         Read("fixtures/phase4-campaign-complete.json"), Journey(true), Combat(true), Adventure, Policy, Campaign(true), Endgame);
 
-    private static void SameExceptIdentities<T>(T before, T after)
+    private static void SameExceptCatalogsAndAuthoredPacing<T>(T before, T after)
     {
-        string Normalize(T value)
+        string Normalize(T value, bool applyExpectedPacing)
         {
             var node = JsonNode.Parse(JsonData.Write(value))!;
             void RemoveIdentities(JsonNode? current)
@@ -45,9 +45,63 @@ public sealed class OpeningCatalogMigrationTests
                         else RemoveIdentities(pair.Value);
                 else if (current is JsonArray array) foreach (var child in array) RemoveIdentities(child);
             }
+            if (applyExpectedPacing) ApplyExpectedPacing(node);
             RemoveIdentities(node); return node.ToJsonString();
         }
-        Assert.Equal(Normalize(before), Normalize(after));
+        Assert.Equal(Normalize(before, true), Normalize(after, false));
+    }
+
+    // Build an expected archive from the published XP contract. No changed field
+    // is ignored: the full before/after comparison still checks inventory, receipts,
+    // combat actions, caches and every field unrelated to identities and pacing.
+    private static void ApplyExpectedPacing(JsonNode node)
+    {
+        var previous = Campaign(true).Capture().Acts.SelectMany(act => act.Encounters).ToDictionary(e => e.Id);
+        var current = Campaign(false).Capture().Acts.SelectMany(act => act.Encounters).ToDictionary(e => e.Id);
+        IEnumerable<JsonObject> Objects(JsonNode? item)
+        {
+            if (item is JsonObject obj)
+            {
+                yield return obj;
+                foreach (var pair in obj) foreach (var descendant in Objects(pair.Value)) yield return descendant;
+            }
+            else if (item is JsonArray array)
+                foreach (var child in array) foreach (var descendant in Objects(child)) yield return descendant;
+        }
+        var objects = Objects(node).ToArray();
+        int? level = null;
+        foreach (var character in objects.Where(obj => obj["operationReceipts"] is JsonObject && obj.ContainsKey("experience")))
+        {
+            var receipts = character["operationReceipts"]!.AsObject();
+            long difference = 0;
+            foreach (var pair in receipts.ToArray().Where(pair => pair.Key.StartsWith("campaign.encounter.", StringComparison.Ordinal) &&
+                previous.ContainsKey(pair.Key["campaign.encounter.".Length..])))
+            {
+                string id = pair.Key["campaign.encounter.".Length..];
+                var old = previous[id]; var next = current[id];
+                Assert.Equal(old.Materials, next.Materials);
+                Assert.Equal(JsonData.Hash(new { Action = "Experience", amount = old.Experience, materials = old.Materials }), pair.Value!.GetValue<string>());
+                receipts[pair.Key] = JsonData.Hash(new { Action = "Experience", amount = next.Experience, materials = next.Materials });
+                difference += next.Experience - old.Experience;
+            }
+            Assert.True(difference >= 0);
+            var progression = ProgressionSession.Create(Policy);
+            long xp = Math.Min(progression.ExperienceForLevel(Policy.Capture().LevelCap), character["experience"]!.GetValue<long>() + difference);
+            character["experience"] = xp;
+            level = Enumerable.Range(1, Policy.Capture().LevelCap).Last(candidate => xp >= progression.ExperienceForLevel(candidate));
+        }
+        foreach (var narrative in objects.Where(obj => obj["completedEncounters"] is JsonArray && obj.ContainsKey("earnedExperience") && obj.ContainsKey("earnedMaterials")))
+        {
+            var completed = narrative["completedEncounters"]!.AsArray().Select(id => id!.GetValue<string>()).ToArray();
+            Assert.Equal(completed.Sum(id => previous[id].Experience), narrative["earnedExperience"]!.GetValue<int>());
+            narrative["earnedExperience"] = completed.Sum(id => current[id].Experience);
+        }
+        if (level is not null)
+            foreach (var combat in objects.Where(obj => obj["progressionBuild"] is JsonObject))
+            {
+                combat["progressionBuild"]!["level"] = level.Value;
+                combat["progressionBuild"]!["ultimateUnlocked"] = level.Value >= 10;
+            }
     }
 
     [Fact]
@@ -59,7 +113,7 @@ public sealed class OpeningCatalogMigrationTests
         Assert.True(loaded.InHub); Assert.Null(loaded.Capture().ClearedRooms);
         Assert.Equal(Campaign(false).Hash, loaded.Capture().Campaign.ContentHash);
         Assert.NotEqual(original.Production.Content.Hash, loaded.Production.Content.Hash);
-        SameExceptIdentities(original.Capture(), loaded.Capture());
+        SameExceptCatalogsAndAuthoredPacing(original.Capture(), loaded.Capture());
         Assert.True(loaded.Step(new CombatCommand(CombatCommandKind.Move, X: 1)).Success);
         Assert.True(CampaignRuntimeReplayRunner.Run(Journey(false), Adventure, Policy, Campaign(false), loaded.CaptureReplay()).Success);
     }
@@ -92,8 +146,8 @@ public sealed class OpeningCatalogMigrationTests
         Assert.Equal(body.Rng, after.Rng); Assert.Equal(body.Tick, after.Tick);
         Assert.Equal(body.NextObjectId, after.NextObjectId); Assert.Equal(body.NextActionId, after.NextActionId);
         Assert.Equal(JsonData.Hash(body.Inventory), JsonData.Hash(after.Inventory));
-        SameExceptIdentities(snapshot.Production, loaded.Capture().Production);
-        SameExceptIdentities(snapshot.Campaign, loaded.Capture().Campaign);
+        SameExceptCatalogsAndAuthoredPacing(snapshot.Production, loaded.Capture().Production);
+        SameExceptCatalogsAndAuthoredPacing(snapshot.Campaign, loaded.Capture().Campaign);
         foreach (var actor in body.Actors)
         {
             var migrated = after.Actors.Single(a => a.Id == actor.Id);
@@ -135,8 +189,8 @@ public sealed class OpeningCatalogMigrationTests
         Assert.True(loaded.EncounterCleared); Assert.Equal("clear", loaded.Combat.EncounterId);
         Assert.Equal("campaign.road", loaded.Combat.Capture().RoomEncounterId);
         Assert.DoesNotContain(loaded.Combat.View.Actors, a => a.Faction == CombatFaction.Enemy && a.Health > 0);
-        SameExceptIdentities(original.Capture().Production, loaded.Capture().Production);
-        SameExceptIdentities(original.Capture().Campaign, loaded.Capture().Campaign);
+        SameExceptCatalogsAndAuthoredPacing(original.Capture().Production, loaded.Capture().Production);
+        SameExceptCatalogsAndAuthoredPacing(original.Capture().Campaign, loaded.Capture().Campaign);
         Assert.Equal(JsonData.Hash(original.Combat.Capture().Inventory), JsonData.Hash(loaded.Combat.Capture().Inventory));
     }
 
@@ -150,8 +204,8 @@ public sealed class OpeningCatalogMigrationTests
         Assert.False(original.EncounterCleared);
         Assert.True(CampaignRuntimeReplayRunner.Run(Journey(true), Adventure, Policy, Campaign(true), original.CaptureReplay()).Success);
         var loaded = Upgrade(Save(original));
-        SameExceptIdentities(original.Capture().Production, loaded.Capture().Production);
-        SameExceptIdentities(original.Capture().Campaign, loaded.Capture().Campaign);
+        SameExceptCatalogsAndAuthoredPacing(original.Capture().Production, loaded.Capture().Production);
+        SameExceptCatalogsAndAuthoredPacing(original.Capture().Campaign, loaded.Capture().Campaign);
         Assert.Equal(original.ActiveEncounterId, loaded.ActiveEncounterId);
         Assert.Equal(JsonData.Hash(original.Combat.Capture().Inventory), JsonData.Hash(loaded.Combat.Capture().Inventory));
         Assert.Equal(original.Combat.Capture().Rng, loaded.Combat.Capture().Rng);
@@ -193,7 +247,7 @@ public sealed class OpeningCatalogMigrationTests
         }
         var loaded = EndgameRuntimeSaveStore.Read(Combat(false), Adventure, Policy, Campaign(false), Endgame,
             JsonData.Write(new EndgameRuntimeSave(1, original.StateHash, original.Capture())));
-        SameExceptIdentities(original.Capture(), loaded.Capture());
+        SameExceptCatalogsAndAuthoredPacing(original.Capture(), loaded.Capture());
         Assert.Equal(Campaign(false).Hash, loaded.Capture().Campaign.Campaign.ContentHash);
         Assert.True(loaded.Step().Success);
         Assert.True(EndgameRuntimeReplayRunner.Run(Combat(false), Adventure, Policy, Campaign(false), Endgame, loaded.CaptureReplay()).Success);
@@ -208,7 +262,7 @@ public sealed class OpeningCatalogMigrationTests
         Assert.Equal("Bound", original.View.Memory?.Status);
         var loaded = ExperimentSaveStore.Read(Combat(false), Adventure, Policy, Campaign(false), Endgame, Experiment,
             JsonData.Write(new ExperimentSave(1, original.StateHash, original.Capture())));
-        SameExceptIdentities(original.Capture(), loaded.Capture());
+        SameExceptCatalogsAndAuthoredPacing(original.Capture(), loaded.Capture());
         Assert.True(loaded.Step().Success);
         Assert.True(ExperimentReplayRunner.Run(Combat(false), Adventure, Policy, Campaign(false), Endgame, Experiment, loaded.CaptureReplay()).Success);
     }

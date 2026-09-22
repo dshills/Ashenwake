@@ -133,7 +133,7 @@ public sealed partial class CampaignRuntimeSession
         if (ActiveEncounterId != ShrineEncounter || !EncounterCleared || story.CurrentState.Exploration?.Id != ShrineEvent || story.CurrentState.CompletedExploration.Contains(ShrineEvent))
             return Failed("Secure Briarheart Shrine before opening its testament.");
         Production.ReserveCampaignItemSequence(arena.Capture().NextObjectId);
-        var reward = Production.GrantBriarTestament(); if (!reward.Success) return Failed(reward.Reason);
+        var reward = Production.GrantBriarTestament(Content.Data.Version); if (!reward.Success) return Failed(reward.Reason);
         var completion = story.CompleteExploration(ShrineEncounter); Require(completion);
         var messages = completion.Events.Concat(reward.Events).Concat(Award("campaign.exploration." + ShrineEvent, completion)).ToList();
         explorationReturnEncounter = ""; messages.Add("BriarTestamentClaimed");

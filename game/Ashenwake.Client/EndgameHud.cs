@@ -22,7 +22,7 @@ public partial class EndgameHud : Control
     public event Action<long>? FractureRequested;
     public event Action<long, string, string>? AttuneRequested;
     public event Action<string>? HuntRequested;
-    public event Action? RecoveryRequested, AdvanceRequested, RetryRequested, AbandonRequested, HubRequested;
+    public event Action? RecoveryRequested, AdvanceRequested, RetryRequested, AbandonRequested, HubRequested, GateApproachRequested;
     public event Action? SaveRequested, LoadRequested, ReplayRequested, ImportRequested;
     public event Action<bool>? VisibilityChangedByPlayer, ModalChanged;
     private EndgameDisplay? _view;

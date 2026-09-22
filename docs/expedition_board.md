@@ -2,6 +2,8 @@
 
 Press **B** to open the expedition board. Browse Sigil cards by region, tier, rules, boss family and reward tendency. Selecting a card only inspects it; its connected route previews three encounters and the final confrontation. Approach the Fracture gate in eastern Greyhaven, choose **Consume Sigil & enter**, and confirm the spend to start.
 
+After completing the campaign, use **Walk to the Fracture gate** from the board while elsewhere in Greyhaven. The board closes during the walk and reopens on arrival. **X** cancels navigation. Recovery, attunement and entry remain separate actions; walking spends nothing.
+
 The **Hunts** tab presents the known gods with distinct emblems, required Fracture tiers, phase guidance and catalyst rewards. Locked known hunts can be inspected. The optional secret hunt's identity and mechanics remain hidden until unlocked. Hunt entry confirms its two-attempt commitment.
 
 **Attunement** shows the current rule, a compatible replacement, their descriptions, the five-material fee and current balance. Previewing costs nothing. Apply at the gate to spend the materials and update the Sigil. The route shown above reflects the current Sigil until that change is committed.
