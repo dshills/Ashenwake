@@ -27,6 +27,9 @@ public partial class Sandbox
     public OpeningAtmosphere? OpeningMotion => _openingAtmosphere;
     public OpeningLighting? OpeningLights => _openingLighting;
     public VerdantAtmosphere? VerdantMotion => _verdantAtmosphere;
+    private CinderAtmosphere? _cinderAtmosphere;
+    private (float Width, float Depth) _cinderAtmosphereBounds;
+    public CinderAtmosphere? CinderMotion => _cinderAtmosphere;
 
     public void SetEnvironmentStyle(string style)
     {
@@ -86,15 +89,15 @@ public partial class Sandbox
         {
             bool storm = style == "cinder_storm", furnace = style == "cinder_furnace";
             environment.BackgroundColor = new Color(storm ? "25272e" : "2b2524");
-            environment.AmbientLightColor = new Color(storm ? "b4bcca" : "c6b7a8");
-            environment.AmbientLightEnergy = storm ? .47f : .43f;
+            environment.AmbientLightColor = new Color(storm ? "a6b8c9" : "aeb8c5");
+            environment.AmbientLightEnergy = storm ? .42f : .38f;
             environment.FogLightColor = new Color(storm ? "646675" : "70594c");
             environment.FogLightEnergy = .2f;
             environment.FogDensity = storm ? .20f : .14f;
             environment.FogDepthBegin = 35;
             environment.FogDepthEnd = 65;
-            _sun.LightColor = new Color(storm ? "dfdef0" : furnace ? "ffe2c1" : "f4d7bb");
-            _sun.LightEnergy = storm ? .78f : .84f;
+            _sun.LightColor = new Color(storm ? "dfdef0" : furnace ? "ffdfb9" : "ffdeba");
+            _sun.LightEnergy = .78f;
             _sun.RotationDegrees = new(-58, -30, 0);
         }
         if (spine)
@@ -159,6 +162,17 @@ public partial class Sandbox
             _regionalAmbience.StreamPaused = _clock.Paused;
         float x = (_authoredBounds.Width > 0 ? _authoredBounds.Width : _content.Room.HalfWidth) * .001f;
         float z = (_authoredBounds.Depth > 0 ? _authoredBounds.Depth : _content.Room.HalfDepth) * .001f;
+        bool cinderRoom = CinderAtmosphere.Supports(_environmentStyle);
+        if (_cinderAtmosphere is not null && (!cinderRoom || _cinderAtmosphere.Style != _environmentStyle || _cinderAtmosphereBounds != (x, z)))
+        {
+            RemoveChild(_cinderAtmosphere); _cinderAtmosphere.QueueFree(); _cinderAtmosphere = null;
+        }
+        if (cinderRoom && _cinderAtmosphere is null)
+        {
+            _cinderAtmosphere = CinderAtmosphere.Create(_environmentStyle, x, z);
+            _cinderAtmosphereBounds = (x, z); AddChild(_cinderAtmosphere);
+        }
+        _cinderAtmosphere?.Animate(delta, _clock.Paused, _reduceEffects, _graphicsQuality);
         bool verdantRoom = VerdantAtmosphere.Supports(_environmentStyle);
         if (_verdantAtmosphere is not null && (!verdantRoom || _verdantAtmosphere.Style != _environmentStyle || _verdantAtmosphereBounds != (x, z)))
         {

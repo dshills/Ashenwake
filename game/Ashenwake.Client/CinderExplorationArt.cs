@@ -22,13 +22,29 @@ public static class CinderExplorationArt
             b.Box(new(.15f, 2.7f, .1f), furnace + new Vector3(side * .10f, 1.85f, 1.05f), Edge);
             b.Beam(furnace + new Vector3(side * 2.52f, .70f, 1.12f), furnace + new Vector3(-side * 2.52f, 3.05f, 1.12f), .17f, Copper);
             b.Cylinder(.13f, .13f, .12f, furnace + new Vector3(side * 2.57f, 2.8f, 1.22f), Edge, new(90, 0, 0));
+            // Uneven patches and substantial locking shoes belong to the cold forge;
+            // the family roster above the doors stays clean and readable.
+            b.Box(new(.56f, .52f, .11f), furnace + new Vector3(side * 2.48f, .73f, 1.12f), Iron);
+            b.Box(new(.56f, .52f, .11f), furnace + new Vector3(side * 2.48f, 3.03f, 1.12f), Iron);
+            foreach (float lockHeight in new[] { .73f, 3.03f })
+                foreach (float bolt in new[] { -1f, 1f })
+                    CinderReachArt.Rivet(b, furnace + new Vector3(side * 2.48f + bolt * .18f, lockHeight, 1.20f), Vector3.Back, .05f);
+            b.Box(new(.33f, .98f, .025f), furnace + new Vector3(side * 2.04f, 1.9f, 1.041f), Basalt);
+            b.Box(new(.17f, .64f, .025f), furnace + new Vector3(side * 1.84f, 2.05f, 1.044f), Iron);
+            b.Box(new(.34f, .75f, .017f), furnace + new Vector3(side * 2.90f, 3.24f, .913f), Dark);
             // Exhaust stacks and tool frames stand outside the movement boundary.
             var stack = new Vector3(side * (x + 1.4f), 0, -z * .66f);
             b.Box(new(1.25f, 3.9f, 1.35f), stack + Vector3.Up * 1.95f, Basalt);
             b.Box(new(1.48f, .22f, 1.55f), stack + Vector3.Up * 4.01f, Edge);
             for (int band = 0; band < 3; band++)
+            {
                 b.Box(new(1.28f, .13f, 1.38f), stack + Vector3.Up * (.92f + band * 1.15f), Copper);
-            b.Beam(new(side * (x + .90f), .38f, -z + .8f), new(side * (x + .90f), .38f, z * .69f), .22f, Iron);
+                CinderReachArt.Rivet(b, stack + new Vector3(-.39f, .92f + band * 1.15f, .716f), Vector3.Back, .043f);
+                CinderReachArt.Rivet(b, stack + new Vector3(.39f, .92f + band * 1.15f, .716f), Vector3.Back, .043f);
+            }
+            b.Box(new(.24f, 1.58f, .018f), stack + new Vector3(-.11f, 3.10f, .685f), Dark);
+            b.Box(new(.11f, 1.02f, .019f), stack + new Vector3(.13f, 3.37f, .686f), Iron);
+            CinderReachArt.Pipe(b, new(side * (x + .90f), .38f, -z + .8f), new(side * (x + .90f), .38f, z * .69f), .12f, Iron, 5);
             // Bedrolls beneath metal shields remember the families the furnace sheltered.
             for (int bed = 0; bed < 3; bed++)
             {
@@ -46,7 +62,12 @@ public static class CinderExplorationArt
         var crane = new Vector3(-x * .54f, 0, -z - 2.3f);
         b.Beam(crane, crane + Vector3.Up * 5.8f, .27f, Iron);
         b.Beam(crane + Vector3.Up * 5.8f, crane + new Vector3(2.1f, 5.8f, 0), .25f, Edge);
-        b.Beam(crane + new Vector3(2.1f, 5.7f, 0), crane + new Vector3(2.1f, 4.4f, 0), .065f, Copper);
+        b.Branch(crane + new Vector3(2.1f, 5.7f, 0), crane + new Vector3(2.1f, 4.4f, 0), .032f, .032f, Copper, SurfaceKind.Metal);
+        b.Beam(crane + new Vector3(0, 4.58f, 0), crane + new Vector3(1.25f, 5.8f, 0), .16f, Iron);
+        b.Box(new(.54f, .57f, .09f), crane + new Vector3(.10f, 5.68f, .19f), Copper);
+        foreach (float bolt in new[] { -1f, 1f })
+            CinderReachArt.Rivet(b, crane + new Vector3(.10f + bolt * .16f, 5.68f, .259f), Vector3.Back, .052f);
+        CinderReachArt.Cable(b, crane + new Vector3(.13f, 5.67f, -.20f), crane + new Vector3(1.91f, 5.70f, -.20f), .44f, .025f);
         b.Torus(.16f, .24f, crane + new Vector3(2.1f, 4.17f, 0), Edge, new(90, 0, 0));
     }
 

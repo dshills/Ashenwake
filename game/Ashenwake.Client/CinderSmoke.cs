@@ -32,6 +32,9 @@ public partial class CinderSmoke : Node
     private readonly HashSet<string> _contexts = [], _captures = [], _orientations = [];
     private readonly HashSet<bool> _guards = [];
     private readonly List<string> _audioFingerprints = [];
+    private readonly List<CinderDepthChecks.Evidence> _depthEvidence = [];
+    private readonly List<object> _frameSamples = [];
+    private readonly HashSet<string> _furnaceDepthStates = [];
     private bool _stormObserved, _stormCleaned, _furnaceObserved, _victoryObserved, _stormWarned;
     private CombatView? _liveFurnace;
     private sealed record EnvironmentEvidence(string Encounter, string Style, int ArchitectureMeshes, int ArchitectureMaterials,
@@ -46,6 +49,7 @@ public partial class CinderSmoke : Node
             if (!args.Contains("--cinder-smoke") || _output.Length == 0)
                 throw new InvalidDataException("Cinder smoke requires --cinder-smoke --output=<isolated-directory>.");
             Directory.CreateDirectory(_output); Engine.MaxFps = 60;
+            CinderDepthChecks.Detached(Check);
             _combatJson = CampaignCombatContent.Parse(Read("combat"), Read("campaign-combat")).CombatJson;
             _campaign = CampaignContent.Parse(Read("campaign"));
             _adventure = AdventureContent.Parse(Read("adventure"));
@@ -107,8 +111,11 @@ public partial class CinderSmoke : Node
             Check("furnace_victory_observed", _furnaceObserved && _victoryObserved);
             string hash = _session.StateHash; CheckAudioSamples();
             Check("audio_generation_does_not_change_core_state", _session.StateHash == hash);
+            var departedAtmosphere = _sandbox.CinderMotion;
             Check("can_return_to_hub_after_act_three", _session.ReturnToHub().Success); _commands++;
             Refresh(); await Settle();
+            Check("hub_releases_cinder_motion_and_lights", _sandbox.CinderMotion is null && !GodotObject.IsInstanceValid(departedAtmosphere) &&
+                !Descendants(_sandbox).Any(n => n is CinderAtmosphere));
             Check("hub_stops_cinder_ambience", _sandbox.AmbienceCue.Length == 0 && !_sandbox.AmbiencePlaying);
             Check("hub_hides_furnace_and_cinder_architecture", !Descendants(_stage).OfType<FurnaceSpindleVisual>().Any(n => n.IsVisibleInTree()) &&
                 !Descendants(_stage).OfType<Node3D>().Any(n => n.Name == "CinderReachArchitecture" && n.IsVisibleInTree()));
@@ -118,6 +125,7 @@ public partial class CinderSmoke : Node
             Check("completed_act_three_retains_regional_floor_and_atmosphere", _sandbox.EnvironmentStyle == "cinder_fields" && _sandbox.AmbienceCue == "cinder_wind" &&
                 Descendants(_stage).OfType<Node3D>().Any(n => n.Name == "CinderReachArchitecture" && n.IsVisibleInTree()));
             Check("completed_revisit_does_not_respawn_furnace", !Descendants(_stage).Any(n => n is FurnaceSpindleVisual));
+            InspectDepth("revisit", "cinder_fields");
             Check("completed_revisit_can_return_to_hub", _session.ReturnToHub().Success); _commands++;
             Refresh(); await Settle();
             var replay = CampaignRuntimeReplayRunner.Run(_combatJson, _adventure, _progression, _campaign, _session.CaptureReplay());
@@ -174,6 +182,7 @@ public partial class CinderSmoke : Node
             Check("regional_ambience_" + style, _sandbox.AmbienceCue == CinderAmbience.CueForStyle(style) && _sandbox.AmbiencePlaying);
             Check("bounded_motes_" + style, _sandbox.AmbientMoteCount == 24);
             await Capture(style + ".png");
+            await CheckDepthQuality(style);
             await CheckMouseDestination(style);
             if (style == "cinder_fields") await CheckAtmosphere();
             if (style == "cinder_storm")
@@ -293,6 +302,8 @@ public partial class CinderSmoke : Node
         var view = _session.Combat.View; var boss = view.Actors.Single(a => a.DefinitionId == "boss.furnace_spindle");
         var vent = (view.CampaignHazards ?? []).FirstOrDefault(h => h.ContentId == "campaign.furnace_vent" && h.SourceId == boss.Id && h.RemainingTicks > 0);
         string orientation = vent is null ? "None" : Math.Abs(vent.End.X - vent.Position.X) >= Math.Abs(vent.End.Z - vent.Position.Z) ? "Horizontal" : "Vertical";
+        if (boss.Health > 0 && _furnaceDepthStates.Add($"{boss.Guarded}:{orientation}"))
+            CinderFurnaceDepthChecks.Detached(view, Check, fullRotation: _furnaceDepthStates.Count == 1);
         if (boss.Health > 0) { _guards.Add(boss.Guarded); _liveFurnace = view; }
         _orientations.Add(orientation);
         Check("furnace_guard_matches_authoritative_defense", furnace.Guarded == (boss.Health > 0 && boss.Guarded));
@@ -384,7 +395,7 @@ public partial class CinderSmoke : Node
         var ground = Descendants(_sandbox).OfType<Node3D>().Single(n => n.Name == "AuthoredGround");
         var groundMeshes = Meshes(ground); var groundVertices = groundMeshes.SelectMany(Vertices).ToArray();
         float top = groundVertices.Max(p => p.Y);
-        Check("ground_below_combat_warnings_" + style, float.IsFinite(top) && top <= .001f && groundVertices.All(p => float.IsFinite(p.X) && float.IsFinite(p.Z)));
+        Check("ground_below_combat_warnings_" + style, float.IsFinite(top) && top < 0 && groundVertices.All(p => float.IsFinite(p.X) && float.IsFinite(p.Z)));
         Check("bounded_ground_batches_" + style, groundMeshes.Length is > 0 and <= 32 && MaterialCount(groundMeshes) <= 32);
         Check("ground_has_no_physics_" + style, !Descendants(ground).Any(n => n is CollisionObject3D or CollisionShape3D or NavigationRegion3D));
         var room = _session.Room;
@@ -420,11 +431,19 @@ public partial class CinderSmoke : Node
             var frozen = motes.Multimesh.GetInstanceTransform(0); await Frames(8);
             Check("cinder_motes_freeze_with_pause", motes.Multimesh.GetInstanceTransform(0).IsEqualApprox(frozen));
             var expanded = _session.Room with { HalfWidth = 18000, HalfDepth = 15000 };
+            var departed = _sandbox.CinderMotion;
             _sandbox.PresentAuthoredRoom(expanded, "cinder:bounds-check", "cinder_fields");
             Check("paused_same_style_resize_places_motes_immediately", Outside(expanded));
+            _depthEvidence.Add(CinderDepthChecks.Inspect(_sandbox, "paused-resize", "cinder_fields", 18, 15, Check));
+            await Settle();
+            Check("resize_releases_previous_cinder_resources", !GodotObject.IsInstanceValid(departed));
+            departed = _sandbox.CinderMotion;
             expanded = expanded with { HalfWidth = 20000, HalfDepth = 18000 };
             _sandbox.PresentAuthoredRoom(expanded, "cinder:style-bounds-check", "cinder_furnace");
             Check("paused_new_style_uses_current_bounds_immediately", Outside(expanded));
+            _depthEvidence.Add(CinderDepthChecks.Inspect(_sandbox, "paused-style-change", "cinder_furnace", 20, 18, Check));
+            await Settle();
+            Check("style_change_releases_previous_cinder_resources", !GodotObject.IsInstanceValid(departed));
             Refresh();
 
             bool Outside(RoomDefinition room) => Enumerable.Range(0, 24).Select(i => motes.Multimesh.GetInstanceTransform(i).Origin)
@@ -444,6 +463,54 @@ public partial class CinderSmoke : Node
         Check("reduced_effects_disable_fog_and_motes", _sandbox.ReducedEffects && !environment.FogEnabled && !motes.IsVisibleInTree());
         effects.ButtonPressed = false; await Settle();
         Check("restoring_effects_restores_atmosphere", !_sandbox.ReducedEffects && environment.FogEnabled && motes.IsVisibleInTree());
+    }
+
+    private void InspectDepth(string context, string style) => _depthEvidence.Add(CinderDepthChecks.Inspect(_sandbox, context, style,
+        _session.Room.HalfWidth * .001f, _session.Room.HalfDepth * .001f, Check));
+
+    private async Task CheckDepthQuality(string style)
+    {
+        string hash = _session.StateHash;
+        var atmosphere = _sandbox.CinderMotion!;
+        ulong id = atmosphere.GetInstanceId();
+        InspectDepth(style + "-high", style);
+        await SampleFrames(style, "High");
+        _sandbox.SetPaused(true); await Settle();
+        double frozen = atmosphere.MotionTime;
+        var selector = Descendants(_sandbox).OfType<OptionButton>().Single(n => n.Name == "SettingsGraphicsQuality");
+        selector.Select(1); selector.EmitSignal(OptionButton.SignalName.ItemSelected, 1L);
+        InspectDepth(style + "-performance", style);
+        Check("paused_quality_keeps_room_and_clock_" + style, atmosphere.GetInstanceId() == id && atmosphere.MotionTime == frozen);
+        _sandbox.SetPaused(false); await Settle();
+        await Capture(style + "-performance.png");
+        await SampleFrames(style, "Performance");
+        _sandbox.SetPaused(true); await Settle();
+        var effects = Descendants(_sandbox).OfType<CheckButton>().Single(b => b.Text == "Reduced visual effects");
+        effects.ButtonPressed = true; await Settle();
+        Check("paused_reduced_effects_settles_live_machinery_" + style, _sandbox.ReducedEffects && atmosphere.MotionTime == 0);
+        InspectDepth(style + "-reduced", style);
+        if (style is "cinder_fields" or "cinder_furnace") await Capture(style + "-reduced.png");
+        effects.ButtonPressed = false;
+        selector.Select(0); selector.EmitSignal(OptionButton.SignalName.ItemSelected, 0L);
+        Check("restoring_cinder_preferences_preserves_paused_room_" + style,
+            atmosphere.GetInstanceId() == id && atmosphere.MotionTime == 0 && atmosphere.ActiveLightCount == 4);
+        _sandbox.SetPaused(false); await Settle();
+        Check("cinder_quality_and_effects_do_not_mutate_core_" + style, _session.StateHash == hash);
+    }
+
+    private async Task SampleFrames(string style, string quality)
+    {
+        if (DisplayServer.GetName() == "headless") return;
+        var samples = new List<double>();
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        for (int frame = 0; frame < 30; frame++)
+        {
+            double before = timer.Elapsed.TotalMilliseconds;
+            await Frames(1);
+            samples.Add(timer.Elapsed.TotalMilliseconds - before);
+        }
+        samples.Sort();
+        _frameSamples.Add(new { style, quality, frames = samples.Count, medianMs = samples[15], p95Ms = samples[28] });
     }
 
     private void CheckAudioSamples()
@@ -518,6 +585,8 @@ public partial class CinderSmoke : Node
             ventOrientations = _orientations.Order().ToArray(),
             guardedStates = _guards.Order().ToArray(),
             audioFingerprints = _audioFingerprints,
+            depthEvidence = _depthEvidence,
+            frameSamples = _frameSamples,
             captures = _captures.Order().ToArray(),
             error,
             scope = "Real CampaignRuntimeSmoke commands unlock and complete Act III, including the Sealed Foundry and timed Resonance Storm, Core Furnace guard and vent windows, and victory. An independently restored storm branch exercises timer expiry using ordinary movement and potion inputs. Mesh vertices establish safe scenery and ground placement; shipping mouse planner routes around each room's obstacles. Real viewport clicks show the mint destination ring in each context and X cancels it while AdvanceOverride keeps campaign movement stationary. Runtime state, finite animations, restore, pause, reduced effects, regional audio, resource bounds and deterministic command replay are checked without changing gameplay state for presentation."

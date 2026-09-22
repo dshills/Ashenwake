@@ -64,6 +64,23 @@
       "requiredCredit": "Ashenwake project contributors; final release credit names and distribution terms await the owner."
     },
     {
+      "id": "asset.procedural_cinder_reach",
+      "name": "Cinder Reach volcanic city, extraction machinery, sealed foundry, storm collectors, basalt and ash floors, practical lighting, pump flywheels, Furnace Spindle and synthesized regional ambience",
+      "sourceFiles": [
+        "game/Ashenwake.Client/CinderReachArt.cs",
+        "game/Ashenwake.Client/CinderExplorationArt.cs",
+        "game/Ashenwake.Client/CinderGround.cs",
+        "game/Ashenwake.Client/CinderObstacleArt.cs",
+        "game/Ashenwake.Client/CinderAtmosphere.cs",
+        "game/Ashenwake.Client/FurnaceSpindleVisual.cs",
+        "game/Ashenwake.Client/CinderAmbience.cs"
+      ],
+      "origin": "Authored in the Ashenwake repository using Godot primitive and custom indexed meshes, materials and synthesized waveforms; no downloaded art or audio samples are declared.",
+      "rightsStatus": "Project-authored source. The repository does not yet declare a distribution license or owner approval.",
+      "redistributionApproved": false,
+      "requiredCredit": "Ashenwake project contributors; final release credit names and distribution terms await the owner."
+    },
+    {
       "id": "asset.procedural_campaign_endgame",
       "name": "Procedural regional environments, Fracture arenas, God Hunt mechanisms and warning geometry",
       "sourceFiles": [

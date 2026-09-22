@@ -12,24 +12,8 @@ public static class CinderGround
         var b = new EnvironmentBuilder(parent, "AuthoredGround");
         float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
         bool extraction = style is "cinder_extraction" or "cinder_foundry", furnace = style == "cinder_furnace", storm = style == "cinder_storm";
+        var routes = Routes(style);
         b.Box(new(x * 2 + 11, .36f, z * 2 + 11), new(0, -.26f, 0), "34343a", surface: SurfaceKind.Earth);
-        // Offset paving creates volcanic streets, with enough value separation for mint destinations and warm warnings.
-        int columns = Math.Clamp((int)(x * 1.15f), 6, 28), rows = Math.Clamp((int)(z * 1.13f), 6, 28);
-        float width = x * 2 / columns, depth = z * 2 / rows;
-        for (int row = 0; row < rows; row++)
-            for (int col = 0; col < columns; col++)
-            {
-                int pattern = (row * 19 + col * 11 + row * col * 3) % 17;
-                float px = -x + (col + .5f) * width, pz = -z + (row + .5f) * depth;
-                if (!ClearFloor(room, px, pz, width * .5f, depth * .5f)) continue;
-                string color = pattern % 4 == 0 ? "4a4447" : pattern % 3 == 0 ? "454147" : "403e44";
-                b.Box(new(width - .045f, .022f, depth - .045f), new(px, -.052f, pz), color);
-                if (pattern % 5 == 0)
-                {
-                    b.Box(new(width * .28f, .008f, depth * .035f), new(px - width * .1f, -.034f, pz), "575051", new(0, 21, 0));
-                    b.Box(new(width * .12f, .008f, depth * .04f), new(px + width * .05f, -.034f, pz - depth * .035f), "575051", new(0, -31, 0));
-                }
-            }
         if (extraction) ExtractionFloor(b, x, z);
         else if (furnace) FurnaceFloor(b, x, z);
         else if (storm) StormFloor(b, x, z);
@@ -39,12 +23,15 @@ public static class CinderGround
         for (int i = 0; i < 18; i++)
         {
             float px = -x + (i + .5f) * x * 2 / 18, pz = -z + (i + .5f) * z * 2 / 18;
-            b.Box(new(x * 2 / 18 - .08f, .014f, .11f), new(px, -.017f, -z), "76685f");
-            b.Box(new(x * 2 / 18 - .08f, .014f, .11f), new(px, -.017f, z), "76685f");
-            b.Box(new(.11f, .014f, z * 2 / 18 - .08f), new(-x, -.017f, pz), "76685f");
-            b.Box(new(.11f, .014f, z * 2 / 18 - .08f), new(x, -.017f, pz), "76685f");
+            b.Box(new(x * 2 / 18 - .13f, .012f, .08f), new(px, -.020f, -z), "68615d");
+            b.Box(new(x * 2 / 18 - .13f, .012f, .08f), new(px, -.020f, z), "68615d");
+            b.Box(new(.08f, .012f, z * 2 / 18 - .13f), new(-x, -.020f, pz), "68615d");
+            b.Box(new(.08f, .012f, z * 2 / 18 - .13f), new(x, -.020f, pz), "68615d");
         }
         b.Flush();
+        var root = parent.GetNode<Node3D>("AuthoredGround");
+        GroundField(root, room, routes, style);
+        BasaltShoulders(root, room, routes, style);
     }
 
     public static Vector2[][] Routes(string style)
@@ -77,15 +64,181 @@ public static class CinderGround
             {
                 var point = new Vector2(px, pz);
                 if (!routes.Any(route => DistanceToRoute(point, route) < 1.16f) || !ClearFloor(room, px, pz, .44f, .39f)) continue;
-                string color = (row * 13 + column * 7) % 5 == 0 ? "766b65" : "635e5e";
-                b.Box(new(.84f, .009f, .74f), new(px, -.006f, pz), color, surface: metal ? SurfaceKind.Metal : SurfaceKind.Stone);
-                if (metal)
-                {
-                    b.Box(new(.66f, .0015f, .027f), new(px, -.001f, pz - .22f), "a07753", surface: SurfaceKind.Metal);
-                    b.Box(new(.66f, .0015f, .027f), new(px, -.001f, pz + .22f), "a07753", surface: SurfaceKind.Metal);
-                }
+                uint wear = SurfaceHash(row, column);
+                string color = wear % 5 == 0 ? "716967" : "635e5e";
+                if (metal) MetalPanel(b, point, color, wear);
+                else StonePanel(b, point, color, wear, RouteDistance(point, routes) > .65f);
             }
         }
+    }
+
+    private static void MetalPanel(EnvironmentBuilder b, Vector2 point, string color, uint wear)
+    {
+        // Recessed steel, worn edges and sparse bolts read as construction rather
+        // than hazard stripes. All faces stay below the authoritative ground plane.
+        b.Box(new(.84f, .019f, .74f), new(point.X, -.020f, point.Y), "363a3f", surface: SurfaceKind.Metal);
+        b.Box(new(.78f, .008f, .68f), new(point.X, -.007f, point.Y), color, surface: SurfaceKind.Metal);
+        if (wear % 7 == 0)
+        {
+            b.Box(new(.56f, .002f, .44f), new(point.X, -.0025f, point.Y), "32373d", surface: SurfaceKind.Metal);
+            for (int bar = 0; bar < 5; bar++)
+                b.Box(new(.55f, .001f, .022f), new(point.X, -.0009f, point.Y + (bar - 2) * .086f), "727477", surface: SurfaceKind.Metal);
+        }
+        else if (wear % 4 == 0)
+        {
+            b.Box(new(.37f, .001f, .012f), new(point.X - .035f, -.0015f, point.Y + .12f), "82746b", new(0, -8, 0), surface: SurfaceKind.Metal);
+            b.Box(new(.20f, .001f, .010f), new(point.X + .11f, -.0015f, point.Y + .16f), "514b4d", new(0, -8, 0), surface: SurfaceKind.Metal);
+        }
+        if (wear % 3 != 0) return;
+        foreach (float side in new[] { -1f, 1f })
+            b.Cylinder(.023f, .020f, .001f, new(point.X + side * .31f, -.0014f, point.Y - .25f), "82746b", surface: SurfaceKind.Metal);
+    }
+
+    private static void StonePanel(EnvironmentBuilder b, Vector2 point, string color, uint wear, bool shoulder)
+    {
+        void Slab(Vector2 offset, float width, float depth)
+        {
+            var at = point + offset;
+            b.Box(new(width, .026f, depth), new(at.X, -.026f, at.Y), "32373d", surface: SurfaceKind.Stone);
+            b.Box(new(width - .025f, .008f, depth - .025f), new(at.X, -.009f, at.Y), color, surface: SurfaceKind.Stone);
+        }
+        if (shoulder && wear % 6 == 0)
+        {
+            Slab(new(-.13f, 0), .565f, .74f);
+            Slab(new(.29f, .075f), .245f, .59f);
+        }
+        else Slab(Vector2.Zero, .84f, .74f);
+        if (!shoulder || wear % 9 != 0) return;
+        FlatSeam(b, new(point.X - .28f, -.003f, point.Y - .20f), new(point.X + .03f, -.003f, point.Y + .025f), .01f);
+        FlatSeam(b, new(point.X + .03f, -.003f, point.Y + .025f), new(point.X + .29f, -.003f, point.Y + .11f), .008f);
+    }
+
+    private static void FlatSeam(EnvironmentBuilder b, Vector3 from, Vector3 to, float width)
+    {
+        Vector3 span = to - from;
+        b.Box(new(width, .0015f, span.Length()), (from + to) * .5f, "41454b",
+            new(0, Mathf.RadToDeg(Mathf.Atan2(span.X, span.Z)), 0), surface: SurfaceKind.Stone);
+    }
+
+    private static void GroundField(Node3D root, RoomDefinition room, Vector2[][] routes, string style)
+    {
+        // One continuous surface carries cooled flows and drifting ash. Color changes
+        // are broad and non-emissive; no luminous fissure can be mistaken for a vent tell.
+        const int columns = 64, rows = 52;
+        float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
+        bool storm = style == "cinder_storm";
+        Color basalt = new(storm ? "43464c" : "46434a"), ash = new(storm ? "666461" : "5a5352"), soot = new("30353b");
+        using var surface = new SurfaceTool(); surface.Begin(Mesh.PrimitiveType.Triangles);
+        for (int row = 0; row <= rows; row++)
+            for (int column = 0; column <= columns; column++)
+            {
+                Vector2 point = new(-x + column * x * 2 / columns, -z + row * z * 2 / rows);
+                float flow = .5f + .24f * MathF.Sin(point.X * .42f + MathF.Sin(point.Y * .31f)) +
+                    .16f * MathF.Sin(point.Y * .64f - point.X * .24f) + .07f * MathF.Sin(point.X * 1.47f + point.Y * 1.13f);
+                float drift = .5f + .32f * MathF.Sin(point.Y * 1.06f + point.X * .37f + MathF.Sin(point.X * .34f)) +
+                    .14f * MathF.Sin(point.Y * 2.15f + point.X * .78f);
+                float detail = QuietWeight(point, routes, style);
+                float wallDust = 0;
+                foreach (var obstacle in room.Obstacles)
+                {
+                    float dx = Math.Max(obstacle.MinX * .001f - point.X, Math.Max(0, point.X - obstacle.MaxX * .001f));
+                    float dz = Math.Max(obstacle.MinZ * .001f - point.Y, Math.Max(0, point.Y - obstacle.MaxZ * .001f));
+                    wallDust = Math.Max(wallDust, 1 - Mathf.SmoothStep(.05f, 1.15f, MathF.Sqrt(dx * dx + dz * dz)));
+                }
+                float ashAmount = Mathf.SmoothStep(.36f, .78f, drift) * detail * (storm ? .48f : .28f);
+                ashAmount = Math.Max(ashAmount, wallDust * .16f);
+                Color color = basalt.Lerp(soot, Mathf.SmoothStep(.52f, .84f, flow) * detail * .48f).Lerp(ash, ashAmount);
+                surface.SetColor(color); surface.SetNormal(Vector3.Up); surface.SetUV(point * .2f);
+                surface.AddVertex(new(point.X, -.079f, point.Y));
+            }
+        for (int row = 0; row < rows; row++)
+            for (int column = 0; column < columns; column++)
+            {
+                int a = row * (columns + 1) + column, b = a + 1, c = a + columns + 1, d = c + 1;
+                surface.AddIndex(a); surface.AddIndex(b); surface.AddIndex(c);
+                surface.AddIndex(b); surface.AddIndex(d); surface.AddIndex(c);
+            }
+        AddColoredSurface(root, surface, "CooledBasaltAndAsh", SurfaceKind.Earth);
+    }
+
+    private static void BasaltShoulders(Node3D root, RoomDefinition room, Vector2[][] routes, string style)
+    {
+        float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
+        using var surface = new SurfaceTool(); surface.Begin(Mesh.PrimitiveType.Triangles);
+        var occupied = new List<(Vector2 Point, float Radius)>();
+        int patches = 0;
+        for (int site = 0; site < 42; site++)
+        {
+            uint shape = SurfaceHash(site + 51, 89);
+            Vector2 center = new(-x + 1.25f + (shape & 1023) / 1023f * (x * 2 - 2.5f),
+                -z + 1.25f + ((shape >> 10) & 1023) / 1023f * (z * 2 - 2.5f));
+            float width = .65f + (shape >> 20 & 7) * .09f, depth = .56f + (shape >> 24 & 7) * .085f;
+            if (QuietWeight(center, routes, style) < .36f || !ClearFloor(room, center.X, center.Y, width * .55f, depth * .55f)) continue;
+            float radius = Math.Max(width, depth) * .55f;
+            if (occupied.Any(p => p.Point.DistanceSquaredTo(center) < (p.Radius + radius) * (p.Radius + radius))) continue;
+            occupied.Add((center, radius));
+            Color stone = new(site % 3 == 0 ? "514b50" : site % 3 == 1 ? "49464d" : "45454c");
+            // Six unequal fracture edges create a low broken plate, without a grid of
+            // regular polygons. The bevel falls back into the connected ash surface.
+            var edge = new Vector3[6];
+            for (int corner = 0; corner < edge.Length; corner++)
+            {
+                float angle = corner * Mathf.Tau / 6 + (shape % 360) * Mathf.Pi / 180;
+                float inset = .76f + ((shape >> (corner * 4)) & 7) * .027f;
+                edge[corner] = new(center.X + MathF.Sin(angle) * width * .5f * inset, -.043f,
+                    center.Y + MathF.Cos(angle) * depth * .5f * inset);
+            }
+            void Triangle(Vector3 a, Vector3 b, Vector3 c, Color color)
+            {
+                Vector3 normal = -(b - a).Cross(c - a).Normalized();
+                foreach (var point in new[] { a, b, c })
+                { surface.SetColor(color); surface.SetNormal(normal); surface.SetUV(new(point.X * .6f, point.Z * .6f)); surface.AddVertex(point); }
+            }
+            var middle = new Vector3(center.X, -.037f, center.Y);
+            for (int corner = 0; corner < edge.Length; corner++)
+            {
+                Vector3 a = edge[corner], b = edge[(corner + 1) % edge.Length];
+                Vector3 lowerA = new(center.X + (a.X - center.X) * 1.08f, -.076f, center.Y + (a.Z - center.Y) * 1.08f);
+                Vector3 lowerB = new(center.X + (b.X - center.X) * 1.08f, -.076f, center.Y + (b.Z - center.Y) * 1.08f);
+                // Ring points run counterclockwise in XZ, so reverse the top fan for Godot's clockwise faces.
+                Triangle(middle, b, a, corner % 3 == 0 ? stone.Lightened(.028f) : stone);
+                Triangle(a, b, lowerB, stone.Darkened(.18f));
+                Triangle(a, lowerB, lowerA, stone.Darkened(.18f));
+            }
+            patches++;
+        }
+        if (patches > 0) { surface.Index(); AddColoredSurface(root, surface, "FracturedBasaltShoulders", SurfaceKind.Stone); }
+    }
+
+    private static void AddColoredSurface(Node3D root, SurfaceTool surface, string name, SurfaceKind kind)
+    {
+        var material = SurfaceMaterials.Create("ffffff", kind, worldScale: true);
+        material.VertexColorUseAsAlbedo = true; material.VertexColorIsSrgb = true;
+        surface.GenerateTangents(); surface.SetMaterial(material);
+        root.AddChild(new MeshInstance3D { Name = name, Mesh = surface.Commit() });
+    }
+
+    private static float RouteDistance(Vector2 point, Vector2[][] routes)
+    {
+        float distance = float.PositiveInfinity;
+        foreach (var route in routes) distance = Math.Min(distance, DistanceToRoute(point, route));
+        return distance;
+    }
+
+    private static float QuietWeight(Vector2 point, Vector2[][] routes, string style)
+    {
+        float detail = Mathf.SmoothStep(1.1f, 3.3f, RouteDistance(point, routes));
+        if (style == "cinder_furnace") detail *= Mathf.SmoothStep(4.7f, 7.5f, point.Length());
+        if (style == "cinder_foundry")
+            detail *= Mathf.SmoothStep(1.8f, 3, point.DistanceTo(new(CinderCampaignLayout.FoundryTreasure.X * .001f, CinderCampaignLayout.FoundryTreasure.Z * .001f)));
+        return detail;
+    }
+
+    private static uint SurfaceHash(int row, int column)
+    {
+        uint hash = unchecked((uint)row * 0x9E3779B9u ^ (uint)column * 0x85EBCA6Bu ^ 0xC2B2AE35u);
+        hash ^= hash >> 16; hash *= 0x7FEB352Du; hash ^= hash >> 15; hash *= 0x846CA68Bu;
+        return hash ^ (hash >> 16);
     }
 
     private static bool ClearFloor(RoomDefinition room, float x, float z, float halfWidth, float halfDepth)
@@ -170,15 +323,8 @@ public static class CinderGround
 
     private static void StormFloor(EnvironmentBuilder b, float x, float z)
     {
-        // Directional ash drifts follow the wind, not the simulation's storm-strike locations.
-        for (int i = 0; i < 33; i++)
-        {
-            float px = -x * .86f + (i * 7 % 17) * x * 1.72f / 16;
-            float pz = -z * .8f + (i * 11 % 19) * z * 1.6f / 18;
-            float length = .75f + i % 4 * .25f;
-            b.Box(new(length, .008f, .13f + i % 3 * .04f), new(px, -.027f, pz), i % 3 == 0 ? "675e58" : "514b4d", new(0, -23, 0));
-            if (i % 4 == 0) b.Box(new(length * .52f, .008f, .06f), new(px + .19f, -.017f, pz + .15f), "575659", new(0, -23, 0));
-        }
+        // Directional ash is now part of GroundField's continuous color variation.
+        // Only the old maintenance kerbs remain as geometry beside the storm arena.
         foreach (float side in new[] { -1f, 1f })
             for (int i = 0; i < 6; i++)
             {

@@ -67,10 +67,11 @@ public static class CinderReachArt
         // Insulated heat pipes explain the city's dependence on the furnace without crossing a player route.
         foreach (float side in new[] { -1f, 1f })
         {
-            b.Beam(new(side * (x + .78f), .38f, -z - .7f), new(side * (x + .78f), .38f, z * .61f), .24f, Rust);
+            Pipe(b, new(side * (x + .78f), .38f, -z - .7f), new(side * (x + .78f), .38f, z * .61f), .14f, Rust, 6);
             for (int i = 0; i < 5; i++)
-                b.Box(new(.48f, .13f, .24f), new(side * (x + .78f), .38f, -z * .75f + i * z * .3f), IronEdge);
+                b.Box(new(.42f, .17f, .32f), new(side * (x + .78f), .10f, -z * .75f + i * z * .3f), Basalt);
         }
+        Cable(b, new(-x * .36f, 3.93f, -z - 2.42f), new(x * .35f, 4.25f, -z - 2.61f), .75f);
     }
 
     private static void FoundryHouse(EnvironmentBuilder b, Vector3 p, float width, float height, bool openForge)
@@ -86,6 +87,10 @@ public static class CinderReachArt
             b.Box(new(.48f, .43f, .035f), p + new Vector3(side * width * .24f, height * .74f, depth * .53f), Ember, glow: true);
             b.Box(new(.075f, .76f, .055f), p + new Vector3(side * width * .24f, height * .74f, depth * .55f), Iron);
             b.Box(new(.74f, .065f, .075f), p + new Vector3(side * width * .24f, height * .74f, depth * .55f), Iron);
+            // Wide soot traces read at the gameplay camera distance; window locations
+            // remain unchanged so their practical light sources still meet the panes.
+            b.Box(new(.28f, height * .19f, .012f), p + new Vector3(side * width * .24f, height * .90f, depth * .504f), Coal);
+            b.Box(new(.12f, height * .13f, .014f), p + new Vector3(side * width * .24f + .17f, height * .88f, depth * .505f), Obsidian);
         }
         b.Box(new(width * .53f, 1.6f, .06f), p + new Vector3(0, 1.08f, depth * .515f), Dark);
         b.Box(new(width * .62f, .25f, .46f), p + new Vector3(0, 1.96f, depth * .53f), Rust);
@@ -100,11 +105,23 @@ public static class CinderReachArt
             b.Box(new(width * .37f, .15f, .05f), p + new Vector3(0, 1.41f, depth * .575f), Copper);
             b.Box(new(.6f, .62f, .075f), p + new Vector3(-width * .31f, 1.45f, depth * .57f), Cloth);
         }
+        foreach (float side in new[] { -1f, 1f })
+        {
+            b.Box(new(.21f, .59f, .09f), p + new Vector3(side * width * .275f, 1.97f, depth * .575f), IronEdge);
+            Rivet(b, p + new Vector3(side * width * .275f, 1.76f, depth * .626f), Vector3.Back, .045f);
+            Rivet(b, p + new Vector3(side * width * .275f, 2.17f, depth * .626f), Vector3.Back, .045f);
+        }
+        b.Box(new(width * .45f, .14f, .013f), p + new Vector3(0, 2.16f, depth * .506f), Coal);
         Chimney(b, p + new Vector3(width * .25f, height + .55f, -.52f), 2.1f);
         Chimney(b, p + new Vector3(-width * .28f, height + .55f, -.45f), 1.25f);
         // Slanted, thick roofs belong to the facade; their nearest edge remains well behind the room.
         b.Box(new(width * .43f, .1f, depth + .38f), p + new Vector3(-width * .21f, height + .78f, .01f), Iron, new(0, 0, 8));
         b.Box(new(width * .43f, .1f, depth + .38f), p + new Vector3(width * .21f, height + .78f, .01f), Iron, new(0, 0, -8));
+        for (int seam = -1; seam <= 1; seam++)
+        {
+            b.Box(new(width * .43f, .026f, .055f), p + new Vector3(-width * .21f, height + .84f, seam * .87f), Rust, new(0, 0, 8));
+            b.Box(new(width * .43f, .026f, .055f), p + new Vector3(width * .21f, height + .84f, seam * .87f), Rust, new(0, 0, -8));
+        }
     }
 
     private static void Extraction(EnvironmentBuilder b, float x, float z)
@@ -122,10 +139,13 @@ public static class CinderReachArt
                 b.Box(new(.65f, .27f, .83f), foot + Vector3.Up * .135f, CutStone);
                 b.Beam(foot, shaft + new Vector3(leg * 1.07f, 5.1f, .1f), .3f, Iron);
                 b.Box(new(.18f, .17f, 1.12f), foot + new Vector3(0, 2.42f, -.22f), Copper);
+                b.Box(new(.50f, .60f, .10f), shaft + new Vector3(leg * 1.11f, 4.89f, .46f), Rust);
+                foreach (float row in new[] { -.18f, .18f })
+                    Rivet(b, shaft + new Vector3(leg * 1.11f, 4.89f + row, .535f), Vector3.Back, .046f);
             }
             b.Box(new(3.15f, .45f, .62f), shaft + new Vector3(0, 5.12f, .1f), IronEdge);
             b.Torus(.38f, .62f, shaft + new Vector3(0, 4.62f, .48f), Rust, new(90, 0, 0));
-            b.Beam(shaft + new Vector3(0, 4.65f, .47f), shaft + new Vector3(0, 1.22f, .47f), .065f, IronEdge);
+            b.Branch(shaft + new Vector3(0, 4.65f, .47f), shaft + new Vector3(0, 1.22f, .47f), .038f, .038f, IronEdge, SurfaceKind.Metal);
             b.Cylinder(.64f, .5f, 1.25f, shaft + new Vector3(0, 1.62f, .48f), Iron);
             for (int band = 0; band < 3; band++)
                 b.Torus(.48f, .65f, shaft + new Vector3(0, 1.09f + band * .5f, .48f), Rust);
@@ -136,6 +156,8 @@ public static class CinderReachArt
         for (int i = 0; i < 7; i++)
             b.Beam(new(-x * .66f + i * x * .22f, 4.2f, -z - 4.35f), new(-x * .55f + i * x * .22f, 4.96f, -z - 4.35f), .12f, Rust);
         b.Box(new(x * 1.5f, .16f, .22f), new(0, 5.03f, -z - 4.35f), Copper);
+        Cable(b, new(-x * .61f, 5.3f, -z - 3.92f), new(x * .61f, 5.3f, -z - 3.92f), .83f, .038f);
+        Cable(b, new(-x * .61f, 4.3f, -z - 4.03f), new(x * .61f, 4.3f, -z - 4.03f), .50f, .022f);
         b.Box(new(2.35f, 1.75f, 1.25f), new(0, .88f, -z - 2.15f), Basalt);
         b.Box(new(2.56f, .16f, 1.46f), new(0, 1.83f, -z - 2.15f), Iron);
         for (int i = 0; i < 3; i++)
@@ -160,14 +182,18 @@ public static class CinderReachArt
                 b.Box(new(.25f, height - .5f, .16f), foot + new Vector3(0, height * .5f, .66f), Copper);
                 b.Box(new(1.25f, .3f, 1.38f), foot + Vector3.Up * (height + .13f), Iron);
                 b.Beam(foot + new Vector3(side * .58f, .25f, .23f), foot + new Vector3(side * .38f, height * .7f, .23f), .24f, Rust);
+                b.Box(new(.62f, .44f, .11f), foot + new Vector3(0, height * .64f, .76f), Iron);
+                foreach (float bolt in new[] { -1f, 1f })
+                    Rivet(b, foot + new Vector3(bolt * .20f, height * .64f, .84f), Vector3.Back, .043f);
                 Chimney(b, foot + Vector3.Up * (height + .3f), .78f + i * .18f);
             }
             Pump(b, new(side * (x + 2.55f), 0, -z * .38f), 3.55f);
-            b.Beam(new(side * (x + 1.48f), .7f, -z * .62f), new(side * (x + 1.48f), .7f, z * .58f), .48f, Rust);
+            Pipe(b, new(side * (x + 1.48f), .7f, -z * .62f), new(side * (x + 1.48f), .7f, z * .58f), .25f, Rust, 5);
             for (int i = 0; i < 4; i++)
-                b.Box(new(.69f, .23f, .27f), new(side * (x + 1.48f), .7f, -z * .45f + i * z * .28f), IronEdge);
+                b.Box(new(.65f, .36f, .40f), new(side * (x + 1.48f), .22f, -z * .45f + i * z * .28f), Basalt);
             b.Box(new(5.65f, .3f, .87f), back + new Vector3(side * 6.4f, 4.83f, -.39f), Iron);
             b.Box(new(5.65f, .12f, .91f), back + new Vector3(side * 6.4f, 5.06f, -.39f), Copper);
+            Cable(b, back + new Vector3(side * 3.9f, 5.20f, .27f), back + new Vector3(side * 8.9f, 4.46f, -.15f), .58f);
         }
         // The central seven-metre opening belongs to the animated furnace rig, including its exposed core.
     }
@@ -183,13 +209,14 @@ public static class CinderReachArt
             b.Cylinder(.76f, .38f, height, p + Vector3.Up * (height * .5f + .4f), Iron);
             for (int i = 0; i < 5; i++)
                 b.Torus(.41f, .69f - i * .035f, p + Vector3.Up * (1.04f + i * .81f), i % 2 == 0 ? Copper : CutStone);
-            b.Beam(p + Vector3.Up * (height + .42f), p + new Vector3(-.86f, height + 1.37f, 0), .14f, IronEdge);
-            b.Beam(p + Vector3.Up * (height + .42f), p + new Vector3(.86f, height + 1.37f, 0), .14f, IronEdge);
-            b.Beam(p + Vector3.Up * (height + .4f), p + Vector3.Up * (height + 1.67f), .095f, Copper);
+            b.Branch(p + Vector3.Up * (height + .42f), p + new Vector3(-.86f, height + 1.37f, 0), .10f, .034f, IronEdge, SurfaceKind.Metal);
+            b.Branch(p + Vector3.Up * (height + .42f), p + new Vector3(.86f, height + 1.37f, 0), .10f, .034f, IronEdge, SurfaceKind.Metal);
+            b.Branch(p + Vector3.Up * (height + .4f), p + Vector3.Up * (height + 1.67f), .065f, .019f, Copper, SurfaceKind.Metal);
             b.Box(new(1.02f, 1.12f, .86f), p + new Vector3(side * 1.08f, .68f, .18f), Basalt);
             b.Box(new(.65f, .54f, .07f), p + new Vector3(side * 1.08f, .94f, .65f), Dark);
+            Cable(b, p + new Vector3(side * .28f, 3.6f, .28f), p + new Vector3(side * 1.16f, 1.28f, .4f), .32f);
             BasaltCluster(b, new(side * (x + 2.35f), 0, -z * .48f), 2.35f);
-            b.Box(new(.2f, .22f, z * .95f), new(side * (x + .92f), .11f, -.18f), Copper);
+            Pipe(b, new(side * (x + .92f), .17f, -.18f - z * .475f), new(side * (x + .92f), .17f, -.18f + z * .475f), .10f, Copper, 3);
             for (int i = 0; i < 4; i++)
                 b.Box(new(.48f, .12f, .42f), new(side * (x + .92f), .07f, -z * .47f + i * z * .31f), Basalt);
         }
@@ -219,6 +246,13 @@ public static class CinderReachArt
             b.Box(new(.11f, .2f, length + .05f), p + new Vector3(side * .65f, .86f, 0), Rust);
             for (int i = 0; i < 3; i++)
                 b.Box(new(.18f, .55f, .26f), p + new Vector3(side * .58f, .28f, (i - 1) * length * .37f), Basalt);
+            // Large bearing housings make the belt read as machinery, not a painted track.
+            foreach (float end in new[] { -1f, 1f })
+            {
+                var bearing = p + new Vector3(side * .72f, .62f, end * length * .42f);
+                b.Branch(bearing - Vector3.Right * .075f, bearing + Vector3.Right * .075f, .17f, .17f, IronEdge, SurfaceKind.Metal);
+                Rivet(b, bearing + Vector3.Right * (side * .085f), Vector3.Right * side, .065f);
+            }
         }
     }
 
@@ -231,8 +265,18 @@ public static class CinderReachArt
         b.Cylinder(.22f, .22f, .68f, p + Vector3.Up * (height + .8f), Rust);
         b.Box(new(.14f, height * .62f, .095f), p + new Vector3(0, height * .56f, .74f), Copper);
         b.Torus(.24f, .36f, p + new Vector3(0, height * .61f, .87f), Copper, new(90, 0, 0));
-        b.Box(new(.06f, .54f, .055f), p + new Vector3(0, height * .61f, .91f), IronEdge);
-        b.Box(new(.54f, .06f, .055f), p + new Vector3(0, height * .61f, .91f), IronEdge);
+        // The housing remains static; CinderAtmosphere supplies the moving wheel internals
+        // at p + (0, height*.61, .92), preserving a single visible set of spokes.
+        var outlet = p + new Vector3(-.62f, height * .67f, -.17f);
+        var elbow = p + new Vector3(-1.05f, height * .67f, -.17f);
+        Pipe(b, outlet, elbow, .11f, Rust, 1);
+        Pipe(b, elbow, p + new Vector3(-1.05f, .29f, -.17f), .11f, Rust, 2);
+        Cable(b, p + new Vector3(.53f, height + .12f, -.22f), p + new Vector3(.86f, .48f, -.11f), .16f, .028f);
+        foreach (float side in new[] { -1f, 1f })
+        {
+            b.Box(new(.13f, height * .40f, .035f), p + new Vector3(side * .37f, height * .57f, .67f), Dark);
+            Rivet(b, p + new Vector3(side * .34f, .30f, .71f), Vector3.Back, .047f);
+        }
     }
 
     private static void Chimney(EnvironmentBuilder b, Vector3 p, float height)
@@ -241,6 +285,8 @@ public static class CinderReachArt
         for (int i = 0; i < 3; i++) b.Box(new(.77f, .12f, .8f), p + Vector3.Up * (.13f + i * height * .39f), CutStone);
         b.Box(new(.96f, .16f, .98f), p + Vector3.Up * (height + .08f), Iron);
         b.Box(new(.48f, .025f, .49f), p + Vector3.Up * (height + .174f), Dark);
+        b.Box(new(.19f, height * .42f, .013f), p + new Vector3(-.13f, height * .74f, .378f), Coal);
+        b.Box(new(.095f, height * .28f, .014f), p + new Vector3(.14f, height * .84f, .379f), Dark);
     }
 
     private static void BasaltCluster(EnvironmentBuilder b, Vector3 p, float height)
@@ -250,8 +296,50 @@ public static class CinderReachArt
             float a = i * Mathf.Tau / 5;
             float h = height * (.56f + (i * 7 % 5) * .11f);
             var foot = p + new Vector3(Mathf.Sin(a) * .52f, 0, Mathf.Cos(a) * .62f);
-            b.Cylinder(.43f, .28f, h, foot + Vector3.Up * (h * .5f), i % 2 == 0 ? Obsidian : Basalt);
-            b.Cylinder(.285f, .26f, .06f, foot + Vector3.Up * (h + .025f), CutStone);
+            var split = foot + new Vector3(Mathf.Sin(a) * .055f, h * .62f, Mathf.Cos(a) * .07f);
+            var top = foot + new Vector3(Mathf.Sin(a) * .14f, h, Mathf.Cos(a) * .16f);
+            b.Branch(foot, split, .43f, .345f, i % 2 == 0 ? Obsidian : Basalt, SurfaceKind.Stone);
+            b.Branch(split + Vector3.Up * .035f, top, .31f, .23f, Basalt, SurfaceKind.Stone);
+            b.Cylinder(.25f, .23f, .047f, top + Vector3.Up * .012f, CutStone, new(5 - i * 2, i * 29, -4 + i));
+            b.Box(new(.10f, h * .30f, .018f), foot + new Vector3(.05f, h * .39f, .372f), Dark, new(0, 0, i % 2 == 0 ? 5 : -6));
+            if (i % 2 == 0)
+                b.Cylinder(.22f, .13f, .24f, foot + new Vector3(Mathf.Sin(a) * .45f, .12f, Mathf.Cos(a) * .46f), CutStone, new(0, 17 + i * 21, -11));
+        }
+    }
+
+    internal static void Pipe(EnvironmentBuilder b, Vector3 from, Vector3 to, float radius, string color, int collars = 2)
+    {
+        var axis = (to - from).Normalized();
+        b.Branch(from, to, radius, radius, color, SurfaceKind.Metal);
+        var tangent = axis.Cross(Math.Abs(axis.Y) < .9f ? Vector3.Up : Vector3.Right).Normalized();
+        var bitangent = axis.Cross(tangent);
+        for (int collar = 0; collar < collars; collar++)
+        {
+            float t = collars == 1 ? .5f : .07f + collar * .86f / (collars - 1);
+            var center = from.Lerp(to, t);
+            b.Branch(center - axis * .055f, center + axis * .055f, radius * 1.5f, radius * 1.5f, IronEdge, SurfaceKind.Metal);
+            for (int bolt = 0; bolt < 4; bolt++)
+            {
+                float angle = bolt * Mathf.Pi * .5f + Mathf.Pi * .25f;
+                var rim = center + (tangent * Mathf.Cos(angle) + bitangent * Mathf.Sin(angle)) * radius * 1.22f;
+                Rivet(b, rim + axis * .069f, axis, radius * .20f);
+            }
+        }
+    }
+
+    internal static void Rivet(EnvironmentBuilder b, Vector3 center, Vector3 normal, float radius)
+        => b.Branch(center - normal.Normalized() * .019f, center + normal.Normalized() * .019f,
+            radius, radius * .86f, Copper, SurfaceKind.Metal);
+
+    internal static void Cable(EnvironmentBuilder b, Vector3 from, Vector3 to, float sag, float radius = .032f)
+    {
+        const int segments = 8;
+        var previous = from;
+        for (int segment = 1; segment <= segments; segment++)
+        {
+            float t = segment / (float)segments;
+            var next = from.Lerp(to, t) + Vector3.Down * (4 * sag * t * (1 - t));
+            b.Branch(previous, next, radius, radius, Dark, SurfaceKind.Metal); previous = next;
         }
     }
 
