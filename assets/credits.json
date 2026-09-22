@@ -98,6 +98,23 @@
       "requiredCredit": "Ashenwake project contributors; final release credit names and distribution terms await the owner."
     },
     {
+      "id": "asset.procedural_hollow_night",
+      "name": "Hollow Night curved sealed galleries, recessed memorials, fractured obelisks, worn slate, spectral inset lamps, suspended fragments, Breach Heart containment and synthesized regional ambience",
+      "sourceFiles": [
+        "game/Ashenwake.Client/HollowNightArt.cs",
+        "game/Ashenwake.Client/HollowExplorationArt.cs",
+        "game/Ashenwake.Client/HollowGround.cs",
+        "game/Ashenwake.Client/HollowObstacleArt.cs",
+        "game/Ashenwake.Client/HollowAtmosphere.cs",
+        "game/Ashenwake.Client/BreachHeartVisual.cs",
+        "game/Ashenwake.Client/HollowAmbience.cs"
+      ],
+      "origin": "Authored in the Ashenwake repository using Godot primitive and custom indexed meshes, materials and synthesized waveforms; no downloaded art or audio samples are declared.",
+      "rightsStatus": "Project-authored source. The repository does not yet declare a distribution license or owner approval.",
+      "redistributionApproved": false,
+      "requiredCredit": "Ashenwake project contributors; final release credit names and distribution terms await the owner."
+    },
+    {
       "id": "asset.procedural_campaign_endgame",
       "name": "Procedural regional environments, Fracture arenas, God Hunt mechanisms and warning geometry",
       "sourceFiles": [

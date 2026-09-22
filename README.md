@@ -16,6 +16,8 @@ The [Cinder depth pass](docs/cinder_depth.md) adds fractured basalt, worn metal 
 
 The [Spine depth pass](docs/spine_depth.md) adds curved bone arches, carved tablets, worn court masonry, warm hearth and reading lights, gently moving folded banners, a golden Divine Memory, and layered Covenant Warden shields and seals.
 
+The [Hollow depth pass](docs/hollow_depth.md) adds curved sealed arches, recessed memorials, fractured obelisks, worn slate, cyan and violet inset lights, suspended fragments, and a more detailed Breach Heart with smooth final containment.
+
 The opening environments now have distinct Greyhaven service courts, a winding Grey March road, a ruined monastery courtyard, layered cliffs and restrained chimney smoke and drifting leaves. The Grey March now has real road bends, monastery passages and sanctuary pillars. A side path off the secured road leads to the Widow’s Crypt, with elite guardians, rare armor and hidden testimony. Cleared opening rooms retain uncollected loot for backtracking; see [Grey March exploration](docs/grey_march_exploration.md).
 
 Combat now includes discipline-specific attacks, enemy anticipation and recovery, dodge and hit reactions, and visible defeat clips. Short weapon/spell effects and twenty-one synthesized sound cues follow Core combat events. The Bell Saint sanctuary swings, sheds broken links, and settles after victory. See [combat feedback](docs/combat_feedback.md) for scope, accessibility behavior, and diagnostics.

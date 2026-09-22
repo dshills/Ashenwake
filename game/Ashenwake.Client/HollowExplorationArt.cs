@@ -17,23 +17,33 @@ public static class HollowExplorationArt
             var p = new Vector3(bay * 2.48f, 0, -z - 2.14f - Math.Abs(bay % 2) * .24f);
             float height = 4.65f - Math.Abs(bay) * .24f;
             b.Box(new(2.25f, .28f, 1.25f), p + Vector3.Up * .14f, Slate);
-            b.Box(new(1.96f, height, .5f), p + Vector3.Up * (height * .5f + .24f), Stone);
-            b.Box(new(1.58f, height * .79f, .04f), p + new Vector3(0, height * .5f + .24f, .28f), Void);
-            b.Box(new(2.1f, .22f, .68f), p + Vector3.Up * (height + .35f), Edge);
+            b.Box(new(1.96f, height, .42f), p + new Vector3(0, height * .5f + .24f, -.04f), Stone);
+            b.Box(new(1.58f, height * .79f, .075f), p + new Vector3(0, height * .5f + .24f, .215f), Void);
+            b.Box(new(2.1f, .22f, .90f), p + Vector3.Up * (height + .35f), Edge);
             foreach (float side in new[] { -1f, 1f })
             {
-                b.Box(new(.08f, height * .88f, .055f), p + new Vector3(side * .84f, height * .5f + .25f, .3f), Parchment);
+                b.Box(new(.15f, height * .88f, .25f), p + new Vector3(side * .86f, height * .5f + .25f, .31f), Parchment);
+                b.Box(new(.045f, height * .82f, .08f), p + new Vector3(side * .735f, height * .5f + .25f, .285f), Inlay);
                 // Repeated shadow edges are incomplete; they never carry the anchor.
                 b.Box(new(.08f, height * .60f, .03f), p + new Vector3(side * .6f + .15f, height * .54f, .32f), Inlay);
             }
+            HollowNightArt.ArchCurve(b, p, 0, .86f, height * .78f + .25f, height + .30f, .49f, .078f, Parchment);
+            HollowNightArt.ArchCurve(b, p, 0, .735f, height * .76f + .25f, height + .12f, .32f, .042f, Memory);
             for (int row = 0; row < 4; row++)
             {
                 float py = .82f + row * .79f;
                 b.Box(new(1.42f, .075f, .34f), p + new Vector3(0, py - .24f, .42f), Slate);
                 if ((bay + row * 2 + 7) % 4 == 0) continue;
-                b.Box(new(.94f, .44f, .12f), p + new Vector3((row % 2 - .5f) * .12f, py, .37f), Memory);
+                float offset = (row % 2 - .5f) * .12f;
+                b.Box(new(.94f, .44f, .075f), p + new Vector3(offset, py, .343f), Memory);
+                b.Box(new(.79f, .32f, .035f), p + new Vector3(offset, py, .3975f), Inlay);
+                foreach (float edge in new[] { -1f, 1f })
+                {
+                    b.Box(new(.055f, .44f, .065f), p + new Vector3(offset + edge * .44f, py, .411f), Memory);
+                    b.Box(new(.9f, .038f, .07f), p + new Vector3(offset, py + edge * .196f, .408f), Memory);
+                }
                 for (int line = 0; line < 3; line++)
-                    b.Box(new(.63f - line % 2 * .12f, .019f, .012f), p + new Vector3(0, py - .12f + line * .12f, .437f), Parchment);
+                    b.Box(new(.63f - line % 2 * .12f, .019f, .012f), p + new Vector3(offset, py - .12f + line * .12f, .422f), Parchment);
             }
         }
         foreach (float side in new[] { -1f, 1f })
@@ -42,9 +52,19 @@ public static class HollowExplorationArt
             {
                 var p = new Vector3(side * (x + 1.22f), 0, -z * .68f + urn * z * .44f);
                 b.Box(new(1.22f, .3f, 1.35f), p + Vector3.Up * .15f, Slate);
-                b.Cylinder(.44f, .29f, 1.1f, p + Vector3.Up * .85f, Memory);
+                b.Cylinder(.29f, .45f, .43f, p + Vector3.Up * .515f, Memory);
+                b.Cylinder(.45f, .30f, .67f, p + Vector3.Up * 1.065f, Memory);
                 b.Cylinder(.3f, .38f, .16f, p + Vector3.Up * 1.48f, Parchment);
                 b.Cylinder(.39f, .17f, .15f, p + Vector3.Up * 1.635f, Stone);
+                foreach (float handle in new[] { -1f, 1f })
+                {
+                    var shoulder = p + new Vector3(0, 1.29f, handle * .31f);
+                    var outer = p + new Vector3(0, 1.16f, handle * .60f);
+                    var lower = p + new Vector3(0, .90f, handle * .54f);
+                    b.Branch(shoulder, outer, .04f, .034f, Parchment, SurfaceKind.Stone);
+                    b.Branch(outer, lower, .034f, .03f, Parchment, SurfaceKind.Stone);
+                    b.Branch(lower, p + new Vector3(0, .82f, handle * .34f), .03f, .035f, Parchment, SurfaceKind.Stone);
+                }
                 // The empty nameplate is part of the urn, below the combat skyline.
                 b.Box(new(.025f, .38f, .25f), p + new Vector3(-side * .45f, .95f, 0), Void);
                 b.Box(new(.03f, .024f, .17f), p + new Vector3(-side * .47f, .99f, 0), Edge);
@@ -60,8 +80,13 @@ public static class HollowExplorationArt
         var coffer = new Vector3(0, 0, -z - 1.25f);
         b.Box(new(2.45f, .84f, .86f), coffer + Vector3.Up * .42f, Memory);
         b.Box(new(2.59f, .17f, .96f), coffer + Vector3.Up * .925f, Parchment);
+        b.Box(new(2.13f, .48f, .035f), coffer + new Vector3(0, .45f, .45f), Void);
+        b.Box(new(1.93f, .32f, .035f), coffer + new Vector3(0, .45f, .483f), Inlay);
         foreach (float side in new[] { -1f, 1f })
+        {
             b.Box(new(.11f, .8f, .06f), coffer + new Vector3(side * .84f, .48f, .47f), Inlay);
+            b.Box(new(.065f, .44f, .09f), coffer + new Vector3(side * 1.06f, .45f, .48f), Edge);
+        }
     }
 
     public static bool SupportsMarker(string id) => id.StartsWith("hollow.", StringComparison.Ordinal);

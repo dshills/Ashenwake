@@ -108,8 +108,11 @@ public static class HollowNightArt
                 if (i < 2)
                 {
                     var end = new Vector3(side * (4.85f + (i + 1) * 2.3f), height - .6f, p.Z - .24f);
-                    b.Beam(p + new Vector3(0, height - 1.42f, -.23f), end, .21f, Slate);
-                    b.Beam(p + new Vector3(0, 1.37f, -.23f), end with { Y = 1.37f }, .12f, Inlay);
+                    var start = p + new Vector3(0, height - 1.42f, -.23f);
+                    var shoulder = start.Lerp(end, .52f) + Vector3.Up * .18f;
+                    b.Branch(start, shoulder, .13f, .10f, Slate, SurfaceKind.Stone);
+                    b.Branch(shoulder, end, .10f, .08f, Slate, SurfaceKind.Stone);
+                    b.Branch(p + new Vector3(0, 1.37f, -.23f), end with { Y = 1.37f }, .06f, .06f, Inlay, SurfaceKind.Stone);
                 }
             }
             for (int i = 0; i < 3; i++)
@@ -127,18 +130,32 @@ public static class HollowNightArt
         Block(b, p, yaw, new(width + .38f, .26f, 1.1f), new(0, .13f, 0), Slate);
         Block(b, p, yaw, new(width * .85f, height * .8f, .36f), new(0, height * .4f + .22f, -.16f), Void);
         Block(b, p, yaw, new(width * .65f, height * .69f, .06f), new(0, height * .4f + .22f, .054f), Shadow);
+        // Solid stone continues into the curved crown. The nested mouldings are
+        // relief on a sealed wall, with no visible sky or passage behind the arch.
+        float spring = height * .70f + .23f;
+        for (int cap = 0; cap < 8; cap++)
+        {
+            float t = (cap + .5f) / 8;
+            float span = width * .85f * Mathf.Sqrt(1 - t * t);
+            float capHeight = (height - spring) / 8;
+            Block(b, p, yaw, new(span, capHeight + .025f, .35f), new(0, spring + (cap + .5f) * capHeight, -.16f), Void);
+        }
         foreach (float side in new[] { -1f, 1f })
         {
             Block(b, p, yaw, new(.31f, height * .7f, .76f), new(side * width * .43f, height * .35f + .23f, 0), stone);
             Block(b, p, yaw, new(.075f, height * .67f, .065f), new(side * width * .42f, height * .35f + .28f, .425f), edge);
-            Beam(b, p, yaw, new(side * width * .43f, height * .7f + .23f, 0), new(side * width * .27f, height * .93f, 0), .32f, stone);
-            Beam(b, p, yaw, new(side * width * .27f, height * .93f, 0), new(0, height, 0), .32f, edge);
+            Block(b, p, yaw, new(.07f, height * .64f, .095f), new(side * width * .33f, height * .32f + .31f, .285f), Inlay);
             Block(b, p, yaw, new(.5f, .18f, .88f), new(side * width * .43f, height * .28f, 0), edge);
         }
+        ArchCurve(b, p, yaw, width * .43f, spring, height, .025f, .22f, stone);
+        ArchCurve(b, p, yaw, width * .42f, spring, height - .045f, .36f, .063f, edge);
+        ArchCurve(b, p, yaw, width * .33f, height * .64f + .31f, height * .90f, .285f, .055f, Inlay);
+        Block(b, p, yaw, new(.24f, .27f, .67f), new(0, height - .015f, .055f), edge);
         Block(b, p, yaw, new(width * .74f, .18f, .42f), new(0, .42f, .2f), stone);
         // A closed inset crosses the dark recess, explicitly sealing the arch.
         Block(b, p, yaw, new(width * .6f, .12f, .07f), new(0, height * .47f, .108f), Inlay);
         Block(b, p, yaw, new(.15f, height * .54f, .08f), new(0, height * .43f, .111f), Slate);
+        Block(b, p, yaw, new(width * .32f, .28f, .055f), new(0, height * .47f, .163f), Slate);
     }
 
     private static void DisplacedOutline(EnvironmentBuilder b, Vector3 p, float yaw, float width, float height)
@@ -146,34 +163,44 @@ public static class HollowNightArt
         foreach (float side in new[] { -1f, 1f })
         {
             Block(b, p, yaw, new(.11f, height, .025f), new(side * width * .5f + .13f, height * .5f + .49f, .224f), Inlay);
-            Beam(b, p, yaw, new(side * width * .5f + .13f, height + .49f, .224f), new(.13f, height + .89f, .224f), .09f, Inlay);
         }
+        ArchCurve(b, p + Rotate(new(.13f, 0, 0), yaw), yaw, width * .5f, height + .49f, height + .89f, .224f, .045f, Inlay);
     }
 
     private static void RecordFacade(EnvironmentBuilder b, Vector3 p, float yaw, float width, float height, bool displaced)
     {
         Block(b, p, yaw, new(width + .25f, .26f, 1.05f), new(0, .13f, 0), Slate);
-        Block(b, p, yaw, new(width, height, .64f), new(0, height * .5f + .24f, 0), displaced ? Memory : Stone);
-        Block(b, p, yaw, new(width * .7f, height * .8f, .035f), new(.07f, height * .52f + .24f, .34f), Shadow);
+        Block(b, p, yaw, new(width, height, .5f), new(0, height * .5f + .24f, -.07f), displaced ? Memory : Stone);
+        Block(b, p, yaw, new(width * .7f, height * .8f, .065f), new(.07f, height * .52f + .24f, .235f), Shadow);
         foreach (float side in new[] { -1f, 1f })
-            Block(b, p, yaw, new(.12f, height * .94f, .09f), new(side * width * .44f, height * .5f + .24f, .36f), MemoryEdge);
+        {
+            Block(b, p, yaw, new(.15f, height * .94f, .22f), new(side * width * .44f, height * .5f + .24f, .325f), MemoryEdge);
+            Block(b, p, yaw, new(.045f, height * .85f, .085f), new(side * width * .355f, height * .5f + .24f, .295f), Inlay);
+        }
         for (int row = 0; row < 4; row++)
         {
             float y = .8f + row * height * .2f;
             float offset = displaced && row % 2 == 0 ? width * .13f : 0;
-            Block(b, p, yaw, new(width * .38f, .095f, .04f), new(offset, y, .38f), Inlay);
-            Block(b, p, yaw, new(.075f, height * .09f, .045f), new(offset - width * .17f, y + height * .045f, .384f), MemoryEdge);
-            Block(b, p, yaw, new(.075f, height * .09f, .045f), new(offset + width * .17f, y - height * .045f, .384f), MemoryEdge);
+            Block(b, p, yaw, new(width * .63f, height * .135f, .055f), new(.04f, y, .287f), displaced ? Memory : Slate);
+            Block(b, p, yaw, new(width * .38f, .065f, .025f), new(offset, y, .332f), Inlay);
+            Block(b, p, yaw, new(.06f, height * .09f, .025f), new(offset - width * .17f, y + height * .045f, .336f), MemoryEdge);
+            Block(b, p, yaw, new(.06f, height * .09f, .025f), new(offset + width * .17f, y - height * .045f, .336f), MemoryEdge);
+            Block(b, p, yaw, new(width * .60f, .035f, .12f), new(.04f, y - height * .083f, .313f), Stone);
         }
         Block(b, p, yaw, new(width + .1f, .16f, .84f), new(displaced ? .12f : -.12f, height + .37f, 0), MemoryEdge);
+        Block(b, p, yaw, new(width * .78f, .11f, .61f), new(displaced ? .07f : -.07f, height + .52f, -.055f), Memory);
     }
 
     private static void Obelisk(EnvironmentBuilder b, Vector3 p, float height, bool inner)
     {
         b.Box(new(1.6f, .29f, 1.34f), p + Vector3.Up * .145f, Slate);
-        b.Box(new(.89f, height, .73f), p + Vector3.Up * (height * .5f + .22f), Shadow);
-        b.Box(new(.29f, height * .88f, .84f), p + new Vector3(-.37f, height * .48f + .22f, 0), Stone);
-        b.Box(new(.29f, height * .76f, .84f), p + new Vector3(.37f, height * .42f + .22f, 0), Slate);
+        b.Box(new(.63f, height, .61f), p + Vector3.Up * (height * .5f + .22f), Shadow);
+        // Slipped slabs expose the dark core through fractures, while that core
+        // continues through every joint so these monuments remain grounded.
+        b.Box(new(.31f, height * .47f, .85f), p + new Vector3(-.36f, height * .235f + .22f, 0), Stone);
+        b.Box(new(.285f, height * .38f, .81f), p + new Vector3(-.41f, height * .69f + .30f, .035f), Stone, new(0, 0, -2.3f));
+        b.Box(new(.29f, height * .41f, .84f), p + new Vector3(.37f, height * .205f + .22f, 0), Slate);
+        b.Box(new(.27f, height * .30f, .79f), p + new Vector3(.40f, height * .58f + .30f, -.025f), Slate, new(0, 0, 2.8f));
         b.Box(new(.095f, height * .71f, .075f), p + new Vector3(-.08f, height * .53f + .22f, .423f), inner ? Cyan : Edge);
         for (int i = 0; i < 3; i++)
         {
@@ -181,7 +208,26 @@ public static class HollowNightArt
             b.Box(new(1.23f, .16f, 1.01f), p + new Vector3(0, py, 0), Inlay);
             b.Box(new(.43f, .075f, .065f), p + new Vector3(.03f, py + .2f, .425f), Stone);
         }
-        b.Box(new(.82f, .22f, .87f), p + new Vector3(-.21f, height + .39f, 0), Edge);
+        b.Box(new(.74f, .19f, .84f), p + new Vector3(-.17f, height + .32f, 0), Edge, new(3, -6, -8));
+        foreach (float side in new[] { -1f, 1f })
+            b.Branch(p + new Vector3(side * .43f, .22f, .1f), p + new Vector3(side * .67f, .86f, .19f), .16f, .025f, Slate, SurfaceKind.Stone);
+    }
+
+    internal static void ArchCurve(EnvironmentBuilder b, Vector3 p, float yaw, float halfSpan,
+        float spring, float crown, float depth, float radius, string color)
+    {
+        // A fixed eight segments per half keeps every nested arch smooth at the
+        // game camera distance without adding per-piece scene nodes or materials.
+        foreach (float side in new[] { -1f, 1f })
+        {
+            Vector3 Point(float t) => p + Rotate(new(side * halfSpan * Mathf.Cos(t * Mathf.Pi * .5f),
+                spring + (crown - spring) * Mathf.Sin(t * Mathf.Pi * .5f), depth), yaw);
+            for (int step = 0; step < 8; step++)
+            {
+                float t0 = step / 8f, t1 = (step + 1) / 8f;
+                b.Branch(Point(t0), Point(t1), radius * (1 - t0 * .14f), radius * (1 - t1 * .14f), color, SurfaceKind.Stone);
+            }
+        }
     }
 
     private static void Perimeter(EnvironmentBuilder b, float x, float z)
@@ -206,6 +252,4 @@ public static class HollowNightArt
     private static Vector3 Rotate(Vector3 value, float yaw) => new Basis(Vector3.Up, Mathf.DegToRad(yaw)) * value;
     private static void Block(EnvironmentBuilder b, Vector3 p, float yaw, Vector3 size, Vector3 local, string color)
         => b.Box(size, p + Rotate(local, yaw), color, new(0, yaw, 0));
-    private static void Beam(EnvironmentBuilder b, Vector3 p, float yaw, Vector3 from, Vector3 to, float thickness, string color)
-        => b.Beam(p + Rotate(from, yaw), p + Rotate(to, yaw), thickness, color);
 }

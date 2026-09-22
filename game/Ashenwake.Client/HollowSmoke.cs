@@ -35,6 +35,9 @@ public partial class HollowSmoke : Node
     private readonly Dictionary<int, int> _phaseBranchTicks = [];
     private readonly HashSet<bool> _shields = [];
     private readonly List<string> _audioFingerprints = [];
+    private readonly List<HollowDepthChecks.Evidence> _depthEvidence = [];
+    private readonly List<object> _frameSamples = [];
+    private HollowAtmosphere? _lastHollowAtmosphere;
     private bool _breachObserved, _victoryObserved, _cleanupChecked, _returnOnlyObserved, _sweepObserved, _zeroEchoObserved, _endingObserved, _mirrorCopyObserved;
     private CombatView? _liveBreach;
     private sealed record EnvironmentEvidence(string Encounter, string Style, int ArchitectureMeshes, int ArchitectureMaterials,
@@ -49,6 +52,7 @@ public partial class HollowSmoke : Node
             if (!args.Contains("--hollow-smoke") || _output.Length == 0)
                 throw new InvalidDataException("Hollow smoke requires --hollow-smoke --output=<isolated-directory>.");
             Directory.CreateDirectory(_output); Engine.MaxFps = 60;
+            HollowDepthChecks.Detached(Check);
             _combatJson = CampaignCombatContent.Parse(Read("combat"), Read("campaign-combat")).CombatJson;
             _campaign = CampaignContent.Parse(Read("campaign"));
             _adventure = AdventureContent.Parse(Read("adventure"));
@@ -118,6 +122,7 @@ public partial class HollowSmoke : Node
                 Descendants(_stage).OfType<Node3D>().Any(n => n.Name == "HollowNightArchitecture" && n.IsVisibleInTree()));
             Check("completed_revisit_does_not_respawn_breach_heart", !Descendants(_stage).Any(n => n is BreachHeartVisual));
             Check("completed_revisit_retains_ending", _session.View.Ending is not null);
+            InspectDepth("revisit", "hollow_rooms");
             Check("completed_revisit_can_return_to_hub", _session.ReturnToHub().Success); _commands++;
             Refresh(); await Settle(); CheckHubCleanup("revisit_return");
             var replay = CampaignRuntimeReplayRunner.Run(_combatJson, _adventure, _progression, _campaign, _session.CaptureReplay());
@@ -157,6 +162,7 @@ public partial class HollowSmoke : Node
         string style = Style();
         _sandbox.PresentAuthoredRoom(_session.Room, $"hollow:{_session.InHub}:{_session.ActiveEncounterId}:{snapshot.Campaign.Deaths}", style);
         _sandbox.SetEnvironmentStyle(style);
+        if (_sandbox.HollowMotion is not null) _lastHollowAtmosphere = _sandbox.HollowMotion;
         var manifestations = _session.Production.View.ActiveManifestations;
         _stage.Show(snapshot.Campaign, _session.View, _session.Room, _session.Interactions, manifestations,
             _session.Production.ProgressionView.HubStage, player.Position, _session.Combat.View.BossPhase,
@@ -185,6 +191,7 @@ public partial class HollowSmoke : Node
             Check("regional_ambience_" + style, _sandbox.AmbienceCue == HollowAmbience.CueForStyle(style) && _sandbox.AmbiencePlaying);
             Check("bounded_motes_" + style, _sandbox.AmbientMoteCount == 24);
             await Capture(style + ".png"); await CheckMouseDestination(style);
+            await CheckDepthQuality(style);
             if (style == "hollow_rooms") await CheckAtmosphere();
         }
         if (_session.EncounterCleared)
@@ -253,6 +260,8 @@ public partial class HollowSmoke : Node
 
     private void CheckHubCleanup(string context)
     {
+        Check("hub_releases_hollow_lights_and_fragments_" + context, _sandbox.HollowMotion is null &&
+            !GodotObject.IsInstanceValid(_lastHollowAtmosphere) && !Descendants(_sandbox).Any(n => n is HollowAtmosphere));
         Check("hub_stops_hollow_ambience_" + context, _sandbox.AmbienceCue.Length == 0 && !_sandbox.AmbiencePlaying);
         Check("hub_hides_breach_and_hollow_architecture_" + context, !Descendants(_stage).OfType<BreachHeartVisual>().Any(n => n.IsVisibleInTree()) &&
             !Descendants(_stage).OfType<Node3D>().Any(n => n.Name == "HollowNightArchitecture" && n.IsVisibleInTree()));
@@ -378,9 +387,12 @@ public partial class HollowSmoke : Node
         if (!breach.Defeated) Check("live_breach_has_no_victory_fragments", breach.ActiveTransientCount == 0);
         Check("breach_cannot_change_collision", !Descendants(breach).Any(n => n is CollisionObject3D or CollisionShape3D or NavigationRegion3D));
         Check("breach_stays_beyond_back_wall", Meshes(breach).SelectMany(Vertices).All(p => p.Z < -_session.Room.HalfDepth * .001f + .001f));
-        string signalState = $"{view.BossPhase}_{channels}_{echo}_{returning}_{sweep}";
+        string channelMask = string.Concat(view.Actors.Where(a => a.DefinitionId == "enemy.seal_channel")
+            .OrderBy(a => a.Id).Select(a => a.Health > 0 ? '1' : '0'));
+        string signalState = $"{view.BossPhase}_{shield}_{channelMask}_{echo}_{returning}_{sweep}";
         if (boss.Health > 0 && _reducedSignalStates.Add(signalState))
         {
+            HollowBreachDepthChecks.Detached(view, Check, fullCycle: _reducedSignalStates.Count == 1);
             var reduced = BreachHeartVisual.Create(_session.Room.HalfWidth * .001f, _session.Room.HalfDepth * .001f, view);
             try
             {
@@ -522,7 +534,7 @@ public partial class HollowSmoke : Node
         var ground = Descendants(_sandbox).OfType<Node3D>().Single(n => n.Name == "AuthoredGround");
         var groundMeshes = Meshes(ground); var groundVertices = groundMeshes.SelectMany(Vertices).ToArray();
         float top = groundVertices.Max(p => p.Y);
-        Check("ground_below_combat_warnings_" + style, float.IsFinite(top) && top <= .001f && groundVertices.All(p => float.IsFinite(p.X) && float.IsFinite(p.Z)));
+        Check("ground_below_combat_warnings_" + style, float.IsFinite(top) && top < 0 && groundVertices.All(p => float.IsFinite(p.X) && float.IsFinite(p.Z)));
         Check("bounded_ground_batches_" + style, groundMeshes.Length is > 0 and <= 32 && MaterialCount(groundMeshes) <= 32);
         Check("ground_has_no_physics_" + style, !Descendants(ground).Any(n => n is CollisionObject3D or CollisionShape3D or NavigationRegion3D));
         var room = _session.Room;
@@ -557,12 +569,20 @@ public partial class HollowSmoke : Node
             _sandbox.SetPaused(true); await Settle();
             var frozen = motes.Multimesh.GetInstanceTransform(0); await Frames(8);
             Check("hollow_motes_freeze_with_pause", motes.Multimesh.GetInstanceTransform(0).IsEqualApprox(frozen));
+            var originalMotion = _sandbox.HollowMotion;
             var expanded = _session.Room with { HalfWidth = 18000, HalfDepth = 15000 };
             _sandbox.PresentAuthoredRoom(expanded, "hollow:bounds-check", "hollow_rooms");
             Check("paused_same_style_resize_places_motes_immediately", Outside(expanded));
+            _depthEvidence.Add(HollowDepthChecks.Inspect(_sandbox, "paused-resize", "hollow_rooms", 18, 15, Check));
+            await Settle();
+            Check("paused_resize_releases_old_hollow_resources", !GodotObject.IsInstanceValid(originalMotion));
+            var resizedMotion = _sandbox.HollowMotion;
             expanded = expanded with { HalfWidth = 20000, HalfDepth = 18000 };
             _sandbox.PresentAuthoredRoom(expanded, "hollow:style-bounds-check", "hollow_breach");
             Check("paused_new_style_uses_current_bounds_immediately", Outside(expanded));
+            _depthEvidence.Add(HollowDepthChecks.Inspect(_sandbox, "paused-style-change", "hollow_breach", 20, 18, Check));
+            await Settle();
+            Check("paused_style_change_releases_old_hollow_resources", !GodotObject.IsInstanceValid(resizedMotion));
             Refresh();
 
             bool Outside(RoomDefinition room) => Enumerable.Range(0, 24).Select(i => motes.Multimesh.GetInstanceTransform(i).Origin)
@@ -582,6 +602,54 @@ public partial class HollowSmoke : Node
         Check("reduced_effects_disable_fog_and_motes", _sandbox.ReducedEffects && !environment.FogEnabled && !motes.IsVisibleInTree());
         effects.ButtonPressed = false; await Settle();
         Check("restoring_effects_restores_atmosphere", !_sandbox.ReducedEffects && environment.FogEnabled && motes.IsVisibleInTree());
+    }
+
+    private void InspectDepth(string context, string style) => _depthEvidence.Add(HollowDepthChecks.Inspect(_sandbox, context, style,
+        _session.Room.HalfWidth * .001f, _session.Room.HalfDepth * .001f, Check));
+
+    private async Task CheckDepthQuality(string style)
+    {
+        string hash = _session.StateHash;
+        var atmosphere = _sandbox.HollowMotion!;
+        ulong id = atmosphere.GetInstanceId();
+        InspectDepth(style + "-high", style);
+        await SampleFrames(style, "High");
+        _sandbox.SetPaused(true); await Settle();
+        double frozen = atmosphere.MotionTime;
+        var selector = Descendants(_sandbox).OfType<OptionButton>().Single(n => n.Name == "SettingsGraphicsQuality");
+        selector.Select(1); selector.EmitSignal(OptionButton.SignalName.ItemSelected, 1L);
+        InspectDepth(style + "-performance", style);
+        Check("paused_quality_keeps_room_and_clock_" + style, atmosphere.GetInstanceId() == id && atmosphere.MotionTime == frozen);
+        _sandbox.SetPaused(false); await Settle();
+        await Capture(style + "-performance.png");
+        await SampleFrames(style, "Performance");
+        _sandbox.SetPaused(true); await Settle();
+        var effects = Descendants(_sandbox).OfType<CheckButton>().Single(b => b.Text == "Reduced visual effects");
+        effects.ButtonPressed = true; await Settle();
+        Check("paused_reduced_effects_settles_live_fragments_" + style, _sandbox.ReducedEffects && atmosphere.MotionTime == 0 && atmosphere.ActiveFragmentCount == 0);
+        InspectDepth(style + "-reduced", style);
+        if (style is "hollow_rooms" or "hollow_breach" or "hollow_memory") await Capture(style + "-reduced.png");
+        effects.ButtonPressed = false;
+        selector.Select(0); selector.EmitSignal(OptionButton.SignalName.ItemSelected, 0L);
+        Check("restoring_hollow_preferences_preserves_paused_room_" + style,
+            atmosphere.GetInstanceId() == id && atmosphere.MotionTime == 0 && atmosphere.ActiveLightCount == 4 && atmosphere.ActiveFragmentCount == 8);
+        _sandbox.SetPaused(false); await Settle();
+        Check("hollow_quality_and_effects_do_not_mutate_core_" + style, _session.StateHash == hash);
+    }
+
+    private async Task SampleFrames(string style, string quality)
+    {
+        if (DisplayServer.GetName() == "headless") return;
+        var samples = new List<double>();
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        for (int frame = 0; frame < 30; frame++)
+        {
+            double before = timer.Elapsed.TotalMilliseconds;
+            await Frames(1);
+            samples.Add(timer.Elapsed.TotalMilliseconds - before);
+        }
+        samples.Sort();
+        _frameSamples.Add(new { style, quality, frames = samples.Count, medianMs = samples[15], p95Ms = samples[28] });
     }
 
     private void CheckAudioSamples()
@@ -652,6 +720,8 @@ public partial class HollowSmoke : Node
             commands = _commands,
             finalStateHash = _session?.StateHash,
             environments = _environments,
+            depthEvidence = _depthEvidence,
+            frameSamples = _frameSamples,
             phases = _phases.Order().ToArray(),
             livingChannelCounts = _channels.Order().ToArray(),
             shieldStates = _shields.Order().ToArray(),

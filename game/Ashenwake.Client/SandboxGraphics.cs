@@ -22,6 +22,7 @@ public partial class Sandbox
         _verdantAtmosphere?.Animate(0, _clock.Paused, _reduceEffects, _graphicsQuality);
         _cinderAtmosphere?.Animate(0, _clock.Paused, _reduceEffects, _graphicsQuality);
         _spineAtmosphere?.Animate(0, _clock.Paused, _reduceEffects, _graphicsQuality);
+        _hollowAtmosphere?.Animate(0, _clock.Paused, _reduceEffects, _graphicsQuality);
         bool high = _graphicsQuality == "High";
         RenderingServer.DirectionalShadowAtlasSetSize(high ? 4096 : 2048, true);
         RenderingServer.DirectionalSoftShadowFilterSetQuality(high

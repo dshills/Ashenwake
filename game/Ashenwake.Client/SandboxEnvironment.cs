@@ -33,6 +33,9 @@ public partial class Sandbox
     private SpineAtmosphere? _spineAtmosphere;
     private (float Width, float Depth) _spineAtmosphereBounds;
     public SpineAtmosphere? SpineMotion => _spineAtmosphere;
+    private HollowAtmosphere? _hollowAtmosphere;
+    private (float Width, float Depth) _hollowAtmosphereBounds;
+    public HollowAtmosphere? HollowMotion => _hollowAtmosphere;
 
     public void SetEnvironmentStyle(string style)
     {
@@ -165,6 +168,17 @@ public partial class Sandbox
             _regionalAmbience.StreamPaused = _clock.Paused;
         float x = (_authoredBounds.Width > 0 ? _authoredBounds.Width : _content.Room.HalfWidth) * .001f;
         float z = (_authoredBounds.Depth > 0 ? _authoredBounds.Depth : _content.Room.HalfDepth) * .001f;
+        bool hollowRoom = HollowAtmosphere.Supports(_environmentStyle);
+        if (_hollowAtmosphere is not null && (!hollowRoom || _hollowAtmosphere.Style != _environmentStyle || _hollowAtmosphereBounds != (x, z)))
+        {
+            RemoveChild(_hollowAtmosphere); _hollowAtmosphere.QueueFree(); _hollowAtmosphere = null;
+        }
+        if (hollowRoom && _hollowAtmosphere is null)
+        {
+            _hollowAtmosphere = HollowAtmosphere.Create(_environmentStyle, x, z);
+            _hollowAtmosphereBounds = (x, z); AddChild(_hollowAtmosphere);
+        }
+        _hollowAtmosphere?.Animate(delta, _clock.Paused, _reduceEffects, _graphicsQuality);
         bool spineRoom = SpineAtmosphere.Supports(_environmentStyle);
         if (_spineAtmosphere is not null && (!spineRoom || _spineAtmosphere.Style != _environmentStyle || _spineAtmosphereBounds != (x, z)))
         {
