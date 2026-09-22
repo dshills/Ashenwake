@@ -7,6 +7,9 @@ namespace Ashenwake.Core.Combat;
 /// <summary>A separately versioned overlay. Campaign-only catalog and snapshot identities remain unchanged.</summary>
 public sealed class EndgameCombatContent
 {
+    // Ordered pool is part of endgame-combat.1's seeded manifest contract.
+    // New authored campaign traits must not change existing Fracture replays.
+    private static readonly string[] InheritedElitePool = ["Mirrorborn", "Gravewake", "Stormbound", "Devourer", "Null", "Hunter", "Martyr", "Riftborn"];
     private readonly CombatContent content;
     public string CombatJson { get; }
     public string Hash => content.Identity;
@@ -52,7 +55,7 @@ public sealed class EndgameCombatContent
         var rooms = new List<EndgameManifestRoom>(); var inherited = new List<string>(); var sources = new List<EndgameInheritanceSource>();
         for (int index = 0; index < 3; index++)
         {
-            var pack = packs[index]; string candidate = CombatSession.EliteModifiers[SeededRandom.Range(ref rng, CombatSession.EliteModifiers.Count)];
+            var pack = packs[index]; string candidate = InheritedElitePool[SeededRandom.Range(ref rng, InheritedElitePool.Length)];
             int count = Math.Min(pack.Positions.Length, 3 + (sigil.Tier + 1) / 2);
             var spawns = new List<EndgameManifestSpawn>();
             for (int i = 0; i < count; i++)

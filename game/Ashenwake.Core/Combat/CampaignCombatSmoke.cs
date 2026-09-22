@@ -9,7 +9,7 @@ public static class CampaignCombatSmoke
     public static CombatCommand[] Commands(CombatView view, RoomDefinition room)
     {
         var player = view.Actors.First(a => a.Id == 1);
-        var threats = (view.CampaignHazards ?? []).Where(h => h.RemainingTicks <= 34 && CombatSession.HazardContains(h with { Radius = h.Radius + 350 }, player.Position)).ToArray();
+        var threats = (view.CampaignHazards ?? []).Where(h => h.ContentId != "elite.dirgebound" && h.RemainingTicks <= 34 && CombatSession.HazardContains(h with { Radius = h.Radius + 350 }, player.Position)).ToArray();
         if (threats.Length == 0) return OrdinaryCommands(view, room);
         var space = new SpatialWorld(room);
         var target = view.Actors.Where(a => a.Faction == CombatFaction.Enemy && a.Health > 0).OrderBy(a => a.Role == "Anchor" ? 0 : 1).ThenBy(a => Position.DistanceSquared(player.Position, a.Position)).First();

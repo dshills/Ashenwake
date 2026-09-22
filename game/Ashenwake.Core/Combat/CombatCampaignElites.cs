@@ -15,6 +15,11 @@ public sealed partial class CombatSession
         {
             case "Hunter": return false;
             case "Martyr": return false;
+            case "Dirgebound":
+                if (!DirgeAllies(actor, actor.Position, 3000).Any(ally => ally.Barrier < 24)) return false;
+                target = actor.Position;
+                Warn(actor, "elite.dirgebound", target, 3000, 36, 0, DamageFamily.Void);
+                break;
             case "Mirrorborn": if (state.MirrorUsed) return false; break;
             case "Gravewake":
                 if (state.ResurrectionUsed) return false;
@@ -74,7 +79,28 @@ public sealed partial class CombatSession
         }
         Emit("EliteAbilityResolved", actor.Id, pending.TargetId, content: pending.SkillId, action: pending.ActionId);
     }
-    private bool CampaignSkill(string id) => _state.Campaign is not null && (id == "campaign.rush" || id is "elite.mirrorborn" or "elite.gravewake" or "elite.stormbound" or "elite.devourer" or "elite.null" or "elite.riftborn");
+    private bool CampaignSkill(string id) => _state.Campaign is not null && (id == "campaign.rush" || id is "elite.mirrorborn" or "elite.gravewake" or "elite.stormbound" or "elite.devourer" or "elite.null" or "elite.riftborn" or "elite.dirgebound");
+
+    private IEnumerable<CombatActor> DirgeAllies(CombatActor source, Position center, int radius)
+        => _state.Actors.Where(ally => ally.Id != source.Id && ally.Health > 0 && ally.Faction == CombatFaction.Enemy &&
+            !IsCampaignBoss(ally) && ally.Role is not ("Anchor" or "Bell") &&
+            _state.Campaign!.Actors.GetValueOrDefault(ally.Id)?.IsEcho == false &&
+            Position.DistanceSquared(center, ally.Position) <= (long)radius * radius &&
+            _spatial.HasLineOfSight(center, ally.Position)).OrderBy(ally => ally.Id);
+
+    private void ResolveDirge(CombatActor source, CampaignHazard hazard)
+    {
+        // The announced circle is fixed. An ally that crosses its boundary or takes
+        // cover before the chant ends gets no ward; repeated chants cannot stack it.
+        if (source.Health <= 0 || Stunned(source) || !HasElite(source, "Dirgebound")) return;
+        foreach (var ally in DirgeAllies(source, hazard.Position, hazard.Radius))
+        {
+            int granted = Math.Max(0, 24 - ally.Barrier);
+            if (granted == 0) continue;
+            ally.Barrier += granted;
+            Emit("BarrierGranted", source.Id, ally.Id, granted, "elite.dirgebound", hazard.ActionId);
+        }
+    }
     private void ValidateCampaignSnapshot()
     {
         var definition = CampaignEncounter; var campaign = _state.Campaign;
@@ -93,8 +119,13 @@ public sealed partial class CombatSession
         }
         Check(campaign.Actors.Values.Count(a => a.IsEcho) <= 4, "copy budget");
         foreach (var hazard in campaign.Hazards!)
-            Check(hazard is not null && hazard.Id > 0 && hazard.Id < _state.NextObjectId && hazard.Kind is "Circle" or "Line" && CampaignHazardPointInBounds(hazard.Position) && CampaignHazardPointInBounds(hazard.End) && hazard.Radius is >= 100 and <= 3000 && hazard.ResolveTick >= Tick - 1 && hazard.ResolveTick <= Tick + 180 && campaign.Actors.ContainsKey(hazard.SourceId) && hazard.Damage is >= 0 and <= 1000 && Enum.IsDefined(hazard.Family) && (hazard.Status == "" || StatusIds.Contains(hazard.Status)) && hazard.ActionId > 0 && hazard.ActionId < _state.NextActionId && (hazard.ContentId.StartsWith("campaign.", StringComparison.Ordinal) || hazard.ContentId.StartsWith("rule.", StringComparison.Ordinal) || hazard.ContentId is "elite.stormbound" or "elite.null" or "elite.riftborn"), "hazard");
+            Check(hazard is not null && hazard.Id > 0 && hazard.Id < _state.NextObjectId && hazard.Kind is "Circle" or "Line" && CampaignHazardPointInBounds(hazard.Position) && CampaignHazardPointInBounds(hazard.End) && hazard.Radius is >= 100 and <= 3000 && hazard.ResolveTick >= Tick - 1 && hazard.ResolveTick <= Tick + 180 && campaign.Actors.ContainsKey(hazard.SourceId) && hazard.Damage is >= 0 and <= 1000 && Enum.IsDefined(hazard.Family) && (hazard.Status == "" || StatusIds.Contains(hazard.Status)) && hazard.ActionId > 0 && hazard.ActionId < _state.NextActionId && (hazard.ContentId.StartsWith("campaign.", StringComparison.Ordinal) || hazard.ContentId.StartsWith("rule.", StringComparison.Ordinal) || hazard.ContentId is "elite.stormbound" or "elite.null" or "elite.riftborn" or "elite.dirgebound"), "hazard");
         var existing = _state.Inventory.Select(i => i.Id).Concat(_state.Loot.Select(l => l.Id)).Concat(_state.Projectiles.Select(p => p.Id)).Concat(_state.Areas.Select(a => a.Id)).Concat(campaign.Hazards!.Select(h => h.Id)).ToArray();
+        foreach (var hazard in campaign.Hazards.Where(h => h.ContentId == "elite.dirgebound"))
+            Check(hazard.Kind == "Circle" && hazard.Position == hazard.End && hazard.Radius == 3000 &&
+                hazard.Damage == 0 && hazard.Family == DamageFamily.Void && hazard.Status == "" &&
+                campaign.Actors[hazard.SourceId].Modifiers.Contains("Dirgebound") &&
+                _state.Actors.Any(a => a.Id == hazard.SourceId && a.Health > 0), "dirge ownership/geometry");
         Check(existing.Distinct().Count() == existing.Length, "effect identity");
     }
 }

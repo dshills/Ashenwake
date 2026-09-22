@@ -62,6 +62,7 @@ public partial class CampaignHud
             if (_state.InHub)
             {
                 AnatomyRewardMapAction();
+                OpeningEquipmentMapAction();
                 if (_maraDialogue.Length > 0)
                 {
                     _rows.AddChild(Label(_maraDialogue, 13));
@@ -91,7 +92,7 @@ public partial class CampaignHud
         }
         if (act.Number == 5 && HasHollowExploration)
             _rows.AddChild(Label("Pale anchor glyphs mark real passages. Repeated dark doorways beyond the room's edge are echoes of places that no longer exist.", 12));
-        if (here) MapNextStep(); else JourneyLootNotice();
+        if (here) { OpeningEquipmentMapAction(); MapNextStep(); } else JourneyLootNotice();
         _rows.AddChild(Label("Anchor · " + Readable(act.Anchor), 12));
         _rows.AddChild(Label($"{act.Encounters.Count(e => _state.CompletedEncounters.Contains(e.Id))}/{act.Encounters.Length} encounters completed", 13));
         _rows.AddChild(new HSeparator()); _rows.AddChild(Label("REGIONAL ROUTE", 14));

@@ -53,6 +53,19 @@ public sealed class CampaignTestamentTests
 
     [Theory]
     [MemberData(nameof(Rewards))]
+    public void OpeningDepthUsesThePublishedPacingGrantWithoutChangingItsReceipt(
+        string receipt, string definition, ItemRarity rarity, EquipmentSlot slot, string affix, int amount, int resource)
+    {
+        _ = definition; _ = rarity; _ = slot; _ = affix; _ = amount; _ = resource;
+        var published = Session();
+        var current = Session();
+        Success(CampaignTestaments.Grant(published, receipt, Pacing));
+        Success(CampaignTestaments.Grant(current, receipt, "campaign.opening_depth.8"));
+        Assert.Equal(published.StateHash, current.StateHash);
+    }
+
+    [Theory]
+    [MemberData(nameof(Rewards))]
     public void ExactPublishedLegacyGrantRemainsUnchangedAcrossUpgradeAndDoesNotReplaceDiscardedEquipment(
         string receipt, string definition, ItemRarity rarity, EquipmentSlot slot, string affix, int amount, int resource)
     {

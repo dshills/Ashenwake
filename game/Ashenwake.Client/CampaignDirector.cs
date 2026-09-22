@@ -73,6 +73,9 @@ public partial class CampaignDirector : Node3D
             _campaign.ExplorationRequested += id => Apply(() => _session.BeginExploration(id));
             _campaign.LeaveExplorationRequested += () => Apply(_session.LeaveExploration);
             _campaign.InteractionRequested += id => _sandbox.RequestWorldInteraction(id);
+            _campaign.OpeningEquipmentRequested += _character.InspectOpeningReward;
+            _character.OpeningEquipmentReturnRequested += _campaign.ReturnForOpeningEquipment;
+            _character.OpeningEquipmentVisitRequested += () => _sandbox.RequestWorldInteraction("service.torren");
             _campaign.ImplantRequested += (slot, id) => Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.InstallFragment, slot, id ?? "")));
             _campaign.ManifestationRequested += id => Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.Manifestation, id)));
             _campaign.SaveRequested += () => Safely(Save); _campaign.LoadRequested += () => Safely(Load);
@@ -234,9 +237,9 @@ public partial class CampaignDirector : Node3D
         var snapshot = _session.Capture(); var combat = _session.Combat.View; var player = combat.Actors.Single(a => a.Id == 1);
         _sandbox.PresentProgression(_session.Production.ProgressionView, _session.Production.CurrentLevelExperience, combat.Skills, snapshot.Production.Progression.Character.UnlockedDisciplines);
         var interactions = _session.Interactions.Select(i => new InteractionDisplay(i.ActionId, i.Name, (int)Math.Sqrt(CorePosition.DistanceSquared(i.Position, player.Position)), i.Range)).ToArray();
-        _campaign.SetView(_session.View, snapshot.Campaign, _definition, _session.Production.View, snapshot.Production.Expedition.Adventure, _anatomyDefinition, combat, interactions, _revision);
+        _campaign.SetView(_session.View, snapshot.Campaign, _definition, _session.Production.View, snapshot.Production.Expedition.Adventure, _anatomyDefinition, combat, interactions, _revision, snapshot.Production.Progression);
         if (_smoke) _campaign.SetOpen(false);
-        _character.SetView(_session.Production.ProgressionView, snapshot.Production.Progression, _productionDefinition, combat, interactions, _session.InHub, _revision, _session.Combat.ProgressionBuild.UnlockedMutations);
+        _character.SetView(_session.Production.ProgressionView, snapshot.Production.Progression, _productionDefinition, combat, interactions, _session.InHub, _revision, _session.Combat.ProgressionBuild.UnlockedMutations, snapshot.Campaign.HighestActVisited <= 1);
         var manifestations = _session.Production.View.ActiveManifestations;
         _character.SetAppearance(CharacterAppearance.FromProgression(snapshot.Production.Progression, manifestations,
             snapshot.Production.Expedition.Adventure.Anatomy.Values));

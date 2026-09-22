@@ -1,6 +1,7 @@
 using Ashenwake.Core.Adventure;
 using Ashenwake.Core.Campaign;
 using Ashenwake.Core.Combat;
+using Ashenwake.Core.Progression;
 using Godot;
 
 namespace Ashenwake.Client;
@@ -107,7 +108,7 @@ public partial class CampaignHud : Control
     }
     public void Notice(string message) { _notice.Text = message; _notice.TooltipText = message; _notice.Visible = message.Length > 0; }
     public void SetView(CampaignView view, CampaignState state, CampaignDefinition content, AdventureView anatomyView,
-        AdventureState anatomy, AdventureDefinition anatomyContent, CombatView combat, IReadOnlyList<InteractionDisplay> interactions, long revision)
+        AdventureState anatomy, AdventureDefinition anatomyContent, CombatView combat, IReadOnlyList<InteractionDisplay> interactions, long revision, ProgressionSnapshot? equipment = null)
     {
         if (_view is not null && (_revision != revision || _state.CurrentAct != state.CurrentAct || _state.InHub != state.InHub || _combat.Loot.Count != combat.Loot.Count)) CancelJourneyConfirmations();
         bool locationChanged = _view is null || _state.CurrentAct != state.CurrentAct || _state.InHub != state.InHub;
@@ -115,7 +116,7 @@ public partial class CampaignHud : Control
         bool changed = _view is null || _view.Region != view.Region || _view.Ending is null && view.Ending is not null;
         bool endingArrived = _view?.Ending is null && view.Ending is not null;
         _view = view; _state = state; _content = content; _anatomyView = anatomyView; _anatomy = anatomy; _anatomyContent = anatomyContent;
-        _combat = combat; _interactions = interactions; _revision = revision;
+        _combat = combat; _interactions = interactions; _revision = revision; _openingEquipment = equipment;
         if (locationChanged) _selectedJourneyRegion = state.InHub ? 0 : state.CurrentAct;
         SynchronizeJourneySession();
         _engaged = combat.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0);

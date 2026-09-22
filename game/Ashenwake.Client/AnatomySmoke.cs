@@ -57,6 +57,7 @@ public partial class AnatomySmoke : Node
             await Frames(8);
             await CloseJourney();
             if (_sandbox.IsPaused) await ClickText("Resume playing");
+            await EarnOpeningEquipment();
             await EarnHeart();
             await InspectRewardAway();
             await ReachMara();
@@ -116,6 +117,9 @@ public partial class AnatomySmoke : Node
         Check("away_preview_projects_resonance_and_second_threshold", forecast.Success && forecast.Before.Resonance == 46 && forecast.After.Resonance == 64 &&
             forecast.After.Manifestations.Single(m => m.Threshold == 60).Available);
         Check("away_surgery_is_disabled", NamedButton("AnatomyApply").Disabled && NamedButton("AnatomyReturn").IsVisibleInTree());
+        Check("first_heart_explains_the_actual_trigger_and_optional_build_choices", VisibleLabels(Workbench).Any(l => l.Name == "AnatomyHeartLesson" &&
+            l.Text.Contains("damage-over-time kill", StringComparison.Ordinal) && l.Text.Contains("direct-hit kill alone does not", StringComparison.Ordinal) &&
+            l.Text.Contains("18 Resonance", StringComparison.Ordinal) && l.Text.Contains("separate choices", StringComparison.Ordinal)));
         Check("reward_inspection_leaves_hash_loot_and_command_history_unchanged", hash == Session.StateHash && commands == Session.CaptureReplay().Frames.Length &&
             loot.SequenceEqual(Session.Combat.View.Loot.Select(l => l.Id)));
         Check("preview_heart_mark_does_not_modify_world_character", HasMark(PreviewHero, "AnatomyHeart") && Hero.AppearanceKey == hero && !HasMark(Hero, "AnatomyHeart"));
@@ -436,9 +440,10 @@ public partial class AnatomySmoke : Node
             setupCommands = _setupCommands,
             inputCommands = _inputCommands.Count,
             replayCount = _replays.Count,
+            openingTravelDialogInput = "native-viewport",
             savedHash = _savedHash,
             error,
-            scope = "The shipping EndgameDirector receives viewport clicks for the earned Heart reward, six body slots, fragment and Manifestation cards, reset/apply, explicit ground-loot review, Mara approach, rotation and save/load. Normal deterministic campaign commands prepare the starting loadout and earn the Bell victory and fragment; no state is fabricated. Preview purity, real removal/suppression/reinstallation, visible world marks, responsive layout and hidden viewport lifecycle are checked. All resulting runtime command branches replay. This is one real Act I upgrade journey, not a full campaign balance or performance benchmark."
+            scope = "The shipping EndgameDirector earns the Road's Pyrebound Treads and Bell Saint's Heart through normal campaign commands. Native input collects the boots, inspects their actual power, reviews remaining ground loot before travel, approaches Torren, drags the boots onto their slot, and triggers their moving dodge. The Heart journey receives viewport clicks for six body slots, fragment and Manifestation cards, reset/apply, explicit ground-loot review, Mara approach, rotation and save/load. No state or rewards are fabricated. Preview purity, real removal/suppression/reinstallation, visible world marks, responsive layout and hidden viewport lifecycle are checked. All resulting runtime command branches replay. This is one real Act I upgrade journey, not a full campaign balance or performance benchmark."
         };
         if (_writeReport) System.IO.File.WriteAllText(Path.Combine(_output, "anatomy-review.json"), JsonData.Write(report));
         GD.Print(JsonData.Write(report)); GetTree().Quit(passed ? 0 : 1);

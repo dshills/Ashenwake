@@ -194,6 +194,12 @@ public partial class AnatomyWorkbench : VBoxContainer
         box.AddChild(Text(FragmentName(fragment.Id) + (fragment.Id == current ? " · INSTALLED" : owned ? " · OWNED" : " · UNDISCOVERED"), 15, "e8dda7"));
         box.AddChild(Text(fragment.Slot + " · " + fragment.Resonance + " Resonance · " + string.Join(" / ", fragment.Tags), 12, "79e0cb"));
         box.AddChild(Text(FragmentDescription(fragment.Id), 13, "d2dfe0"));
+        if (fragment.Id == "fragment.heart_serath" && owned)
+        {
+            var lesson = Text("HOW TO USE IT · Let Burning or Poison finish a weakened enemy. A damage-over-time kill raises a temporary allied spirit; a direct-hit kill alone does not. Pyrebound Treads can supply Burning when equipped.\n" +
+                "This fragment contributes " + fragment.Resonance + " Resonance while implanted. Preview the total below: a newly reached threshold lets you choose a manifestation after applying the implant. The implant and the manifestation are separate choices.", 12, "b9cccf");
+            lesson.Name = "AnatomyHeartLesson"; box.AddChild(lesson);
+        }
         if (!owned) box.AddChild(Text(fragment.Id == _definition.RewardFragment ? "Defeat the Bell Saint to claim this fragment." : "Find this fragment during your journey.", 12, "b9cccf"));
         var button = ActionButton("AnatomyFragment_" + fragment.Id, "Inspect " + FragmentName(fragment.Id), () => SelectFragment(fragment.Id));
         button.Disabled = !owned; box.AddChild(button);

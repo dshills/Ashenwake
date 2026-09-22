@@ -20,6 +20,8 @@
     <None Include="../../content/text.en.json" Link="text.en.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/campaign.json" Link="campaign.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/campaign-combat.json" Link="campaign-combat.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/campaign-pacing.json" Link="fixtures/campaign-pacing.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/campaign-combat-pacing.json" Link="fixtures/campaign-combat-pacing.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/campaign-grey-march.json" Link="fixtures/campaign-grey-march.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/campaign-combat-grey-march.json" Link="fixtures/campaign-combat-grey-march.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/campaign-verdant.json" Link="fixtures/campaign-verdant.json" CopyToOutputDirectory="PreserveNewest" />

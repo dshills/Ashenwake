@@ -111,7 +111,7 @@ public sealed class CampaignContent
             foreach (var encounter in act.Encounters)
             {
                 Id(encounter.Id); Check(encounter.EnemyIds is { Length: > 0 } && encounter.EnemyIds.All(id => !string.IsNullOrWhiteSpace(id)) && !string.IsNullOrWhiteSpace(encounter.Mechanic) && !string.IsNullOrWhiteSpace(encounter.Counterplay) && encounter.EliteModifiers is not null && encounter.Experience is > 0 and <= 10000 && encounter.Materials is >= 0 and <= 1000, "Invalid campaign encounter/reward/counterplay.");
-                Check(encounter.EliteModifiers.All(m => new[] { "Mirrorborn", "Gravewake", "Stormbound", "Devourer", "Null", "Hunter", "Martyr", "Riftborn" }.Contains(m)), "Unknown campaign elite modifier.");
+                Check(encounter.EliteModifiers.All(m => new[] { "Mirrorborn", "Gravewake", "Stormbound", "Devourer", "Null", "Hunter", "Martyr", "Riftborn", "Dirgebound" }.Contains(m)), "Unknown campaign elite modifier.");
                 Check(encounter.RescuedResident == "" || d.Residents.Contains(encounter.RescuedResident), "Unknown rescued resident.");
             }
             Check(d.Choices.Any(c => c.Id == act.RequiredChoice && c.Act == act.Number), "Act is missing its required choice.");

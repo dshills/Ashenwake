@@ -48,11 +48,13 @@ public partial class Sandbox
             // IDs in that completed batch belong to the old arena, not its freshly spawned actors.
             if (replaced && e.Kind is "AbilityStarted" or "BossPatternStarted" or "CampaignHazardWarned" or
                 "AbilityResolved" or "EliteAbilityResolved" or "CampaignHazardResolved" or "Dodged" or
-                "DamageApplied" or "BarrierAbsorbed" or "Healed" or "EntityKilled" or "EliteCopyKilled" or
+                "DamageApplied" or "BarrierAbsorbed" or "BarrierGranted" or "Healed" or "EntityKilled" or "EliteCopyKilled" or
                 "MechanismDestroyed" or "BossPhaseChanged" or "LootDropped" or
                 "LegendaryReadied" or "LegendaryCharged" or "LegendaryTriggered") continue;
             if (e.Kind is "CampaignHazardWarned" or "CampaignHazardResolved" && e.ContentId.StartsWith("rule.", StringComparison.Ordinal))
             { if (e.Kind == "CampaignHazardWarned") PlayTone("tell"); continue; }
+            // A support chant resolving is not a weapon swing or a hit at the player.
+            if (e.ContentId == "elite.dirgebound" && e.Kind is "CampaignHazardResolved" or "EliteAbilityResolved") continue;
             _actors.TryGetValue(e.ActorId, out var actor);
             int targetId = e.TargetId == 0 ? e.ActorId : e.TargetId;
             _actors.TryGetValue(targetId, out var target);
@@ -113,6 +115,10 @@ public partial class Sandbox
                     if (target is not null) _combatEffects.Emit("block", target.Current, direction, _mint, _reduceEffects);
                     Feedback(targetId, $"BLOCK {e.Amount}", "heal");
                     if (!_openingAudio.Play("impact_armor", target?.Current ?? Vector3.Zero)) PlayTone("armor"); break;
+                case "BarrierGranted":
+                    if (e.ContentId != "elite.dirgebound") break;
+                    if (target is not null) _combatEffects.Emit("block", target.Current, Vector3.Up, _mint, _reduceEffects);
+                    PlayTone("armor"); break;
                 case "Healed": Feedback(targetId, $"+{e.Amount}", "heal"); PlayTone("heal"); break;
                 case "LegendaryReadied":
                 case "LegendaryCharged":

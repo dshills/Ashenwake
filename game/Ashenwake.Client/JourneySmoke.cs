@@ -80,7 +80,8 @@ public partial class JourneySmoke : Node
             Check("no_continue_prompt_during_combat", !NextStep().Visible);
             await Capture("first-encounter-characters.png");
             await FightUntil(() => _session.EncounterCleared);
-            Check("clear_prompts_loot_and_next_step", NextStep().Visible && _session.Combat.View.Loot.Count > 0 && VisibleLabel($"{_session.Combat.View.Loot.Count} dropped"));
+            Check("clear_prompts_loot_and_next_step", NextStep().Visible && _session.Combat.View.Loot.Any(l => l.Item.DefinitionId == LegendaryEquipment.Pyre) &&
+                NextStep().Text == "Review Pyrebound Treads & the route" && VisibleLabel("PYREBOUND TREADS · Your first Legendary is on the ground."));
             await Capture("first-encounter-cleared.png");
             string reviewHash = _session.StateHash;
             var forward = _stage.PresentWayForward(_session.Room, _hud.CanRequestNextStep, _hud.NextStepLabel);

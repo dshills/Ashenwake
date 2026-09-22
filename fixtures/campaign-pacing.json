@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign.opening_depth.8",
+  "version": "campaign.pacing.7",
   "acts": [
     {
       "number": 1,
@@ -16,7 +16,7 @@
             "enemy.cinder_priest"
           ],
           "mechanic": "escort_telegraphed_ambush",
-          "counterplay": "The priest heals wounded ghouls. Interrupt or defeat it, and avoid being surrounded at the road bend.",
+          "counterplay": "Interrupt the priest before pursuing the ghouls; the rescue route remains open.",
           "eliteModifiers": [],
           "experience": 50,
           "materials": 5,
@@ -26,13 +26,12 @@
           "id": "campaign.monastery",
           "enemyIds": [
             "enemy.funeral_guard",
-            "enemy.memory_archer",
-            "enemy.ash_ghoul"
+            "enemy.memory_archer"
           ],
           "mechanic": "alternating_sonic_lanes",
-          "counterplay": "Interrupt the Dirgebound chant or draw allies out of its circle before they gain barriers. Keep clear of the crossing sonic lanes.",
+          "counterplay": "Cross a silent lane between bell pulses and recover the false-history ledger.",
           "eliteModifiers": [
-            "Dirgebound"
+            "Mirrorborn"
           ],
           "experience": 100,
           "materials": 5,

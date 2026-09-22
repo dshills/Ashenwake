@@ -19,7 +19,7 @@ public partial class Sandbox
     private ActorPresentation? ReadableCombatActor(int id)
         => _actors.TryGetValue(id, out var actor) && actor.Enemy && actor.AuthoredVisible && actor.Health > 0 ? actor : null;
 
-    private (Node3D Root, Sprite3D Track, Sprite3D Fill) CreateCombatHealthBar(Node3D parent, Color color)
+    private (Node3D Root, Sprite3D Track, Sprite3D Fill, Sprite3D Barrier) CreateCombatHealthBar(Node3D parent, Color color)
     {
         if (_combatBarTexture is null)
         {
@@ -30,8 +30,10 @@ public partial class Sandbox
         var root = new Node3D { Name = "ActorHealthBar" }; parent.AddChild(root);
         var track = CombatBarSprite("HealthTrack", new Color("131923"), 1);
         var fill = CombatBarSprite("HealthFill", color, 2);
-        root.AddChild(track); root.AddChild(fill);
-        return (root, track, fill);
+        var barrier = CombatBarSprite("BarrierStrip", new Color("a1ecda"), 3);
+        barrier.Visible = false;
+        root.AddChild(track); root.AddChild(fill); root.AddChild(barrier);
+        return (root, track, fill, barrier);
     }
 
     private Sprite3D CombatBarSprite(string name, Color color, int priority) => new()
@@ -49,7 +51,7 @@ public partial class Sandbox
     };
 
     private void SynchronizeCombatReadability(ActorPresentation actor, int id, string name, int health,
-        int maxHealth, string status, bool telegraph, bool allied, string? mechanic)
+        int maxHealth, int barrier, string status, bool telegraph, bool allied, string? mechanic)
     {
         actor.Enemy = !allied && id != 1;
         actor.Name = name.ToUpperInvariant();
@@ -61,6 +63,9 @@ public partial class Sandbox
         var conditions = status.Split(" / ", StringSplitOptions.RemoveEmptyEntries)
             .Where(value => value != mechanic && value != "ATTACK INCOMING")
             .Select(value => Readable(value).ToUpperInvariant()).Distinct().ToArray();
+        // A ward can come from a priest, Dirgebound or another elite. Its compact
+        // strip signals protection; the one focus card owns the exact current value.
+        if (barrier > 0) conditions = [$"BARRIER {barrier}", .. conditions];
         string detail = string.Join(" · ", conditions);
         actor.ConditionDetail = string.Join("\n", new[] { incoming ? "ATTACK INCOMING" : mechanic ?? "", detail }.Where(value => value.Length > 0));
         actor.HealthBar.Position = actor.Label.Position - Vector3.Up * .14f;
@@ -70,6 +75,10 @@ public partial class Sandbox
         // Sprite offsets are billboard-space pixels, so depletion stays left-aligned
         // regardless of camera rotation. The shared white texture never changes.
         actor.HealthFill.Offset = new Vector2((width - CombatBarWidth) * .5f, 0);
+        float barrierWidth = barrier > 0 ? Math.Clamp(CombatBarWidth * (float)barrier / Math.Max(1, maxHealth), 12, CombatBarWidth) : 0;
+        actor.BarrierStrip.RegionRect = new Rect2(0, 0, barrierWidth, 3);
+        actor.BarrierStrip.Offset = new Vector2((barrierWidth - CombatBarWidth) * .5f, -6);
+        actor.BarrierStrip.Visible = actor.Enemy && health > 0 && barrier > 0;
         actor.HealthBar.Visible = actor.Enemy && health > 0;
         actor.Label.Visible = health > 0 && actor.Enemy && (id == _target || id == _hoveredCombatActor || _mechanicLabels.Contains(id));
     }
@@ -86,7 +95,7 @@ public partial class Sandbox
             actor.Label.Visible = alive && (focused || _mechanicLabels.Contains(pair.Key));
             float pixelSize = focused ? .016f : .0125f;
             if (actor.HealthFill.PixelSize != pixelSize)
-            { actor.HealthFill.PixelSize = pixelSize; actor.HealthTrack.PixelSize = pixelSize; }
+            { actor.HealthFill.PixelSize = pixelSize; actor.HealthTrack.PixelSize = pixelSize; actor.BarrierStrip.PixelSize = pixelSize; }
             int fontSize = focused ? 44 : 40;
             if (actor.Label.FontSize != fontSize) actor.Label.FontSize = fontSize;
         }

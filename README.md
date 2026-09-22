@@ -44,6 +44,8 @@ Press **B** for the visual expedition board: inspect Sigil cards and connected r
 
 The [campaign pacing pass](docs/campaign_pacing.md) smooths level gains across all five acts, gives optional testaments useful craftable affixes, and adds **Walk to the Fracture gate** to the expedition board. Existing saves retain earned equipment and receive any earlier XP difference once.
 
+The [Act I combat-depth pass](docs/opening_combat_depth.md) gives the opening enemy groups clearer roles, adds the monastery's interruptible Dirgebound ally ward, and guides the first Pyrebound Treads and Heart of Serath upgrades through the existing services.
+
 The [opening audio pass](docs/opening_audio.md) adds five original regional themes, adaptive combat and Bell Saint layers, terrain footsteps, richer impacts and creature warnings. Music ducks for important cues and respects the existing Music and Effects controls.
 
 ## Start here

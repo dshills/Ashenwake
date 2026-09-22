@@ -7,7 +7,7 @@ namespace Ashenwake.Client;
 /// <summary>Contextual directions derived from authoritative campaign and combat projections.</summary>
 public partial class CampaignHud
 {
-    private enum NextAction { Map, Story, Continue, Travel, FinishExploration, Interaction, Hub, Anatomy }
+    private enum NextAction { Map, Story, Continue, Travel, FinishExploration, Interaction, Hub, Anatomy, Equipment }
     private Button _nextStep = null!;
     private string _nextTab = "Map", _nextInteraction = "";
     private int _nextAct;
@@ -70,6 +70,7 @@ public partial class CampaignHud
             case NextAction.Interaction: RequestInteraction(_nextInteraction); break;
             case NextAction.Hub: RequestJourneyTravel(new(JourneyTravelKind.Hub)); break;
             case NextAction.Anatomy: OpenAnatomyReward(); break;
+            case NextAction.Equipment: InspectOpeningEquipment(); break;
             default: OpenTab("Map"); break;
         }
     }
@@ -92,10 +93,15 @@ public partial class CampaignHud
         {
             if (FirstHeartAvailable)
             {
-                _objective.Text = "The Heart of Serath is yours. Visit Mara to inspect and implant your first boss reward.";
+                _objective.Text = "The Heart of Serath can turn damage-over-time kills into allied spirits. Visit Mara to preview this optional implant.";
                 _nextInteraction = "service.mara";
                 bool near = _interactions.Any(i => i.Id == _nextInteraction && i.Distance <= i.Range);
                 SetNextStep(near ? NextAction.Anatomy : NextAction.Interaction, near ? "Inspect the Heart of Serath" : "Bring the Heart of Serath to Mara");
+            }
+            else if (OpeningPyreItem is not null && !OpeningPyreEquipped)
+            {
+                _objective.Text = "Pyrebound Treads are in your inventory. Inspect their burning-dodge power and visit Torren to equip them.";
+                SetNextStep(NextAction.Equipment, "Inspect Pyrebound Treads");
             }
             else if (NextAvailableAct() is { } act)
             {
@@ -213,6 +219,18 @@ public partial class CampaignHud
             return;
         }
         if (_engaged) { _objective.Text = _view.Objective; return; }
+        if (OpeningPyreOnGround)
+        {
+            _objective.Text = "PYREBOUND TREADS · Your first Legendary is on the ground. Click it to collect it, or use nearby loot pickup.";
+            SetNextStep(NextAction.Map, "Review Pyrebound Treads & the route");
+            return;
+        }
+        if (!ChoicePending && !FirstHeartAvailable && OpeningPyreItem is not null && !OpeningPyreEquipped)
+        {
+            _objective.Text = "PYREBOUND TREADS SECURED · Inspect their burning-dodge power. Torren can equip them in Greyhaven; the route remains open.";
+            SetNextStep(NextAction.Equipment, "Inspect Pyrebound Treads");
+            return;
+        }
         if (RegionalForward is { } passage)
         {
             _objective.Text = _state.CurrentAct == 5 && HasHollowExploration

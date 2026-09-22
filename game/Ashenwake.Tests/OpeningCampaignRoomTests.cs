@@ -22,7 +22,7 @@ public sealed class OpeningCampaignRoomTests
     public void OptionalRoomFieldsPreserveLegacySerializationAlongsideAllAuthoredRegions()
     {
         var content = Content(); var registry = CombatContent.Parse(content.CombatJson);
-        Assert.Equal("campaign-combat.pacing.7", registry.Campaign!.Version);
+        Assert.Equal("campaign-combat.opening_depth.8", registry.Campaign!.Version);
         Assert.DoesNotContain("\"room\"", JsonData.Write(new CampaignCombatEncounter("campaign.example", "Example", "Memory", 0, [])));
         Assert.DoesNotContain("roomEncounterId", JsonData.Write(new CombatSnapshot()));
         var later = registry.Campaign.Encounters.Where(e => !OpeningCampaignLayout.Contains(e.Id) && !VerdantCampaignLayout.Contains(e.Id) && !CinderCampaignLayout.Contains(e.Id) && !SpineCampaignLayout.Contains(e.Id) && !HollowCampaignLayout.Contains(e.Id));

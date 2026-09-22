@@ -69,6 +69,12 @@ public sealed partial class CombatSession
             campaign.Hazards.Remove(hazard);
             var source = _state.Actors.FirstOrDefault(a => a.Id == hazard.SourceId);
             if (source is null) continue;
+            if (hazard.ContentId == "elite.dirgebound")
+            {
+                ResolveDirge(source, hazard);
+                Emit("CampaignHazardResolved", source.Id, content: hazard.ContentId, action: hazard.ActionId);
+                continue;
+            }
             foreach (var target in _state.Actors.Where(a => a.Health > 0 && Hostile(source.Faction, a.Faction)).OrderBy(a => a.Id))
             {
                 if (!HazardContains(hazard, target.Position)) continue;

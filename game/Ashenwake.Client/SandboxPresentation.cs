@@ -14,6 +14,7 @@ public partial class Sandbox
         public required Node3D HealthBar { get; init; }
         public required Sprite3D HealthFill { get; init; }
         public required Sprite3D HealthTrack { get; init; }
+        public required Sprite3D BarrierStrip { get; init; }
         public bool Enemy { get; set; }
         public string Name { get; set; } = "";
         public string HealthDetail { get; set; } = "";
@@ -117,7 +118,7 @@ public partial class Sandbox
             mesh.Position + Vector3.Up * .76f, new("a89b7c"));
     }
 
-    private void SynchronizeActor(int id, string name, string role, int x, int z, int health, int maxHealth,
+    private void SynchronizeActor(int id, string name, string role, int x, int z, int health, int maxHealth, int barrier,
         string status, bool telegraph, bool allied, string definitionId, string state, bool windingUp, string? mechanic = null)
     {
         Vector3 target = PositionOf(x, z);
@@ -167,6 +168,7 @@ public partial class Sandbox
                 HealthBar = bar.Root,
                 HealthTrack = bar.Track,
                 HealthFill = bar.Fill,
+                BarrierStrip = bar.Barrier,
                 Previous = target,
                 Current = target,
                 Health = health
@@ -179,7 +181,7 @@ public partial class Sandbox
         actor.Health = health;
         actor.Root.Visible = health > 0 || actor.Body.IsDying && !actor.Body.DeathFinished;
         actor.Label.Position = Vector3.Up * (actor.Body.Height + (role == "bellsaint" && _view.BossPhase == 2 ? 1.2f : .52f));
-        SynchronizeCombatReadability(actor, id, name, health, maxHealth, status, telegraph, allied, mechanic);
+        SynchronizeCombatReadability(actor, id, name, health, maxHealth, barrier, status, telegraph, allied, mechanic);
         actor.Tell.Visible = telegraph && health > 0;
     }
 
@@ -254,6 +256,7 @@ public partial class Sandbox
 
     private void PresentCampaignWarning(long id, string kind, int x, int z, int endX, int endZ, int radius, long ticks, string contentId)
     {
+        if (contentId == "elite.dirgebound") { PresentDirgeWarning(id, x, z, radius, ticks); return; }
         Color color = ticks <= 12 ? new Color(1, .2f, .12f, .5f) : new Color(1, .58f, .12f, .35f);
         float width = radius * .001f;
         PresentEffect($"warning{id}-start", x, z, width, color);

@@ -67,6 +67,12 @@ mkdir -p "$journey_output"
 python3 tools/check-godot-log.py "$journey_output/smoke.log"
 rg -q 'JourneyClientSmokePassed' "$journey_output/smoke.log"
 
+opening_combat_output="$package_output/opening-combat-client"
+mkdir -p "$opening_combat_output"
+"$binary" --headless --quit-after 18000 --log-file "$opening_combat_output/smoke.log" -- --opening-combat-smoke --output="$opening_combat_output"
+python3 tools/check-godot-log.py "$opening_combat_output/smoke.log"
+rg -q 'OpeningCombatClientSmokePassed' "$opening_combat_output/smoke.log"
+
 local_map_output="$package_output/local-map-client"
 mkdir -p "$local_map_output"
 "$binary" --headless --quit-after 7200 --log-file "$local_map_output/smoke.log" -- --local-map-smoke --discipline=Vanguard --output="$local_map_output"

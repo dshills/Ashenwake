@@ -131,6 +131,9 @@ public partial class EndgameDirector : Node3D
         _campaignHud.ExplorationRequested += id => Campaign(new(CampaignRuntimeAction.BeginExploration, Id: id));
         _campaignHud.LeaveExplorationRequested += () => Campaign(new(CampaignRuntimeAction.LeaveExploration));
         _campaignHud.InteractionRequested += id => { UpdatePanelVisibility(); _sandbox.RequestWorldInteraction(id); };
+        _campaignHud.OpeningEquipmentRequested += _character.InspectOpeningReward;
+        _character.OpeningEquipmentReturnRequested += _campaignHud.ReturnForOpeningEquipment;
+        _character.OpeningEquipmentVisitRequested += () => _sandbox.RequestWorldInteraction("service.torren");
         _campaignHud.ImplantRequested += (slot, id) => Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.InstallFragment, slot, id ?? "")));
         _campaignHud.ManifestationRequested += id => Permanent(new(ProductionAction.Expedition, new(ExpeditionAction.Manifestation, id)));
         _campaignHud.SaveRequested += () => Safely(Save); _campaignHud.LoadRequested += () => Safely(Load);
@@ -336,9 +339,10 @@ public partial class EndgameDirector : Node3D
         var snapshot = _session.Capture(); var campaign = snapshot.Campaign; var combat = _session.Combat.View; var player = combat.Actors.Single(a => a.Id == 1);
         _sandbox.PresentProgression(_session.Production.ProgressionView, _session.Production.CurrentLevelExperience, combat.Skills, campaign.Production.Progression.Character.UnlockedDisciplines);
         var interactions = _session.Interactions.Select(i => new InteractionDisplay(i.ActionId, i.Name, (int)Math.Sqrt(CorePosition.DistanceSquared(i.Position, player.Position)), i.Range)).ToArray();
-        _campaignHud.SetView(_session.Campaign.View, campaign.Campaign, _campaignDefinition, _session.Production.View, campaign.Production.Expedition.Adventure, _anatomyDefinition, combat, interactions, _revision);
+        _campaignHud.SetView(_session.Campaign.View, campaign.Campaign, _campaignDefinition, _session.Production.View, campaign.Production.Expedition.Adventure, _anatomyDefinition, combat, interactions, _revision, campaign.Production.Progression);
         if (_smoke || _echoesSmoke) _campaignHud.SetOpen(false);
-        _character.SetView(_session.Production.ProgressionView, campaign.Production.Progression, _productionDefinition, combat, interactions, _session.InHub, _revision, _session.Combat.ProgressionBuild.UnlockedMutations);
+        _character.SetView(_session.Production.ProgressionView, campaign.Production.Progression, _productionDefinition, combat, interactions, _session.InHub, _revision, _session.Combat.ProgressionBuild.UnlockedMutations,
+            combat.Endgame is null && campaign.Campaign.HighestActVisited <= 1);
         var view = _session.View;
         var displayKey = (_revision, combat.Loot.Count, AtGate());
         if (_cachedDisplay is null || _displayKey != displayKey)

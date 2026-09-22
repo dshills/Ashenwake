@@ -21,8 +21,20 @@ internal static class CampaignPacingMigration
         return CampaignContent.Parse(reader.ReadToEnd());
     });
 
+    private static readonly Lazy<CampaignContent> PublishedPacingCampaign = new(() =>
+    {
+        using var stream = typeof(CampaignPacingMigration).Assembly.GetManifestResourceStream("Ashenwake.PreviousOpeningDepth.Campaign.json")
+            ?? throw new InvalidOperationException("Missing authenticated published pacing catalog.");
+        using var reader = new StreamReader(stream);
+        return CampaignContent.Parse(reader.ReadToEnd());
+    });
+
     private static bool Required(CampaignRuntimeSnapshot original, CampaignContent campaign)
-        => campaign.Capture().Version == Version && original.Campaign.ContentHash != campaign.Hash;
+        => campaign.Capture().Version is Version or "campaign.opening_depth.8" && original.Campaign.ContentHash != campaign.Hash &&
+            // An explicit multi-build import can skip the intermediate pacing reader.
+            // Earlier rewards still need their one-time top-up, while an authenticated
+            // pacing archive already owns it even when the next story identity changes.
+            original.Campaign.ContentHash != PublishedPacingCampaign.Value.Hash;
 
     internal static CampaignRuntimeSnapshot Rebind(CampaignRuntimeSnapshot original, CampaignRuntimeSnapshot rebound,
         string combatJson, AdventureContent adventure, ProgressionContent policy, CampaignContent campaign)

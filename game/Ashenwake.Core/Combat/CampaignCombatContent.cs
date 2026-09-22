@@ -63,7 +63,7 @@ public sealed class CampaignCombatContent
 
 public sealed partial class CombatSession
 {
-    public static IReadOnlyList<string> EliteModifiers { get; } = Array.AsReadOnly(new[] { "Mirrorborn", "Gravewake", "Stormbound", "Devourer", "Null", "Hunter", "Martyr", "Riftborn" });
+    public static IReadOnlyList<string> EliteModifiers { get; } = Array.AsReadOnly(new[] { "Mirrorborn", "Gravewake", "Stormbound", "Devourer", "Null", "Hunter", "Martyr", "Riftborn", "Dirgebound" });
     private static readonly string[] CampaignPatterns = ["SonicLane", "MemoryArrow", "VenomPod", "Swarm", "PoisonBurst", "ForgeSweep", "HeatVent", "Fault", "OathMark", "ShadowDouble", "CausalEcho", "Rootheart", "Furnace", "Covenant", "Breach", "Bell", "Antler", "Root", "SupportFire"];
     private static readonly string[] CampaignRules = ["Ambush", "SonicLanes", "Bell", "PoisonLanes", "Quarantine", "Rootheart", "Cinder", "Conveyor", "Furnace", "Faults", "OathZones", "Covenant", "Shadows", "CausalEchoes", "Breach", "Storm", "Memory", "Hunt"];
     public static void ValidateEliteModifiers(IReadOnlyList<string> modifiers)

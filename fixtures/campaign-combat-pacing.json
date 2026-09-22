@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign-combat.opening_depth.8",
+  "version": "campaign-combat.pacing.7",
   "enemies": [
     {
       "id": "enemy.funeral_guard",
@@ -319,8 +319,8 @@
         {
           "enemyId": "enemy.ash_ghoul",
           "position": {
-            "x": -2400,
-            "z": 1800
+            "x": -1200,
+            "z": 0
           },
           "modifiers": [],
           "hidden": false
@@ -328,8 +328,8 @@
         {
           "enemyId": "enemy.cinder_priest",
           "position": {
-            "x": -1600,
-            "z": 3900
+            "x": 2500,
+            "z": -3500
           },
           "modifiers": [],
           "hidden": false
@@ -337,8 +337,8 @@
         {
           "enemyId": "enemy.ash_ghoul",
           "position": {
-            "x": 2100,
-            "z": 1900
+            "x": 4200,
+            "z": 2500
           },
           "modifiers": [],
           "hidden": false
@@ -386,19 +386,19 @@
         {
           "enemyId": "enemy.funeral_guard",
           "position": {
-            "x": -2200,
+            "x": -1200,
             "z": 0
           },
           "modifiers": [
-            "Dirgebound"
+            "Mirrorborn"
           ],
           "hidden": false
         },
         {
           "enemyId": "enemy.memory_archer",
           "position": {
-            "x": -2700,
-            "z": -2400
+            "x": 2500,
+            "z": -3500
           },
           "modifiers": [],
           "hidden": false
@@ -406,17 +406,8 @@
         {
           "enemyId": "enemy.funeral_guard",
           "position": {
-            "x": -1800,
-            "z": 2300
-          },
-          "modifiers": [],
-          "hidden": false
-        },
-        {
-          "enemyId": "enemy.ash_ghoul",
-          "position": {
-            "x": 300,
-            "z": 700
+            "x": 4200,
+            "z": 2500
           },
           "modifiers": [],
           "hidden": false
@@ -1557,7 +1548,7 @@
         {
           "enemyId": "enemy.funeral_guard",
           "position": {
-            "x": -1800,
+            "x": -1200,
             "z": 0
           },
           "modifiers": [
@@ -1568,8 +1559,8 @@
         {
           "enemyId": "enemy.memory_archer",
           "position": {
-            "x": -3400,
-            "z": -2200
+            "x": 2500,
+            "z": -3500
           },
           "modifiers": [],
           "hidden": false
@@ -1577,8 +1568,8 @@
         {
           "enemyId": "enemy.cinder_priest",
           "position": {
-            "x": 2700,
-            "z": 1000
+            "x": 4200,
+            "z": 2500
           },
           "modifiers": [],
           "hidden": false

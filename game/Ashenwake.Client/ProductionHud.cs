@@ -44,6 +44,7 @@ public partial class ProductionHud : Control
     private long _revision, _renderedRevision = -1;
     private int _rangeMask, _renderedRangeMask = -1;
     private bool _inTown;
+    private bool _panelLayoutQueued;
     private CraftingWorkbench _craftingWorkbench = null!;
     private SkillsPanel _skillsPanel = null!;
     private CraftingService _service = CraftingService.Tempering;
@@ -73,6 +74,8 @@ public partial class ProductionHud : Control
             ContentMarginBottom = 9
         });
         AddChild(_panel);
+        _panel.MinimumSizeChanged += QueuePanelLayout;
+        _panel.Resized += QueuePanelLayout;
         var column = new VBoxContainer(); _panel.AddChild(column);
         var tabs = new HBoxContainer(); column.AddChild(tabs);
         foreach (string tab in new[] { "Character", "Skills", "Gear", "Craft", "Town", "Profile" })
@@ -165,9 +168,9 @@ public partial class ProductionHud : Control
         if (_preview is not null) UpdatePreview();
     }
     public void SetView(ProgressionView view, ProgressionSnapshot state, ProgressionDefinition content, CombatView combat,
-        IReadOnlyList<InteractionDisplay> interactions, bool inTown, long revision, IReadOnlyList<string>? unlockedMutations)
+        IReadOnlyList<InteractionDisplay> interactions, bool inTown, long revision, IReadOnlyList<string>? unlockedMutations, bool openingRewards = false)
     {
-        _view = view; _state = state; _content = content; _combat = combat; _interactions = interactions; _inTown = inTown; _revision = revision;
+        _view = view; _state = state; _content = content; _combat = combat; _interactions = interactions; _inTown = inTown; _revision = revision; _openingRewards = openingRewards;
         if (_gearInspecting && _gearItemId != 0 && !state.Character.Items.Any(i => i.Id == _gearItemId)) _gearInspecting = false;
         SynchronizeDiscard();
         _unlockedMutations = unlockedMutations;
@@ -197,7 +200,18 @@ public partial class ProductionHud : Control
             case "Profile": Profile(); break;
         }
         UpdatePreview();
-        if (_tab is "Craft" or "Skills") Callable.From(LayoutPanel).CallDeferred();
+        QueuePanelLayout();
+    }
+
+    private void QueuePanelLayout()
+    {
+        if (_panelLayoutQueued || !IsInsideTree() || IsQueuedForDeletion()) return;
+        _panelLayoutQueued = true;
+        Callable.From(() =>
+        {
+            _panelLayoutQueued = false;
+            if (GodotObject.IsInstanceValid(this) && IsInsideTree() && !IsQueuedForDeletion()) LayoutPanel();
+        }).CallDeferred();
     }
 
     private void LayoutPanel()
@@ -221,9 +235,12 @@ public partial class ProductionHud : Control
         _scroll.CustomMinimumSize = new(gear ? 540 : compact ? 300 : 429, scrollHeight);
         _preview.SetCompact(compact, compact && showPreview ? bodyHeight - scrollHeight - 16 : bodyHeight);
         // Lift the panel at shorter viewport heights instead of letting the preview's minimum size push Close below the screen.
-        _panel.Position = new(22, Math.Max(22, Math.Min(compact && showPreview ? 98 : 201, viewport.Y - height - 22)));
-        _panel.Size = new(Math.Min(wide ? 1060 : gear ? 980 : showPreview && !compact ? 755 : 455, viewport.X - 44),
-            height);
+        Vector2 position = new(22, Math.Max(22, Math.Min(compact && showPreview ? 98 : 201, viewport.Y - height - 22)));
+        Vector2 size = new(Math.Min(wide ? 1060 : gear ? 980 : showPreview && !compact ? 755 : 455, viewport.X - 44), height);
+        // Wrapped item descriptions can transiently grow a container while new rows are
+        // measured. Reapply the viewport bounds after layout settles; details remain scrollable.
+        if (_panel.Position != position) _panel.Position = position;
+        if (_panel.Size != size) _panel.Size = size;
         UpdateCraftModal();
     }
     private void UpdateCraftModal()
@@ -256,6 +273,7 @@ public partial class ProductionHud : Control
     {
         _gearLoadout.ComparisonSlot = _gearSlot;
         _gearLoadout.SetView(_state, _content, _revision, CanChangeGear);
+        OpeningEquipmentLesson();
         _rows.AddChild(Label(CanChangeGear ? "Drag inventory gear onto a compatible slot. Drag equipped gear back to inventory to unequip. Click to compare below." :
             "Inspect your gear anywhere. Visit Torren in Greyhaven to equip or unequip, including by dragging.", 12));
         var slots = new OptionButton { Name = "GearSlot" };

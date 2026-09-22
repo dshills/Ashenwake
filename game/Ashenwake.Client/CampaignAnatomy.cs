@@ -115,7 +115,7 @@ public partial class CampaignHud
     {
         if (!FirstHeartAvailable) return;
         _rows.AddChild(Label("HEART OF SERATH · DIVINE FRAGMENT SECURED", 15));
-        _rows.AddChild(Label("The Bell Saint's heart is already in your anatomy collection. Inspect its effect, then visit Mara to implant it. Ground equipment remains separate.", 12));
+        _rows.AddChild(Label("The heart is already in your anatomy collection. An optional implant makes your damage-over-time kills raise allied spirits. Preview its Resonance change and visit Mara when you want to apply it. Ground equipment remains separate.", 12));
         var inspect = Button("Inspect the Heart of Serath", OpenAnatomyReward); inspect.Name = "InspectAnatomyReward";
         if (_state.InHub) Button("Walk to Mara · implant the heart", () => RequestInteraction("service.mara"));
         _rows.AddChild(new HSeparator());

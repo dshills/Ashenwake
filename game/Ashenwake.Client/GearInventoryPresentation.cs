@@ -54,6 +54,25 @@ public partial class GearLoadout
         if (_inventory?.GetParent() is ScrollContainer scroll) scroll.ScrollVertical = 0;
     }
 
+    public bool RevealOwnedItem(long id)
+    {
+        if (!_items.TryGetValue(id, out var card)) return false;
+        bool cleared = !card.Visible;
+        if (cleared)
+        {
+            // Explicit item inspection may reveal a card hidden by this transient browser.
+            // Preserve sort order and the separate saved ground-loot preferences.
+            _typeFilter.Select(0); _rarityFilter.Select(0); _search.Text = ""; ProjectionChanged();
+        }
+        if (_inventory.GetParent() is ScrollContainer scroll)
+            Callable.From(() =>
+            {
+                if (GodotObject.IsInstanceValid(this) && IsInsideTree() && !IsQueuedForDeletion() &&
+                    _items.TryGetValue(id, out var current) && current.IsVisibleInTree()) scroll.EnsureControlVisible(current);
+            }).CallDeferred();
+        return cleared;
+    }
+
     private void ApplyProjection()
     {
         if (_state is null || _inventory is null) return;

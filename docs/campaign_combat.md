@@ -40,8 +40,11 @@ Creating any other encounter discards the previous campaign state, hazards, supp
 | Hunter | Moves 25% faster when pursuing and resists hard control. It still commits attacks and retains their dodge/recovery windows. |
 | Martyr | On its final death, grants nearby surviving allies a small barrier and 15% increased damage, capped at two stacks. Isolate it or remove supporting enemies first. |
 | Riftborn | Announces the destination of a void breach, then teleports with a recovery period. The destination cannot overlap a living actor. |
+| Dirgebound | The Act I monastery guard chants for 36 ticks inside a fixed three-meter circle. Nearby allies in line of sight gain barrier up to 24; the caster, bosses, mechanisms and copies are excluded. Kill/interrupt the caster or draw allies out before it resolves. Repeated chants do not stack the ward. |
 
 Phase 4 permits at most two modifiers per actor. It rejects Mirrorborn+Gravewake, Null+Hunter and Devourer+Martyr. This is the campaign's current compatibility contract; future endgame inheritance must use an explicitly reconciled rule set rather than assuming a larger modifier allowance.
+
+Dirgebound is an authored Act I addition. The original eight-trait Fracture pool remains fixed so seeded expedition manifests and historical replays do not change. See [Act I combat depth](opening_combat_depth.md) for formations, readable support warnings and first-upgrade guidance.
 
 Campaign snapshots validate source ownership, elite counts, timers, modifier compatibility, warning geometry, budgets, counters and object identities. Timed copies cannot become eligible corpses. The damage queue and existing summon, projectile, status and proc-depth limits remain in force.
 

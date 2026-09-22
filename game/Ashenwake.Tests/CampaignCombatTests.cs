@@ -64,7 +64,7 @@ public sealed class CampaignCombatTests
         var content = Content(); var campaign = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(Root, "content/campaign.json")))!;
         var ids = campaign["acts"]!.AsArray().SelectMany(a => a!["encounters"]!.AsArray().Select(e => (string)e!["id"]!)).Concat(campaign["exploration"]!.AsArray().Select(e => (string)e!["encounterId"]!));
         Assert.Equal(ids.Order(), content.EncounterIds.Order());
-        Assert.Equal(8, CombatContent.Parse(content.CombatJson).Campaign!.Encounters.SelectMany(e => e.Spawns).SelectMany(s => s.Modifiers).Distinct().Count());
+        Assert.Equal(9, CombatContent.Parse(content.CombatJson).Campaign!.Encounters.SelectMany(e => e.Spawns).SelectMany(s => s.Modifiers).Distinct().Count());
         Assert.Throws<InvalidDataException>(() => CombatSession.ValidateEliteModifiers(["Mirrorborn", "Gravewake"]));
         Assert.Throws<InvalidDataException>(() => CombatSession.ValidateEliteModifiers(["Null", "Hunter"]));
         Assert.Throws<InvalidDataException>(() => CombatSession.ValidateEliteModifiers(["Devourer", "Martyr"]));
