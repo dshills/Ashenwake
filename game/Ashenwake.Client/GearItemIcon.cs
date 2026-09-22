@@ -6,7 +6,7 @@ namespace Ashenwake.Client;
 /// <summary>Small equipment silhouettes drawn locally; inspecting an item creates no world or preview resources.</summary>
 public partial class GearItemIcon : Control
 {
-    private enum Silhouette { Sword, Dagger, Axe, Ashcleaver, Hammer, Pike, Staff, BoneStaff, Shield, Focus, Skull, Helmet, Hood, Plate, OathPlate, Robe, Tunic, Shoulders, Gloves, WidowGloves, Belt, Legs, Boots, PyreBoots, Ring, Amulet }
+    private enum Silhouette { Sword, Dagger, Axe, Ashcleaver, Hammer, Pike, Staff, BoneStaff, Shield, Focus, Skull, Helmet, Hood, Plate, OathPlate, Robe, Tunic, Shoulders, MourningShoulders, Gloves, WidowGloves, Belt, FurnaceBelt, Legs, Boots, PyreBoots, Ring, RotwakeRing, Amulet }
     private static readonly Color Steel = new("c2d1d3"), SteelShade = new("536e7d"), Ink = new("15252f");
     private static readonly Color Leather = new("886048"), Bone = new("e4d5b1"), Ember = new("ff9166");
     private static readonly Color EmptyFill = new("30465099"), EmptyEdge = new("6c8793aa");
@@ -89,13 +89,16 @@ public partial class GearItemIcon : Control
             case Silhouette.Robe: Chest(true, false); break;
             case Silhouette.Tunic: Chest(false, true); break;
             case Silhouette.Shoulders: Shoulders(); break;
+            case Silhouette.MourningShoulders: MourningShoulders(); break;
             case Silhouette.Gloves: Gloves(); break;
             case Silhouette.WidowGloves: Gloves(widow: true); break;
             case Silhouette.Belt: Belt(); break;
+            case Silhouette.FurnaceBelt: FurnaceBelt(); break;
             case Silhouette.Legs: Legs(); break;
             case Silhouette.Boots: Boots(); break;
             case Silhouette.PyreBoots: Boots(pyre: true); break;
             case Silhouette.Ring: Ring(); break;
+            case Silhouette.RotwakeRing: RotwakeRing(); break;
             case Silhouette.Amulet: Amulet(); break;
         }
     }
@@ -144,12 +147,12 @@ public partial class GearItemIcon : Control
                 "march_plate" or "oath_plate" => Silhouette.Plate,
                 _ => discipline switch { "arcanist" or "gravecaller" => Silhouette.Robe, "veilwalker" or "warden" => Silhouette.Tunic, _ => Silhouette.Plate }
             },
-            EquipmentSlot.Shoulders => Silhouette.Shoulders,
+            EquipmentSlot.Shoulders => id == "mourning_choir" ? Silhouette.MourningShoulders : Silhouette.Shoulders,
             EquipmentSlot.Gloves => id == "widows_last_echo" ? Silhouette.WidowGloves : Silhouette.Gloves,
-            EquipmentSlot.Belt => Silhouette.Belt,
+            EquipmentSlot.Belt => id == "furnaceheart_cinch" ? Silhouette.FurnaceBelt : Silhouette.Belt,
             EquipmentSlot.Legs => Silhouette.Legs,
             EquipmentSlot.Boots => id == "pyrebound_treads" ? Silhouette.PyreBoots : Silhouette.Boots,
-            EquipmentSlot.Ring1 or EquipmentSlot.Ring2 => Silhouette.Ring,
+            EquipmentSlot.Ring1 or EquipmentSlot.Ring2 => id == "rotwake_signet" ? Silhouette.RotwakeRing : Silhouette.Ring,
             EquipmentSlot.Amulet => Silhouette.Amulet,
             _ => Silhouette.Sword
         };

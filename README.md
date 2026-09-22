@@ -34,6 +34,8 @@ Every equipment piece has its own lore. Gear, crafting and ground-loot inspectio
 
 Three [legendary items](docs/legendary_equipment.md) change combat: **Pyrebound Treads** leave burning ground when you dodge, **Oathkeeper’s Reprisal** stores absorbed barrier damage for a melee shockwave, and **Widow’s Last Echo** adds a spectral follow-up to your next projectile after dodging. Earn the boots in the opening Road encounter; later bosses and repeatable regional Fractures provide the other pieces. Their powers can be extracted and engraved onto compatible gear.
 
+Three more [midgame legendaries](docs/midgame_legendaries.md) expand those choices: **Rotwake Signet** spreads poison from kills, **Mantle of the Mourning Choir** rallies your summons when you strike, and **Furnaceheart Cinch** rewards a costly skill followed by resource recovery. Earn them in Acts II–III or their repeatable Fracture rooms. The HUD shows their actual cooldowns, prepared charges and trigger results.
+
 Open **C → Skills** for ability cards, mastery progress and mutation comparisons. Preview Offense, Defense and Resource investments before spending points at Mara; passive refunds show the exact fee and effects removed. The combat bar uses the same ability icons with cooldown progress, resource-shortfall and Heat-cap feedback. See [Skills & Mastery](docs/skills_mastery.md).
 
 The solo combat HUD groups health, barrier, discipline resource, potion charges, dodge readiness and six abilities in a responsive bottom dock. Status icons show remaining duration and stacks; the XP bar tracks the current level. Earned levels, mastery milestones, ability unlocks and collected equipment appear in a compact reward feed. See [combat HUD and rewards](docs/combat_hud.md).

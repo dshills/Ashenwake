@@ -390,7 +390,7 @@ public sealed class LegendaryEquipmentTests
     [InlineData("act.grey_march", LegendaryEquipment.Pyre)]
     [InlineData("act.verdant_maw", LegendaryEquipment.Widow)]
     [InlineData("act.shattered_spine", LegendaryEquipment.Oath)]
-    public void RepeatableFracturesAwardTheirRegionLegendaryOnlyInTheFinalRoom(string region, string expected)
+    public void RepeatableFracturesKeepOriginalRegionLegendariesInTheFinalRoom(string region, string expected)
     {
         var content = EndgameCombatContent.Parse(CampaignCombatContent.Parse(Content, Read("campaign-combat.json")).CombatJson,
             Read("endgame-combat.json"), EndgameContent.Parse(Read("endgame.json")));
@@ -408,7 +408,8 @@ public sealed class LegendaryEquipmentTests
             }
             var session = CombatSession.Restore(content.CombatJson, state); session.Step();
             Assert.DoesNotContain(session.View.Actors, a => a.Faction == CombatFaction.Enemy && a.Health > 0);
-            if (index == 0) Assert.DoesNotContain(session.View.Loot, l => LegendaryEquipment.IsItem(l.Item.DefinitionId));
+            // Midgame rewards may occupy earlier rooms; the original trio stays final-room only.
+            if (index == 0) Assert.DoesNotContain(session.View.Loot, l => l.Item.DefinitionId is LegendaryEquipment.Pyre or LegendaryEquipment.Widow or LegendaryEquipment.Oath);
             else Assert.Equal("Legendary", Assert.Single(session.View.Loot, l => l.Item.DefinitionId == expected).Item.Rarity);
         }
     }

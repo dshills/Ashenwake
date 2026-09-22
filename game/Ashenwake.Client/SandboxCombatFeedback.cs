@@ -123,7 +123,7 @@ public partial class Sandbox
                 case "LegendaryReadied":
                 case "LegendaryCharged":
                 case "LegendaryTriggered":
-                    PresentLegendaryEvent(e, actor, direction); break;
+                    PresentLegendaryEvent(e, actor, target, direction); break;
                 case "EntityKilled":
                 case "EliteCopyKilled":
                 case "MechanismDestroyed":

@@ -401,6 +401,8 @@ public partial class Sandbox
         foreach (var node in _transientNodes) node.QueueFree(); _transientNodes.Clear();
         _floatingActors.Clear(); _floatingLabels.Clear(); _combatEffects?.Clear(); _lastSounds.Clear();
         if (_legendaryReadiness is not null) { _legendaryReadiness.QueueFree(); _legendaryReadiness = null; }
+        if (_legendaryTrigger is not null) { _legendaryTrigger.QueueFree(); _legendaryTrigger = null; }
+        _legendaryTriggerText = _legendaryTriggerPower = ""; _legendaryTriggerUntil = 0;
         _lastOathChargeCue = -30;
         _lootDropCues.Reset(_session.View.Loot);
         foreach (var voice in _voices) voice.Stop();

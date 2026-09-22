@@ -491,6 +491,7 @@ public partial class Sandbox : Node3D
     {
         var player = _view.Actors.Single(a => a.Id == 1);
         LayoutCombatHud();
+        PresentLegendaryReadiness();
         _healthText.Text = $"HEALTH  {player.Health}/{player.MaxHealth}";
         _health.MaxValue = player.MaxHealth; _health.Value = player.Health;
         _momentumText.Text = $"{_view.ResourceName.ToUpperInvariant()}  {_view.Resource}/{_view.MaxResource}";

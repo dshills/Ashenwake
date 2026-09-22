@@ -22,8 +22,8 @@ public static class CampaignRuntimeMigration
         string sourceCombat = baseCombatJson;
         var sourcePolicy = policy;
         var catalog = ProductionContent.Resolve(sourceCombat, sourcePolicy, adventure);
-        if (character.TryGetProperty("contentHash", out var identity) && identity.ValueKind == JsonValueKind.String && identity.GetString() != catalog.Hash &&
-            LegendaryCatalogMigration.TryPrevious(baseCombatJson, policy, out var previousCombat, out var previousPolicy))
+        while (character.TryGetProperty("contentHash", out var identity) && identity.ValueKind == JsonValueKind.String && identity.GetString() != catalog.Hash &&
+            LegendaryCatalogMigration.TryPrevious(sourceCombat, sourcePolicy, out var previousCombat, out var previousPolicy))
         {
             sourceCombat = previousCombat; sourcePolicy = previousPolicy;
             catalog = ProductionContent.Resolve(sourceCombat, sourcePolicy, adventure);

@@ -17,7 +17,10 @@
         "game/Ashenwake.Client/LootVisual.Catalog.cs",
         "game/Ashenwake.Client/CombatEffects.cs",
         "game/Ashenwake.Client/CombatAudio.cs",
-        "game/Ashenwake.Client/SandboxCombatFeedback.cs"
+        "game/Ashenwake.Client/SandboxCombatFeedback.cs",
+        "game/Ashenwake.Client/CharacterVisual.MidgameEquipment.cs",
+        "game/Ashenwake.Client/GearItemIcon.Midgame.cs",
+        "game/Ashenwake.Client/SandboxLegendaryPresentation.cs"
       ],
       "origin": "Authored in the Ashenwake repository from Godot primitive meshes and synthesized waveforms; no downloaded art or audio samples are declared.",
       "rightsStatus": "Project-authored source. The repository does not yet declare a distribution license or owner approval.",

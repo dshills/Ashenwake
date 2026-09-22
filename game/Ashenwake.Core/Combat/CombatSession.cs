@@ -116,7 +116,7 @@ public sealed partial class CombatSession
         _state.Momentum, 100, Player.Barrier, _state.PotionCharges, Remaining(_state.PotionReadyTick), Remaining(_state.DodgeReadyTick),
         _content.Fragments.Where(f => _state.Fragments.Values.Contains(f.Id)).Sum(f => f.Resonance), _effects.Count, _state.PeakEffects, _state.RejectedEffects, _content.ContentVersion, Discipline, ResourceName, _state.CapturedSkillId, Remaining(_state.CapturedUntil), FalseSilhouettes().ToArray(), _state.FragmentHeat, _state.SeismicCharge, CampaignHazards().ToArray(), CampaignRule, _state.Campaign?.BossPhase ?? 0, _state.Campaign?.SuppressedFragmentId ?? "", EndgameView)
     {
-        Legendary = _state.Legendary is { } legendary ? new(legendary.OathCharge, Remaining(legendary.OathUntil), Remaining(legendary.WidowUntil)) : null
+        Legendary = LegendaryView()
     };
     private int Remaining(long until) => (int)Math.Clamp(until - Tick, 0, int.MaxValue);
     private CombatMutation? Mutation(string skill) => _content.Mutations.FirstOrDefault(m => m.Id == _state.Mutations.GetValueOrDefault(skill));
@@ -250,6 +250,7 @@ public sealed partial class CombatSession
         }
         Pay(skill, cost); _state.Cooldowns[skill.Id] = Tick + AttackDuration(skill.Cooldown);
         Player.Pending = new(skill.Id, target?.Id ?? 0, target?.Position ?? Player.Position, Tick + (mutation?.Id == "mutation.orruns_patience" ? 60 : AttackDuration(skill.Windup)), _state.NextActionId++, StartTick: Tick);
+        PrepareCinderCycle(cost, Player.Pending.ActionId);
         if (_state.FragmentHeat >= 100 && skill.Cost >= 20 && ActiveFragments().Any(f => f.Effect == "Heat")) { _state.FragmentHeat = 0; _state.OverheatedActionId = Player.Pending.ActionId; }
         Player.RecoveryUntil = Tick + (mutation?.Id == "mutation.orruns_patience" ? 60 : AttackDuration(skill.Windup)) + AttackDuration(skill.Recovery); Player.State = "Windup";
         Emit("AbilityStarted", 1, target?.Id ?? 0, content: skill.Id, action: Player.Pending.ActionId);
@@ -433,6 +434,7 @@ public sealed partial class CombatSession
             Enqueue(new(1, 1, source.Id, result.Absorbed / 2, DamageFamily.PhysicalCrush, "effect.retaliation", hit.ActionId, hit.Depth + 1, Reflected: true));
         ApplyBuildHitEffects(hit, source, target, healthDamage, physical);
         ProductionHitEffects(hit, source, target, healthDamage, critical);
+        MidgameLegendaryHit(hit, target);
         if (target.Health <= 0 && !target.DeathProcessed) Kill(target, hit);
     }
     private IEnumerable<CombatFragment> ActiveFragments() => _content.Fragments.Where(f => _state.Fragments.Values.Contains(f.Id) && !FragmentSuppressed(f.Id) && !(BorrowedMindSuppressed && f.Slot == AnatomySlot.Mind));
@@ -484,6 +486,7 @@ public sealed partial class CombatSession
             _state.Rng = _state.Rng with { Loot = rng }; _state.Loot.Add(new(item.Id, target.Position, item)); Emit("LootDropped", hit.OwnerId, target.Id, (int)item.Id, definition.Id, hit.ActionId, hit.Depth);
         }
         if (!CampaignRewardEligible(target)) return;
+        SpreadVirulentWake(target, hit);
         OnProductionKill(target, hit);
         if (!hit.Dot || hit.OwnerId != 1) return;
         foreach (var fragment in ActiveFragments().Where(f => f.Trigger == "DotDeath"))

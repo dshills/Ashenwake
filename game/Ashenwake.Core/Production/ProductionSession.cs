@@ -360,7 +360,10 @@ public sealed partial class ProductionSession
             Resistances = state.Endgame is null ? null : EndgameProgression.Resistances(view.Stats),
             PyreTrail = properties.Contains(LegendaryEquipment.PyrePower),
             OathReprisal = properties.Contains(LegendaryEquipment.OathPower),
-            WidowEcho = properties.Contains(LegendaryEquipment.WidowPower)
+            WidowEcho = properties.Contains(LegendaryEquipment.WidowPower),
+            VirulentWake = properties.Contains(LegendaryEquipment.RotwakePower),
+            RallyingChorus = properties.Contains(LegendaryEquipment.MourningPower),
+            CinderCycle = properties.Contains(LegendaryEquipment.FurnacePower)
         };
     }
     private void SynchronizeItemSequence()

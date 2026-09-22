@@ -1,6 +1,6 @@
 # Legendary equipment
 
-Three named legendary items add combat effects, distinct equipped meshes and inventory icons, lore, power descriptions, and source hints. They work through normal loot pickup, inventory drag/drop, and Greyhaven crafting.
+The original three signature legendary items add combat effects, distinct equipped meshes and inventory icons, lore, power descriptions, and source hints. They work through normal loot pickup, inventory drag/drop, and Greyhaven crafting. The [midgame legendary expansion](midgame_legendaries.md) adds Rotwake Signet, Mantle of the Mourning Choir and Furnaceheart Cinch, bringing the signature set to six.
 
 | Item | Power | Campaign source | Repeatable source |
 | --- | --- | --- | --- |

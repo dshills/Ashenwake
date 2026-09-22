@@ -45,7 +45,7 @@ public static class ExperimentSaveStore
         try { return ReadExact(combatJson, adventure, policy, campaign, endgame, experiment, json); }
         catch (SaveCompatibilityException) when (LegendaryCatalogMigration.TryPrevious(combatJson, policy, out var previousCombat, out var previousPolicy))
         {
-            var original = ReadExact(previousCombat, adventure, previousPolicy, campaign, endgame, experiment, json).Capture();
+            var original = ReadWithLegendaryUpgrade(previousCombat, adventure, previousPolicy, campaign, endgame, experiment, json).Capture();
             return ExperimentRuntimeSession.Restore(combatJson, adventure, policy, campaign, endgame, experiment,
                 original with { Endgame = LegendaryCatalogMigration.Rebind(original.Endgame, combatJson, adventure, policy, campaign) });
         }

@@ -6,9 +6,9 @@ namespace Ashenwake.Client;
 public static class CombatAudio
 {
     private const int SampleRate = 22050;
-    private enum Sound { Blade, Bow, Arcane, Bone, Spear, Enemy, Hit, Armor, Death, Dodge, Bell, Chain, Victory, Heal, Loot, Tell, Legendary, Godwrought, Pyre, Reprisal, Widow }
+    private enum Sound { Blade, Bow, Arcane, Bone, Spear, Enemy, Hit, Armor, Death, Dodge, Bell, Chain, Victory, Heal, Loot, Tell, Legendary, Godwrought, Pyre, Reprisal, Widow, Rotwake, Chorus, Cinder }
     public static IReadOnlyList<string> CueNames { get; } = Array.AsReadOnly<string>(
-        ["blade", "bow", "arcane", "bone", "spear", "enemy", "hit", "armor", "death", "dodge", "bell", "chain", "victory", "heal", "loot", "tell", "loot_legendary", "loot_godwrought", "legendary_pyre", "legendary_oath", "legendary_widow"]);
+        ["blade", "bow", "arcane", "bone", "spear", "enemy", "hit", "armor", "death", "dodge", "bell", "chain", "victory", "heal", "loot", "tell", "loot_legendary", "loot_godwrought", "legendary_pyre", "legendary_oath", "legendary_widow", "legendary_rotwake", "legendary_chorus", "legendary_cinder"]);
 
     public static byte[] CreateSamples(string cue)
     {
@@ -35,6 +35,9 @@ public static class CombatAudio
             "legendary_pyre" => (Sound.Pyre, .48),
             "legendary_oath" => (Sound.Reprisal, .58),
             "legendary_widow" => (Sound.Widow, .68),
+            "legendary_rotwake" => (Sound.Rotwake, .48),
+            "legendary_chorus" => (Sound.Chorus, .72),
+            "legendary_cinder" => (Sound.Cinder, .50),
             _ => throw new ArgumentException($"Unknown combat audio cue: {cue}", nameof(cue))
         };
         int count = (int)Math.Ceiling(duration * SampleRate);
@@ -93,6 +96,12 @@ public static class CombatAudio
                     .34 * lowNoise * Envelope(t, .002, 16),
                 Sound.Widow => .25 * Note(t, 0, 783.99, 7) + .24 * Note(t, .19, 587.33, 6) +
                     .17 * Note(t, .29, 1174.66, 7) + .30 * highNoise * Swell(t, .03, .5),
+                Sound.Rotwake => .45 * warmNoise * Swell(t, .01, .44) +
+                    .23 * Sweep(460, 110, t, duration) * Envelope(t, .018, 8),
+                Sound.Chorus => .24 * Note(t, 0, 220, 6) + .22 * Note(t, .04, 261.63, 6) +
+                    .20 * Note(t, .08, 329.63, 6) + .12 * lowNoise * Swell(t, .03, .6),
+                Sound.Cinder => .35 * Bell(t, 392, 11) + .34 * warmNoise * Swell(t, .01, .40) +
+                    .20 * Sweep(150, 380, t, duration) * Envelope(t, .005, 8),
                 _ => 0
             };
             // Smooth saturation keeps layered transients below full scale; both ends taper to zero.

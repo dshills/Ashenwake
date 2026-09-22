@@ -8,16 +8,20 @@ public partial class Sandbox
 {
     private Label? _legendaryReadiness;
     private long _lastOathChargeCue = -30;
+    private Label? _legendaryTrigger;
+    private string _legendaryTriggerPower = "", _legendaryTriggerText = "";
+    private long _legendaryTriggerUntil;
+    internal string LegendaryTriggerText => _legendaryTrigger?.Visible == true ? _legendaryTrigger.Text : "";
     internal int LegendaryTriggerCueCount { get; private set; }
     internal string LastLegendaryTriggerCue { get; private set; } = "";
     internal string LegendaryReadinessText => _legendaryReadiness?.Visible == true ? _legendaryReadiness.Text : "";
 
-    private void PresentLegendaryEvent(CombatEvent e, ActorPresentation? actor, Vector3 direction)
+    private void PresentLegendaryEvent(CombatEvent e, ActorPresentation? actor, ActorPresentation? target, Vector3 direction)
     {
         if (actor is null || actor.Health <= 0) return;
         if (e.Kind == "LegendaryReadied")
         {
-            _combatEffects.Emit("legendary_ready", actor.Current, direction, new("c9b5ef"), _reduceEffects);
+            _combatEffects.Emit("legendary_ready", actor.Current, direction, new(e.ContentId == LegendaryEquipment.FurnacePower ? "ffc06c" : "c9b5ef"), _reduceEffects);
             return;
         }
         if (e.Kind == "LegendaryCharged")
@@ -32,23 +36,47 @@ public partial class Sandbox
             LegendaryEquipment.PyrePower => "legendary_pyre",
             LegendaryEquipment.OathPower => "legendary_oath",
             LegendaryEquipment.WidowPower => "legendary_widow",
+            LegendaryEquipment.RotwakePower => "legendary_rotwake",
+            LegendaryEquipment.MourningPower => "legendary_chorus",
+            LegendaryEquipment.FurnacePower => "legendary_cinder",
             _ => ""
         };
         if (cue.Length == 0) return;
-        Color color = cue == "legendary_pyre" ? new("ffa457") : cue == "legendary_oath" ? new("e0c181") : new("c9b5ef");
-        _combatEffects.Emit(cue, actor.Current, direction, color, _reduceEffects);
+        Color color = cue switch
+        {
+            "legendary_pyre" => new("ffa457"),
+            "legendary_oath" => new("e0c181"),
+            "legendary_rotwake" => new("b4d879"),
+            "legendary_chorus" => new("99d9cf"),
+            "legendary_cinder" => new("ffc06c"),
+            _ => new("c9b5ef")
+        };
+        // Wake and chorus happen at the struck foe, including the corpse that releases a wake.
+        // Cosmetic visibility never reveals a hidden actor; all targeting remains in Core.
+        var origin = cue is "legendary_rotwake" or "legendary_chorus" ? target : actor;
+        if (origin?.AuthoredVisible == true) _combatEffects.Emit(cue, origin.Current, direction, color, _reduceEffects);
+        string message = cue switch
+        {
+            "legendary_rotwake" => $"VIRULENT WAKE · {e.Amount} {(e.Amount == 1 ? "foe" : "foes")} poisoned",
+            "legendary_chorus" => $"MOURNING CHOIR · {e.Amount} {(e.Amount == 1 ? "summon" : "summons")} rallied",
+            "legendary_cinder" => "CINDER CYCLE · " + (_view.Discipline == "Arcanist" ? "−" : "+") + e.Amount + " " + _view.ResourceName,
+            _ => ""
+        };
+        if (message.Length > 0)
+        {
+            _legendaryTriggerText = message; _legendaryTriggerPower = e.ContentId;
+            _legendaryTriggerUntil = e.Tick + 45;
+        }
         PlayTone(cue); LegendaryTriggerCueCount++; LastLegendaryTriggerCue = cue;
     }
 
     private void PresentLegendaryReadiness()
     {
         var legendary = _view.Legendary;
+        PresentLegendaryTrigger();
         if (legendary is null || !_actors.TryGetValue(1, out var player) || player.Health <= 0)
         { if (_legendaryReadiness is not null) _legendaryReadiness.Visible = false; return; }
-        static string Seconds(long ticks) => (Math.Ceiling(ticks / 3d) / 10).ToString("F1", CultureInfo.InvariantCulture) + "s";
-        string text = legendary.OathCharge > 0 && legendary.OathRemainingTicks > 0 ? $"REPRISAL {legendary.OathCharge} · {Seconds(legendary.OathRemainingTicks)}" : "";
-        if (legendary.WidowRemainingTicks > 0)
-            text += (text.Length > 0 ? "   ·   " : "") + "WIDOW READY · " + Seconds(legendary.WidowRemainingTicks);
+        string text = LegendaryReadiness(legendary, _view.Discipline);
         if (text.Length == 0) { if (_legendaryReadiness is not null) _legendaryReadiness.Visible = false; return; }
         if (_legendaryReadiness is null)
         {
@@ -65,9 +93,52 @@ public partial class Sandbox
         _legendaryReadiness.Text = text;
         _legendaryReadiness.Modulate = legendary.OathCharge > 0 ? new("e0c181") : new("c9b5ef");
         // Keep persistent readiness clear of world-space damage and target labels.
-        _legendaryReadiness.Position = _hudDock.Position + new Vector2(12, -94);
-        _legendaryReadiness.Size = new(_hudDock.Size.X - 24, 20);
+        _legendaryReadiness.Position = _hudDock.Position + new Vector2(12, -112);
+        _legendaryReadiness.Size = new(_hudDock.Size.X - 24, 42);
         _legendaryReadiness.Visible = player.AuthoredVisible;
+    }
+
+    internal static string LegendaryReadiness(CombatLegendaryView legendary, string discipline)
+    {
+        static string Seconds(long ticks) => (Math.Ceiling(ticks / 3d) / 10).ToString("F1", CultureInfo.InvariantCulture) + "s";
+        var first = new List<string>(); var second = new List<string>();
+        if (legendary.OathCharge > 0 && legendary.OathRemainingTicks > 0)
+            first.Add($"REPRISAL {legendary.OathCharge} · {Seconds(legendary.OathRemainingTicks)}");
+        if (legendary.WidowRemainingTicks > 0) first.Add("WIDOW READY · " + Seconds(legendary.WidowRemainingTicks));
+        if (legendary.VirulentEquipped) second.Add(legendary.VirulentRemainingTicks > 0 ? "ROTWAKE " + Seconds(legendary.VirulentRemainingTicks) : "ROTWAKE READY");
+        if (legendary.ChorusEquipped) second.Add(legendary.ChorusRemainingTicks > 0 ? "CHOIR " + Seconds(legendary.ChorusRemainingTicks) : legendary.ChorusSummons > 0 ? "CHOIR READY" : "CHOIR · NO READY SUMMON");
+        if (legendary.CinderEquipped)
+            second.Add(legendary.CinderRemainingTicks > 0
+                ? "CINDER · " + (discipline == "Arcanist" ? "VENT" : discipline == "Gravecaller" ? "HARVEST" : "GENERATE") + " · " + Seconds(legendary.CinderRemainingTicks)
+                : "CINDER · CAST 20+");
+        return string.Join("\n", new[] { string.Join("   ·   ", first), string.Join("   ·   ", second) }.Where(line => line.Length > 0));
+    }
+
+    private void PresentLegendaryTrigger()
+    {
+        var legendary = _view.Legendary;
+        bool equipped = _legendaryTriggerPower switch
+        {
+            LegendaryEquipment.RotwakePower => legendary?.VirulentEquipped == true,
+            LegendaryEquipment.MourningPower => legendary?.ChorusEquipped == true,
+            LegendaryEquipment.FurnacePower => legendary?.CinderEquipped == true,
+            _ => false
+        };
+        if (!equipped || _view.Tick >= _legendaryTriggerUntil || !_actors.TryGetValue(1, out var player) || player.Health <= 0)
+        { if (_legendaryTrigger is not null) _legendaryTrigger.Visible = false; return; }
+        if (_legendaryTrigger is null)
+        {
+            _legendaryTrigger = new Label { Name = "LegendaryTrigger", MouseFilter = Control.MouseFilterEnum.Ignore };
+            _legendaryTrigger.AddThemeFontSizeOverride("font_size", 13);
+            _legendaryTrigger.AddThemeConstantOverride("outline_size", 4);
+            _legendaryTrigger.AddThemeColorOverride("font_outline_color", new("101820"));
+            _hud.AddChild(_legendaryTrigger);
+        }
+        _legendaryTrigger.Text = _legendaryTriggerText;
+        _legendaryTrigger.Modulate = new("e0c181");
+        _legendaryTrigger.Position = _hudDock.Position + new Vector2(12, -134);
+        _legendaryTrigger.Size = new(_hudDock.Size.X - 24, 20);
+        _legendaryTrigger.Visible = player.AuthoredVisible;
     }
 
     private void PresentCombatProjectile(CombatProjectileView projectile)

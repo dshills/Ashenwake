@@ -20,7 +20,7 @@ public static class ProductionSaveStore
         try { return ReadExact(combatJson, adventure, policy, json); }
         catch (SaveCompatibilityException) when (LegendaryCatalogMigration.TryPrevious(combatJson, policy, out var previousCombat, out var previousPolicy))
         {
-            var original = ReadExact(previousCombat, adventure, previousPolicy, json);
+            var original = Read(previousCombat, adventure, previousPolicy, json);
             return ProductionSession.Restore(combatJson, adventure, policy,
                 LegendaryCatalogMigration.Rebind(original.Capture(), combatJson, adventure, policy));
         }
@@ -39,6 +39,7 @@ public static class ProductionSaveStore
         ArchiveHeaders.Identity(expedition, "adventureHash", world.Hash);
         ArchiveHeaders.Identity(combatState, "contentHash", CombatContent.Parse(combatJson).Identity);
         ArchiveHeaders.Identity(character, "contentHash", resolved.Hash);
+        ArchiveHeaders.Checksum(headers.RootElement, "state");
         var save = JsonData.Read<ProductionSave>(json);
         if (save.SchemaVersion != 1) throw new SaveCompatibilityException("Unsupported production save version; preserve it for its matching build.");
         if (save.State is null || save.State.Expedition?.Combat is null || save.State.Progression?.Character is null)

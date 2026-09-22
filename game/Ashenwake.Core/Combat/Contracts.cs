@@ -18,7 +18,16 @@ public sealed record CombatSkillView(string Id, string Name, string Shape, int C
 public sealed record CombatFragmentView(string Id, string Name, AnatomySlot Slot, string Lineage, int Resonance, string Description, bool Equipped);
 public sealed record CombatBuildModifiers(string Manifestation = "", int AshcleaverStacks = 0, bool AshcleaverAwakened = false, string AshcleaverEvolution = "", int TemperLevel = 0, bool AshcleaverEquipped = false, string SecondaryManifestation = "");
 public sealed record CombatMutationView(string Id, string SkillId, string Name, string Description);
-public sealed record CombatLegendaryView(int OathCharge, long OathRemainingTicks, long WidowRemainingTicks);
+public sealed record CombatLegendaryView(int OathCharge, long OathRemainingTicks, long WidowRemainingTicks)
+{
+    public bool VirulentEquipped { get; init; }
+    public long VirulentRemainingTicks { get; init; }
+    public bool ChorusEquipped { get; init; }
+    public int ChorusSummons { get; init; }
+    public long ChorusRemainingTicks { get; init; }
+    public bool CinderEquipped { get; init; }
+    public long CinderRemainingTicks { get; init; }
+}
 public sealed record CombatView(long Tick, string Preset, IReadOnlyList<CombatActorView> Actors, IReadOnlyList<CombatProjectileView> Projectiles,
     IReadOnlyList<CombatAreaView> Areas, IReadOnlyList<CombatLoot> Loot, IReadOnlyList<CombatItem> Inventory,
     IReadOnlyList<CombatSkillView> Skills, IReadOnlyList<CombatFragmentView> Fragments, IReadOnlyList<CombatMutationView> Mutations,

@@ -1264,46 +1264,6 @@
       ],
       "hands": 0,
       "disciplines": []
-    },
-    {
-      "id": "item.rotwake_signet",
-      "name": "Rotwake Signet",
-      "slot": "Ring1",
-      "damage": 0,
-      "armor": 0,
-      "criticalBasisPoints": 350,
-      "compatibleSlots": [
-        "Ring1",
-        "Ring2"
-      ],
-      "hands": 0,
-      "disciplines": []
-    },
-    {
-      "id": "item.mourning_choir",
-      "name": "Mantle of the Mourning Choir",
-      "slot": "Shoulders",
-      "damage": 0,
-      "armor": 900,
-      "criticalBasisPoints": 0,
-      "compatibleSlots": [
-        "Shoulders"
-      ],
-      "hands": 0,
-      "disciplines": []
-    },
-    {
-      "id": "item.furnaceheart_cinch",
-      "name": "Furnaceheart Cinch",
-      "slot": "Belt",
-      "damage": 0,
-      "armor": 500,
-      "criticalBasisPoints": 0,
-      "compatibleSlots": [
-        "Belt"
-      ],
-      "hands": 0,
-      "disciplines": []
     }
   ],
   "loadouts": [

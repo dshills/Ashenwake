@@ -47,7 +47,7 @@ public partial class CombatEffects : Node3D
         }
         burst ??= _pool.MinBy(b => b.Serial)!;
         burst.Active = true; burst.Serial = ++_serial; burst.Age = 0; burst.Cue = cue; burst.Color = color;
-        burst.Duration = cue switch { "loot_legendary" => 1.1f, "loot_godwrought" => 1.6f, "legendary_pyre" => .55f, "legendary_oath" => .42f, "legendary_widow" or "legendary_ready" => .5f, "victory" => 1.3f, "phase" => .85f, "death" => .65f, "spell" => .4f, "dodge" or "dust" => .32f, _ => .24f };
+        burst.Duration = cue switch { "loot_legendary" => 1.1f, "loot_godwrought" => 1.6f, "legendary_pyre" => .55f, "legendary_oath" => .42f, "legendary_widow" or "legendary_ready" or "legendary_rotwake" or "legendary_chorus" or "legendary_cinder" => .5f, "victory" => 1.3f, "phase" => .85f, "death" => .65f, "spell" => .4f, "dodge" or "dust" => .32f, _ => .24f };
         burst.Root.Position = origin;
         burst.Root.Rotation = new(0, direction.LengthSquared() > .001f ? Mathf.Atan2(direction.X, direction.Z) : 0, 0);
         burst.Root.Visible = true;
@@ -92,6 +92,17 @@ public partial class CombatEffects : Node3D
                 case "legendary_widow":
                     piece.Position = new(MathF.Sin(a) * .20f * (1 - t), 1 + MathF.Cos(a) * .16f, .25f + t * 1.5f - i * .075f);
                     piece.Rotation = new(0, 0, a); piece.Scale = new(.028f, .028f, .32f * (1 - t) + .10f); break;
+                case "legendary_rotwake":
+                    piece.Position = new(MathF.Sin(a) * (.18f + t * 1.15f), .12f + MathF.Sin(t * Mathf.Pi) * .35f, MathF.Cos(a) * (.18f + t * 1.15f));
+                    piece.Rotation = new(0, a, .5f); piece.Scale = new(.075f * (1 - t) + .02f, .18f, .035f); break;
+                case "legendary_chorus":
+                    a = (i / 2) * Mathf.Tau / 3;
+                    piece.Position = new(MathF.Sin(a) * (.85f * (1 - t) + .10f), .55f + (i % 2) * .35f + t * .3f, MathF.Cos(a) * (.85f * (1 - t) + .10f));
+                    piece.Rotation = new(0, a, 0); piece.Scale = new(.035f, .3f * (1 - t) + .06f, .035f); break;
+                case "legendary_cinder":
+                    a += t * 1.8f;
+                    piece.Position = new(MathF.Sin(a) * (.4f - t * .25f), .95f + t * .25f, MathF.Cos(a) * (.4f - t * .25f));
+                    piece.Rotation = new(0, a, .2f); piece.Scale = new(.035f, .15f * (1 - t) + .05f, .035f); break;
                 case "legendary_ready":
                     a += t * 1.7f;
                     piece.Position = new(MathF.Sin(a) * .40f, .90f + MathF.Cos(a) * .24f, MathF.Cos(a) * .28f);

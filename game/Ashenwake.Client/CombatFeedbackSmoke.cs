@@ -45,6 +45,8 @@ public partial class CombatFeedbackSmoke : Node3D
             await ReleaseGallery();
             await LegendaryPowerFeedback();
             await ReleaseGallery();
+            await MidgameLegendaryPowerFeedback();
+            await ReleaseGallery();
             Finish(true, "");
         }
         catch (Exception ex) { GD.PushError(ex.ToString()); Finish(false, ex.Message); }
@@ -171,7 +173,7 @@ public partial class CombatFeedbackSmoke : Node3D
         AddChild(effects);
         try
         {
-            foreach (string cue in new[] { "slash", "thrust", "spell", "hit", "block", "dodge", "dust", "death", "phase", "victory", "loot_legendary", "loot_godwrought", "legendary_pyre", "legendary_oath", "legendary_widow", "legendary_ready" })
+            foreach (string cue in new[] { "slash", "thrust", "spell", "hit", "block", "dodge", "dust", "death", "phase", "victory", "loot_legendary", "loot_godwrought", "legendary_pyre", "legendary_oath", "legendary_widow", "legendary_ready", "legendary_rotwake", "legendary_chorus", "legendary_cinder" })
             {
                 effects.Clear(); effects.Emit(cue, new(2, .1f, -1), Vector3.Forward, new Color("f7c786"));
                 Check(cue + "_effect_builds_visible_geometry", effects.Count > 0 && Descendants(effects).OfType<MeshInstance3D>().Any(m => m.IsVisibleInTree()));

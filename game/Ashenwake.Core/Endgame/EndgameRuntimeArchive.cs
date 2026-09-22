@@ -81,7 +81,7 @@ public static class EndgameRuntimeSaveStore
         try { return ReadExact(combatJson, adventure, policy, campaign, endgame, json); }
         catch (SaveCompatibilityException) when (LegendaryCatalogMigration.TryPrevious(combatJson, policy, out var previousCombat, out var previousPolicy))
         {
-            var original = ReadExact(previousCombat, adventure, previousPolicy, campaign, endgame, json);
+            var original = ReadWithLegendaryUpgrade(previousCombat, adventure, previousPolicy, campaign, endgame, json);
             return EndgameRuntimeSession.Restore(combatJson, adventure, policy, campaign, endgame,
                 LegendaryCatalogMigration.Rebind(original.Capture(), combatJson, adventure, policy, campaign));
         }

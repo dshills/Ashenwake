@@ -44,7 +44,7 @@ public static class LocalProfileStore
         {
             var previous = LegendaryCatalogMigration.PreviousPolicy(content);
             if (previous.Hash == content.Hash) throw;
-            var profile = ReadExact(previous, json);
+            var profile = ReadWithLegendaryUpgrade(previous, json);
             ProgressionSession.ValidateProfile(content, profile);
             return profile;
         }

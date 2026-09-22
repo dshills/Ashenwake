@@ -18,7 +18,9 @@ public sealed record CharacterAppearance(string Discipline, ItemAppearance MainH
     public ItemAppearance Belt { get; init; } = ItemAppearance.Empty;
     public ItemAppearance Legs { get; init; } = ItemAppearance.Empty;
     public ItemAppearance Boots { get; init; } = ItemAppearance.Empty;
-    public string Key => $"{Discipline}|{MainHand.Key}|{OffHand.Key}|{Head.Key}|{Chest.Key}|{Shoulders.Key}|{Gloves.Key}|{Belt.Key}|{Legs.Key}|{Boots.Key}|{ManifestationMask & 15}|{AnatomyMask & 15}";
+    public ItemAppearance Ring1 { get; init; } = ItemAppearance.Empty;
+    public ItemAppearance Ring2 { get; init; } = ItemAppearance.Empty;
+    public string Key => $"{Discipline}|{MainHand.Key}|{OffHand.Key}|{Head.Key}|{Chest.Key}|{Shoulders.Key}|{Gloves.Key}|{Belt.Key}|{Legs.Key}|{Boots.Key}|{Ring1.Key}|{Ring2.Key}|{ManifestationMask & 15}|{AnatomyMask & 15}";
 
     public static int AnatomyFragments(IEnumerable<string>? ids)
     {
@@ -62,7 +64,7 @@ public sealed record CharacterAppearance(string Discipline, ItemAppearance MainH
         }
         return new(view.Discipline, At("MainHand"), At("OffHand"), At("Head"), At("Chest"), Manifestations(manifestations),
             AnatomyFragments(view.Fragments.Where(f => f.Equipped).Select(f => f.Id)))
-        { Shoulders = At("Shoulders"), Gloves = At("Gloves"), Belt = At("Belt"), Legs = At("Legs"), Boots = At("Boots") };
+        { Shoulders = At("Shoulders"), Gloves = At("Gloves"), Belt = At("Belt"), Legs = At("Legs"), Boots = At("Boots"), Ring1 = At("Ring1"), Ring2 = At("Ring2") };
     }
 
     public static CharacterAppearance FromProgression(ProgressionSnapshot state, IReadOnlyList<string>? manifestations = null,
@@ -77,6 +79,6 @@ public sealed record CharacterAppearance(string Discipline, ItemAppearance MainH
         }
         return new(state.Character.Discipline, At(EquipmentSlot.MainHand), At(EquipmentSlot.OffHand), At(EquipmentSlot.Head), At(EquipmentSlot.Chest),
             Manifestations(manifestations), AnatomyFragments(fragments))
-        { Shoulders = At(EquipmentSlot.Shoulders), Gloves = At(EquipmentSlot.Gloves), Belt = At(EquipmentSlot.Belt), Legs = At(EquipmentSlot.Legs), Boots = At(EquipmentSlot.Boots) };
+        { Shoulders = At(EquipmentSlot.Shoulders), Gloves = At(EquipmentSlot.Gloves), Belt = At(EquipmentSlot.Belt), Legs = At(EquipmentSlot.Legs), Boots = At(EquipmentSlot.Boots), Ring1 = At(EquipmentSlot.Ring1), Ring2 = At(EquipmentSlot.Ring2) };
     }
 }

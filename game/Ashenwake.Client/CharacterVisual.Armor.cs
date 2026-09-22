@@ -6,6 +6,8 @@ public partial class CharacterVisual
 {
     private void BuildArmor(CharacterAppearance appearance, string kind)
     {
+        BuildSlot(_equipmentLeft, "EquipmentRing1", "ring-left", appearance.Ring1, kind, n => EquippedRing(n, -1, appearance.Ring1));
+        BuildSlot(_equipmentRight, "EquipmentRing2", "ring-right", appearance.Ring2, kind, n => EquippedRing(n, 1, appearance.Ring2));
         BuildSlot(_equipmentLeft, "EquipmentShoulders", "shoulders-left", appearance.Shoulders, kind, n => EquippedMantle(n, -1, appearance.Shoulders, kind));
         BuildSlot(_equipmentRight, "EquipmentShouldersRight", "shoulders-right", appearance.Shoulders, kind, n => EquippedMantle(n, 1, appearance.Shoulders, kind));
         BuildSlot(_equipmentLeft, "EquipmentGloves", "gloves-left", appearance.Gloves, kind, n => EquippedGlove(n, -1, appearance.Gloves, kind));
@@ -25,6 +27,7 @@ public partial class CharacterVisual
 
     private void EquippedMantle(Node3D parent, int side, ItemAppearance item, string kind)
     {
+        if (ItemKind(item) == "mourning_choir") { EquippedMourningMantle(parent, side, item); return; }
         var palette = ArmorPalette.For(kind);
         Material shell = ArmorShell(kind), cloth = SharedMaterial(palette.Cloth), trim = SharedMaterial(palette.Trim);
         bool plate = palette.Metallic;
@@ -68,6 +71,7 @@ public partial class CharacterVisual
 
     private void EquippedBelt(Node3D parent, ItemAppearance item, string kind)
     {
+        if (ItemKind(item) == "furnaceheart_cinch") { EquippedFurnaceBelt(parent, item); return; }
         var palette = ArmorPalette.For(kind);
         Material leather = SharedMaterial(ArmorPalette.Leather), trim = SharedMaterial(palette.Trim);
         // Last-Rite Girdle: a funerary seal, prayer strips and a sealed reliquary pouch.

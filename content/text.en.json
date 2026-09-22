@@ -94,6 +94,21 @@
     "power.property.widow_echo.description": { "other": "After dodging, your next projectile skill within 5 seconds fires a delayed Void echo at half its base damage. The echo cannot fork, chain, or trigger other hit powers. Copies do not stack." },
     "source.pyrebound_treads": { "other": "Found: clear the Road ambush in Act I; also Grey March Fracture final rooms." },
     "source.oathkeeper_reprisal": { "other": "Found: defeat the Covenant Warden in Act IV; also Shattered Spine Fracture final rooms." },
-    "source.widows_last_echo": { "other": "Found: defeat Rootheart in Act II; also Verdant Maw Fracture final rooms." }
+    "source.widows_last_echo": { "other": "Found: defeat Rootheart in Act II; also Verdant Maw Fracture final rooms." },
+    "equipment.rotwake_signet": { "other": "Rotwake Signet" },
+    "equipment.mourning_choir": { "other": "Mantle of the Mourning Choir" },
+    "equipment.furnaceheart_cinch": { "other": "Furnaceheart Cinch" },
+    "lore.rotwake_signet": { "other": "The physician sealed the quarantine with wax and a thorn. By morning, the thorn had flowered." },
+    "lore.mourning_choir": { "other": "The names of the lost were carved into these pipes. Now the dead answer when you strike the first note." },
+    "lore.furnaceheart_cinch": { "other": "A forgekeeper trapped the furnace's last breath behind an iron grate. It still waits for the bellows." },
+    "power.property.virulent_wake.name": { "other": "Virulent Wake" },
+    "power.property.virulent_wake.description": { "other": "When your Poisoned damage kills a foe, spread one Poisoned stack to up to 3 foes within 2.6m and sight. 3-second cooldown. Spread poison cannot spread again; the corpse remains. Copies do not stack." },
+    "power.property.rallying_chorus.name": { "other": "Rallying Chorus" },
+    "power.property.rallying_chorus.description": { "other": "A direct skill hit on a surviving foe calls up to 3 of your available summons within 6m and sight of it. Each strikes for 8 base Void damage. 3-second cooldown. These strikes cannot critically hit or trigger hit powers. Copies do not stack." },
+    "power.property.cinder_cycle.name": { "other": "Cinder Cycle" },
+    "power.property.cinder_cycle.description": { "other": "Using a skill costing at least 20 resource prepares one charge for 6 seconds. Your next free, resource-generating direct skill hit restores 12 extra resource. Arcanists instead Vent 12 extra Instability; Gravecallers harvest 12 extra Remains from a corpse. Charges and copies do not stack." },
+    "source.rotwake_signet": { "other": "Found: secure Plague Village in Act II; also Verdant Maw Fracture room 1." },
+    "source.mourning_choir": { "other": "Found: clear the Extraction Floor in Act III; also Verdant Maw Fracture room 2." },
+    "source.furnaceheart_cinch": { "other": "Found: defeat the Furnace Spindle in Act III; also Cinder Reach Fracture final rooms." }
   }
 }

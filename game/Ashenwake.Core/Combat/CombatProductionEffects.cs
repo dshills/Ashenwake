@@ -20,7 +20,11 @@ public sealed partial class CombatSession
             if (corpse is null) { Reject(command, "corpse_unavailable"); return true; }
             long action = _state.NextActionId++;
             ClaimCorpse(corpse, "effect.corpse_consumption", action);
-            if (Discipline == "Gravecaller") _state.Momentum = Math.Min(100, _state.Momentum + GenerationAmount(25));
+            if (Discipline == "Gravecaller")
+            {
+                _state.Momentum = Math.Min(100, _state.Momentum + GenerationAmount(25));
+                ReleaseCinderCycle(action, cooling: false);
+            }
             if (HasManifestation("manifestation.voracious_renewal"))
             {
                 int bonus = Math.Min(60 - _state.TemporaryLife, 20); var player = Player;
@@ -89,6 +93,7 @@ public sealed partial class CombatSession
         if (actor.Id != 1) return;
         var skill = _content.Skills.FirstOrDefault(s => s.Id == pending.SkillId);
         if (skill?.Behavior == "Vent") { _state.Momentum = Math.Max(0, _state.Momentum - 40); Player.Statuses.RemoveAll(s => s.Id == "Burning"); Emit("InstabilityVented", 1, amount: 40, content: skill.Id, action: pending.ActionId); }
+        if (skill?.Behavior == "Vent" && Discipline == "Arcanist") ReleaseCinderCycle(pending.ActionId, cooling: true);
         if (skill?.Behavior == "Vanish") { Player.InvulnerableUntil = Tick + 12; Emit("Vanished", 1, content: skill.Id, action: pending.ActionId); }
         if (skill?.Behavior == "Regenerate") HealPlayer(40, skill.Id, pending.ActionId);
     }
