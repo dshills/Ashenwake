@@ -56,6 +56,8 @@ The [Acts IV–V combat-depth pass](docs/late_campaign_combat_depth.md) adds int
 
 The [opening audio pass](docs/opening_audio.md) adds five original regional themes, adaptive combat and Bell Saint layers, terrain footsteps, richer impacts and creature warnings. Music ducks for important cues and respects the existing Music and Effects controls.
 
+Visit Greyhaven's **Training ground** to practice your current build against one target or a group and inspect damage, effect triggers, and resource usage. Practice grants no XP, mastery, or loot and leaves your character unchanged. At Torren, open **Gear → Equipment presets** to save and switch up to eight named outfits. See [training](docs/training_ground.md) and [equipment presets](docs/equipment_presets.md).
+
 ## Start here
 
 Requires Git/Git LFS, Python 3, `curl`, `unzip`, `ripgrep`, and **Go 1.27.1**. The bootstrap installs **.NET SDK 8.0.425** and **Godot 4.6.2 Mono** inside ignored `.tools/`; it does not replace the system Godot. Supported bootstrap hosts are macOS Apple Silicon and Linux x86_64.

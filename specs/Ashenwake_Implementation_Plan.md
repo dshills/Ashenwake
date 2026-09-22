@@ -20,6 +20,8 @@ The [Act I](../docs/opening_combat_depth.md), [Acts II–III](../docs/midgame_co
 
 The [endgame combat polish pass](../docs/endgame_combat_polish.md) extends live protection, vulnerability and warning cues to Fractures and all God Hunts, and adds repeatable earned-build measurements through the first three Fracture tiers.
 
+The [Greyhaven training ground](../docs/training_ground.md) provides isolated current-build practice and actual damage/resource breakdowns. [Named equipment presets](../docs/equipment_presets.md) add eight character-owned, atomically applied outfits at Torren, with explicit missing-item and compatibility previews.
+
 Build a small, satisfying, replayable single-player game loop first. Prove that Divine Anatomy creates surprising build interactions, then establish a repeatable content pipeline, produce the campaign and endgame, and release a reliable single-player game. Cooperative play follows as a separately gated expansion.
 
 At the planning baseline, the repository contained the two source specifications and no implementation. This plan therefore starts from project setup. It preserves the architecture's Phases 0–4, adds explicit endgame and release phases, and moves its optional online prototype from Phase 5 to Phase 7. Phase numbers describe dependencies, not calendar commitments.

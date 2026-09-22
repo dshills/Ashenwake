@@ -26,6 +26,7 @@ public partial class CharacterVisual : Node3D
         visual._appearance = discipline.Length > 0 ? appearance : null;
         if (discipline.Length > 0) visual.BuildHumanoid(discipline);
         else if (allied) { visual.BuildHumanoid("Gravecaller"); visual.SetAccent(new("af9cff")); }
+        else if (definitionId == "training.effigy") visual.BuildTrainingEffigy();
         else visual.BuildMonster(definitionId, role.ToLowerInvariant().Replace(" elite", "", StringComparison.Ordinal));
         visual.ConfigureAnimation(definitionId, role, discipline, allied);
         string key = discipline.Length > 0 ? "hero:" + discipline.ToLowerInvariant() : allied ? "ally:gravecaller" :

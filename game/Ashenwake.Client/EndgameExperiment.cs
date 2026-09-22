@@ -38,7 +38,7 @@ public partial class EndgameDirector
         _experimentRules = _experimentContent.Capture();
         _sandbox.AutomaticStep |= _echoesSmoke;
         _memoryPresentation = new ExperimentPresentation(); AddChild(_memoryPresentation);
-        var open = new Button { Text = "Echoes: Borrowed Memory [H]", Position = new(921, 100), Size = new(326, 32) };
+        var open = new Button { Name = "EchoesNavigation", Text = "Echoes: Borrowed Memory [H]", Position = new(921, 100), Size = new(326, 32) };
         open.AddThemeFontSizeOverride("font_size", 13); open.Pressed += ShowExperimentPanel; _sandbox.AddOverlay(open);
         CombatHudLayout.Navigation(open, 3);
         _memoryHud = new EchoesMemoryHud(); _sandbox.AddOverlay(_memoryHud);

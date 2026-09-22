@@ -144,7 +144,7 @@ public sealed partial class CombatSession
             _state.BufferedCommand = null;
             if (_state.BufferExpiresTick >= Tick) Handle(buffered, false);
         }
-        foreach (var command in inputs) Handle(command, true);
+        foreach (var command in inputs) if (!TrainingCommandRejected(command)) Handle(command, true);
         MovePlayer();
         foreach (var actor in _state.Actors.ToArray().OrderBy(a => a.Id))
         {
@@ -164,7 +164,7 @@ public sealed partial class CombatSession
             }
         }
         UpdateProjectiles(); UpdateAreas(); Drain();
-        if (Discipline == "Vanguard" && Tick - _state.LastAggressionTick >= 90 && Tick % 15 == 0) _state.Momentum = Math.Max(0, _state.Momentum - 2);
+        if (Discipline == "Vanguard" && Tick - _state.LastAggressionTick >= 90 && Tick % 15 == 0) SetResource(Math.Max(0, _state.Momentum - 2), "Passive decay");
         _state.Tick++;
         return _events.ToArray();
     }
@@ -279,6 +279,7 @@ public sealed partial class CombatSession
     }
     private void Think(CombatActor actor)
     {
+        if (training && actor.Faction == CombatFaction.Enemy) { actor.State = "Training"; actor.Pending = null; return; }
         if (actor.Statuses.Any(s => s.Id == "Terrified" && s.ExpiresTick > Tick)) { actor.Pending = null; actor.State = "Flee"; MoveActor(actor, new(actor.Position.X + Math.Sign(actor.Position.X - Player.Position.X) * 100, actor.Position.Z + Math.Sign(actor.Position.Z - Player.Position.Z) * 100)); return; }
         if (ApproachAuthoredTarget(actor)) return;
         if (ThinkEndgameActor(actor) || ThinkCampaignActor(actor)) return;
@@ -402,6 +403,7 @@ public sealed partial class CombatSession
         ChargeOath(source, target, result.Absorbed);
         if (result.Absorbed > 0) Emit("BarrierAbsorbed", target.Id, target.Id, result.Absorbed, hit.ContentId, hit.ActionId, hit.Depth);
         int healthDamage = Math.Min(target.Health, result.HealthDamage); target.Health -= healthDamage;
+        ObserveTrainingHit(hit, source, target, healthDamage);
         Emit("DamageApplied", hit.SourceId, hit.TargetId, healthDamage, hit.ContentId, hit.ActionId, hit.Depth);
         if (critical) Emit("CriticalHit", hit.SourceId, hit.TargetId, healthDamage, hit.ContentId, hit.ActionId, hit.Depth);
         if (result.BeforeBarrier <= 0) return;
@@ -414,7 +416,7 @@ public sealed partial class CombatSession
             {
                 int gain = skill.Generate;
                 if (Discipline == "Veilwalker" && (long)(source.Position.X - target.Position.X) * target.FacingX + (long)(source.Position.Z - target.Position.Z) * target.FacingZ < 0) gain += 8;
-                _state.Momentum = Math.Min(100, _state.Momentum + GenerationAmount(gain));
+                SetResource(Math.Min(100, _state.Momentum + GenerationAmount(gain)), "Hit generation");
             }
         }
         if (!string.IsNullOrEmpty(hit.Status) && target.Health > 0) ApplyStatus(target, hit.Status, hit, "");
@@ -472,7 +474,7 @@ public sealed partial class CombatSession
         if (target.Faction != CombatFaction.Enemy) return;
         CampaignDeath(target);
         EndgameDeath(target);
-        if (_state.Loot.Count < 512 && !_state.ResurrectedActorIds.Contains(target.Id) && CampaignRewardEligible(target))
+        if (!training && _state.Loot.Count < 512 && !_state.ResurrectedActorIds.Contains(target.Id) && CampaignRewardEligible(target))
         {
             var rng = _state.Rng.Loot;
             var eligibleItems = _content.Items.Where(i => i.Id != "item.ashcleaver" && !LegendaryEquipment.IsItem(i.Id)).ToArray();

@@ -269,6 +269,7 @@ public partial class Sandbox : Node3D
             if (actor.Role.EndsWith(" Elite", StringComparison.Ordinal)) name += " Elite";
             if (actor.Faction == CombatFaction.Enemy && actor.DefinitionId.Length > 0)
                 name = Readable(actor.DefinitionId[(actor.DefinitionId.IndexOf('.') + 1)..]) + (actor.Role.EndsWith(" Elite", StringComparison.Ordinal) ? " Elite" : "");
+            if (_trainingPresentation && actor.Faction == CombatFaction.Enemy) name = actor.Health > 0 ? "Practice Effigy" : "Practice Remains";
             var hazard = (_view.CampaignHazards ?? []).Where(h => h.SourceId == actor.Id && h.RemainingTicks > 0 && !h.ContentId.StartsWith("rule.", StringComparison.Ordinal))
                 .OrderBy(h => h.RemainingTicks).FirstOrDefault();
             var conditions = actor.Statuses.Select(s => s.Id).Concat(actor.EliteModifiers ?? []);
@@ -281,7 +282,7 @@ public partial class Sandbox : Node3D
             SynchronizeActor(actor.Id, name, role.ToLowerInvariant(), actor.Position.X, actor.Position.Z,
                 actor.Health, actor.MaxHealth, actor.Barrier, string.Join(" / ", conditions),
                 actor.TelegraphTicks > 0 && actor.TelegraphRadius == 0 && !IsSupportWarning(hazard), actor.Faction != CombatFaction.Enemy,
-                actor.DefinitionId, actor.State, actor.TelegraphTicks > 0 || hazard is not null || actor.State.EndsWith("Windup", StringComparison.Ordinal), mechanic);
+                _trainingPresentation && actor.Faction == CombatFaction.Enemy ? "training.effigy" : actor.DefinitionId, actor.State, actor.TelegraphTicks > 0 || hazard is not null || actor.State.EndsWith("Windup", StringComparison.Ordinal), mechanic);
             SynchronizeForgeOvercharge(actor);
             _actors[actor.Id].AuthoredVisible = actor.Visible;
             _actors[actor.Id].Root.Visible &= actor.Visible;

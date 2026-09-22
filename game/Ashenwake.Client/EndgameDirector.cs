@@ -80,16 +80,16 @@ public partial class EndgameDirector : Node3D
             _hasActiveCharacter = !OS.GetCmdlineUserArgs().Contains("--continue") && (_smoke || Argument("--discipline=") is not null || OS.GetCmdlineUserArgs().Contains("--echoes-smoke"));
             CacheDefinitions();
             _sandbox = new Sandbox { ContentJsonOverride = _combatJson }; AddChild(_sandbox); _sandbox.EnableCampaign(); _sandbox.SetSession(_session.Combat);
-            _sandbox.AutomaticStep = _smoke; _sandbox.AdvanceOverride = Advance; _sandbox.SessionOverride = () => _session.Combat;
+            _sandbox.AutomaticStep = _smoke; _sandbox.AdvanceOverride = Advance; _sandbox.SessionOverride = () => _training?.Combat ?? _session.Combat;
             _sandbox.LootCompatibility = item =>
             { var definition = _productionDefinition.Items.FirstOrDefault(i => i.Id == item.DefinitionId); return definition is null || definition.Disciplines.Length == 0 || definition.Disciplines.Contains(_session.Production.ProgressionView.Discipline); };
             _sandbox.SaveOverride = () => Safely(Save); _sandbox.LoadOverride = () => Safely(Load); _sandbox.ReplayOverride = () => Safely(VerifyReplay);
             _stage = new CampaignStage(); AddChild(_stage); _effects = new EndgamePresentation(); AddChild(_effects); _effects.AttachOverlay(_sandbox);
             _campaignHud = new CampaignHud(); _sandbox.AddOverlay(_campaignHud);
-            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = _character.ToggleInventory;
+            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = () => { if (_training is not null) _trainingHud.SetReportOpen(true); else _character.ToggleInventory(); };
             _board = new EndgameHud(); _sandbox.AddOverlay(_board);
-            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeFrontMenu();
-            _sandbox.ConfigureLocalMap(() => _hasActiveCharacter && !_frontMenu.IsOpen && !_classSelection.Visible, () => _session.LocalMap);
+            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeTraining(); InitializeFrontMenu();
+            _sandbox.ConfigureLocalMap(() => _training is null && _hasActiveCharacter && !_frontMenu.IsOpen && !_classSelection.Visible, () => _session.LocalMap);
             if (_hasActiveCharacter) EnableLocalMap();
             Refresh();
             if (_smoke) VerifyMigrationFixture();
@@ -149,6 +149,8 @@ public partial class EndgameDirector : Node3D
         _character.CraftRequested += request => Permanent(new(ProductionAction.Craft, Crafting: request));
         _character.MutationRequested += (id, value) => Permanent(new(ProductionAction.Mutation, Id: id, Value: value));
         _character.ServiceRequested += Interact;
+        _character.EquipmentPresetRequested += (action, id, name) => Permanent(new(action, Id: id, Value: name));
+        _character.TrainingRequested += () => { _character.Close(); _sandbox.RequestWorldInteraction(Ashenwake.Core.Training.TrainingSession.InteractionId); };
     }
     private void WireBoard()
     {
@@ -175,6 +177,7 @@ public partial class EndgameDirector : Node3D
     {
         if (BlockFrontMenuInput(input)) return;
         if (_frontMenu?.IsOpen == true) return;
+        if (HandleTrainingInput(input)) return;
         if (BlockExperimentPanelInput(input)) return;
         if (_importDialog is { Visible: true } || _classSelection is not { Visible: true } || input is not (InputEventKey or InputEventJoypadButton)) return;
         if (!new[] { "ui_up", "ui_down", "ui_left", "ui_right", "ui_accept", "ui_focus_next", "ui_focus_prev" }.Any(action => input.IsAction(action))) GetViewport().SetInputAsHandled();
@@ -210,6 +213,8 @@ public partial class EndgameDirector : Node3D
     { if (_session.Combat.View.Endgame is null) Campaign(new(CampaignRuntimeAction.ReturnToHub)); else Apply(new(EndgameRuntimeAction.ReturnToHub)); }
     private void Interact(string id)
     {
+        if (_training is not null) return;
+        if (id == Ashenwake.Core.Training.TrainingSession.InteractionId) { Safely(StartTraining); return; }
         if (id == "journey.next") { _campaignHud.RequestNextStep(); return; }
         if (id.StartsWith("opening.", StringComparison.Ordinal)) { Campaign(new(CampaignRuntimeAction.InteractOpening, Id: id)); return; }
         if (id.StartsWith("verdant.", StringComparison.Ordinal)) { Campaign(new(CampaignRuntimeAction.InteractVerdant, Id: id)); return; }
@@ -224,16 +229,19 @@ public partial class EndgameDirector : Node3D
     private void Permanent(ProductionCommand command) => Apply(new(EndgameRuntimeAction.Production, Production: command));
     private void Apply(EndgameRuntimeCommand command)
     {
+        if (_training is not null) { _sandbox.Notify("Leave training to change your build or continue your journey."); return; }
         Safely(() =>
         {
             bool reportCraft = command.Production?.Action == ProductionAction.Craft;
             bool reportBuild = command.Production?.Action is ProductionAction.Passive or ProductionAction.Respec or ProductionAction.Mutation;
-            var result = ExecuteActive(command); if (!result.Success) { Notice(result.Reason); if (reportCraft) _character.ReportCraftResult(false, result.Reason); if (reportBuild) _character.ReportBuildResult(false, result.Reason); return; }
+            bool reportPreset = command.Production?.Action is ProductionAction.SaveEquipmentPreset or ProductionAction.RenameEquipmentPreset or ProductionAction.DeleteEquipmentPreset or ProductionAction.ApplyEquipmentPreset;
+            var result = ExecuteActive(command); if (!result.Success) { Notice(result.Reason); if (reportCraft) _character.ReportCraftResult(false, result.Reason); if (reportBuild) _character.ReportBuildResult(false, result.Reason); if (reportPreset) _character.ReportEquipmentPresetResult(false, result.Reason); return; }
             _revision++; Observe(result);
             if (!ReferenceEquals(_sandbox.Session, _session.Combat)) _sandbox.AdoptSession(_session.Combat);
             Refresh();
             if (reportCraft) _character.ReportCraftResult(true, "");
             if (reportBuild) _character.ReportBuildResult(true, "");
+            if (reportPreset) _character.ReportEquipmentPresetResult(true, "");
         });
     }
     private IReadOnlyList<CombatEvent> Advance(CombatCommand[] commands)
@@ -241,6 +249,7 @@ public partial class EndgameDirector : Node3D
         if (_finished || _capturing) return [];
         try
         {
+            if (_training is not null) return AdvanceTraining(commands);
             if (_echoesSmoke) return AdvanceExperimentSmoke();
             if (_smoke && ++_steps > EndgameRuntimeSmoke.MaximumCommands + 10000L) throw new InvalidDataException("Endgame client smoke exceeded its bounded public-action route.");
             var command = _smoke ? SmokeNext() : new EndgameRuntimeCommand(EndgameRuntimeAction.Tick, Commands: commands);
@@ -336,6 +345,7 @@ public partial class EndgameDirector : Node3D
     }
     private void Refresh()
     {
+        if (_training is not null) { RefreshTraining(); return; }
         var snapshot = _session.Capture(); var campaign = snapshot.Campaign; var combat = _session.Combat.View; var player = combat.Actors.Single(a => a.Id == 1);
         _sandbox.PresentProgression(_session.Production.ProgressionView, _session.Production.CurrentLevelExperience, combat.Skills, campaign.Production.Progression.Character.UnlockedDisciplines);
         var interactions = _session.Interactions.Select(i => new InteractionDisplay(i.ActionId, i.Name, (int)Math.Sqrt(CorePosition.DistanceSquared(i.Position, player.Position)), i.Range)).ToArray();
@@ -343,6 +353,7 @@ public partial class EndgameDirector : Node3D
         if (_smoke || _echoesSmoke) _campaignHud.SetOpen(false);
         _character.SetView(_session.Production.ProgressionView, campaign.Production.Progression, _productionDefinition, combat, interactions, _session.InHub, _revision, _session.Combat.ProgressionBuild.UnlockedMutations,
             combat.Endgame is null && campaign.Campaign.HighestActVisited <= 1);
+        _character.ConfigureEquipmentPresets(_session.Production.EquipmentPresets, _session.Production.PreviewEquipmentPreset);
         var view = _session.View;
         var displayKey = (_revision, combat.Loot.Count, AtGate());
         if (_cachedDisplay is null || _displayKey != displayKey)
@@ -512,6 +523,7 @@ public partial class EndgameDirector : Node3D
     }
     private void Adopt(EndgameRuntimeSession session, bool retainExperiment = false)
     {
+        EndTraining(false);
         _echoesBoard?.SessionRestored();
         _memorySourceKey = default; _memorySourceName = ""; _memoryNoticeStatus = "";
         if (!retainExperiment) _experiment = null;

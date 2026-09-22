@@ -40,8 +40,9 @@ public sealed partial class EndgameRuntimeSession
     private int ArenaIndex => Math.Min(State.Run!.EncounterIndex, manifest!.Rooms.Length - 1);
     private bool CampaignComplete => Campaign.View.Ending?.FracturesUnlocked == true;
     private bool CanRecover => InHub && State.Unlocked && State.Run?.Status != "Active" && State.Sigils.All(s => s.Consumed) && State.Sigils.Length < 10000;
-    public IReadOnlyList<ExpeditionInteraction> Interactions => arena is not null ? [] : !InHub || !State.Unlocked ? Campaign.Interactions :
-        [.. Campaign.Interactions, new("endgame.gate", "Fractures · Sigils and God Hunts", new(6500, 0), 2600)];
+    public IReadOnlyList<ExpeditionInteraction> Interactions => arena is not null ? [] : !InHub ? Campaign.Interactions :
+        [.. Campaign.Interactions, new(Training.TrainingSession.InteractionId, "Training ground · practice your build", Training.TrainingSession.EntryPosition, Training.TrainingSession.InteractionRange),
+            .. State.Unlocked ? new ExpeditionInteraction[] { new("endgame.gate", "Fractures · Sigils and God Hunts", new(6500, 0), 2600) } : []];
     public EndgameRunView? RunView
     {
         get

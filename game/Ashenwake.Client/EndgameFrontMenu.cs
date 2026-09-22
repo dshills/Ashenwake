@@ -129,10 +129,11 @@ public partial class EndgameDirector
         _catalogRefresh = null;
     }
 
-    public override void _ExitTree() => CancelCatalogRefresh();
+    public override void _ExitTree() { _training?.Close(); CancelCatalogRefresh(); }
 
     private void ShowFrontMenu()
     {
+        EndTraining();
         if (_hasActiveCharacter) Save();
         RefreshFrontMenu(); _frontMenu.ShowPage("Main");
     }

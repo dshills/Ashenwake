@@ -7,7 +7,7 @@ using Ashenwake.Core.Simulation;
 
 namespace Ashenwake.Core.Production;
 
-public enum ProductionAction { Expedition, Equip, Unequip, Craft, Passive, Respec, Retrain, Mutation, Discard }
+public enum ProductionAction { Expedition, Equip, Unequip, Craft, Passive, Respec, Retrain, Mutation, Discard, SaveEquipmentPreset, RenameEquipmentPreset, DeleteEquipmentPreset, ApplyEquipmentPreset }
 public sealed record ProductionCommand(ProductionAction Action, ExpeditionCommand? Expedition = null, long ItemId = 0,
     EquipmentSlot Slot = EquipmentSlot.MainHand, string Id = "", string Value = "", CraftingRequest? Crafting = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool ConfirmPermanent = false);
@@ -169,6 +169,20 @@ public sealed partial class ProductionSession
         string operation = "player." + operationSequence; ProgressionResult result;
         switch (command.Action)
         {
+            case ProductionAction.SaveEquipmentPreset:
+            case ProductionAction.RenameEquipmentPreset:
+            case ProductionAction.DeleteEquipmentPreset:
+            case ProductionAction.ApplyEquipmentPreset:
+                string presetBlocked = EquipmentPresetServiceBlockedReason();
+                if (presetBlocked.Length > 0) return new(false, presetBlocked, [], []);
+                result = command.Action switch
+                {
+                    ProductionAction.SaveEquipmentPreset => progression.SaveEquipmentPreset(operation, command.Id, command.Value),
+                    ProductionAction.RenameEquipmentPreset => progression.RenameEquipmentPreset(operation, command.Id, command.Value),
+                    ProductionAction.DeleteEquipmentPreset => progression.DeleteEquipmentPreset(operation, command.Id),
+                    _ => progression.ApplyEquipmentPreset(operation, command.Id)
+                };
+                break;
             case ProductionAction.Equip:
                 if (!Near("service.torren")) return new(false, "Visit Torren to equip items.", [], []);
                 result = progression.Equip(operation, command.ItemId, command.Slot); break;

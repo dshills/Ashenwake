@@ -22,7 +22,7 @@ public sealed partial class CombatSession
             ClaimCorpse(corpse, "effect.corpse_consumption", action);
             if (Discipline == "Gravecaller")
             {
-                _state.Momentum = Math.Min(100, _state.Momentum + GenerationAmount(25));
+                SetResource(Math.Min(100, _state.Momentum + GenerationAmount(25)), "Corpse or kill generation");
                 ReleaseCinderCycle(action, cooling: false);
             }
             if (HasManifestation("manifestation.voracious_renewal"))
@@ -92,7 +92,7 @@ public sealed partial class CombatSession
     {
         if (actor.Id != 1) return;
         var skill = _content.Skills.FirstOrDefault(s => s.Id == pending.SkillId);
-        if (skill?.Behavior == "Vent") { _state.Momentum = Math.Max(0, _state.Momentum - 40); Player.Statuses.RemoveAll(s => s.Id == "Burning"); Emit("InstabilityVented", 1, amount: 40, content: skill.Id, action: pending.ActionId); }
+        if (skill?.Behavior == "Vent") { SetResource(Math.Max(0, _state.Momentum - 40), "Vent"); Player.Statuses.RemoveAll(s => s.Id == "Burning"); Emit("InstabilityVented", 1, amount: 40, content: skill.Id, action: pending.ActionId); }
         if (skill?.Behavior == "Vent" && Discipline == "Arcanist") ReleaseCinderCycle(pending.ActionId, cooling: true);
         if (skill?.Behavior == "Vanish") { Player.InvulnerableUntil = Tick + 12; Emit("Vanished", 1, content: skill.Id, action: pending.ActionId); }
         if (skill?.Behavior == "Regenerate") HealPlayer(40, skill.Id, pending.ActionId);
@@ -121,7 +121,7 @@ public sealed partial class CombatSession
     {
         if (target.Faction != CombatFaction.Enemy || hit.OwnerId != 1) return;
         OfferBorrowedMemory(target);
-        if (Discipline == "Gravecaller") _state.Momentum = Math.Min(100, _state.Momentum + GenerationAmount(25));
+        if (Discipline == "Gravecaller") SetResource(Math.Min(100, _state.Momentum + GenerationAmount(25)), "Corpse or kill generation");
         if (target.Elite && ActiveFragments().Any(f => f.Effect == "CaptureEcho"))
         {
             _state.CapturedSkillId = "skill.echo_storm"; _state.CapturedUntil = Tick + 450;
@@ -146,7 +146,7 @@ public sealed partial class CombatSession
     {
         if (target.Id == 1 && healthDamage > 0 && Discipline == "Warden")
         {
-            _state.Momentum = Math.Min(100, _state.Momentum + GenerationAmount(8));
+            SetResource(Math.Min(100, _state.Momentum + GenerationAmount(8)), "Corpse or kill generation");
             _state.ThreatStacks = _state.ThreatFamily == hit.Family && _state.ThreatUntil > Tick ? Math.Min(4, _state.ThreatStacks + 1) : 1;
             _state.ThreatFamily = hit.Family; _state.ThreatUntil = Tick + 150;
         }

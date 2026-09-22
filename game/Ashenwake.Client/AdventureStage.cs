@@ -75,6 +75,7 @@ public partial class AdventureStage : Node3D
                 var character = CharacterVisual.CreateNpc(pair.Key.Replace("service.", "npc.", StringComparison.Ordinal));
                 point.AddChild(character); _residents.Add(character); labelHeight = character.Height + .4f;
             }
+            else if (pair.Key == "hub.training") { point.AddChild(CharacterVisual.Create("training.effigy", "Melee")); labelHeight = 2.7f; }
             else AddMesh(new CylinderMesh { TopRadius = .52f, BottomRadius = .65f, Height = .5f }, new(0, .25f, 0), color, point);
             AddMesh(new TorusMesh { InnerRadius = .55f, OuterRadius = .64f }, new(0, .05f, 0), color, point);
             Label(pair.Key switch
@@ -85,6 +86,7 @@ public partial class AdventureStage : Node3D
                 "npc.oris" => "ORIS · REBINDING",
                 "npc.kesh" => "KESH · EXTRACTION",
                 "hub.workshops" => "GREYHAVEN WORKSHOPS",
+                "hub.training" => "TRAINING GROUND",
                 "dungeon.replay" => "EXPEDITION GATE",
                 "ritual.anchor_left" => spent ? "SILENCED ANCHOR" : "RITUAL ANCHOR · LEFT",
                 "ritual.anchor_right" => spent ? "SILENCED ANCHOR" : "RITUAL ANCHOR · RIGHT",

@@ -33,7 +33,7 @@ public sealed partial class CombatSession
         if (!_state.ProgressionBuild.CinderCycle || Player.Health <= 0 || _state.Legendary is not { CinderUntil: > 0 } state || state.CinderUntil <= Tick) return;
         state.CinderUntil = 0;
         int actual = Math.Min(12, cooling ? _state.Momentum : 100 - _state.Momentum);
-        _state.Momentum += cooling ? -actual : actual;
+        SetResource(_state.Momentum + (cooling ? -actual : actual), "Furnaceheart Cinch");
         Emit("LegendaryTriggered", 1, amount: actual, content: LegendaryEquipment.FurnacePower, action: action);
     }
 

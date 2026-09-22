@@ -263,7 +263,8 @@ public sealed partial class CampaignRuntimeSession
                 if (command.Production.Expedition?.Id == "dungeon.replay") return Failed("Campaign regions keep their own completion history.");
                 string specialist = command.Production.Action switch
                 {
-                    ProductionAction.Equip or ProductionAction.Unequip or ProductionAction.Discard => "service.torren",
+                    ProductionAction.Equip or ProductionAction.Unequip or ProductionAction.Discard or ProductionAction.SaveEquipmentPreset or
+                        ProductionAction.RenameEquipmentPreset or ProductionAction.DeleteEquipmentPreset or ProductionAction.ApplyEquipmentPreset => "service.torren",
                     ProductionAction.Craft => command.Production.Crafting?.Service switch
                     { CraftingService.Tempering => "service.torren", CraftingService.Rebinding => "npc.oris", CraftingService.Engraving => "hub.workshops", CraftingService.Extraction => "npc.kesh", CraftingService.Purification => "npc.cael", _ => "service.mara" },
                     ProductionAction.Expedition when command.Production.Expedition?.Action == ExpeditionAction.Interact => command.Production.Expedition.Id,

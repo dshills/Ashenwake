@@ -59,8 +59,8 @@ public sealed partial class CombatSession
     }
     private void Pay(CombatSkill skill, int cost)
     {
-        if (Discipline == "Arcanist" && skill.ResourceMode == "Heat") _state.Momentum = Math.Min(100, _state.Momentum + cost);
-        else _state.Momentum -= cost;
+        if (Discipline == "Arcanist" && skill.ResourceMode == "Heat") SetResource(Math.Min(100, _state.Momentum + cost), "Skill heat");
+        else SetResource(_state.Momentum - cost, "Skill cost");
         if (Discipline == "Arcanist" && _state.Momentum >= 80 && skill.ResourceMode == "Heat")
         {
             Player.Health = Math.Max(1, Player.Health - 3); Emit("InstabilityBacklash", 1, 1, 3, skill.Id);
@@ -83,9 +83,9 @@ public sealed partial class CombatSession
         if (_state.CapturedUntil <= Tick) _state.CapturedSkillId = "";
         if (Tick % 15 == 0)
         {
-            if (Discipline == "Veilwalker" && Tick - _state.LastAggressionTick >= 60) _state.Momentum = Math.Max(0, _state.Momentum - 4);
-            if (Discipline == "Arcanist" && Player.Pending is null) _state.Momentum = Math.Max(0, _state.Momentum - 3);
-            if (Discipline == "Warden" && Tick - _state.LastAggressionTick >= 150) _state.Momentum = Math.Max(0, _state.Momentum - 2);
+            if (Discipline == "Veilwalker" && Tick - _state.LastAggressionTick >= 60) SetResource(Math.Max(0, _state.Momentum - 4), "Passive decay");
+            if (Discipline == "Arcanist" && Player.Pending is null) SetResource(Math.Max(0, _state.Momentum - 3), "Passive decay");
+            if (Discipline == "Warden" && Tick - _state.LastAggressionTick >= 150) SetResource(Math.Max(0, _state.Momentum - 2), "Passive decay");
         }
         if (ActiveFragments().Any(f => f.Effect == "SeismicCharge") && Player.Health > 0)
         {

@@ -37,6 +37,12 @@ mkdir -p "$release_output"
 python3 tools/check-godot-log.py "$release_output/smoke.log"
 rg -q 'ReleaseClientSmokePassed' "$release_output/smoke.log"
 
+training_output="$package_output/training-client"
+mkdir -p "$training_output"
+"$binary" --headless --quit-after 16000 --log-file "$training_output/smoke.log" -- --training-smoke --discipline=Vanguard --output="$training_output"
+python3 tools/check-godot-log.py "$training_output/smoke.log"
+python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["passed"]' "$training_output/training-review.json"
+
 mouse_output="$package_output/mouse-client"
 mkdir -p "$mouse_output"
 "$binary" --headless --quit-after 2400 --log-file "$mouse_output/smoke.log" -- --mouse-movement-smoke --output="$mouse_output"
