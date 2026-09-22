@@ -11,12 +11,14 @@ The campaign coordinator controls ownership, travel, rewards and anchors. Combat
 | Region | Fights | Actual mechanics |
 | --- | --- | --- |
 | Grey March | Road, Monastery, Bell Saint | Ghoul pressure, priest healing/fire warnings, sonic lanes, memory arrows, Mirrorborn copies; Bell chain/sonic attacks, then ritual anchors and corpse resurrection, then beast rushes and independent bells. |
-| Verdant Maw | Living Ruins, Plague Village, Rootheart | Rooting/poison circles, fast swarms, poisonous carriers, quarantine blooms; three targetable feeding roots initially protect Rootheart, severing one exposes its mobile core, and a second phase continues root/spore pressure. |
-| Cinder Reach | Cinder Pack, Extraction Floor, Furnace Spindle | Support and armored pressure, Emberling death bursts, alternating conveyor heat, sweeping sentinels and heat tenders; Furnace alternates vent orientation with a delayed slag circle and guarded/exposed core windows. |
+| Verdant Maw | Living Ruins, Plague Village, Rootheart | Mixed vine/swarm/carrier formations, interruptible spore mending, rooting/poison circles and quarantine blooms; three targetable feeding roots initially protect Rootheart, severing one exposes its mobile core, and a second phase continues root/spore pressure. |
+| Cinder Reach | Cinder Pack, Extraction Floor, Furnace Spindle | Priest/brute formations, Emberling death bursts, alternating conveyor heat and interruptible Heat Tender bellows that briefly empower nearby sentinels; Furnace alternates vent orientation with a delayed slag circle and guarded/exposed core windows. |
 | Shattered Spine | Bone Causeway, Contract Hall, Covenant Warden | Three ordered seismic lanes, visible oath zones, giants and keepers; Covenant combines a local oath mark with a delayed fault, then exposes itself during recovery. |
 | Hollow Night | Repeating Rooms, Identity Memory, Breach Heart | Concealed shadows, memory arrows, delayed causal warnings and Riftborn breaches; three seal channels initially protect the Heart, one broken channel exposes it, and later phases add real echoes and returning attacks. |
 
 Boss roots, seal channels and anchors remain targetable by every damage family. Furnace and Covenant gain 60 percentage points of defense while their announced attack resolves, then lose that bonus during recovery. Ordinary enemy warnings can be interrupted by hard control; bosses retain the established hard-control resistance. Boss phase adds use collision-safe spawn alternatives so they cannot trap the player by appearing at the same position.
+
+The [midgame combat-depth contract](midgame_combat_depth.md) defines the two support channels, their recipient rules and bounded timers. Support warnings do no damage and are excluded from the diagnostic policy's damaging-area avoidance. The new actor-view countdowns report temporary forge power and Rootheart/Furnace recovery without advancing simulation or granting a new damage bonus.
 
 ## Warning contract and scoped rules
 

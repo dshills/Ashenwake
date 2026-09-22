@@ -257,6 +257,7 @@ public partial class Sandbox
     private void PresentCampaignWarning(long id, string kind, int x, int z, int endX, int endZ, int radius, long ticks, string contentId)
     {
         if (contentId == "elite.dirgebound") { PresentDirgeWarning(id, x, z, radius, ticks); return; }
+        if (IsMidgameSupport(contentId)) { PresentMidgameSupport(id, x, z, radius, ticks, contentId); return; }
         Color color = ticks <= 12 ? new Color(1, .2f, .12f, .5f) : new Color(1, .58f, .12f, .35f);
         float width = radius * .001f;
         PresentEffect($"warning{id}-start", x, z, width, color);
@@ -269,6 +270,7 @@ public partial class Sandbox
                 _effects[rimId] = rim; AddChild(rim);
             }
             rim.Position = PositionOf(x, z) + Vector3.Up * .075f;
+            PresentMidgameHazardLabel(rim, id, contentId, ticks, PositionOf(x, z) + new Vector3(0, .4f, width * .68f));
             string echo = contentId switch
             {
                 "rule.causalechoes" or "campaign.causalecho" => "ECHO",
@@ -315,6 +317,7 @@ public partial class Sandbox
         line.Position = (start + end) / 2 + Vector3.Up * .08f;
         line.Rotation = new(0, Mathf.Atan2(delta.X, delta.Z), 0);
         ((StandardMaterial3D)line.MaterialOverride).AlbedoColor = color;
+        PresentMidgameHazardLabel(line, id, contentId, ticks, (start + end) / 2 + Vector3.Up * .4f);
         string order = contentId switch { "rule.fault.1" => "1", "rule.fault.2" => "2", "rule.fault.3" => "3", _ => "" };
         if (order.Length == 0) return;
         // These numbers belong to the authoritative warning, including its reversed memory

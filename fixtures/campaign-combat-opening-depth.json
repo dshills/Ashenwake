@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign-combat.midgame_depth.9",
+  "version": "campaign-combat.opening_depth.8",
   "enemies": [
     {
       "id": "enemy.funeral_guard",
@@ -242,7 +242,7 @@
     },
     {
       "enemyId": "enemy.bloom_carrier",
-      "pattern": "SporeMend"
+      "pattern": "PoisonBurst"
     },
     {
       "enemyId": "enemy.forge_sentinel",
@@ -250,7 +250,7 @@
     },
     {
       "enemyId": "enemy.heat_tender",
-      "pattern": "ForgeBellows"
+      "pattern": "HeatVent"
     },
     {
       "enemyId": "enemy.oath_giant",
@@ -519,7 +519,7 @@
         {
           "enemyId": "enemy.carnivorous_vine",
           "position": {
-            "x": -1400,
+            "x": -1200,
             "z": 0
           },
           "modifiers": [
@@ -530,17 +530,8 @@
         {
           "enemyId": "enemy.needle_swarm",
           "position": {
-            "x": -2000,
-            "z": 1900
-          },
-          "modifiers": [],
-          "hidden": false
-        },
-        {
-          "enemyId": "enemy.bloom_carrier",
-          "position": {
-            "x": 400,
-            "z": 1000
+            "x": 2500,
+            "z": -3500
           },
           "modifiers": [],
           "hidden": false
@@ -548,8 +539,8 @@
         {
           "enemyId": "enemy.carnivorous_vine",
           "position": {
-            "x": 2600,
-            "z": 1700
+            "x": 4200,
+            "z": 2500
           },
           "modifiers": [],
           "hidden": false
@@ -595,37 +586,28 @@
       "durationTicks": 0,
       "spawns": [
         {
+          "enemyId": "enemy.bloom_carrier",
+          "position": {
+            "x": -1200,
+            "z": 0
+          },
+          "modifiers": [],
+          "hidden": false
+        },
+        {
           "enemyId": "enemy.needle_swarm",
           "position": {
-            "x": -1700,
-            "z": -1300
-          },
-          "modifiers": [],
-          "hidden": false
-        },
-        {
-          "enemyId": "enemy.bloom_carrier",
-          "position": {
-            "x": 200,
-            "z": -1800
-          },
-          "modifiers": [],
-          "hidden": false
-        },
-        {
-          "enemyId": "enemy.bloom_carrier",
-          "position": {
             "x": 2500,
-            "z": 300
+            "z": -3500
           },
           "modifiers": [],
           "hidden": false
         },
         {
-          "enemyId": "enemy.carnivorous_vine",
+          "enemyId": "enemy.bloom_carrier",
           "position": {
-            "x": 1200,
-            "z": -3300
+            "x": 4200,
+            "z": 2500
           },
           "modifiers": [],
           "hidden": false
@@ -738,7 +720,7 @@
         {
           "enemyId": "enemy.ash_ghoul",
           "position": {
-            "x": -1700,
+            "x": -1200,
             "z": 0
           },
           "modifiers": [
@@ -749,8 +731,8 @@
         {
           "enemyId": "enemy.cinder_priest",
           "position": {
-            "x": 1900,
-            "z": 1600
+            "x": 2500,
+            "z": -3500
           },
           "modifiers": [],
           "hidden": false
@@ -758,8 +740,8 @@
         {
           "enemyId": "enemy.furnace_brute",
           "position": {
-            "x": 500,
-            "z": 600
+            "x": 4200,
+            "z": 2500
           },
           "modifiers": [],
           "hidden": false
@@ -767,8 +749,8 @@
         {
           "enemyId": "enemy.emberling",
           "position": {
-            "x": -1100,
-            "z": 2500
+            "x": 5500,
+            "z": -5000
           },
           "modifiers": [],
           "hidden": false
@@ -776,8 +758,8 @@
         {
           "enemyId": "enemy.ash_ghoul",
           "position": {
-            "x": 3400,
-            "z": -600
+            "x": 7000,
+            "z": 4300
           },
           "modifiers": [],
           "hidden": false
@@ -825,7 +807,7 @@
         {
           "enemyId": "enemy.forge_sentinel",
           "position": {
-            "x": -1400,
+            "x": -1200,
             "z": 0
           },
           "modifiers": [],
@@ -834,8 +816,8 @@
         {
           "enemyId": "enemy.heat_tender",
           "position": {
-            "x": 800,
-            "z": 700
+            "x": 2500,
+            "z": -3500
           },
           "modifiers": [],
           "hidden": false
@@ -843,8 +825,8 @@
         {
           "enemyId": "enemy.forge_sentinel",
           "position": {
-            "x": 2300,
-            "z": 1400
+            "x": 4200,
+            "z": 2500
           },
           "modifiers": [],
           "hidden": false

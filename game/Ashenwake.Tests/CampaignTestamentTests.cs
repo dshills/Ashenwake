@@ -53,15 +53,18 @@ public sealed class CampaignTestamentTests
 
     [Theory]
     [MemberData(nameof(Rewards))]
-    public void OpeningDepthUsesThePublishedPacingGrantWithoutChangingItsReceipt(
+    public void CombatDepthReleasesUseThePublishedPacingGrantWithoutChangingItsReceipt(
         string receipt, string definition, ItemRarity rarity, EquipmentSlot slot, string affix, int amount, int resource)
     {
         _ = definition; _ = rarity; _ = slot; _ = affix; _ = amount; _ = resource;
         var published = Session();
-        var current = Session();
         Success(CampaignTestaments.Grant(published, receipt, Pacing));
-        Success(CampaignTestaments.Grant(current, receipt, "campaign.opening_depth.8"));
-        Assert.Equal(published.StateHash, current.StateHash);
+        foreach (string version in new[] { "campaign.opening_depth.8", "campaign.midgame_depth.9" })
+        {
+            var current = Session();
+            Success(CampaignTestaments.Grant(current, receipt, version));
+            Assert.Equal(published.StateHash, current.StateHash);
+        }
     }
 
     [Theory]

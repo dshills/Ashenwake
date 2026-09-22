@@ -44,6 +44,8 @@ public sealed partial class CombatSession
         foreach (var pair in campaign.Actors)
         {
             var actor = _state.Actors.First(a => a.Id == pair.Key);
+            if (pair.Value.ForgeOverchargeUntil != 0 && (pair.Value.ForgeOverchargeUntil <= Tick || actor.Health <= 0))
+                pair.Value.ForgeOverchargeUntil = 0;
             if (pair.Value.IsEcho && pair.Value.ExpiresTick <= Tick && actor.Health > 0) { actor.Health = 0; actor.DeathProcessed = true; actor.Pending = null; Emit("EliteCopyExpired", actor.Id); CampaignDeath(actor); }
         }
         if (campaign.RuleUntil > 0 && campaign.RuleUntil <= Tick)
@@ -69,6 +71,11 @@ public sealed partial class CombatSession
             campaign.Hazards.Remove(hazard);
             var source = _state.Actors.FirstOrDefault(a => a.Id == hazard.SourceId);
             if (source is null) continue;
+            if (ResolveMidgameSupport(source, hazard))
+            {
+                Emit("CampaignHazardResolved", source.Id, content: hazard.ContentId, action: hazard.ActionId);
+                continue;
+            }
             if (hazard.ContentId == "elite.dirgebound")
             {
                 ResolveDirge(source, hazard);
@@ -155,6 +162,8 @@ public sealed partial class CombatSession
         if (pattern is "" or "SupportFire") return false;
         if (pattern == "Root") { actor.State = "Feeding"; return true; }
         var definition = _content.Enemies.Single(e => e.Id == actor.DefinitionId);
+        if (TryMidgameSupport(actor, pattern)) return true;
+        pattern = pattern switch { "SporeMend" => "PoisonBurst", "ForgeBellows" => "HeatVent", _ => pattern };
         bool close = pattern is "Swarm" or "PoisonBurst" or "ForgeSweep" or "Fault" or "ShadowDouble" or "Antler";
         if (close && Position.DistanceSquared(actor.Position, Player.Position) > (long)definition.Range * definition.Range)
         { actor.State = pattern == "Antler" ? "BurrowApproach" : "Approach"; MoveTowardTarget(actor, Player.Position, HasElite(actor, "Hunter") ? Math.Min(500, definition.Speed * 5 / 4) : definition.Speed); return true; }
@@ -242,11 +251,13 @@ public sealed partial class CombatSession
         { AddCampaignActor("enemy.breach_echo", new(-1000, -2500), []); AddCampaignActor("enemy.breach_echo", new(3500, 2500), []); }
         return true;
     }
-    private int CampaignDamageBonus(CombatActor? actor) => actor is null ? 0 : (_state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.Empowerment ?? 0) * 1500;
+    private int CampaignDamageBonus(CombatActor? actor) => actor is null ? 0 :
+        (_state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.Empowerment ?? 0) * 1500 + (ForgeOverchargeTicks(actor) > 0 ? 2000 : 0);
     private int CampaignDefenseBonus(CombatActor actor) => _state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.GuardedUntil > Tick ? 6000 : 0;
     private void CampaignDeath(CombatActor actor)
     {
         if (_state.Campaign is null) return;
+        ClearMidgameSupport(actor);
         _state.Campaign.Hazards.RemoveAll(h => h.SourceId == actor.Id);
         if (HasElite(actor, "Martyr"))
             foreach (var ally in _state.Actors.Where(a => a.Id != actor.Id && a.Health > 0 && a.Faction == CombatFaction.Enemy && Position.DistanceSquared(actor.Position, a.Position) <= 7000L * 7000))

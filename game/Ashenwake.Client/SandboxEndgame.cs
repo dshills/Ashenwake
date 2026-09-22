@@ -10,7 +10,7 @@ public partial class Sandbox
     {
         if (actor.DefinitionId == "enemy.ritual_anchor") return "DESTROY";
         if (actor.DefinitionId == "enemy.feeding_root") return "SEVER";
-        if (actor.DefinitionId == "boss.rootheart") return _view.Actors.Count(a => a.DefinitionId == "enemy.feeding_root" && a.Health > 0) >= 3 ? "PROTECTED" : "EXPOSED";
+        if (actor.DefinitionId == "boss.rootheart") return actor.Shielded ? "PROTECTED" : "EXPOSED";
         if (actor.DefinitionId == "boss.furnace_spindle") return actor.Guarded ? "CORE GUARDED" : "CORE EXPOSED";
         if (actor.DefinitionId == "boss.covenant_warden") return actor.Guarded ? "OATH GUARDED" : "WARDEN EXPOSED";
         if (actor.DefinitionId == "enemy.seal_channel") return "BREAK SEAL";

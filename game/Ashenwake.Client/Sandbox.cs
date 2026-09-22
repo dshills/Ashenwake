@@ -272,16 +272,17 @@ public partial class Sandbox : Node3D
             var hazard = (_view.CampaignHazards ?? []).Where(h => h.SourceId == actor.Id && h.RemainingTicks > 0 && !h.ContentId.StartsWith("rule.", StringComparison.Ordinal))
                 .OrderBy(h => h.RemainingTicks).FirstOrDefault();
             var conditions = actor.Statuses.Select(s => s.Id).Concat(actor.EliteModifiers ?? []);
-            string? mechanic = IsDirge(hazard) ? OpeningCombatLabel(actor, hazard) :
-                CampaignActorLabel(actor) ?? EndgameActorLabel(actor.State) ?? OpeningCombatLabel(actor, hazard);
+            string? mechanic = MidgameCombatLabel(actor, hazard) ?? (IsDirge(hazard) ? OpeningCombatLabel(actor, hazard) :
+                CampaignActorLabel(actor) ?? EndgameActorLabel(actor.State) ?? OpeningCombatLabel(actor, hazard));
             if (mechanic is not null) _mechanicLabels.Add(actor.Id);
             if (mechanic is not null) conditions = conditions.Append(mechanic);
-            if (hazard is not null && !IsDirge(hazard)) conditions = conditions.Append("ATTACK INCOMING");
+            if (hazard is not null && !IsSupportWarning(hazard)) conditions = conditions.Append("ATTACK INCOMING");
             else if (mechanic is null && (actor.State is "Guarded" or "Recover")) conditions = conditions.Append(actor.State == "Guarded" ? "GUARDED" : "RECOVERY WINDOW");
             SynchronizeActor(actor.Id, name, role.ToLowerInvariant(), actor.Position.X, actor.Position.Z,
                 actor.Health, actor.MaxHealth, actor.Barrier, string.Join(" / ", conditions),
-                actor.TelegraphTicks > 0 && actor.TelegraphRadius == 0 && !IsDirge(hazard), actor.Faction != CombatFaction.Enemy,
+                actor.TelegraphTicks > 0 && actor.TelegraphRadius == 0 && !IsSupportWarning(hazard), actor.Faction != CombatFaction.Enemy,
                 actor.DefinitionId, actor.State, actor.TelegraphTicks > 0 || hazard is not null || actor.State.EndsWith("Windup", StringComparison.Ordinal), mechanic);
+            SynchronizeForgeOvercharge(actor);
             _actors[actor.Id].AuthoredVisible = actor.Visible;
             _actors[actor.Id].Root.Visible &= actor.Visible;
             var aim = actor.TelegraphPosition ?? (hazard is null ? null : hazard.Kind == "Circle" ? hazard.Position : hazard.End);

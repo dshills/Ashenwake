@@ -96,6 +96,8 @@ public partial class Sandbox
             float pixelSize = focused ? .016f : .0125f;
             if (actor.HealthFill.PixelSize != pixelSize)
             { actor.HealthFill.PixelSize = pixelSize; actor.HealthTrack.PixelSize = pixelSize; actor.BarrierStrip.PixelSize = pixelSize; }
+            var forgePower = actor.HealthBar.GetNodeOrNull<Sprite3D>("ForgePowerStrip");
+            if (forgePower is not null) forgePower.PixelSize = pixelSize;
             int fontSize = focused ? 44 : 40;
             if (actor.Label.FontSize != fontSize) actor.Label.FontSize = fontSize;
         }

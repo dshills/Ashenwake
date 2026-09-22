@@ -12,15 +12,15 @@ using Xunit;
 
 namespace Ashenwake.Tests;
 
-public sealed class OpeningDepthMigrationTests
+public sealed class MidgameDepthMigrationTests
 {
     private static string Read(string path) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, path));
     private static AdventureContent Adventure => AdventureContent.Parse(Read("adventure.json"));
     private static ProgressionContent Policy => ProgressionContent.Parse(Read("progression.json"));
-    private static CampaignContent Campaign(bool old) => CampaignContent.Parse(Read(old ? "fixtures/campaign-pacing.json" : "campaign.json"));
+    private static CampaignContent Campaign(bool old) => CampaignContent.Parse(Read(old ? "fixtures/campaign-opening-depth.json" : "campaign.json"));
     private static readonly Lazy<string> PreviousCombat = new(() => Compose(true));
     private static readonly Lazy<string> CurrentCombat = new(() => Compose(false));
-    private static string Compose(bool old) => CampaignCombatContent.Parse(Read("combat.json"), Read(old ? "fixtures/campaign-combat-pacing.json" : "campaign-combat.json")).CombatJson;
+    private static string Compose(bool old) => CampaignCombatContent.Parse(Read("combat.json"), Read(old ? "fixtures/campaign-combat-opening-depth.json" : "campaign-combat.json")).CombatJson;
     private static string Combat(bool old) => old ? PreviousCombat.Value : CurrentCombat.Value;
     private static CampaignRuntimeSession RestoreOld(CampaignRuntimeSnapshot state) => CampaignRuntimeSession.Restore(Combat(true), Adventure, Policy, Campaign(true), state);
     private static string Save(CampaignRuntimeSession session) => JsonData.Write(new CampaignRuntimeSave(1, session.StateHash, session.Capture()));
@@ -31,30 +31,30 @@ public sealed class OpeningDepthMigrationTests
         var session = CampaignRuntimeSession.Create(Combat(true), Adventure, Policy, Campaign(true));
         Assert.True(session.EnableExplorationMap().Success);
         var result = new Dictionary<string, CampaignRuntimeSnapshot> { ["hub"] = session.Capture() };
-        for (int i = 0; i < 12000 && result.Count < 4; i++)
+        for (int i = 0; i < 40000 && result.Count < 8; i++)
         {
             var outcome = session.Execute(CampaignRuntimeSmoke.Next(session));
             Assert.True(outcome.Success, outcome.Reason);
-            if (session.ActiveEncounterId is "campaign.road" or "campaign.monastery" or "exploration.widow_crypt" && !session.EncounterCleared)
+            if (session.ActiveEncounterId is "campaign.living_ruins" or "campaign.plague_village" or "campaign.rootheart" or "campaign.cinder_pack" or "campaign.extraction_floor" or "campaign.furnace_spindle" or "exploration.sealed_foundry" && !session.EncounterCleared)
                 result.TryAdd(session.ActiveEncounterId, session.Capture());
         }
-        Assert.Equal(4, result.Count);
+        Assert.Equal(8, result.Count);
         return result;
     });
 
     [Fact]
     public void FrozenPredecessorMatchesPublishedBytesAndEveryRoomRemainsUnchanged()
     {
-        byte[] bytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures/campaign-combat-pacing.json"));
-        Assert.Equal("86A267B3109BF2CAA968535E183889429ED50E92E8F7AD2B95772BDDDE9BF709", Convert.ToHexString(SHA256.HashData(bytes)));
+        byte[] bytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures/campaign-combat-opening-depth.json"));
+        Assert.Equal("0F673E01759CD530164EB3BBBB9C722B336FFA7ACCDE8A47DA21A9689997ABB6", Convert.ToHexString(SHA256.HashData(bytes)));
         var old = CombatContent.Parse(Combat(true));
         var current = CombatContent.Parse(Combat(false));
-        Assert.Equal("campaign-combat.pacing.7", old.Campaign!.Version);
+        Assert.Equal("campaign-combat.opening_depth.8", old.Campaign!.Version);
         Assert.Equal("campaign-combat.midgame_depth.9", current.Campaign!.Version);
-        Assert.Equal("campaign.pacing.7", Campaign(true).Capture().Version);
+        Assert.Equal("campaign.opening_depth.8", Campaign(true).Capture().Version);
         Assert.Equal("campaign.midgame_depth.9", Campaign(false).Capture().Version);
-        Assert.Equal("98BF4001F7DB8EEDDD2EEEAE5DC439DD94CB65C9AB36F7BB0A14D822E981DF9A",
-            Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures/campaign-pacing.json")))));
+        Assert.Equal("CB59961E8C26814F37E6E418C9FBF6E942717B01F6ECC0DAC99EE7BB162930BA",
+            Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures/campaign-opening-depth.json")))));
         var oldRewards = Campaign(true).Capture().Acts.SelectMany(act => act.Encounters).Select(e => new { e.Id, e.Experience, e.Materials });
         var currentRewards = Campaign(false).Capture().Acts.SelectMany(act => act.Encounters).Select(e => new { e.Id, e.Experience, e.Materials });
         Assert.Equal(JsonData.Hash(oldRewards), JsonData.Hash(currentRewards));
@@ -68,7 +68,7 @@ public sealed class OpeningDepthMigrationTests
     // Only exact combat and story catalog identities may change. This compares all remaining
     // serialized fields, including receipts, ownership, actor modifiers, clocks, RNG,
     // pending casts, room caches, fog and any future optional state automatically.
-    private static void SameExceptCatalogIdentities<T>(T before, T after, string previousCombat, string currentCombat)
+    private static void SameExceptCatalogIdentities<T>(T before, T after, string previousCombat, string currentCombat, string? previousPolicy = null, string? currentPolicy = null)
     {
         string oldIdentity = CombatContent.Parse(previousCombat).Identity;
         string newIdentity = CombatContent.Parse(currentCombat).Identity;
@@ -82,8 +82,8 @@ public sealed class OpeningDepthMigrationTests
                 foreach (var pair in obj.ToArray())
                 {
                     if (pair.Key == "contentHash" && pair.Value is JsonValue value && value.TryGetValue<string>(out var hash) &&
-                        (hash == oldIdentity || hash == oldStory))
-                        obj[pair.Key] = hash == oldIdentity ? newIdentity : newStory;
+                        (hash == oldIdentity || hash == oldStory || previousPolicy is not null && hash == previousPolicy))
+                        obj[pair.Key] = hash == oldIdentity ? newIdentity : hash == oldStory ? newStory : currentPolicy;
                     else Rebind(pair.Value);
                 }
             }
@@ -96,9 +96,13 @@ public sealed class OpeningDepthMigrationTests
 
     [Theory]
     [InlineData("hub")]
-    [InlineData("campaign.road")]
-    [InlineData("campaign.monastery")]
-    [InlineData("exploration.widow_crypt")]
+    [InlineData("campaign.living_ruins")]
+    [InlineData("campaign.plague_village")]
+    [InlineData("campaign.rootheart")]
+    [InlineData("campaign.cinder_pack")]
+    [InlineData("campaign.extraction_floor")]
+    [InlineData("campaign.furnace_spindle")]
+    [InlineData("exploration.sealed_foundry")]
     public void PublishedActiveRoomsAndCachesKeepEveryFieldWithoutRespawningOrRegrantingRewards(string context)
     {
         var original = RestoreOld(Checkpoints.Value[context]);
@@ -107,7 +111,7 @@ public sealed class OpeningDepthMigrationTests
         var loaded = Upgrade(json);
         SameExceptCatalogIdentities(original.Capture(), loaded.Capture(), Combat(true), Combat(false));
         Assert.Equal(original.Production.Content.Hash, loaded.Production.Content.Hash);
-        if (context is "campaign.monastery" or "exploration.widow_crypt") Assert.NotEmpty(loaded.Capture().ClearedRooms!);
+        if (context != "hub") Assert.NotEmpty(loaded.Capture().ClearedRooms!);
         Assert.Equal(loaded.StateHash, Upgrade(json).StateHash);
         Assert.Equal(loaded.StateHash, Upgrade(Save(loaded)).StateHash);
         Assert.Equal(json, Save(original));
@@ -116,12 +120,12 @@ public sealed class OpeningDepthMigrationTests
     }
 
     [Fact]
-    public void ActiveCastAndFrozenReplayRemainBoundToTheirOriginalCatalog()
+    public void ActiveWarningsAndFrozenReplayRemainBoundToTheirOriginalCatalog()
     {
-        var original = RestoreOld(Checkpoints.Value["campaign.monastery"]);
-        for (int i = 0; i < 120 && !original.Combat.Capture().Actors.Any(a => a.Pending is not null); i++)
+        var original = RestoreOld(Checkpoints.Value["campaign.extraction_floor"]);
+        for (int i = 0; i < 240 && original.Combat.View.CampaignHazards!.Count == 0; i++)
             Assert.True(original.Execute(CampaignRuntimeSmoke.Next(original)).Success);
-        Assert.Contains(original.Combat.Capture().Actors, actor => actor.Pending is not null);
+        Assert.NotEmpty(original.Combat.View.CampaignHazards!);
         var replay = original.CaptureReplay();
         Assert.NotEmpty(replay.Frames);
         string replayBytes = JsonData.Write(replay);
@@ -174,9 +178,10 @@ public sealed class OpeningDepthMigrationTests
     [InlineData("receipt")]
     [InlineData("future-cache")]
     [InlineData("unknown-combat")]
+    [InlineData("explicit-inactive-overcharge")]
     public void OriginalArchiveMustAuthenticateBeforeIdentitiesAreChanged(string tampering)
     {
-        var node = JsonNode.Parse(Save(RestoreOld(Checkpoints.Value["campaign.monastery"])))!;
+        var node = JsonNode.Parse(Save(RestoreOld(Checkpoints.Value["campaign.extraction_floor"])))!;
         switch (tampering)
         {
             case "checksum": node["stateHash"] = new string('0', 64); break;
@@ -184,8 +189,12 @@ public sealed class OpeningDepthMigrationTests
             case "receipt": node["state"]!["production"]!["progression"]!["character"]!["operationReceipts"]!["campaign.encounter.campaign.road"] = new string('0', 64); break;
             case "future-cache": node["state"]!["clearedRooms"]!["campaign.road"]!["schemaVersion"] = 2; break;
             case "unknown-combat": node["state"]!["combat"]!["contentHash"] = new string('0', 64); break;
+            case "explicit-inactive-overcharge":
+                var actors = node["state"]!["combat"]!["campaign"]!["actors"]!.AsObject();
+                actors.First().Value!["forgeOverchargeUntil"] = 0;
+                break;
         }
-        if (tampering != "checksum") node["stateHash"] = JsonData.Hash(JsonData.Read<CampaignRuntimeSnapshot>(node["state"]!.ToJsonString()));
+        if (tampering is not ("checksum" or "explicit-inactive-overcharge")) node["stateHash"] = JsonData.Hash(JsonData.Read<CampaignRuntimeSnapshot>(node["state"]!.ToJsonString()));
         string bytes = node.ToJsonString();
         if (tampering is "future-cache" or "unknown-combat") Assert.Throws<SaveCompatibilityException>(() => Upgrade(bytes));
         else Assert.Throws<InvalidDataException>(() => Upgrade(bytes));
@@ -193,13 +202,30 @@ public sealed class OpeningDepthMigrationTests
     }
 
     [Fact]
+    public void EarlierLegendaryCatalogAndOpeningDepthStoryUpgradeTogetherWithoutReissuingRewards()
+    {
+        string oldCombat = CampaignCombatContent.Parse(Read("fixtures/combat-opening-depth.json"), Read("fixtures/campaign-combat-opening-depth.json")).CombatJson;
+        var oldPolicy = ProgressionContent.Parse(Read("fixtures/progression-opening-depth.json"));
+        var original = CampaignRuntimeSession.Create(oldCombat, Adventure, oldPolicy, Campaign(true));
+        for (int i = 0; i < 12000 && original.ActiveEncounterId != "campaign.monastery"; i++)
+            Assert.True(original.Execute(CampaignRuntimeSmoke.Next(original)).Success);
+        Assert.Equal("campaign.monastery", original.ActiveEncounterId);
+        var loaded = Upgrade(Save(original));
+        SameExceptCatalogIdentities(original.Capture(), loaded.Capture(), oldCombat, Combat(false),
+            original.Production.Content.Hash, loaded.Production.Content.Hash);
+        Assert.Equal(loaded.StateHash, Upgrade(Save(loaded)).StateHash);
+        Assert.True(loaded.Step().Success);
+        Assert.True(CampaignRuntimeReplayRunner.Run(Combat(false), Adventure, Policy, Campaign(false), loaded.CaptureReplay()).Success);
+    }
+
+    [Fact]
     public void SaveAndProfileRemainReadOnlyUntilExplicitWriteKeepsOriginalBackups()
     {
-        string directory = Path.Combine(Path.GetTempPath(), "ashenwake-opening-depth-migration-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Combine(Path.GetTempPath(), "ashenwake-midgame-depth-migration-" + Guid.NewGuid().ToString("N"));
         string path = Path.Combine(directory, "character.json");
         try
         {
-            var original = RestoreOld(Checkpoints.Value["campaign.monastery"]);
+            var original = RestoreOld(Checkpoints.Value["campaign.extraction_floor"]);
             CampaignRuntimeSaveStore.Write(path, Combat(true), Adventure, Policy, Campaign(true), original.Capture());
             string profilePath = CampaignRuntimeSaveStore.ProfilePath(path);
             string saveBytes = File.ReadAllText(path), profileBytes = File.ReadAllText(profilePath);

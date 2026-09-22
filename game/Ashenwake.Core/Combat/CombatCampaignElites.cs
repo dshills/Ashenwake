@@ -71,6 +71,7 @@ public sealed partial class CombatSession
                 if (meal is not null && state.Devoured < 2 && Position.DistanceSquared(actor.Position, meal.Position) <= 5000L * 5000)
                 {
                     meal.Health = 0; meal.DeathProcessed = true; meal.Pending = null; _state.ConsumedCorpseIds.Add(meal.Id); state.Devoured++; state.Empowerment = Math.Min(2, state.Empowerment + 1);
+                    ClearMidgameSupport(meal);
                     int amount = Math.Min(actor.MaxHealth - actor.Health, 60); actor.Health += amount;
                     Emit("EliteDevoured", actor.Id, meal.Id, amount, "Devourer");
                 }
@@ -127,5 +128,6 @@ public sealed partial class CombatSession
                 campaign.Actors[hazard.SourceId].Modifiers.Contains("Dirgebound") &&
                 _state.Actors.Any(a => a.Id == hazard.SourceId && a.Health > 0), "dirge ownership/geometry");
         Check(existing.Distinct().Count() == existing.Length, "effect identity");
+        ValidateMidgameSupport();
     }
 }

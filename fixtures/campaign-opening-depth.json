@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign.midgame_depth.9",
+  "version": "campaign.opening_depth.8",
   "acts": [
     {
       "number": 1,
@@ -64,11 +64,10 @@
           "id": "campaign.living_ruins",
           "enemyIds": [
             "enemy.carnivorous_vine",
-            "enemy.needle_swarm",
-            "enemy.bloom_carrier"
+            "enemy.needle_swarm"
           ],
           "mechanic": "rooting_pods_and_poison_lanes",
-          "counterplay": "Interrupt the Bloom Carrier’s spore mend or draw wounded allies out of its ring; keep clear of rooting pods.",
+          "counterplay": "Destroy visible rooting pods and preserve clean lanes between poison blooms.",
           "eliteModifiers": [
             "Devourer"
           ],
@@ -80,11 +79,10 @@
           "id": "campaign.plague_village",
           "enemyIds": [
             "enemy.bloom_carrier",
-            "enemy.needle_swarm",
-            "enemy.carnivorous_vine"
+            "enemy.needle_swarm"
           ],
           "mechanic": "protect_quarantine_channels",
-          "counterplay": "Focus a wounded foe or interrupt the Bloom Carriers before their spore mend resolves; avoid the quarantine blooms.",
+          "counterplay": "Rotate between announced breaches; choose the village's treatment after securing the channels.",
           "eliteModifiers": [],
           "experience": 200,
           "materials": 8,
@@ -96,7 +94,7 @@
             "boss.rootheart"
           ],
           "mechanic": "three_feeding_roots_and_mobile_core",
-          "counterplay": "Sever one feeding root to expose the core. Evade tangle and spores, then attack during its recovery.",
+          "counterplay": "Sever one feeding root to expose the moving core; alternate paths remain viable for melee and ranged builds.",
           "eliteModifiers": [
             "Gravewake"
           ],
@@ -138,7 +136,7 @@
             "enemy.heat_tender"
           ],
           "mechanic": "alternating_conveyor_heat",
-          "counterplay": "Interrupt the Heat Tender’s bellows or lure sentinels out of its ring. Empowered sentinels deal more damage for three seconds; avoid conveyor heat.",
+          "counterplay": "Use cooled platforms during the machine's announced vent cycle.",
           "eliteModifiers": [],
           "experience": 325,
           "materials": 10,
@@ -150,7 +148,7 @@
             "boss.furnace_spindle"
           ],
           "mechanic": "rotating_vents_slag_and_core_windows",
-          "counterplay": "Move out of the announced vent and slag warnings, then attack during the exposed recovery countdown.",
+          "counterplay": "Rotate into inactive vents and attack the exposed core after the slag discharge.",
           "eliteModifiers": [
             "Martyr"
           ],
