@@ -30,6 +30,8 @@ public partial class VerdantSmoke : Node
     private readonly HashSet<string> _contexts = [], _captures = [], _seenClues = [];
     private readonly HashSet<int> _rootCounts = [];
     private readonly List<string> _audioFingerprints = [];
+    private readonly List<VerdantDepthChecks.Evidence> _depthEvidence = [];
+    private readonly List<object> _frameSamples = [];
     private bool _huntObserved, _huntCleaned, _heartObserved, _victoryObserved;
     private sealed record EnvironmentEvidence(string Encounter, string Style, int ArchitectureMeshes, int ArchitectureMaterials,
         int ArchitectureVertices, int GroundMeshes, float GroundTop, string ArchitectureFingerprint, string GroundFingerprint);
@@ -43,6 +45,7 @@ public partial class VerdantSmoke : Node
             if (!args.Contains("--verdant-smoke") || _output.Length == 0)
                 throw new InvalidDataException("Verdant smoke requires --verdant-smoke --output=<isolated-directory>.");
             Directory.CreateDirectory(_output); Engine.MaxFps = 60;
+            VerdantDepthChecks.Detached(Check);
             _combatJson = CampaignCombatContent.Parse(Read("combat"), Read("campaign-combat")).CombatJson;
             _campaign = CampaignContent.Parse(Read("campaign"));
             _adventure = AdventureContent.Parse(Read("adventure"));
@@ -93,10 +96,13 @@ public partial class VerdantSmoke : Node
             string hash = _session.StateHash;
             CheckAudioSamples();
             Check("audio_generation_does_not_change_core_state", _session.StateHash == hash);
+            var departedAtmosphere = _sandbox.VerdantMotion;
             var returned = _session.ReturnToHub(); _commands++;
             Check("can_return_to_hub_after_act_two", returned.Success);
             Refresh(); await Settle();
             Check("hub_stops_verdant_ambience", _sandbox.AmbienceCue.Length == 0 && !_sandbox.AmbiencePlaying);
+            Check("hub_releases_verdant_motion_and_lights", _sandbox.VerdantMotion is null && !GodotObject.IsInstanceValid(departedAtmosphere) &&
+                !Descendants(_sandbox).Any(n => n is VerdantAtmosphere));
             Check("hub_hides_act_two_architecture", !Descendants(_stage).OfType<Node3D>().Any(n => n.Name == "VerdantMawArchitecture" && n.IsVisibleInTree()));
             Check("hub_style_takes_precedence_over_stale_region", EnvironmentGround.Style(true, "clear", "event.wake_hunt", 2) == "greyhaven");
             var revisit = _session.EnterAct(2); _commands++;
@@ -104,6 +110,7 @@ public partial class VerdantSmoke : Node
             Refresh(); await Settle();
             Check("completed_act_two_retains_regional_floor_and_atmosphere", _sandbox.EnvironmentStyle == "verdant_ruins" && _sandbox.AmbienceCue == "forest" &&
                 Descendants(_stage).OfType<Node3D>().Any(n => n.Name == "VerdantMawArchitecture" && n.IsVisibleInTree()));
+            InspectDepth("revisit", "verdant_ruins");
             Check("completed_act_revisit_does_not_respawn_victory_or_clues", !Descendants(_stage).Any(n => n is VerdantHeartVisual or VerdantTrailVisual));
             Check("completed_revisit_can_return_to_hub", _session.ReturnToHub().Success); _commands++;
             Refresh(); await Settle();
@@ -162,6 +169,7 @@ public partial class VerdantSmoke : Node
             Check("regional_ambience_" + style, _sandbox.AmbienceCue == VerdantAmbience.CueForStyle(style) && _sandbox.AmbiencePlaying);
             Check("bounded_motes_" + style, _sandbox.AmbientMoteCount == 24);
             await Capture(style + ".png");
+            await CheckDepthQuality(style);
             if (style == "verdant_ruins") await CheckAtmosphere();
         }
         if (_session.EncounterCleared && _session.Capture().Campaign.Exploration is null)
@@ -185,7 +193,7 @@ public partial class VerdantSmoke : Node
         var ground = Descendants(_sandbox).OfType<Node3D>().Single(n => n.Name == "AuthoredGround");
         var groundMeshes = Meshes(ground); var groundVertices = groundMeshes.SelectMany(Vertices).ToArray();
         float top = groundVertices.Max(p => p.Y);
-        Check("ground_below_combat_warnings_" + style, float.IsFinite(top) && top <= .04f && groundVertices.All(p => float.IsFinite(p.X) && float.IsFinite(p.Z)));
+        Check("ground_below_combat_warnings_" + style, float.IsFinite(top) && top < 0 && groundVertices.All(p => float.IsFinite(p.X) && float.IsFinite(p.Z)));
         Check("bounded_ground_batches_" + style, groundMeshes.Length is > 0 and <= 32 && MaterialCount(groundMeshes) <= 32);
         Check("ground_has_no_physics_" + style, !Descendants(ground).Any(n => n is CollisionObject3D or CollisionShape3D or NavigationRegion3D));
         var room = _session.Room;
@@ -326,11 +334,19 @@ public partial class VerdantSmoke : Node
             var frozen = motes.Multimesh.GetInstanceTransform(0); await Frames(8);
             Check("verdant_motes_freeze_with_pause", motes.Multimesh.GetInstanceTransform(0).IsEqualApprox(frozen));
             var expanded = _session.Room with { HalfWidth = 18000, HalfDepth = 15000 };
+            var departed = _sandbox.VerdantMotion;
             _sandbox.PresentAuthoredRoom(expanded, "verdant:bounds-check", "verdant_ruins");
             Check("paused_same_style_resize_places_motes_immediately", Outside(expanded));
+            _depthEvidence.Add(VerdantDepthChecks.Inspect(_sandbox, "paused-resize", "verdant_ruins", 18, 15, Check));
+            await Settle();
+            Check("resize_releases_previous_verdant_resources", !GodotObject.IsInstanceValid(departed));
+            departed = _sandbox.VerdantMotion;
             expanded = expanded with { HalfWidth = 20000, HalfDepth = 18000 };
             _sandbox.PresentAuthoredRoom(expanded, "verdant:style-bounds-check", "verdant_heart");
             Check("paused_new_style_uses_current_bounds_immediately", Outside(expanded));
+            _depthEvidence.Add(VerdantDepthChecks.Inspect(_sandbox, "paused-style-change", "verdant_heart", 20, 18, Check));
+            await Settle();
+            Check("style_change_releases_previous_verdant_resources", !GodotObject.IsInstanceValid(departed));
             Refresh();
 
             bool Outside(RoomDefinition room) => Enumerable.Range(0, 24).Select(i => motes.Multimesh.GetInstanceTransform(i).Origin)
@@ -350,6 +366,54 @@ public partial class VerdantSmoke : Node
         Check("reduced_effects_disable_fog_and_motes", _sandbox.ReducedEffects && !environment.FogEnabled && !motes.IsVisibleInTree());
         effects.ButtonPressed = false; await Settle();
         Check("restoring_effects_restores_atmosphere", !_sandbox.ReducedEffects && environment.FogEnabled && motes.IsVisibleInTree());
+    }
+
+    private void InspectDepth(string context, string style) => _depthEvidence.Add(VerdantDepthChecks.Inspect(_sandbox, context, style,
+        _session.Room.HalfWidth * .001f, _session.Room.HalfDepth * .001f, Check));
+
+    private async Task CheckDepthQuality(string style)
+    {
+        string hash = _session.StateHash;
+        var atmosphere = _sandbox.VerdantMotion!;
+        ulong id = atmosphere.GetInstanceId();
+        InspectDepth(style + "-high", style);
+        await SampleFrames(style, "High");
+        _sandbox.SetPaused(true); await Settle();
+        double frozen = atmosphere.MotionTime;
+        var selector = Descendants(_sandbox).OfType<OptionButton>().Single(n => n.Name == "SettingsGraphicsQuality");
+        selector.Select(1); selector.EmitSignal(OptionButton.SignalName.ItemSelected, 1L);
+        InspectDepth(style + "-performance", style);
+        Check("paused_quality_keeps_room_and_clock_" + style, atmosphere.GetInstanceId() == id && atmosphere.MotionTime == frozen);
+        _sandbox.SetPaused(false); await Settle();
+        await Capture(style + "-performance.png");
+        await SampleFrames(style, "Performance");
+        _sandbox.SetPaused(true); await Settle();
+        var effects = Descendants(_sandbox).OfType<CheckButton>().Single(b => b.Text == "Reduced visual effects");
+        effects.ButtonPressed = true; await Settle();
+        Check("paused_reduced_effects_settles_live_foliage_" + style, _sandbox.ReducedEffects && atmosphere.MotionTime == 0);
+        InspectDepth(style + "-reduced", style);
+        if (style is "verdant_ruins" or "verdant_heart") await Capture(style + "-reduced.png");
+        effects.ButtonPressed = false;
+        selector.Select(0); selector.EmitSignal(OptionButton.SignalName.ItemSelected, 0L);
+        Check("restoring_verdant_preferences_preserves_paused_room_" + style,
+            atmosphere.GetInstanceId() == id && atmosphere.MotionTime == 0 && atmosphere.ActiveLightCount == 4 && atmosphere.ActiveFoliageCount == 72);
+        _sandbox.SetPaused(false); await Settle();
+        Check("verdant_quality_and_effects_do_not_mutate_core_" + style, _session.StateHash == hash);
+    }
+
+    private async Task SampleFrames(string style, string quality)
+    {
+        if (DisplayServer.GetName() == "headless") return;
+        var samples = new List<double>();
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        for (int frame = 0; frame < 30; frame++)
+        {
+            double before = timer.Elapsed.TotalMilliseconds;
+            await Frames(1);
+            samples.Add(timer.Elapsed.TotalMilliseconds - before);
+        }
+        samples.Sort();
+        _frameSamples.Add(new { style, quality, frames = samples.Count, medianMs = samples[15], p95Ms = samples[28] });
     }
 
     private void CheckAudioSamples()
@@ -418,6 +482,8 @@ public partial class VerdantSmoke : Node
             clues = _seenClues.Order().ToArray(),
             rootCounts = _rootCounts.Order().ToArray(),
             audioFingerprints = _audioFingerprints,
+            depthEvidence = _depthEvidence,
+            frameSamples = _frameSamples,
             captures = _captures.Order().ToArray(),
             error,
             scope = "Real CampaignRuntimeSmoke commands unlock and complete Act II, including the tracking hunt, Core feeding roots and Rootheart victory. Mesh vertices establish safe scenery and ground placement. Runtime state, finite animations, restore, pause, reduced effects, regional audio, resource bounds and deterministic command replay are checked without changing gameplay state for presentation."

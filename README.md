@@ -10,6 +10,8 @@ The [graphics polish pass](docs/graphics_polish.md) adds beveled character shape
 
 The [visual depth pass](docs/visual_depth.md) adds warm lantern and candle lighting, worn paving and ruined masonry, folded cloth and layered armor, and more distinctive opening monsters. Reduced Effects keeps the light pools steady; Performance uses fewer local lights.
 
+The [Verdant depth pass](docs/verdant_depth.md) adds curved foliage, tapered trees and roots, connected mossy earth, village boardwalks and leaf roofs, gentle wind, fungal light, and a layered Rootheart bloom. High and Performance settings also control the new foliage and local lights.
+
 The opening environments now have distinct Greyhaven service courts, a winding Grey March road, a ruined monastery courtyard, layered cliffs and restrained chimney smoke and drifting leaves. The Grey March now has real road bends, monastery passages and sanctuary pillars. A side path off the secured road leads to the Widow’s Crypt, with elite guardians, rare armor and hidden testimony. Cleared opening rooms retain uncollected loot for backtracking; see [Grey March exploration](docs/grey_march_exploration.md).
 
 Combat now includes discipline-specific attacks, enemy anticipation and recovery, dodge and hit reactions, and visible defeat clips. Short weapon/spell effects and twenty-one synthesized sound cues follow Core combat events. The Bell Saint sanctuary swings, sheds broken links, and settles after victory. See [combat feedback](docs/combat_feedback.md) for scope, accessibility behavior, and diagnostics.

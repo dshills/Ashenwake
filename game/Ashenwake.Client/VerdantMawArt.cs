@@ -71,22 +71,24 @@ public static class VerdantMawArt
             b.Box(new(1.15f, .3f, 1.15f), foot + Vector3.Up * (columnHeight + .35f), StoneLight);
             var root = foot + new Vector3(-side * .3f, .1f, .49f);
             var middle = foot + new Vector3(side * .39f, columnHeight * .5f, .47f);
-            b.Beam(root, middle, .24f, Root);
-            b.Beam(middle, foot + new Vector3(-side * .2f, columnHeight + .55f, .4f), .18f, BarkLight);
+            b.Branch(root, middle, .16f, .105f, Root);
+            b.Branch(middle, foot + new Vector3(-side * .2f, columnHeight + .55f, .4f), .105f, .033f, BarkLight);
             LeafSpray(b, foot + new Vector3(side * .17f, columnHeight * .66f, .42f), side * .75f, .9f);
         }
         if (!broken)
         {
             b.Box(new(width + 1f, .48f, 1.1f), p + Vector3.Up * (height + .64f), Stone);
             b.Box(new(width + 1.15f, .12f, 1.24f), p + Vector3.Up * (height + .92f), StoneLight);
-            b.Beam(p + new Vector3(-width * .57f, height + 1.02f, .4f), p + new Vector3(width * .45f, height + .94f, .42f), .22f, Bark);
+            var fallenRoot = p + new Vector3(-width * .07f, height + 1.13f, .34f);
+            b.Branch(p + new Vector3(-width * .57f, height + 1.02f, .4f), fallenRoot, .14f, .09f, Bark);
+            b.Branch(fallenRoot, p + new Vector3(width * .45f, height + .94f, .42f), .09f, .026f, BarkLight);
             Fern(b, p + new Vector3(-.5f, height + 1.06f, -.12f), .98f);
         }
         else
         {
             b.Box(new(width * .52f, .43f, 1.05f), p + new Vector3(-width * .23f, height + .55f, 0), Stone, new(0, 0, -5));
             b.Box(new(1.35f, .52f, .9f), p + new Vector3(.6f, .27f, .22f), StoneLight, new(0, 18, 0));
-            b.Beam(p + new Vector3(-width * .5f, height + .9f, -.3f), p + new Vector3(.6f, height + 1.7f, -.2f), .28f, Bark);
+            b.Branch(p + new Vector3(-width * .5f, height + .9f, -.3f), p + new Vector3(.6f, height + 1.7f, -.2f), .18f, .055f, Bark);
             LeafSpray(b, p + new Vector3(.6f, height + 1.7f, -.2f), 1.4f, .82f);
         }
     }
@@ -118,19 +120,27 @@ public static class VerdantMawArt
         const float depth = 2.3f;
         foreach (float side in new[] { -1f, 1f })
         {
-            b.Beam(p + new Vector3(side * width * .44f, 0, .8f), p + new Vector3(side * width * .44f, height + .08f, .8f), .18f, Root);
-            b.Beam(p + new Vector3(side * width * .44f, 0, -.8f), p + new Vector3(side * width * .44f, height + .08f, -.8f), .19f, Bark);
+            b.Branch(p + new Vector3(side * width * .44f, 0, .8f), p + new Vector3(side * width * .44f, height + .08f, .8f), .12f, .068f, Root);
+            b.Branch(p + new Vector3(side * width * .44f, 0, -.8f), p + new Vector3(side * width * .44f, height + .08f, -.8f), .13f, .075f, Bark);
             b.Beam(p + new Vector3(side * width * .44f, .45f, .81f), p + new Vector3(0, 1.03f, .81f), .12f, Wood);
         }
         b.Box(new(width, .19f, depth), p + Vector3.Up * 1.03f, Wood);
         b.Box(new(width, height - 1.1f, .11f), p + new Vector3(0, (height + 1.1f) * .5f, -.95f), LeafDark);
         b.Box(new(.1f, height - 1.1f, depth - .25f), p + new Vector3(-width * .48f, (height + 1.1f) * .5f, -.03f), Wood);
         b.Box(new(.1f, height - 1.1f, depth - .25f), p + new Vector3(width * .48f, (height + 1.1f) * .5f, -.03f), Wood);
-        for (int i = 0; i < 9; i++)
+        // Overlapping palm blades follow the ridge-to-eave fall, leaving individually
+        // pointed edges instead of a continuous stack of rectangular green roof boards.
+        for (int row = 0; row < 7; row++)
         {
-            float px = -width * .44f + i * width * .11f;
-            float rise = (1f - Math.Abs(px) / (width * .6f)) * .65f;
-            b.Box(new(width * .13f, .12f, depth + .56f), p + new Vector3(px, height + rise, 0), i % 3 == 0 ? LeafLight : Leaf, new(0, 0, -Math.Sign(px) * 22));
+            float along = -.99f + row * .33f;
+            foreach (float side in new[] { -1f, 1f })
+            {
+                var ridge = p + new Vector3(-side * .045f, height + .70f + row % 2 * .015f, along);
+                var direction = new Vector3(side, -.29f, (row % 3 - 1) * .025f);
+                Blade(b, ridge, direction, width * (.575f + row % 2 * .018f), .66f, .11f,
+                    row % 3 == 0 ? LeafLight : row % 3 == 1 ? Leaf : LeafDark, side * 4);
+                b.Branch(ridge + Vector3.Up * .012f, ridge + direction.Normalized() * (width * .51f), .022f, .006f, BarkLight);
+            }
         }
         b.Beam(p + new Vector3(-width * .6f, height + .15f, 1.38f), p + new Vector3(0, height + .76f, 1.38f), .12f, BarkLight);
         b.Beam(p + new Vector3(width * .6f, height + .15f, 1.38f), p + new Vector3(0, height + .76f, 1.38f), .12f, BarkLight);
@@ -166,17 +176,19 @@ public static class VerdantMawArt
                 Vector3 a = new(px + side * 1.02f, .02f, back + .18f);
                 Vector3 c = new(px, height * .57f, back - .05f);
                 Vector3 tip = new(px - side * .02f, height, back - 1.25f);
-                b.Beam(a, c, .51f - i * .04f, BoneShade);
-                b.Beam(c, tip, .39f - i * .04f, Bone);
-                b.Beam(tip, tip + new Vector3(side * .3f, .23f, -.75f), .25f, Bone);
-                b.Beam(a + new Vector3(-side * .13f, 0, .38f), c + new Vector3(.11f, -.21f, .21f), .2f, Bark);
+                b.Branch(a, c, .32f - i * .025f, .25f - i * .02f, BoneShade, SurfaceKind.Bone);
+                b.Branch(c, tip, .25f - i * .02f, .13f - i * .015f, Bone, SurfaceKind.Bone);
+                b.Branch(tip, tip + new Vector3(side * .3f, .23f, -.75f), .13f - i * .015f, .026f, Bone, SurfaceKind.Bone);
+                b.Branch(a + new Vector3(-side * .13f, 0, .38f), c + new Vector3(.11f, -.21f, .21f), .14f, .058f, Bark);
                 LeafSpray(b, c + new Vector3(side * .14f, .1f, -.15f), side * .9f, .95f);
                 Fern(b, a + new Vector3(side * .3f, .1f, .15f), 1.15f);
             }
             Tree(b, new(side * (x + 2.9f), 0, -z * .59f), 4.4f, side);
             Flower(b, new(side * (x + 1.2f), 0, -z * .1f), .8f);
             // Low tendons continue along the outer arena edge without implying a gameplay obstruction.
-            b.Beam(new(side * (x + .65f), .11f, -z + .5f), new(side * (x + .65f), .11f, z * .54f), .2f, Root);
+            var edgeRoot = new Vector3(side * (x + .73f), .15f, -z * .12f);
+            b.Branch(new(side * (x + .65f), .11f, -z + .5f), edgeRoot, .12f, .085f, Root);
+            b.Branch(edgeRoot, new(side * (x + .65f), .11f, z * .54f), .085f, .025f, Root);
         }
     }
 
@@ -184,21 +196,23 @@ public static class VerdantMawArt
     {
         // A many-tined bone tree marks the grove without placing false track clues on the route.
         var p = new Vector3(.15f, 0, -z - 3.1f);
-        b.Cylinder(.72f, .4f, 3.5f, p + Vector3.Up * 1.75f, Bark);
-        b.Beam(p + new Vector3(0, .1f, .5f), p + new Vector3(.26f, 4.2f, .12f), .24f, BoneShade);
+        var trunkBend = p + new Vector3(-.16f, 1.9f, .08f);
+        b.Branch(p + Vector3.Up * .02f, trunkBend, .72f, .46f, Bark);
+        b.Branch(trunkBend, p + new Vector3(.14f, 3.7f, -.13f), .46f, .21f, BarkLight);
+        b.Branch(p + new Vector3(0, .1f, .5f), p + new Vector3(.26f, 4.2f, .12f), .16f, .06f, BoneShade, SurfaceKind.Bone);
         foreach (float side in new[] { -1f, 1f })
         {
             var joint = p + new Vector3(side * 1.18f, 3.66f, -.2f);
             var end = p + new Vector3(side * 3.2f, 4.83f, -.36f);
-            b.Beam(p + new Vector3(0, 2.1f, 0), joint, .37f, BoneShade);
-            b.Beam(joint, end, .24f, Bone);
+            b.Branch(p + new Vector3(0, 2.1f, 0), joint, .24f, .16f, BoneShade, SurfaceKind.Bone);
+            b.Branch(joint, end, .16f, .062f, Bone, SurfaceKind.Bone);
             for (int tine = 0; tine < 4; tine++)
             {
                 float t = tine / 3f;
                 var foot = joint.Lerp(end, t);
                 var tip = foot + new Vector3(side * (.05f + t * .2f), 1.35f - t * .4f, -.32f);
-                b.Beam(foot, tip, .14f - t * .04f, Bone);
-                b.Beam(tip, tip + new Vector3(side * .23f, .37f, .01f), .07f, Bone);
+                b.Branch(foot, tip, .095f - t * .023f, .048f - t * .015f, Bone, SurfaceKind.Bone);
+                b.Branch(tip, tip + new Vector3(side * .23f, .37f, .01f), .048f - t * .015f, .009f, Bone, SurfaceKind.Bone);
             }
             Fern(b, p + new Vector3(side * .98f, 0, .25f), 1.25f);
             Tree(b, new(side * (x * .69f), 0, -z - 4.1f), 5.4f - (side + 1) * .35f, side);
@@ -229,7 +243,9 @@ public static class VerdantMawArt
             {
                 var p = new Vector3(side * (1.8f + i * x * .21f), 0, z + 1.2f);
                 // Camera-facing roots never rise above ankle height; no front canopy obscures a fight.
-                b.Beam(p + new Vector3(-.7f, .07f, .15f), p + new Vector3(.63f, .11f, -.12f), .16f, Root);
+                var bend = p + new Vector3(-.04f, .14f, .07f);
+                b.Branch(p + new Vector3(-.7f, .07f, .15f), bend, .10f, .07f, Root);
+                b.Branch(bend, p + new Vector3(.63f, .11f, -.12f), .07f, .018f, Root);
                 b.Box(new(.53f, .04f, .29f), p + new Vector3(0, .09f, -.02f), Moss, new(0, 29 + i * 13, 0));
             }
         }
@@ -237,54 +253,91 @@ public static class VerdantMawArt
 
     private static void Tree(EnvironmentBuilder b, Vector3 p, float height, float lean)
     {
+        var lower = p + new Vector3(lean * .07f, height * .25f, -.08f);
         var middle = p + new Vector3(lean * .23f, height * .53f, -.25f);
+        var upper = p + new Vector3(lean * .39f, height * .78f, -.46f);
         var crown = p + new Vector3(lean * .54f, height, -.53f);
-        b.Cylinder(.63f, .33f, height * .56f, p + new Vector3(0, height * .28f, -.05f), Bark);
-        b.Beam(middle, crown, .42f, BarkLight);
-        b.Beam(p + new Vector3(-.63f, .04f, .46f), middle, .23f, Root);
-        b.Beam(p + new Vector3(.79f, .04f, .28f), middle, .26f, Root);
+        b.Branch(p + Vector3.Up * .02f, lower, .61f, .41f, Bark);
+        b.Branch(lower, middle, .41f, .28f, Bark);
+        b.Branch(middle, upper, .28f, .17f, BarkLight);
+        b.Branch(upper, crown, .17f, .063f, BarkLight);
         foreach (float side in new[] { -1f, 1f })
         {
-            var branch = crown + new Vector3(side * 1.17f, .42f - side * .12f, -.22f);
-            b.Beam(middle + Vector3.Up * .75f, branch, .19f, Bark);
-            LeafSpray(b, branch, side * 1.17f, 1.02f);
-            LeafSpray(b, middle + new Vector3(side * .29f, .3f, .1f), side * .98f, .75f);
+            var rootKnee = p + new Vector3(side * .48f, .25f, .29f);
+            b.Branch(lower, rootKnee, .24f, .16f, Root);
+            b.Branch(rootKnee, p + new Vector3(side * .88f, .045f, .57f), .16f, .028f, Root);
+            var fork = middle + new Vector3(side * .49f, height * .15f, -.28f);
+            var branch = crown + new Vector3(side * .9f, .26f - side * .15f, -.22f);
+            b.Branch(middle, fork, .17f, .12f, Bark);
+            b.Branch(fork, branch, .12f, .027f, BarkLight);
+            LeafSpray(b, branch, side * .94f, 1.02f);
+            LeafSpray(b, middle + new Vector3(side * .28f, .24f, .08f), side * .82f, .75f);
         }
+        b.Branch(lower + Vector3.Back * .05f, p + new Vector3(lean * .18f, .04f, -.89f), .22f, .022f, Root);
         LeafSpray(b, crown + Vector3.Up * .08f, lean * .8f, 1.12f);
     }
 
     private static void LeafSpray(EnvironmentBuilder b, Vector3 p, float spread, float scale)
     {
-        // Layered blades make a botanical silhouette rather than a sphere sitting on a trunk.
-        var tip = p + new Vector3(spread, .2f * scale, -.12f);
-        b.Beam(p, tip, .045f * scale, BarkLight);
+        // Alternating pointed leaves expose an actual tapering stem between the blades.
+        var middle = p + new Vector3(spread * .52f, .27f * scale, -.085f);
+        var tip = p + new Vector3(spread, .17f * scale, -.16f);
+        b.Branch(p, middle, .030f * scale, .020f * scale, BarkLight);
+        b.Branch(middle, tip, .020f * scale, .005f * scale, BarkLight);
         for (int leaf = 0; leaf < 4; leaf++)
         {
-            float t = .18f + leaf * .22f;
-            var basePoint = p.Lerp(tip, t);
-            float size = scale * (.72f - leaf * .1f);
-            float yaw = Math.Sign(spread) * (22 + leaf * 8);
-            b.Box(new(size * .7f, .055f, size), basePoint + new Vector3(0, .02f, -.18f), leaf % 2 == 0 ? Leaf : LeafLight, new(-12, yaw, Math.Sign(spread) * 9));
-            b.Box(new(size * .32f, .045f, size * .47f), basePoint + new Vector3(Math.Sign(spread) * .06f, .1f, -.63f * size), LeafDark, new(-12, yaw, Math.Sign(spread) * 9));
+            float t = .17f + leaf * .22f;
+            var basePoint = p.Lerp(tip, t) + Vector3.Up * (.09f * scale * Mathf.Sin(t * Mathf.Pi));
+            float size = scale * (.62f - leaf * .085f);
+            foreach (float side in new[] { -1f, 1f })
+            {
+                var direction = new Vector3(Math.Sign(spread) * .38f, .08f + leaf * .035f, side * .84f);
+                var baseOffset = new Vector3(Math.Sign(spread) * side * .026f * scale, side * .018f * scale, 0);
+                Blade(b, basePoint + baseOffset, direction, size, size * .39f, size * .13f,
+                    side > 0 ? Leaf : leaf % 2 == 0 ? LeafLight : LeafDark, side * (8 + leaf * 3));
+            }
         }
+        Blade(b, tip - new Vector3(Math.Sign(spread) * .03f, 0, 0), new(Math.Sign(spread), .17f, -.2f),
+            scale * .35f, scale * .13f, scale * .05f, LeafLight, -12);
     }
 
     private static void Fern(EnvironmentBuilder b, Vector3 p, float scale)
     {
-        b.Cylinder(.18f * scale, .085f * scale, .47f * scale, p + Vector3.Up * (.24f * scale), BarkLight);
+        b.Cylinder(.13f * scale, .065f * scale, .33f * scale, p + Vector3.Up * (.17f * scale), BarkLight);
         for (int i = 0; i < 6; i++)
         {
-            float a = i * Mathf.Tau / 6;
+            float a = i * Mathf.Tau / 6 + (i % 2 == 0 ? .07f : -.04f);
             var direction = new Vector3(Mathf.Sin(a), 0, Mathf.Cos(a));
-            var end = p + direction * (.72f * scale) + Vector3.Up * (.32f * scale);
-            b.Beam(p + Vector3.Up * (.4f * scale), end, .034f * scale, Root);
-            for (int leaf = 0; leaf < 3; leaf++)
+            var lateral = new Vector3(direction.Z, 0, -direction.X);
+            var basePoint = p + Vector3.Up * (.27f * scale);
+            var rise = p + direction * (.34f * scale) + Vector3.Up * ((.55f + i % 2 * .07f) * scale);
+            var end = p + direction * ((.82f - i % 2 * .06f) * scale) + Vector3.Up * (.28f * scale);
+            b.Branch(basePoint, rise, .023f * scale, .014f * scale, Root);
+            b.Branch(rise, end, .014f * scale, .004f * scale, BarkLight);
+            for (int leaf = 0; leaf < 4; leaf++)
             {
-                float t = .3f + leaf * .24f;
-                var center = p.Lerp(end, t) + Vector3.Up * (.28f * scale * (1 - t));
-                b.Box(new((.37f - leaf * .075f) * scale, .05f * scale, .32f * scale), center, i % 2 == 0 ? Leaf : LeafLight, new(0, Mathf.RadToDeg(a), 0));
+                float t = .24f + leaf * .18f;
+                var center = t < .5f ? basePoint.Lerp(rise, t * 2) : rise.Lerp(end, (t - .5f) * 2);
+                float length = (.35f - leaf * .064f) * scale;
+                foreach (float side in new[] { -1f, 1f })
+                    Blade(b, center + direction * (side * .017f * scale),
+                        lateral * side + direction * .37f + Vector3.Up * (.12f - leaf * .09f), length,
+                        length * .36f, length * .14f, (i + leaf) % 3 == 0 ? LeafLight : Leaf, side * 11);
             }
+            Blade(b, end - direction * (.12f * scale), direction + Vector3.Down * .12f, .23f * scale, .08f * scale, .03f * scale, LeafLight);
         }
+    }
+
+    private static void Blade(EnvironmentBuilder b, Vector3 position, Vector3 direction, float length, float width,
+        float curl, string color, float roll = 0)
+    {
+        // Build a leaf frame with its broad face turned toward the sky. Local Y is the
+        // midrib, X is blade width and Z cups upward; a small roll varies neighbouring leaves.
+        var axis = direction.Normalized();
+        var lateral = axis.Cross(Math.Abs(axis.Y) < .93f ? Vector3.Up : Vector3.Forward).Normalized();
+        var normal = lateral.Cross(axis).Normalized();
+        var basis = new Basis(lateral, axis, normal) * Basis.FromEuler(new(0, Mathf.DegToRad(roll), 0));
+        b.Leaf(length, width, curl, position, color, basis.GetEuler() * (180 / Mathf.Pi));
     }
 
     private static void Flower(EnvironmentBuilder b, Vector3 p, float scale)

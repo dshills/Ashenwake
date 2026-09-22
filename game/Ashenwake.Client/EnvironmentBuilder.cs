@@ -10,6 +10,7 @@ public sealed class EnvironmentBuilder
     private readonly Dictionary<(string Color, bool Glow, SurfaceKind Surface), List<(Mesh Mesh, Transform3D Transform)>> _parts = [];
     private readonly Dictionary<(float Inner, float Outer), TorusMesh> _rings = [];
     private readonly Dictionary<float, CylinderMesh> _cylinders = [];
+    private readonly Dictionary<(float Length, float Width, float Curl), ArrayMesh> _leaves = [];
     private readonly BoxMesh _box = new() { Size = Vector3.One };
 
     public EnvironmentBuilder(Node3D parent, string name)
@@ -42,6 +43,30 @@ public sealed class EnvironmentBuilder
         if (direction.LengthSquared() < .00001f) return;
         var rotation = new Quaternion(Vector3.Up, direction.Normalized());
         Add(_box, new Transform3D(new Basis(rotation).ScaledLocal(new(thickness, direction.Length(), thickness)), (from + to) * .5f), color, false, surface);
+    }
+
+    public void Branch(Vector3 from, Vector3 to, float bottomRadius, float topRadius, string color, SurfaceKind surface = SurfaceKind.Wood)
+    {
+        EnsureOpen();
+        if (!from.IsFinite() || !to.IsFinite()) throw new ArgumentException("Branch endpoints must be finite.");
+        if (!float.IsFinite(bottomRadius) || bottomRadius <= 0) throw new ArgumentOutOfRangeException(nameof(bottomRadius));
+        if (!float.IsFinite(topRadius) || topRadius < 0) throw new ArgumentOutOfRangeException(nameof(topRadius));
+        var direction = to - from;
+        if (direction.LengthSquared() < .00001f) return;
+        float ratio = topRadius / bottomRadius;
+        if (!_cylinders.TryGetValue(ratio, out var mesh))
+            _cylinders[ratio] = mesh = new CylinderMesh { BottomRadius = 1, TopRadius = ratio, Height = 1, RadialSegments = 10, Rings = 1 };
+        Add(mesh, new Transform3D(new Basis(new Quaternion(Vector3.Up, direction.Normalized()))
+            .ScaledLocal(new(bottomRadius, direction.Length(), bottomRadius)), (from + to) * .5f), color, false, surface);
+    }
+
+    public void Leaf(float length, float width, float curl, Vector3 position, string color,
+        Vector3 rotationDegrees = default, SurfaceKind surface = SurfaceKind.Cloth)
+    {
+        EnsureOpen();
+        if (!_leaves.TryGetValue((length, width, curl), out var mesh))
+            _leaves[(length, width, curl)] = mesh = BotanicalGeometry.Leaf(length, width, curl);
+        Part(mesh, Vector3.One, position, color, rotationDegrees, false, surface);
     }
 
     private void Part(Mesh mesh, Vector3 size, Vector3 position, string color, Vector3 rotationDegrees, bool glow, SurfaceKind? surface)
@@ -79,6 +104,8 @@ public sealed class EnvironmentBuilder
         _box.Dispose();
         foreach (var mesh in _rings.Values) mesh.Dispose();
         foreach (var mesh in _cylinders.Values) mesh.Dispose();
+        foreach (var mesh in _leaves.Values) mesh.Dispose();
+        _leaves.Clear();
         _rings.Clear(); _cylinders.Clear();
     }
 }

@@ -11,6 +11,8 @@ public partial class Sandbox
     private OpeningLighting? _openingLighting;
     private (float Width, float Depth) _openingLightingBounds;
     private (float Width, float Depth) _openingAtmosphereBounds;
+    private VerdantAtmosphere? _verdantAtmosphere;
+    private (float Width, float Depth) _verdantAtmosphereBounds;
     private string _environmentStyle = "";
     private double _atmosphereTime;
     private AudioStreamPlayer? _regionalAmbience;
@@ -24,6 +26,7 @@ public partial class Sandbox
     public int AmbientMoteCount => _ambientMotes?.Multimesh.InstanceCount ?? 0;
     public OpeningAtmosphere? OpeningMotion => _openingAtmosphere;
     public OpeningLighting? OpeningLights => _openingLighting;
+    public VerdantAtmosphere? VerdantMotion => _verdantAtmosphere;
 
     public void SetEnvironmentStyle(string style)
     {
@@ -67,16 +70,16 @@ public partial class Sandbox
         {
             bool village = style == "verdant_village", heart = style == "verdant_heart";
             environment.BackgroundColor = new Color(village ? "1e2b24" : heart ? "15221e" : "152723");
-            environment.AmbientLightColor = new Color(village ? "afb99b" : heart ? "92aa95" : "a5b79a");
-            environment.AmbientLightEnergy = village ? .42f : heart ? .36f : .4f;
+            environment.AmbientLightColor = new Color(village ? "b8b6a0" : heart ? "9cacb1" : "b0b9a8");
+            environment.AmbientLightEnergy = village ? .40f : heart ? .35f : .37f;
             environment.FogLightColor = new Color(village ? "68765a" : heart ? "496451" : "526d59");
             environment.FogLightEnergy = .22f;
             environment.FogDensity = heart ? .19f : .16f;
             // The haze starts behind nearby actors and hazard tells, preserving their contrast.
             environment.FogDepthBegin = 35;
             environment.FogDepthEnd = 65;
-            _sun.LightColor = new Color(village ? "efdfae" : heart ? "bfd0a0" : "dde8be");
-            _sun.LightEnergy = village ? .86f : heart ? .74f : .8f;
+            _sun.LightColor = new Color(village ? "ffe0ad" : heart ? "c6d7ca" : "fff0c9");
+            _sun.LightEnergy = village ? .84f : heart ? .74f : .83f;
             _sun.RotationDegrees = new(-62, -25, 0);
         }
         if (cinder)
@@ -156,6 +159,17 @@ public partial class Sandbox
             _regionalAmbience.StreamPaused = _clock.Paused;
         float x = (_authoredBounds.Width > 0 ? _authoredBounds.Width : _content.Room.HalfWidth) * .001f;
         float z = (_authoredBounds.Depth > 0 ? _authoredBounds.Depth : _content.Room.HalfDepth) * .001f;
+        bool verdantRoom = VerdantAtmosphere.Supports(_environmentStyle);
+        if (_verdantAtmosphere is not null && (!verdantRoom || _verdantAtmosphere.Style != _environmentStyle || _verdantAtmosphereBounds != (x, z)))
+        {
+            RemoveChild(_verdantAtmosphere); _verdantAtmosphere.QueueFree(); _verdantAtmosphere = null;
+        }
+        if (verdantRoom && _verdantAtmosphere is null)
+        {
+            _verdantAtmosphere = VerdantAtmosphere.Create(_environmentStyle, x, z);
+            _verdantAtmosphereBounds = (x, z); AddChild(_verdantAtmosphere);
+        }
+        _verdantAtmosphere?.Animate(delta, _clock.Paused, _reduceEffects, _graphicsQuality);
         bool litOpening = OpeningLighting.Supports(_environmentStyle);
         if (_openingLighting is not null && (!litOpening || _openingLighting.Style != _environmentStyle || _openingLightingBounds != (x, z)))
         {

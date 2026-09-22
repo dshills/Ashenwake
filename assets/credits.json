@@ -47,16 +47,18 @@
     },
     {
       "id": "asset.procedural_verdant_maw",
-      "name": "Verdant Maw living ruins, quarantine village, antler grove, organic ground, tracking clues, Rootheart corpse-flower and synthesized regional ambience",
+      "name": "Verdant Maw living ruins, quarantine village, antler grove, curved foliage, forest floor, lanterns and fungal light, tracking clues, Rootheart corpse-flower and synthesized regional ambience",
       "sourceFiles": [
         "game/Ashenwake.Client/VerdantMawArt.cs",
         "game/Ashenwake.Client/VerdantGround.cs",
         "game/Ashenwake.Client/VerdantObstacleArt.cs",
         "game/Ashenwake.Client/VerdantTrailVisual.cs",
         "game/Ashenwake.Client/VerdantHeartVisual.cs",
-        "game/Ashenwake.Client/VerdantAmbience.cs"
+        "game/Ashenwake.Client/VerdantAmbience.cs",
+        "game/Ashenwake.Client/BotanicalGeometry.cs",
+        "game/Ashenwake.Client/VerdantAtmosphere.cs"
       ],
-      "origin": "Authored in the Ashenwake repository using Godot primitive meshes, materials and synthesized waveforms; no downloaded art or audio samples are declared.",
+      "origin": "Authored in the Ashenwake repository using Godot primitive and custom indexed meshes, materials and synthesized waveforms; no downloaded art or audio samples are declared.",
       "rightsStatus": "Project-authored source. The repository does not yet declare a distribution license or owner approval.",
       "redistributionApproved": false,
       "requiredCredit": "Ashenwake project contributors; final release credit names and distribution terms await the owner."
