@@ -7,7 +7,7 @@ using Ashenwake.Core.Simulation;
 
 namespace Ashenwake.Core.Production;
 
-public enum ProductionAction { Expedition, Equip, Unequip, Craft, Passive, Respec, Retrain, Mutation, Discard, SaveEquipmentPreset, RenameEquipmentPreset, DeleteEquipmentPreset, ApplyEquipmentPreset }
+public enum ProductionAction { Expedition, Equip, Unequip, Craft, Passive, Respec, Retrain, Mutation, Discard, SaveEquipmentPreset, RenameEquipmentPreset, DeleteEquipmentPreset, ApplyEquipmentPreset, SetItemFavorite, SetItemLocked, Salvage }
 public sealed record ProductionCommand(ProductionAction Action, ExpeditionCommand? Expedition = null, long ItemId = 0,
     EquipmentSlot Slot = EquipmentSlot.MainHand, string Id = "", string Value = "", CraftingRequest? Crafting = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool ConfirmPermanent = false);
@@ -164,6 +164,7 @@ public sealed partial class ProductionSession
     }
     private ProductionResult ExecutePermanent(ProductionCommand command)
     {
+        if (IsItemOrganizationAction(command.Action)) return ExecuteItemOrganization(command);
         if (View.RoomId != "room.greyhaven") return new(false, "Change permanent builds at Greyhaven's workshops.", [], []);
         SynchronizeItemSequence();
         string operation = "player." + operationSequence; ProgressionResult result;
@@ -189,6 +190,10 @@ public sealed partial class ProductionSession
             case ProductionAction.Unequip:
                 if (!Near("service.torren")) return new(false, "Visit Torren to unequip items.", [], []);
                 result = progression.Unequip(operation, command.Slot); break;
+            case ProductionAction.Salvage:
+                string salvageBlocked = SalvageServiceBlockedReason();
+                if (salvageBlocked.Length > 0) return new(false, salvageBlocked, [], []);
+                result = progression.Salvage(operation, command.ItemId, command.ConfirmPermanent); break;
             case ProductionAction.Discard:
                 if (!Near("service.torren")) return new(false, "Visit Torren to discard items.", [], []);
                 if (!Combat.View.Actors.Any(actor => actor.Id == 1 && actor.Health > 0)) return new(false, "Cannot discard equipment while defeated.", [], []);

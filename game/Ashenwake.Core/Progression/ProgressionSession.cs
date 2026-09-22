@@ -11,6 +11,8 @@ public sealed record PermanentItem
     public long Id { get; init; }
     public string DefinitionId { get; init; } = "";
     public ItemRarity Rarity { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool IsFavorite { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool IsLocked { get; set; }
     public SortedDictionary<string, int> Affixes { get; set; } = [];
     public string Engraving { get; set; } = "";
     public int BurningKills { get; set; }
@@ -263,6 +265,7 @@ public sealed partial class ProgressionSession
         var item = state.Items.FirstOrDefault(i => i.Id == request.ItemId);
         var definition = item is null ? null : Data.Items.Single(d => d.Id == item.DefinitionId);
         if (request.Service != CraftingService.Purification && item is null) return "Item does not exist.";
+        if (request.Service == CraftingService.Extraction && item is not null && ProtectionBlockedReason(item) is { Length: > 0 } protection) return protection;
         string? catalystError = SpendEndgameCraftCatalyst(state, item, request, ref cost);
         if (catalystError is not null) return catalystError;
         if (state.Materials < cost) return "Insufficient crafting materials.";

@@ -15,6 +15,7 @@ public partial class CraftingInventory : VBoxContainer
 
     private readonly Dictionary<long, GearDragCard> _cards = [];
     private Dictionary<long, PermanentItem> _owned = [];
+    private Dictionary<long, string[]> _presetNames = [];
     private Dictionary<string, ProductionItemDefinition> _definitions = new(StringComparer.Ordinal);
     private ProgressionSnapshot? _state;
     private ProgressionDefinition? _content;
@@ -71,7 +72,8 @@ public partial class CraftingInventory : VBoxContainer
             state.Character.ContentHash,
             state.Character.Discipline,
             state.Character.Items,
-            state.Character.Equipment
+            state.Character.Equipment,
+            state.Character.EquipmentPresets
         });
         if (!ReferenceEquals(_content, content))
         {
@@ -82,6 +84,8 @@ public partial class CraftingInventory : VBoxContainer
         if (_signature == signature) return;
         _signature = signature;
         _owned = state.Character.Items.ToDictionary(item => item.Id);
+        _presetNames = (state.Character.EquipmentPresets ?? []).SelectMany(preset => preset.Equipment.Values.Select(id => (Id: id, preset.Name)))
+            .GroupBy(pair => pair.Id).ToDictionary(group => group.Key, group => group.Select(pair => pair.Name).ToArray());
         if (!_owned.ContainsKey(SelectedItemId)) SelectedItemId = 0;
         Epoch++;
         _dirty = true;
@@ -250,9 +254,13 @@ public partial class CraftingInventory : VBoxContainer
                 }
                 bool equipped = _state.Character.Equipment.Values.Contains(item.Id);
                 string name = ItemName(item);
-                card.Text = name + "\n" + item.Rarity + (equipped ? "\nEquipped" : "");
+                string protection = string.Join(" · ", new[] { item.IsFavorite ? "Favorite" : "", item.IsLocked ? "Locked" : "" }.Where(value => value.Length > 0));
+                string[] presets = _presetNames.GetValueOrDefault(item.Id) ?? [];
+                card.Text = name + "\n" + item.Rarity + (equipped ? "\nEquipped" : "") + (protection.Length > 0 ? "\n" + protection : "") + (presets.Length > 0 ? "\nSaved outfit" : "");
                 card.DragLabel = name + " · " + item.Rarity + (equipped ? " · Equipped" : "");
-                card.TooltipText = name + " · #" + item.Id + (equipped ? " · Equipped" : "") + "\n" + EquipmentDetails.Lore(item.DefinitionId) + "\nSelect to inspect crafting options.";
+                card.TooltipText = name + " · #" + item.Id + (equipped ? " · Equipped" : "") + "\n" + EquipmentDetails.Lore(item.DefinitionId) +
+                    (protection.Length > 0 ? "\n" + protection + " · protected from extraction." : "") +
+                    (presets.Length > 0 ? "\nSaved outfits: " + string.Join(", ", presets) : "") + "\nSelect to inspect crafting options.";
                 card.SetItemVisual(item.DefinitionId, _definitions[item.DefinitionId].Slots[0], _state.Character.Discipline, item.Rarity);
                 card.AddThemeStyleboxOverride("hover_pressed", card.GetThemeStylebox("pressed"));
             }

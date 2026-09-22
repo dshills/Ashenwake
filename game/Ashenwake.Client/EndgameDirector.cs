@@ -146,6 +146,9 @@ public partial class EndgameDirector : Node3D
         _character.EquipRequested += (id, slot) => Permanent(new(ProductionAction.Equip, ItemId: id, Slot: slot));
         _character.UnequipRequested += slot => Permanent(new(ProductionAction.Unequip, Slot: slot));
         _character.DiscardRequested += id => Permanent(new(ProductionAction.Discard, ItemId: id, ConfirmPermanent: true));
+        _character.FavoriteRequested += (id, value) => Permanent(new(ProductionAction.SetItemFavorite, ItemId: id, Value: value ? "true" : "false"));
+        _character.LockRequested += (id, value) => Permanent(new(ProductionAction.SetItemLocked, ItemId: id, Value: value ? "true" : "false"));
+        _character.SalvageRequested += id => Permanent(new(ProductionAction.Salvage, ItemId: id, ConfirmPermanent: true));
         _character.CraftRequested += request => Permanent(new(ProductionAction.Craft, Crafting: request));
         _character.MutationRequested += (id, value) => Permanent(new(ProductionAction.Mutation, Id: id, Value: value));
         _character.ServiceRequested += Interact;
@@ -235,12 +238,14 @@ public partial class EndgameDirector : Node3D
             bool reportCraft = command.Production?.Action == ProductionAction.Craft;
             bool reportBuild = command.Production?.Action is ProductionAction.Passive or ProductionAction.Respec or ProductionAction.Mutation;
             bool reportPreset = command.Production?.Action is ProductionAction.SaveEquipmentPreset or ProductionAction.RenameEquipmentPreset or ProductionAction.DeleteEquipmentPreset or ProductionAction.ApplyEquipmentPreset;
-            var result = ExecuteActive(command); if (!result.Success) { Notice(result.Reason); if (reportCraft) _character.ReportCraftResult(false, result.Reason); if (reportBuild) _character.ReportBuildResult(false, result.Reason); if (reportPreset) _character.ReportEquipmentPresetResult(false, result.Reason); return; }
+            bool reportLoot = command.Production?.Action is ProductionAction.SetItemFavorite or ProductionAction.SetItemLocked or ProductionAction.Salvage;
+            var result = ExecuteActive(command); if (!result.Success) { Notice(result.Reason); if (reportCraft) _character.ReportCraftResult(false, result.Reason); if (reportBuild) _character.ReportBuildResult(false, result.Reason); if (reportLoot) _character.ReportLootManagementResult(false, result.Reason); if (reportPreset) _character.ReportEquipmentPresetResult(false, result.Reason); return; }
             _revision++; Observe(result);
             if (!ReferenceEquals(_sandbox.Session, _session.Combat)) _sandbox.AdoptSession(_session.Combat);
             Refresh();
             if (reportCraft) _character.ReportCraftResult(true, "");
             if (reportBuild) _character.ReportBuildResult(true, "");
+            if (reportLoot) _character.ReportLootManagementResult(true, "");
             if (reportPreset) _character.ReportEquipmentPresetResult(true, "");
         });
     }

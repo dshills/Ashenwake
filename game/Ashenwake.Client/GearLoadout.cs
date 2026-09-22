@@ -14,6 +14,7 @@ public partial class GearLoadout : HBoxContainer
     private readonly Dictionary<EquipmentSlot, GearDragCard> _slots = [];
     private readonly Dictionary<long, GearDragCard> _items = [];
     private ProgressionSnapshot? _state;
+    private HashSet<long> _presetItemIds = [];
     private ProgressionDefinition _content = null!;
     private GridContainer _inventory = null!;
     private Label _inventoryTitle = null!, _empty = null!;
@@ -84,10 +85,12 @@ public partial class GearLoadout : HBoxContainer
     public void SetView(ProgressionSnapshot state, ProgressionDefinition content, long revision, bool canEdit)
     {
         string signature = state.Character.CharacterId + "/" + state.Character.Discipline + "/" +
-            string.Join(',', state.Character.Equipment.Select(p => p.Key + ":" + p.Value)) + "/" + string.Join(',', state.Character.Items.Select(i => i.Id));
+            string.Join(',', state.Character.Equipment.Select(p => p.Key + ":" + p.Value)) + "/" + string.Join(',', state.Character.Items.Select(i => i.Id + ":" + i.IsFavorite + ":" + i.IsLocked)) + "/" +
+            string.Join(';', (state.Character.EquipmentPresets ?? []).Select(preset => preset.Id + ":" + string.Join(',', preset.Equipment.Values)));
         bool changed = _state is null || _revision != revision || _signature != signature || _canEdit != canEdit;
         _state = state; _content = content; _revision = revision; _signature = signature; _canEdit = canEdit;
         if (!changed) return;
+        _presetItemIds = (state.Character.EquipmentPresets ?? []).SelectMany(preset => preset.Equipment.Values).ToHashSet();
         _epoch++; _dirty = true;
         // Keep the source/target controls alive until Godot finishes dispatching the native drop.
         if (!GetViewport().GuiIsDragging()) RefreshCards();
@@ -221,6 +224,7 @@ public partial class GearLoadout : HBoxContainer
             card.Text = SlotName(slot) + "\n" + (item is null ? "Empty" : ItemName(item));
             card.DragLabel = SlotName(slot) + " · " + (item is null ? "Empty" : ItemName(item));
             card.TooltipText = item is null ? "Empty " + SlotName(slot) + " slot · drop compatible gear here." : "";
+            card.SetManagementBadges(item?.IsFavorite == true, item?.IsLocked == true, item is not null && _presetItemIds.Contains(item.Id));
             card.SetItemVisual(item?.DefinitionId ?? "", slot, _state.Character.Discipline, item?.Rarity);
         }
         var backpack = _state.Character.Items.Where(i => !_state.Character.Equipment.Values.Contains(i.Id)).OrderBy(i => i.Id).ToArray();
@@ -247,6 +251,7 @@ public partial class GearLoadout : HBoxContainer
             }
             card.Text = ItemName(item) + "\n" + item.Rarity; card.DragLabel = card.Text;
             card.TooltipText = "";
+            card.SetManagementBadges(item.IsFavorite, item.IsLocked, _presetItemIds.Contains(item.Id));
             card.SetItemVisual(item.DefinitionId, _content.Items.Single(d => d.Id == item.DefinitionId).Slots[0], _state.Character.Discipline, item.Rarity);
         }
         ApplyProjection();

@@ -5,7 +5,7 @@ namespace Ashenwake.Client;
 
 public partial class GearLoadout
 {
-    private OptionButton _sort = null!, _typeFilter = null!, _rarityFilter = null!;
+    private OptionButton _sort = null!, _typeFilter = null!, _rarityFilter = null!, _usageFilter = null!;
     private LineEdit _search = null!;
     private GearComparison? _comparison;
     private PanelContainer? _feedback;
@@ -30,11 +30,14 @@ public partial class GearLoadout
         _typeFilter = Filter("GearTypeFilter", "Filter by equipment type", row, ["All types", "Weapons", "Armor", "Accessories"]);
         _rarityFilter = Filter("GearRarityFilter", "Filter by rarity", row, ["All rarities", .. Enum.GetNames<ItemRarity>()]);
         _sort = Filter("GearSort", "Sort inventory", row, ["Type", "Rarity", "Name"]);
+        var usageRow = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore }; contents.AddChild(usageRow);
+        _usageFilter = Filter("GearUsageFilter", "Card badges: ★ favorite · L locked · ◆ saved outfit. Unused means unequipped and absent from every saved outfit.", usageRow,
+            ["All gear", "Favorites", "Locked", "Unused", "Saved outfits"]);
         _search.TextChanged += _ => ProjectionChanged();
-        foreach (var selector in new[] { _typeFilter, _rarityFilter, _sort }) selector.ItemSelected += _ => ProjectionChanged();
+        foreach (var selector in new[] { _typeFilter, _rarityFilter, _sort, _usageFilter }) selector.ItemSelected += _ => ProjectionChanged();
         reset.Pressed += () =>
         {
-            _typeFilter.Select(0); _rarityFilter.Select(0); _sort.Select(0);
+            _typeFilter.Select(0); _rarityFilter.Select(0); _sort.Select(0); _usageFilter.Select(0);
             _search.Text = ""; ProjectionChanged();
         };
     }
@@ -62,7 +65,7 @@ public partial class GearLoadout
         {
             // Explicit item inspection may reveal a card hidden by this transient browser.
             // Preserve sort order and the separate saved ground-loot preferences.
-            _typeFilter.Select(0); _rarityFilter.Select(0); _search.Text = ""; ProjectionChanged();
+            _typeFilter.Select(0); _rarityFilter.Select(0); _usageFilter.Select(0); _search.Text = ""; ProjectionChanged();
         }
         if (_inventory.GetParent() is ScrollContainer scroll)
             Callable.From(() =>
@@ -90,7 +93,7 @@ public partial class GearLoadout
         foreach (var entry in ordered)
         {
             var card = _items[entry.Item.Id];
-            card.Visible = (_typeFilter.Selected == 0 || _typeFilter.Selected == entry.Category) &&
+            card.Visible = MatchesUsage(entry.Item) && (_typeFilter.Selected == 0 || _typeFilter.Selected == entry.Category) &&
                 (_rarityFilter.Selected == 0 || (int)entry.Item.Rarity == _rarityFilter.Selected - 1) &&
                 (query.Length == 0 || entry.Name.Contains(query, StringComparison.OrdinalIgnoreCase));
             if (card.GetIndex() != index) _inventory.MoveChild(card, index);
@@ -101,6 +104,15 @@ public partial class GearLoadout
         _empty.Text = entries.Length == 0 ? "Your backpack is empty.\nDrag equipped gear here to remove it." : "No matching items.\nClear the filters to see all your gear.";
         _inventoryTitle.Text = $"INVENTORY · {visible}/{entries.Length} · drop to unequip";
     }
+
+    private bool MatchesUsage(PermanentItem item) => _usageFilter.Selected switch
+    {
+        1 => item.IsFavorite,
+        2 => item.IsLocked,
+        3 => !_presetItemIds.Contains(item.Id),
+        4 => _presetItemIds.Contains(item.Id),
+        _ => true
+    };
 
     private int ItemCategory(PermanentItem item) => _content.Items.Single(d => d.Id == item.DefinitionId).Slots[0] switch
     {

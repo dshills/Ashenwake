@@ -39,6 +39,11 @@ public partial class CraftingWorkbench
         {
             Line($"{EquipmentNames.For(current.DefinitionId)} · {current.Rarity} · #{current.Id}", LootVisual.RarityColor(current.Rarity.ToString()), 13);
             Line(EquipmentDetails.Lore(current.DefinitionId), PreviewMuted);
+            if (current.IsFavorite || current.IsLocked)
+                Line("Protected: " + string.Join(" · ", new[] { current.IsFavorite ? "Favorite" : "", current.IsLocked ? "Locked" : "" }.Where(value => value.Length > 0)) + ". Extraction is blocked; other crafting remains available.", PreviewAccent);
+            var presets = ProgressionSession.ItemPresetNames(preview.Before, current.Id);
+            if (presets.Length > 0)
+                Line("Saved outfits: " + string.Join(", ", presets) + (request.Service == CraftingService.Extraction ? ". Extraction leaves these outfits with a missing item." : ". Upgrades stay attached to this item."), request.Service == CraftingService.Extraction ? PreviewLoss : PreviewMuted);
             if (EquipmentDetails.Source(current.DefinitionId) is { Length: > 0 } source) Line(source, PreviewMuted);
             Line("Item totals include base values and rolled affixes.", PreviewMuted);
             foreach (var stat in ItemStatRows(current, preview.Success ? projected : null))
@@ -111,6 +116,9 @@ public partial class CraftingWorkbench
         string power = request.Service == CraftingService.Extraction
             ? EquipmentDetails.Power(content.Items.Single(i => i.Id == item.DefinitionId).Property)
             : EquipmentDetails.Evolution(after.Items.Single(i => i.Id == item.Id).Evolution);
+        var presets = ProgressionSession.ItemPresetNames(preview.Before, item.Id);
+        if (request.Service == CraftingService.Extraction && presets.Length > 0)
+            warning += "\nSaved outfits affected: " + string.Join(", ", presets) + ". They will be missing this item until repaired.";
         // Keep the irreversible consequence, selected identity and exact projected costs visible.
         // Lore and the full stat comparison remain in the scrollable workbench behind this modal.
         return warning + $"\n\n{EquipmentNames.For(item.DefinitionId)} · {item.Rarity} · #{item.Id}\n\n" +

@@ -75,6 +75,9 @@ public partial class ProductionDirector : Node3D
             _character.EquipRequested += (id, slot) => Apply(() => _session.Equip(id, slot));
             _character.UnequipRequested += slot => Apply(() => _session.Unequip(slot));
             _character.DiscardRequested += id => Apply(() => _session.Discard(id, confirmPermanent: true));
+            _character.FavoriteRequested += (id, value) => Apply(() => _session.SetItemFavorite(id, value), reportLoot: true);
+            _character.LockRequested += (id, value) => Apply(() => _session.SetItemLocked(id, value), reportLoot: true);
+            _character.SalvageRequested += id => Apply(() => _session.Salvage(id, confirmPermanent: true), reportLoot: true);
             _character.CraftRequested += request => Apply(() => _session.Craft(request), reportCraft: true);
             _character.MutationRequested += (skill, mutation) => Apply(() => _session.SetMutation(skill, mutation), reportBuild: true);
             _character.ServiceRequested += id => Apply(() => _session.Interact(id));
@@ -155,17 +158,18 @@ public partial class ProductionDirector : Node3D
         }
         catch (Exception ex) { Fail(ex); return []; }
     }
-    private void Apply(Func<ProductionResult> action, bool reportCraft = false, bool reportBuild = false)
+    private void Apply(Func<ProductionResult> action, bool reportCraft = false, bool reportBuild = false, bool reportLoot = false)
     {
         Safely(() =>
         {
             var result = action();
-            if (!result.Success) { _journey.Notice(result.Reason); _character.Notice(result.Reason); if (reportCraft) _character.ReportCraftResult(false, result.Reason); if (reportBuild) _character.ReportBuildResult(false, result.Reason); return; }
+            if (!result.Success) { _journey.Notice(result.Reason); _character.Notice(result.Reason); if (reportCraft) _character.ReportCraftResult(false, result.Reason); if (reportBuild) _character.ReportBuildResult(false, result.Reason); if (reportLoot) _character.ReportLootManagementResult(false, result.Reason); return; }
             _revision++; Consume(result.WorldEvents);
             if (!ReferenceEquals(_sandbox.Session, _session.Combat)) _sandbox.AdoptSession(_session.Combat);
             Refresh();
             if (reportCraft) _character.ReportCraftResult(true, "");
             if (reportBuild) _character.ReportBuildResult(true, "");
+            if (reportLoot) _character.ReportLootManagementResult(true, "");
         });
     }
     private void Consume(IReadOnlyList<string> events)

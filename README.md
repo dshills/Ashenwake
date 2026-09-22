@@ -58,6 +58,8 @@ The [opening audio pass](docs/opening_audio.md) adds five original regional them
 
 Visit Greyhaven's **Training ground** to practice your current build against one target or a group and inspect damage, effect triggers, and resource usage. Practice grants no XP, mastery, or loot and leaves your character unchanged. At Torren, open **Gear → Equipment presets** to save and switch up to eight named outfits. See [training](docs/training_ground.md) and [equipment presets](docs/equipment_presets.md).
 
+In **Gear**, favorite or lock an item to protect it from discard, extraction and salvage. Filter the backpack by favorites, locked gear, unused items or saved outfits. Item details and permanent-removal confirmations identify affected outfits. At Torren, **Salvage selected item…** previews an exact material return before permanently consuming eligible unequipped gear. See [loot management](docs/loot_management.md).
+
 ## Start here
 
 Requires Git/Git LFS, Python 3, `curl`, `unzip`, `ripgrep`, and **Go 1.27.1**. The bootstrap installs **.NET SDK 8.0.425** and **Godot 4.6.2 Mono** inside ignored `.tools/`; it does not replace the system Godot. Supported bootstrap hosts are macOS Apple Silicon and Linux x86_64.

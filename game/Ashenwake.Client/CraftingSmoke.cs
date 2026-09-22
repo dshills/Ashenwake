@@ -186,10 +186,28 @@ public partial class CraftingSmoke : Node3D
         await Capture("crafting-graft-prerequisite.png");
         Check("grafting_inspection_spends_nothing", _session.StateHash == graftHash && _craftCalls == calls);
 
+        long legendary = Character.Items.Single(i => i.Rarity == ItemRarity.Legendary && i.DefinitionId == "item.echo_ring").Id;
+        WalkTo("service.torren");
+        var legendarySlot = content.Items.Single(d => d.Id == Item(legendary).DefinitionId).Slots.First();
+        long previous = Character.Equipment.GetValueOrDefault(legendarySlot);
+        Execute(new(ProductionAction.Equip, ItemId: legendary, Slot: legendarySlot));
+        Execute(new(ProductionAction.SaveEquipmentPreset, Id: "preset.1", Value: "Kesh's Last Echo"));
+        Execute(new(ProductionAction.Unequip, Slot: legendarySlot));
+        if (previous != 0 && previous != legendary) Execute(new(ProductionAction.Equip, ItemId: previous, Slot: legendarySlot));
+        Check("earned_legendary_recorded_in_outfit", _session.EquipmentPresets.Single().Equipment.Values.Contains(legendary));
         WalkTo("npc.kesh"); Refresh(); await Service(CraftingService.Extraction);
-        long legendary = Character.Items.Where(i => i.Rarity == ItemRarity.Legendary && content.Items.Single(d => d.Id == i.DefinitionId).Property.Length > 0)
-            .OrderBy(i => Character.Equipment.Values.Contains(i.Id)).ThenBy(i => i.Id).First().Id;
         Workbench.SelectItem(legendary); await Frames();
+        foreach (var action in new[] { ProductionAction.SetItemFavorite, ProductionAction.SetItemLocked })
+        {
+            Execute(new(action, ItemId: legendary, Value: "true")); Refresh(); await Frames();
+            Check("protected_extraction_preview_blocked_" + action, Workbench.Preview is { Success: false } && Find<Button>("CraftCommit").Disabled && Text().Contains("protect", StringComparison.OrdinalIgnoreCase));
+            string protectedHash = _session.StateHash;
+            var rejected = _session.Craft(new("", CraftingService.Extraction, legendary, ConfirmPermanent: true)); _commands++;
+            Check("protected_extraction_atomic_" + action, !rejected.Success && _session.StateHash == protectedHash && Character.Items.Any(i => i.Id == legendary));
+            await SaveReplay("protected-extraction-" + action);
+            Execute(new(action, ItemId: legendary, Value: "false")); Refresh(); await Frames();
+        }
+        Check("extraction_preview_names_saved_outfit", Workbench.PreviewText.Contains("Kesh's Last Echo", StringComparison.Ordinal));
         Check("extraction_preview_discloses_permanent_destruction", Workbench.Preview is { Success: true, RequiresConfirmation: true } &&
             (Text().Contains("destroy", StringComparison.OrdinalIgnoreCase) || Text().Contains("consum", StringComparison.OrdinalIgnoreCase)));
         await CancelExtraction();
@@ -209,6 +227,8 @@ public partial class CraftingSmoke : Node3D
         if (preview.RequiresConfirmation)
         {
             Check("destructive_craft_waits_for_confirmation_" + service, confirmation.Visible && _craftCalls == calls && JsonData.Hash(before) == JsonData.Hash(_session.Capture().Progression));
+            if (service == CraftingService.Extraction)
+                Check("extraction_confirmation_names_saved_outfit", confirmation.DialogText.Contains("Kesh's Last Echo", StringComparison.Ordinal));
             Check("permanent_confirmation_shows_exact_selected_item_and_materials_" + service,
                 confirmation.DialogText.Contains("#" + Workbench.SelectedItemId, StringComparison.Ordinal) &&
                 confirmation.DialogText.Contains($"Materials: {preview.Before.Character.Materials} → {preview.After.Character.Materials}", StringComparison.Ordinal));
@@ -243,11 +263,13 @@ public partial class CraftingSmoke : Node3D
     private async Task StaleConfirmation(long id)
     {
         var confirmation = Find<ConfirmationDialog>("CraftConfirmation");
-        foreach (string change in new[] { "selection", "session" })
+        foreach (string change in new[] { "selection", "session", "protection" })
         {
             Workbench.SelectItem(id); await Frames(); await Click(Find<Button>("CraftCommit"));
             Check("pending_confirmation_exists_before_" + change, confirmation.Visible);
             if (change == "selection") Workbench.SelectItem(_workingItem);
+            else if (change == "protection")
+            { Execute(new(ProductionAction.SetItemFavorite, ItemId: id, Value: "true")); Refresh(); }
             else
             {
                 var restored = ProductionSession.Restore(_combatJson, _adventure, _progression, _session.Capture());
@@ -259,6 +281,7 @@ public partial class CraftingSmoke : Node3D
             Check("context_change_hides_confirmation_" + change, !confirmation.Visible);
             confirmation.EmitSignal(ConfirmationDialog.SignalName.Confirmed); await Frames();
             Check("stale_confirmation_cannot_extract_after_" + change, _session.StateHash == hash && _craftCalls == calls && Character.Items.Any(i => i.Id == id));
+            if (change == "protection") { Execute(new(ProductionAction.SetItemFavorite, ItemId: id, Value: "false")); Refresh(); await Frames(); }
         }
         Workbench.SelectItem(id); await Frames();
     }
@@ -442,7 +465,7 @@ public partial class CraftingSmoke : Node3D
             dragGestures = _dragGestures,
             committedServices = _committed.Select(s => s.ToString()).Order().ToArray(),
             error,
-            scope = "A fresh ProductionSession earns dungeon rewards, rescues specialists and funds the workshop through legal commands. Viewport service buttons, target drag and commit buttons drive the shipping HUD. Dropdowns use public Select/ItemSelected; native confirmation signals test cancel/confirm after the real commit click, because synthetic headless viewport events do not route popup window keyboard input. Five actual service commits, exact preview results and costs, save/replay, pause, layouts and a legally depleted-materials branch are checked. Grafting is tested as an unawakened-item prerequisite only; no successful graft or endgame catalyst UI result is claimed."
+            scope = "A fresh ProductionSession earns dungeon rewards, rescues specialists and funds the workshop through legal commands. Viewport service buttons, target drag and commit buttons drive the shipping HUD. Dropdowns use public Select/ItemSelected; native confirmation signals test cancel/confirm after the real commit click, because synthetic headless viewport events do not route popup window keyboard input. Five actual service commits, exact preview results and costs, save/replay, pause, layouts and a legally depleted-materials branch are checked. An ordinarily earned legendary is equipped at Torren to save an outfit, then protected and unprotected at Kesh to verify extraction protection, preset warnings and stale protection confirmation cancellation. Grafting is tested as an unawakened-item prerequisite only; no successful graft or endgame catalyst UI result is claimed."
         };
         if (_writeReport) System.IO.File.WriteAllText(Path.Combine(_output, "crafting-review.json"), JsonData.Write(report));
         GD.Print(JsonData.Write(report)); GetTree().Quit(passed ? 0 : 1);

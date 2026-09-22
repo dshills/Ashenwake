@@ -15,6 +15,33 @@ public partial class GearDragCard : Button
     private bool _dragHighlighted;
     private GearItemIcon? _icon;
     private string _visualKey = "";
+    private Label? _managementBadge;
+
+    public void SetManagementBadges(bool favorite, bool locked, bool outfit)
+    {
+        if (_managementBadge is null)
+        {
+            _managementBadge = new Label
+            {
+                Name = "GearManagementBadge",
+                MouseFilter = MouseFilterEnum.Ignore,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                AnchorTop = 1,
+                AnchorBottom = 1,
+                OffsetLeft = 3,
+                OffsetRight = 39,
+                OffsetTop = -12,
+                OffsetBottom = -1
+            };
+            _managementBadge.AddThemeFontSizeOverride("font_size", 9);
+            _managementBadge.AddThemeColorOverride("font_color", new Color("f2d89f"));
+            AddChild(_managementBadge);
+        }
+        _managementBadge.Text = string.Join(" ", new[] { favorite ? "★" : "", locked ? "L" : "", outfit ? "◆" : "" }.Where(s => s.Length > 0));
+        _managementBadge.Visible = _managementBadge.Text.Length > 0;
+        MoveChild(_managementBadge, GetChildCount() - 1);
+    }
+
 
     public void SetItemVisual(string definitionId, EquipmentSlot slot, string discipline, ItemRarity? rarity)
     {

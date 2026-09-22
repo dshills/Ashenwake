@@ -212,6 +212,13 @@ public sealed partial class EndgameRuntimeSession
             var enabled = Campaign.Execute(new(CampaignRuntimeAction.EnableExplorationMap), recordReplay: false);
             return new(enabled.Success, enabled.Reason, enabled.CombatEvents, enabled.WorldEvents);
         }
+        if (command.Action == EndgameRuntimeAction.Production && command.Production is not null && ProductionSession.IsItemOrganizationAction(command.Production.Action))
+        {
+            if (!Combat.View.Actors.Any(actor => actor.Id == 1 && actor.Health > 0)) return Fail("Cannot organize equipment while defeated.");
+            var organized = Production.Execute(command.Production, recordReplay: false);
+            if (organized.Success) Tick++;
+            return new(organized.Success, organized.Reason, organized.CombatEvents, organized.WorldEvents);
+        }
         if (command.Action is EndgameRuntimeAction.Campaign or EndgameRuntimeAction.Production)
         {
             if (arena is not null) return Fail("Finish or abandon the endgame run before changing the campaign or permanent build.");

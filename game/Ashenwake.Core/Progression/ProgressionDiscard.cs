@@ -17,6 +17,7 @@ public sealed partial class ProgressionSession
     {
         var item = state.Character.Items.FirstOrDefault(item => item.Id == itemId);
         if (item is null) return "Select an item you own.";
+        if (ProtectionBlockedReason(item) is { Length: > 0 } protection) return protection;
         if (state.Character.Equipment.Values.Contains(itemId)) return "Unequip this item before discarding it.";
         // The adventure retains at least one Ashcleaver. Extra earned copies may be
         // discarded so even a very large Godwrought collection can free bag space.

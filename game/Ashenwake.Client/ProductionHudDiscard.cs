@@ -41,8 +41,8 @@ public partial class ProductionHud
     {
         int count = _state.Character.Items.Length;
         _rows.AddChild(Label(count >= 512
-            ? $"Inventory full · {count} owned. Discard unequipped items at Torren until fewer than 512 remain to collect more loot."
-            : $"{count}/512 items owned · discard unwanted equipment at Torren to free inventory space.", 12));
+            ? $"Inventory full · {count} owned. Salvage or discard unequipped items at Torren until fewer than 512 remain to collect more loot."
+            : $"{count}/512 items owned · salvage or discard unwanted equipment at Torren to free inventory space.", 12));
         string reason = DiscardRestriction(candidate?.Id ?? 0);
         var discard = Button("Discard selected item…", () => BeginDiscard(candidate!.Id));
         discard.Name = "DiscardItem"; discard.Disabled = reason.Length > 0;
@@ -59,17 +59,17 @@ public partial class ProductionHud
 
     private void BeginDiscard(long id)
     {
-        CancelDiscard();
+        CancelSalvage(); CancelDiscard();
         if (DiscardRestriction(id).Length > 0 || !IsVisibleInTree() || !_panel.Visible || _tab != "Gear") return;
         var item = _state.Character.Items.Single(i => i.Id == id);
         _pendingDiscard = id; _discardRevision = _revision; _discardCharacter = _state.Character.CharacterId;
         _discardSession = _discardSandbox?.Session;
         _discardConfirmation.DialogText = $"Discard {ItemTitle(item)}?\n\nThis permanently destroys this item, including its affixes and engraving. " +
             (item.Rarity == ItemRarity.Godwrought ? "This copy's burning kills and evolution will also be lost. " : "") +
-            "You receive no materials or other rewards. This cannot be undone.";
+            "You receive no materials or other rewards. This cannot be undone." + PresetDestructionWarning(ProgressionSession.ItemPresetNames(_state, id));
         _gearLoadout.CancelDrag();
         _discardSandbox?.SetModalPaused("gear-discard", true); _discardPauseHeld = _discardSandbox is not null;
-        _discardConfirmation.PopupCentered(new(Math.Min(560, (int)GetViewportRect().Size.X - 40), 270));
+        _discardConfirmation.PopupCentered(new(Math.Min(600, (int)GetViewportRect().Size.X - 40), 330));
         _discardConfirmation.GetCancelButton().GrabFocus();
     }
 
@@ -92,6 +92,6 @@ public partial class ProductionHud
 
     public override void _Notification(int what)
     {
-        if (what == NotificationApplicationFocusOut && IsInsideTree()) CancelDiscard();
+        if (what == NotificationApplicationFocusOut && IsInsideTree()) { CancelDiscard(); CancelSalvage(); }
     }
 }

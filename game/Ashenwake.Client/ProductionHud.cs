@@ -124,13 +124,14 @@ public partial class ProductionHud : Control
         _equipmentPresets.CloseRequested += () => { _tab = "Gear"; Rebuild(true); _tabs["Gear"].GrabFocus(); };
         _equipmentPresets.MinimumSizeChanged += QueuePanelLayout;
         BuildDiscardConfirmation();
+        BuildSalvageConfirmation();
         var close = new Button { Text = "Close character" }; close.Pressed += Toggle; column.AddChild(close);
         GetViewport().SizeChanged += LayoutPanel;
-        _panel.VisibilityChanged += () => { if (!_panel.Visible) { CancelDiscard(); _equipmentPresets.CancelInteraction(); } UpdateCraftModal(); };
-        VisibilityChanged += () => { if (!IsVisibleInTree()) { CancelDiscard(); _gearInspecting = false; _gearLoadout.CancelDrag(); _craftingWorkbench.CancelInteraction(); _skillsPanel.CancelInteraction(); _equipmentPresets.CancelInteraction(); } UpdateCraftModal(); };
+        _panel.VisibilityChanged += () => { if (!_panel.Visible) { CancelDiscard(); CancelSalvage(); _equipmentPresets.CancelInteraction(); } UpdateCraftModal(); };
+        VisibilityChanged += () => { if (!IsVisibleInTree()) { CancelDiscard(); CancelSalvage(); _gearInspecting = false; _gearLoadout.CancelDrag(); _craftingWorkbench.CancelInteraction(); _skillsPanel.CancelInteraction(); _equipmentPresets.CancelInteraction(); } UpdateCraftModal(); };
     }
 
-    public override void _ExitTree() { CancelDiscard(); _equipmentPresets?.CancelInteraction(); GetViewport().SizeChanged -= LayoutPanel; }
+    public override void _ExitTree() { CancelDiscard(); CancelSalvage(); _equipmentPresets?.CancelInteraction(); GetViewport().SizeChanged -= LayoutPanel; }
     public void Toggle() { _panel.Visible = !_panel.Visible; if (_panel.Visible) { Rebuild(true); _firstTab.GrabFocus(); } else _gearInspecting = false; }
     public void Close() { _panel.Hide(); _gearInspecting = false; }
     public void ToggleInventory()
@@ -177,6 +178,7 @@ public partial class ProductionHud : Control
         _view = view; _state = state; _content = content; _combat = combat; _interactions = interactions; _inTown = inTown; _revision = revision; _openingRewards = openingRewards;
         if (_gearInspecting && _gearItemId != 0 && !state.Character.Items.Any(i => i.Id == _gearItemId)) _gearInspecting = false;
         SynchronizeDiscard();
+        SynchronizeSalvage();
         _unlockedMutations = unlockedMutations;
         _rangeMask = 0;
         for (int i = 0; i < interactions.Count; i++) if (interactions[i].Distance <= interactions[i].Range) _rangeMask |= 1 << i;
@@ -190,7 +192,7 @@ public partial class ProductionHud : Control
     }
     private void Rebuild(bool force)
     {
-        if (_tab != "Gear") CancelDiscard();
+        if (_tab != "Gear") { CancelDiscard(); CancelSalvage(); }
         if (_view is null || !_panel.Visible || (!force && _renderedRevision == _revision && _renderedRangeMask == _rangeMask)) return;
         _renderedRevision = _revision; _renderedRangeMask = _rangeMask;
         LayoutPanel();
@@ -253,7 +255,7 @@ public partial class ProductionHud : Control
     private void UpdateCraftModal()
     {
         if (_craftingBackdrop is null || _panel is null || !IsInsideTree()) return;
-        bool open = IsVisibleInTree() && _panel.Visible && (_tab is "Craft" or "Skills" or "Presets");
+        bool open = IsVisibleInTree() && _panel.Visible && (_tab is "Gear" or "Craft" or "Skills" or "Presets");
         _craftingBackdrop.Visible = open; _panel.MouseForcePassScrollEvents = !open;
         if (open && _craftingSiblingIndex < 0)
         { _craftingSiblingIndex = GetIndex(); GetParent().MoveChild(this, GetParent().GetChildCount() - 1); }
@@ -347,6 +349,7 @@ public partial class ProductionHud : Control
             var reset = Button("Show equipped item", () => { _gearInspecting = false; Rebuild(true); });
             reset.Name = "ResetGearPreview";
         }
+        AddLootManagementControls(candidate);
         AddDiscardControls(candidate);
         if (_gearSlot is not (EquipmentSlot.MainHand or EquipmentSlot.OffHand or EquipmentSlot.Head or EquipmentSlot.Chest))
             _rows.AddChild(Label("This slot changes stats. The model displays your weapon, off hand, helmet and chest armor.", 12));

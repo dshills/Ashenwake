@@ -257,13 +257,19 @@ public sealed partial class CampaignRuntimeSession
             case CampaignRuntimeAction.InteractHollow: return InteractHollow(command.Id);
             case CampaignRuntimeAction.RevisitEncounter: return HasHollowExploration && state.CurrentAct == 5 ? RevisitHollowPassage(command.Id) : HasSpineExploration && state.CurrentAct == 4 ? RevisitSpinePassage(command.Id) : HasCinderExploration && state.CurrentAct == 3 ? RevisitCinderPassage(command.Id) : HasVerdantExploration && state.CurrentAct == 2 ? RevisitVerdantPassage(command.Id) : RevisitOpeningRoom(command.Id);
             case CampaignRuntimeAction.Production:
+                if (command.Production is not null && ProductionSession.IsItemOrganizationAction(command.Production.Action))
+                {
+                    if (!Combat.View.Actors.Any(actor => actor.Id == 1 && actor.Health > 0)) return Failed("Cannot organize equipment while defeated.");
+                    var organized = Production.Execute(command.Production, recordReplay: false);
+                    return new(organized.Success, organized.Reason, organized.CombatEvents, organized.WorldEvents);
+                }
                 if (!state.InHub || command.Production is null) return Failed("Permanent services require Greyhaven.");
                 if (command.Production.Action == ProductionAction.Expedition && command.Production.Expedition?.Action is not (ExpeditionAction.Interact or ExpeditionAction.InstallFragment or ExpeditionAction.Manifestation))
                     return Failed("Campaign travel uses the campaign map.");
                 if (command.Production.Expedition?.Id == "dungeon.replay") return Failed("Campaign regions keep their own completion history.");
                 string specialist = command.Production.Action switch
                 {
-                    ProductionAction.Equip or ProductionAction.Unequip or ProductionAction.Discard or ProductionAction.SaveEquipmentPreset or
+                    ProductionAction.Equip or ProductionAction.Unequip or ProductionAction.Discard or ProductionAction.Salvage or ProductionAction.SaveEquipmentPreset or
                         ProductionAction.RenameEquipmentPreset or ProductionAction.DeleteEquipmentPreset or ProductionAction.ApplyEquipmentPreset => "service.torren",
                     ProductionAction.Craft => command.Production.Crafting?.Service switch
                     { CraftingService.Tempering => "service.torren", CraftingService.Rebinding => "npc.oris", CraftingService.Engraving => "hub.workshops", CraftingService.Extraction => "npc.kesh", CraftingService.Purification => "npc.cael", _ => "service.mara" },

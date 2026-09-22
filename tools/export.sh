@@ -43,6 +43,12 @@ mkdir -p "$training_output"
 python3 tools/check-godot-log.py "$training_output/smoke.log"
 python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["passed"]' "$training_output/training-review.json"
 
+loot_management_output="$package_output/loot-management-client"
+mkdir -p "$loot_management_output"
+"$binary" --headless --quit-after 16000 --log-file "$loot_management_output/smoke.log" -- --loot-management-smoke --discipline=Vanguard --output="$loot_management_output"
+python3 tools/check-godot-log.py "$loot_management_output/smoke.log"
+python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["passed"]' "$loot_management_output/loot-management-review.json"
+
 mouse_output="$package_output/mouse-client"
 mkdir -p "$mouse_output"
 "$binary" --headless --quit-after 2400 --log-file "$mouse_output/smoke.log" -- --mouse-movement-smoke --output="$mouse_output"
