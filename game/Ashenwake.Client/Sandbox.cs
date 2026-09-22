@@ -137,6 +137,7 @@ public partial class Sandbox : Node3D
             if (showAllLootHeld != _showAllLootHeld)
             { _showAllLootHeld = showAllLootHeld; SynchronizeLootVisuals(); _lootSignature = ""; }
             AnimatePresentation(delta, _clock.Alpha, _target); UpdateEnvironmentAtmosphere(delta); UpdateNavigationNotice(delta); UpdateWorldHover(delta); RefreshHud(); RefreshLootInspector();
+            _openingAudio.Advance(delta, _view, IsPaused, _camera.GlobalBasis);
             AdvanceRewardPresentation(delta); LayoutSettings(); RefreshLocalMapPresentation();
             _frames++; Sample(_frameCosts, Stopwatch.GetElapsedTime(watch).TotalMilliseconds);
             if (_frames > 10) Sample(_frameIntervals, delta * 1000);

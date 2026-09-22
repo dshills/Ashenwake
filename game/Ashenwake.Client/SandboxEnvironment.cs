@@ -26,6 +26,7 @@ public partial class Sandbox
     {
         if (_environmentStyle == style) return;
         _environmentStyle = style;
+        _openingAudio.SetStyle(style);
         bool hub = style == "greyhaven", sanctum = style == "sanctum";
         var environment = _worldEnvironment.Environment;
         environment.BackgroundColor = new Color(hub ? "182727" : sanctum ? "202831" : "18272d");

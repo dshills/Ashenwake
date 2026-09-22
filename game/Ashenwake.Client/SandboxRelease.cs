@@ -99,6 +99,7 @@ public partial class Sandbox
     {
         CancelMouseMovement(false);
         _clock.Paused = paused || _manualPause || _interruptionPause || HasModalPause;
+        _openingAudio?.SetPaused(_clock.Paused);
         _pending.Clear(); _pending.Add(new(CombatCommandKind.Stop));
         _moveX = _moveZ = int.MinValue;
         _awaitingKey = null;

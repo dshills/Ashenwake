@@ -90,6 +90,18 @@
       "rightsStatus": "Project-authored source; final contributor names and distribution terms remain owner decisions.",
       "redistributionApproved": false,
       "requiredCredit": "Ashenwake project contributors; final release credits await owner declaration."
+    },
+    {
+      "id": "asset.procedural_opening_audio",
+      "name": "Original Greyhaven and Grey March adaptive score, terrain footsteps, combat impacts and Bell Saint warnings",
+      "sourceFiles": [
+        "game/Ashenwake.Client/OpeningScore.cs",
+        "game/Ashenwake.Client/OpeningFoley.cs"
+      ],
+      "origin": "Composed and synthesized in the Ashenwake repository; no downloaded music, recordings or audio samples.",
+      "rightsStatus": "Project-authored source. The repository does not yet declare a distribution license or owner approval.",
+      "redistributionApproved": false,
+      "requiredCredit": "Ashenwake project contributors; final release credit names and distribution terms await the owner."
     }
   ],
   "thirdPartyRuntimeNotices": [

@@ -1,0 +1,244 @@
+using System.Buffers.Binary;
+using System.Security.Cryptography;
+using Godot;
+
+namespace Ashenwake.Client;
+
+public sealed record OpeningFoleyCue(string Id, string Category, double DurationSeconds, float SuggestedGainDb,
+    bool IsWarning, string Description);
+public sealed record OpeningFoleyAnalysis(int Frames, double DurationSeconds, double PeakAbsolute, double Rms,
+    double MaxAdjacentDelta, short FirstSample, short LastSample, int FullScaleSamples, string Sha256);
+
+/// <summary>Original opening-region foley. Pure deterministic synthesis is independent of gameplay state;
+/// cached Godot streams are created/accessed on the scene thread. PCM16 mono, no loops or external assets.</summary>
+public static class OpeningFoley
+{
+    public const int SampleRate = 22050;
+    public const double PeakCeiling = .78;
+    private static readonly Dictionary<string, AudioStreamWav> Streams = new(StringComparer.Ordinal);
+    public static IReadOnlyList<OpeningFoleyCue> Cues { get; } = Array.AsReadOnly<OpeningFoleyCue>(
+    [
+        new("step_dirt_1", "footstep", .30, -17, false, "Weighted heel, granular ash compression and cloth toe-off."),
+        new("step_dirt_2", "footstep", .32, -17, false, "Loose grit dispersal with a softer leather heel."),
+        new("step_dirt_3", "footstep", .29, -17, false, "Firm earth contact and a short dragging crunch."),
+        new("step_stone_1", "footstep", .34, -18, false, "Hard sole contact, stone body resonance and a quiet armor buckle."),
+        new("step_stone_2", "footstep", .31, -18, false, "Rounded heel on broken paving with a dry toe tap."),
+        new("step_stone_3", "footstep", .36, -18, false, "Chipped-stone scuff with a lower heel and trailing grit."),
+        new("impact_weapon", "impact", .52, -10, false, "Low physical weight, a sharp cutting transient and a short blade ring."),
+        new("impact_armor", "impact", .68, -11, false, "Broad plate body, irregular metal partials and loose fastening rattle."),
+        new("impact_spell", "impact", .82, -11, false, "Air-pressure crack, unstable glass resonances and a falling breath tail."),
+        new("guard_tell", "enemy_tell", 1.05, -10, true, "Funeral guard: chain-weight scrape and a dry, low chest rasp."),
+        new("archer_tell", "enemy_tell", .86, -11, true, "Memory archer: inhaled whisper, glass harmonics and a tense string release."),
+        new("crypt_tell", "enemy_tell", 1.12, -10, true, "Crypt creature: bone clicks, guttering throat and a rough exhalation."),
+        new("saint_tell", "enemy_tell", 1.30, -10, true, "Bell Saint: a ruined brass throat drawing breath behind moving chains."),
+        new("bell_phase2", "phase_warning", 1.85, -9, true, "Two iron-cage blows descend into a low ritual resonance."),
+        new("bell_phase3", "phase_warning", 1.95, -9, true, "Three fractured bells answer a released creature's coarse breath."),
+        new("low_health", "status_warning", .72, -14, true, "A restrained double heartbeat with a dry upper warning texture.")
+    ]);
+    public static IReadOnlyList<string> CueNames { get; } = Array.AsReadOnly(Cues.Select(c => c.Id).ToArray());
+    public static int CachedStreamCount => Streams.Count;
+
+    public static OpeningFoleyCue Describe(string cue) => Cues.FirstOrDefault(c => c.Id == cue)
+        ?? throw new ArgumentException("Unknown opening foley cue: " + cue, nameof(cue));
+
+    /// <summary>Use a presentation-only step counter. Negative counters are also deterministic.</summary>
+    public static string FootstepCue(string surface, long cosmeticStepIndex)
+    {
+        if (surface is not ("dirt" or "stone")) throw new ArgumentException("Opening footstep surface must be dirt or stone.", nameof(surface));
+        int variant = (int)((cosmeticStepIndex % 3 + 3) % 3) + 1;
+        return "step_" + surface + "_" + variant;
+    }
+
+    public static void Prewarm()
+    {
+        foreach (string cue in CueNames) GetStream(cue);
+    }
+
+    public static AudioStreamWav GetStream(string cue)
+    {
+        if (Streams.TryGetValue(cue, out var cached)) return cached;
+        byte[] samples = CreateSamples(cue);
+        var stream = new AudioStreamWav
+        {
+            Format = AudioStreamWav.FormatEnum.Format16Bits,
+            MixRate = SampleRate,
+            Stereo = false,
+            LoopMode = AudioStreamWav.LoopModeEnum.Disabled,
+            Data = samples
+        };
+        Streams.Add(cue, stream);
+        return stream;
+    }
+
+    public static byte[] CreateSamples(string cue)
+    {
+        var metadata = Describe(cue);
+        int kind = 0;
+        while (CueNames[kind] != cue) kind++; // Describe already validated this small immutable catalog.
+        int frames = (int)Math.Ceiling(metadata.DurationSeconds * SampleRate);
+        var bytes = new byte[frames * sizeof(short)];
+        uint noiseState = unchecked(0xAF2C71B9u + (uint)kind * 0x68E31DA4u);
+        double low = 0, middle = 0, smooth = 0;
+        for (int frame = 0; frame < frames; frame++)
+        {
+            double time = frame / (double)SampleRate;
+            noiseState ^= noiseState << 13; noiseState ^= noiseState >> 17; noiseState ^= noiseState << 5;
+            double noise = noiseState / (double)uint.MaxValue * 2 - 1;
+            low += (noise - low) * .018;
+            middle += (noise - middle) * .12;
+            smooth += (noise - smooth) * .42;
+            double grain = noise - smooth, breath = middle - low;
+            double signal = kind switch
+            {
+                0 or 1 or 2 => DirtStep(time, kind, low, middle, grain),
+                3 or 4 or 5 => StoneStep(time, kind - 3, low, middle, grain),
+                6 => WeaponImpact(time, middle, grain),
+                7 => ArmorImpact(time, middle, grain),
+                8 => SpellImpact(time, low, breath, grain),
+                9 => GuardTell(time, low, breath, grain),
+                10 => ArcherTell(time, breath, grain),
+                11 => CryptTell(time, low, breath, grain),
+                12 => SaintTell(time, low, breath, grain),
+                13 => PhaseTwo(time, low, breath, grain),
+                14 => PhaseThree(time, low, breath, grain),
+                15 => LowHealth(time, middle, grain),
+                _ => throw new InvalidOperationException("Opening foley metadata and synthesis differ.")
+            };
+            // A two-millisecond entrance removes discontinuities; all tails taper to exact silence.
+            // Headroom is fixed across the library, with metadata gains applied by the caller's mixer.
+            double edge = Math.Min(1, frame / (SampleRate * .002)) * Math.Min(1, (frames - 1 - frame) / (SampleRate * .055));
+            short pcm = (short)Math.Round(Math.Tanh(signal * 1.12) * PeakCeiling * edge * short.MaxValue);
+            BinaryPrimitives.WriteInt16LittleEndian(bytes.AsSpan(frame * sizeof(short), sizeof(short)), pcm);
+        }
+        return bytes;
+    }
+
+    public static OpeningFoleyAnalysis AnalyzeSamples(byte[] samples)
+    {
+        ArgumentNullException.ThrowIfNull(samples);
+        if (samples.Length < sizeof(short) * 2 || samples.Length % sizeof(short) != 0)
+            throw new ArgumentException("Expected nonempty mono PCM16 samples.", nameof(samples));
+        double peak = 0, squareSum = 0, adjacent = 0; int fullScale = 0;
+        short first = BinaryPrimitives.ReadInt16LittleEndian(samples.AsSpan(0, sizeof(short))), prior = first;
+        for (int index = 0; index < samples.Length; index += sizeof(short))
+        {
+            short sample = BinaryPrimitives.ReadInt16LittleEndian(samples.AsSpan(index, sizeof(short)));
+            double normalized = sample / (double)short.MaxValue;
+            peak = Math.Max(peak, Math.Abs(normalized)); squareSum += normalized * normalized;
+            adjacent = Math.Max(adjacent, Math.Abs(sample - prior) / (double)short.MaxValue);
+            if (sample is short.MaxValue or short.MinValue) fullScale++;
+            prior = sample;
+        }
+        int frames = samples.Length / sizeof(short);
+        return new(frames, frames / (double)SampleRate, peak, Math.Sqrt(squareSum / frames), adjacent,
+            first, prior, fullScale, Convert.ToHexString(SHA256.HashData(samples)));
+    }
+
+    public static byte[] CreateWaveFile(string cue)
+    {
+        byte[] pcm = CreateSamples(cue), wave = new byte[44 + pcm.Length];
+        "RIFF"u8.CopyTo(wave); BinaryPrimitives.WriteInt32LittleEndian(wave.AsSpan(4), wave.Length - 8);
+        "WAVEfmt "u8.CopyTo(wave.AsSpan(8)); BinaryPrimitives.WriteInt32LittleEndian(wave.AsSpan(16), 16);
+        BinaryPrimitives.WriteInt16LittleEndian(wave.AsSpan(20), 1); BinaryPrimitives.WriteInt16LittleEndian(wave.AsSpan(22), 1);
+        BinaryPrimitives.WriteInt32LittleEndian(wave.AsSpan(24), SampleRate); BinaryPrimitives.WriteInt32LittleEndian(wave.AsSpan(28), SampleRate * 2);
+        BinaryPrimitives.WriteInt16LittleEndian(wave.AsSpan(32), 2); BinaryPrimitives.WriteInt16LittleEndian(wave.AsSpan(34), 16);
+        "data"u8.CopyTo(wave.AsSpan(36)); BinaryPrimitives.WriteInt32LittleEndian(wave.AsSpan(40), pcm.Length);
+        pcm.CopyTo(wave, 44); return wave;
+    }
+
+    private static double DirtStep(double t, int variant, double low, double mid, double grain)
+    {
+        double pitch = 1 + (variant - 1) * .032, toe = .095 + variant * .011;
+        return .34 * Envelope(t, .004, 24) * (Sweep(112 * pitch, 48 * pitch, t, .22) + .55 * low) +
+            .70 * mid * Swell(t, .002, .20 + variant * .016) +
+            .30 * grain * (Burst(t, .011, 90) + .6 * Burst(t, .047 + variant * .006, 62) + .3 * Burst(t, .136, 60)) +
+            .12 * Modal(t - toe, 148 * pitch, 35, 1.87, 3.42) + .28 * low * Swell(t, toe, .28);
+    }
+
+    private static double StoneStep(double t, int variant, double low, double mid, double grain)
+    {
+        double pitch = 1 + (variant - 1) * .026, toe = .105 + variant * .012;
+        return .32 * Sweep(126 * pitch, 58, t, .24) * Envelope(t, .002, 24) +
+            .32 * Modal(t, 224 * pitch, 28, 2.73, 5.16) + .23 * grain * Burst(t, .003, 85) +
+            .16 * Modal(t - toe, 372 * pitch, 32, 2.18, 4.51) +
+            .11 * Modal(t - toe - .018, 717, 45, 1.41, 2.47) +
+            (.32 * mid + .16 * low) * Swell(t, .038, .29 + variant * .012);
+    }
+
+    private static double WeaponImpact(double t, double mid, double grain)
+        => .60 * Sweep(158, 47, t, .30) * Envelope(t, .0015, 17) +
+            .44 * grain * Envelope(t, .001, 57) + .24 * mid * Swell(t, .009, .29) +
+            .26 * Modal(t - .008, 657, 13, 1.79, 3.43) + .11 * Modal(t - .032, 117, 20, 2.57, 4.11);
+
+    private static double ArmorImpact(double t, double mid, double grain)
+        => .43 * Modal(t, 188, 10, 2.814, 6.633) + .24 * Modal(t - .004, 533, 17, 2.33, 4.11) +
+            .22 * grain * Envelope(t, .001, 68) + .27 * mid * Swell(t, .018, .32) +
+            .12 * Modal(t - .092, 841, 29, 1.43, 2.89) + .075 * Modal(t - .156, 692, 32, 2.19, 3.71);
+
+    private static double SpellImpact(double t, double low, double breath, double grain)
+        => .36 * Sweep(282, 56, t, .55) * Envelope(t, .008, 7) + .38 * grain * Envelope(t, .001, 41) +
+            .29 * Modal(t - .018, 246, 5.7, 2.77, 4.43) +
+            .18 * Math.Sin(Math.Tau * 683 * t + 1.9 * Wave(21, t)) * Envelope(t, .019, 7.5) +
+            (.66 * breath + .55 * low) * Swell(t, .021, .76);
+
+    private static double GuardTell(double t, double low, double breath, double grain)
+        => .26 * Modal(t - .012, 327, 23, 2.17, 4.61) + .17 * Modal(t - .138, 483, 27, 1.89, 3.47) +
+            (.83 * breath + .30 * grain) * Swell(t, .02, .41) +
+            (.32 * Throat(t, 83, 5.7) + .62 * low + .32 * breath * (.6 + .4 * Wave(29, t))) * Swell(t, .22, 1.01);
+
+    private static double ArcherTell(double t, double breath, double grain)
+        => (.80 * breath + .17 * grain) * Swell(t, .005, .43) +
+            .16 * Math.Sin(Math.Tau * 347 * t + .95 * Wave(7, t)) * Swell(t, .05, .67) +
+            .20 * Modal(t - .30, 621, 7.5, 1.607, 2.417) + .19 * Modal(t - .325, 177, 20, 3.03, 5.11) +
+            .18 * grain * Burst(t, .329, 86);
+
+    private static double CryptTell(double t, double low, double breath, double grain)
+        => .17 * Modal(t, 407, 28, 2.47, 4.19) + .12 * Modal(t - .13, 563, 33, 1.79, 3.53) +
+            .10 * Modal(t - .237, 347, 29, 2.39, 5.07) +
+            (.28 * Throat(t, 63, 7.1) + .65 * low + .59 * breath * (.6 + .4 * Wave(22, t))) * Swell(t, .025, 1.03) +
+            .18 * grain * Swell(t, .42, .89);
+
+    private static double SaintTell(double t, double low, double breath, double grain)
+        => (.25 * Throat(t, 54, 3.9) + .45 * low + .64 * breath) * Swell(t, .02, 1.16) +
+            .28 * Modal(t - .039, 148, 3.9, 2.14, 4.129) +
+            .13 * Modal(t - .183, 719, 24, 1.53, 2.77) + .095 * Modal(t - .292, 531, 28, 1.89, 3.41) +
+            .12 * grain * (Burst(t, .04, 80) + .6 * Burst(t, .185, 85));
+
+    private static double PhaseTwo(double t, double low, double breath, double grain)
+        => .50 * Modal(t, 157, 3.1, 2.756, 5.404) + .36 * Modal(t - .36, 110, 2.7, 2.756, 5.404) +
+            .34 * grain * (Burst(t, .003, 70) + .8 * Burst(t, .363, 60)) +
+            .19 * Modal(t - .115, 943, 25, 1.43, 2.77) + .15 * Modal(t - .224, 677, 29, 2.13, 3.37) +
+            (.51 * low + .45 * breath + .14 * Throat(t, 63, 4.3)) * Swell(t, .32, 1.76);
+
+    private static double PhaseThree(double t, double low, double breath, double grain)
+        => .41 * Modal(t, 123, 2.5, 2.756, 5.404) + .30 * Modal(t - .215, 194, 3.1, 2.713, 5.39) +
+            .28 * Modal(t - .435, 259, 3.7, 2.79, 5.417) +
+            .21 * grain * (Burst(t, .003, 80) + Burst(t, .219, 80) + Burst(t, .437, 80)) +
+            (.52 * low + .57 * breath * (.7 + .3 * Wave(19, t)) + .18 * Throat(t, 71, 5.1)) * Swell(t, .37, 1.78);
+
+    private static double LowHealth(double t, double mid, double grain)
+        => .33 * Heart(t) + .23 * Heart(t - .205) +
+            .10 * mid * (Burst(t, .018, 35) + .6 * Burst(t, .221, 38)) + .025 * grain * Swell(t, .015, .55);
+
+    private static double Heart(double t) => t < 0 ? 0 : Envelope(t, .008, 19) * (Wave(64, t) + .27 * Wave(137, t));
+    private static double Throat(double t, double fundamental, double flutter)
+        => Math.Sin(Math.Tau * fundamental * t + .6 * Wave(flutter, t)) +
+            .35 * Math.Sin(Math.Tau * fundamental * 2.03 * t + .8 * Wave(flutter * 1.71, t)) + .16 * Wave(fundamental * 4.11, t);
+    private static double Wave(double frequency, double time) => Math.Sin(Math.Tau * frequency * time);
+    private static double Sweep(double from, double to, double time, double duration)
+        => Math.Sin(Math.Tau * (from * time + .5 * (to - from) * time * time / duration));
+    private static double Envelope(double time, double attack, double decay)
+        => time < 0 ? 0 : Math.Min(1, time / attack) * Math.Exp(-time * decay);
+    private static double Burst(double time, double start, double decay) => Envelope(time - start, .0015, decay);
+    private static double Swell(double time, double start, double end)
+    {
+        double progress = (time - start) / (end - start);
+        return progress is <= 0 or >= 1 ? 0 : Math.Pow(Math.Sin(progress * Math.PI), 1.35);
+    }
+    private static double Modal(double time, double fundamental, double decay, double partial2, double partial3)
+    {
+        if (time < 0) return 0;
+        return Envelope(time, .0015, decay) * (.68 * Wave(fundamental, time) + .22 * Wave(fundamental * partial2, time)) +
+            Envelope(time, .001, decay * 1.8) * .13 * Wave(fundamental * partial3, time);
+    }
+}

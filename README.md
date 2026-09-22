@@ -34,6 +34,8 @@ Press **B** for the visual expedition board: inspect Sigil cards and connected r
 
 The [campaign pacing pass](docs/campaign_pacing.md) smooths level gains across all five acts, gives optional testaments useful craftable affixes, and adds **Walk to the Fracture gate** to the expedition board. Existing saves retain earned equipment and receive any earlier XP difference once.
 
+The [opening audio pass](docs/opening_audio.md) adds five original regional themes, adaptive combat and Bell Saint layers, terrain footsteps, richer impacts and creature warnings. Music ducks for important cues and respects the existing Music and Effects controls.
+
 ## Start here
 
 Requires Git/Git LFS, Python 3, `curl`, `unzip`, `ripgrep`, and **Go 1.27.1**. The bootstrap installs **.NET SDK 8.0.425** and **Godot 4.6.2 Mono** inside ignored `.tools/`; it does not replace the system Godot. Supported bootstrap hosts are macOS Apple Silicon and Linux x86_64.

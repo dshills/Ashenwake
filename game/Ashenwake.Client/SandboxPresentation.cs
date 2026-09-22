@@ -366,6 +366,7 @@ public partial class Sandbox
     private void BuildAudio()
     {
         ClientAudio.EnsureBuses();
+        _openingAudio = new OpeningAudio { Name = "OpeningAudio" }; AddChild(_openingAudio);
         _combatEffects = new CombatEffects { Name = "CombatEffects" }; AddChild(_combatEffects);
         foreach (string cue in CombatAudio.CueNames)
             _tones[cue] = new AudioStreamWav { Format = AudioStreamWav.FormatEnum.Format16Bits, MixRate = 22050, Data = CombatAudio.CreateSamples(cue) };
@@ -382,6 +383,7 @@ public partial class Sandbox
         _lastSounds[kind] = _cosmeticTime;
         // Leave two channels for important boss and incoming-attack cues.
         bool important = kind is "bell" or "chain" or "victory" or "tell";
+        if (important || kind is "loot_legendary" or "loot_godwrought") _openingAudio.Emphasize(kind == "victory" ? 2.5f : 1);
         int slot = important ? 6 + _importantVoiceIndex++ % 2 : _voiceIndex++ % 6;
         var voice = _voices[slot]; voice.Stream = stream; voice.StreamPaused = IsPaused; voice.Play();
     }
@@ -399,6 +401,7 @@ public partial class Sandbox
         _lastOathChargeCue = -30;
         _lootDropCues.Reset(_session.View.Loot);
         foreach (var voice in _voices) voice.Stop();
+        _openingAudio?.Reset(_session.View);
         _shake = 0;
     }
     private MeshInstance3D Box(Vector3 size, Vector3 position, Color color)

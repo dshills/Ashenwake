@@ -133,6 +133,13 @@ mkdir -p "$visual_output"
 python3 tools/check-godot-log.py "$visual_output/smoke.log"
 rg -q 'VisualClientSmokePassed' "$visual_output/smoke.log"
 
+opening_audio_output="$package_output/opening-audio-client"
+mkdir -p "$opening_audio_output"
+"$binary" --headless --quit-after 24000 --log-file "$opening_audio_output/smoke.log" -- --opening-audio-smoke --output="$opening_audio_output"
+python3 tools/check-godot-log.py "$opening_audio_output/smoke.log"
+rg -q 'OpeningAudioClientSmokePassed' "$opening_audio_output/smoke.log"
+aw campaign replay "$opening_audio_output/opening-audio.awcampaign"
+
 combat_feedback_output="$package_output/combat-feedback-client"
 mkdir -p "$combat_feedback_output"
 "$binary" --headless --quit-after 1200 --log-file "$combat_feedback_output/smoke.log" -- --combat-feedback-smoke --output="$combat_feedback_output"

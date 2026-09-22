@@ -66,7 +66,8 @@ public partial class Sandbox
                 case "BossPatternStarted":
                 case "CampaignHazardWarned":
                     if (actor is not null && direction.LengthSquared() > .001f) actor.Facing = direction;
-                    if (e.ActorId != 1) PlayTone("tell");
+                    if (_view.Actors.Any(a => a.Id == e.ActorId && a.Faction == CombatFaction.Enemy) &&
+                        !PlayOpeningTell(e, actor?.Current ?? Vector3.Zero)) PlayTone("tell");
                     break;
                 case "AbilityResolved":
                 case "EliteAbilityResolved":
@@ -104,12 +105,14 @@ public partial class Sandbox
                     if (target is null) break;
                     if (!target.Windup) target.Body.React("hit");
                     _combatEffects.Emit("hit", target.Current, direction, _ember, _reduceEffects);
-                    Feedback(targetId, $"−{e.Amount}", "hit"); PlayTone("hit");
+                    Feedback(targetId, $"−{e.Amount}", "hit");
+                    if (!PlayOpeningImpact(e, target.Current)) PlayTone("hit");
                     if (targetId == 1) _shake = Math.Max(_shake, .25);
                     break;
                 case "BarrierAbsorbed":
                     if (target is not null) _combatEffects.Emit("block", target.Current, direction, _mint, _reduceEffects);
-                    Feedback(targetId, $"BLOCK {e.Amount}", "heal"); PlayTone("armor"); break;
+                    Feedback(targetId, $"BLOCK {e.Amount}", "heal");
+                    if (!_openingAudio.Play("impact_armor", target?.Current ?? Vector3.Zero)) PlayTone("armor"); break;
                 case "Healed": Feedback(targetId, $"+{e.Amount}", "heal"); PlayTone("heal"); break;
                 case "LegendaryReadied":
                 case "LegendaryCharged":
@@ -127,7 +130,8 @@ public partial class Sandbox
                 case "BossPhaseChanged":
                     if (actor is null) break;
                     _combatEffects.Emit("phase", actor.Current, Vector3.Forward, new Color("cfb1e6"), _reduceEffects);
-                    PlayTone(e.Amount >= 3 ? "chain" : "bell"); break;
+                    if (!_openingAudio.Play(e.Amount >= 3 ? "bell_phase3" : "bell_phase2", actor.Current))
+                        PlayTone(e.Amount >= 3 ? "chain" : "bell"); break;
                 case "LootDropped":
                     var drop = _lootDropCues.Observe(e, _view.Loot);
                     if (drop is null || !IsLootVisible(drop)) break;
@@ -143,6 +147,7 @@ public partial class Sandbox
                 case "EffectBudgetExceeded": Message("Effect safety budget reached; see event log for origin."); break;
             }
         }
+        _openingAudio.Observe(_view, events.Any(e => e.Kind == "Dodged" && e.ActorId == 1));
     }
 
     private static Color SkillColor(CombatSkill? skill) => skill?.Family switch
