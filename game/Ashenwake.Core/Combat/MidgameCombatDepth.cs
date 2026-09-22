@@ -7,7 +7,7 @@ public sealed partial class CombatSession
     private const string SporeMend = "campaign.spore_mend", ForgeBellows = "campaign.forge_bellows";
     private const int SupportRadius = 3000, SupportWindup = 42, SupportRecovery = 90, ForgeDuration = 90;
 
-    public static bool IsSupportHazard(string contentId) => contentId is "elite.dirgebound" or SporeMend or ForgeBellows;
+    public static bool IsSupportHazard(string contentId) => contentId is "elite.dirgebound" or SporeMend or ForgeBellows or OathWard;
 
     private IEnumerable<CombatActor> MidgameSupportAllies(CombatActor source, Position center, bool forge)
         => DirgeAllies(source, center, SupportRadius).Where(ally => !EndgameMechanicNoRewards(ally) &&
@@ -52,20 +52,20 @@ public sealed partial class CombatSession
     private int ForgeOverchargeTicks(CombatActor actor)
         => actor.Health <= 0 ? 0 : Remaining(_state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.ForgeOverchargeUntil ?? 0);
 
-    private void ClearMidgameSupport(CombatActor actor)
+    private void ClearCampaignSupport(CombatActor actor)
     {
         if (_state.Campaign is not { } campaign) return;
         if (campaign.Actors.TryGetValue(actor.Id, out var state)) state.ForgeOverchargeUntil = 0;
-        campaign.Hazards.RemoveAll(h => h.SourceId == actor.Id && h.ContentId is SporeMend or ForgeBellows);
+        campaign.Hazards.RemoveAll(h => h.SourceId == actor.Id && h.ContentId is SporeMend or ForgeBellows or OathWard);
     }
 
     private int BossGuardedTicks(CombatActor actor)
-        => actor.Health <= 0 || actor.DefinitionId != "boss.furnace_spindle" ? 0 :
+        => actor.Health <= 0 || actor.DefinitionId is not ("boss.furnace_spindle" or "boss.covenant_warden") ? 0 :
             Remaining(_state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.GuardedUntil ?? 0);
 
     private int BossRecoveryTicks(CombatActor actor)
     {
-        if (actor.Health <= 0 || actor.DefinitionId is not ("boss.rootheart" or "boss.furnace_spindle") ||
+        if (actor.Health <= 0 || actor.DefinitionId is not ("boss.rootheart" or "boss.furnace_spindle" or "boss.covenant_warden" or "boss.breach_heart") ||
             !IsCampaignBoss(actor) || CampaignShielded(actor) || CampaignDefenseBonus(actor) > 0 ||
             actor.Pending is not null || _state.Campaign!.Hazards.Any(h => h.SourceId == actor.Id)) return 0;
         return Remaining(actor.RecoveryUntil);

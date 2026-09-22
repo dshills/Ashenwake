@@ -228,7 +228,14 @@ public partial class HollowSmoke : Node
         h.ContentId is "rule.causalechoes" or "campaign.causalecho" or "campaign.breach_echo" or "campaign.returning_echo").ToArray();
     private static string EchoText(CombatHazardView hazard)
     {
-        string prefix = hazard.ContentId == "campaign.breach_echo" ? "FIRST" : hazard.ContentId == "campaign.returning_echo" ? "RETURN" : "ECHO";
+        string prefix = hazard.ContentId switch
+        {
+            "campaign.breach_echo" => "FIRST ECHO",
+            "campaign.returning_echo" => "RETURNING ECHO",
+            "campaign.causalecho" => "CAUSAL ECHO",
+            _ => "ROOM ECHO"
+        };
+        if (hazard.SequenceCount > 0) prefix += $" {hazard.SequenceIndex}/{hazard.SequenceCount}";
         double seconds = Math.Ceiling(hazard.RemainingTicks * FixedStepClock.SecondsPerTick * 10) / 10;
         return prefix + "\n" + seconds.ToString("F1", CultureInfo.InvariantCulture) + "s";
     }
@@ -252,8 +259,7 @@ public partial class HollowSmoke : Node
         Check("echo_presentation_does_not_change_core_" + style, _session.StateHash == hash);
 
         bool LabelsMatch() => echoes.All(h => labels.SingleOrDefault(n => n.Name == "EchoWarning_" + h.Id) is { } label &&
-            label.Text == EchoText(h) && label.IsVisibleInTree() && label.NoDepthTest && label.OutlineSize > 0 && label.GlobalPosition.Y > .08f &&
-            CombatSession.HazardContains(h, new((int)(label.GlobalPosition.X * 1000), (int)(label.GlobalPosition.Z * 1000))) &&
+            label.Text == EchoText(h) && label.IsVisibleInTree() && label.NoDepthTest && label.OutlineSize > 0 && GetViewport().GetVisibleRect().Encloses(Sandbox.CampaignLabelScreenRect(_sandbox.GetChildren().OfType<Camera3D>().Single(), label)) &&
             label.GetParent() is MeshInstance3D { Mesh: TorusMesh } ring && ring.Position.Y >= .074f &&
             ring.MaterialOverride is StandardMaterial3D material && material.AlbedoColor.A >= .35f);
     }
@@ -375,7 +381,7 @@ public partial class HollowSmoke : Node
             .All(a => ActorLabel(a.Id) is { } label && label.IsVisibleInTree() && label.Text.Contains("BREAK SEAL", StringComparison.Ordinal)));
         if (boss.Health > 0)
             Check("canonical_boss_label_matches_channel_threshold", ActorLabel(boss.Id) is { } label && label.IsVisibleInTree() &&
-                label.Text.Contains(shield ? "SEALED · 3 CHANNELS" : "BREACH EXPOSED", StringComparison.Ordinal));
+                label.Text.Contains(shield ? "PROTECTED · BREAK A SEAL" : boss.BossRecoveryTicks > 0 ? "EXPOSED · RECOVERING" : "BREACH EXPOSED", StringComparison.Ordinal));
         Check("breach_phase_matches_core", breach.Phase == view.BossPhase);
         Check("breach_channels_match_living_actors", breach.LivingChannels == channels);
         Check("breach_shield_matches_actual_threshold", breach.Shielded == shield);

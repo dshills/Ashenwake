@@ -37,13 +37,22 @@ internal static class CampaignPacingMigration
         return CampaignContent.Parse(reader.ReadToEnd());
     });
 
+    private static readonly Lazy<CampaignContent> PublishedMidgameDepthCampaign = new(() =>
+    {
+        using var stream = typeof(CampaignPacingMigration).Assembly.GetManifestResourceStream("Ashenwake.PreviousLateDepth.Campaign.json")
+            ?? throw new InvalidOperationException("Missing authenticated published midgame-depth catalog.");
+        using var reader = new StreamReader(stream);
+        return CampaignContent.Parse(reader.ReadToEnd());
+    });
+
     private static bool Required(CampaignRuntimeSnapshot original, CampaignContent campaign)
-        => campaign.Capture().Version is Version or "campaign.opening_depth.8" or "campaign.midgame_depth.9" && original.Campaign.ContentHash != campaign.Hash &&
+        => campaign.Capture().Version is Version or "campaign.opening_depth.8" or "campaign.midgame_depth.9" or "campaign.late_depth.10" && original.Campaign.ContentHash != campaign.Hash &&
             // An explicit multi-build import can skip the intermediate pacing reader.
             // Earlier rewards still need their one-time top-up, while an authenticated
-            // pacing or opening-depth archive already owns it when its story identity changes.
+            // pacing, opening-depth or midgame-depth archive already owns it when its story identity changes.
             original.Campaign.ContentHash != PublishedPacingCampaign.Value.Hash &&
-            original.Campaign.ContentHash != PublishedOpeningDepthCampaign.Value.Hash;
+            original.Campaign.ContentHash != PublishedOpeningDepthCampaign.Value.Hash &&
+            original.Campaign.ContentHash != PublishedMidgameDepthCampaign.Value.Hash;
 
     internal static CampaignRuntimeSnapshot Rebind(CampaignRuntimeSnapshot original, CampaignRuntimeSnapshot rebound,
         string combatJson, AdventureContent adventure, ProgressionContent policy, CampaignContent campaign)

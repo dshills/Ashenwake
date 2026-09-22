@@ -50,9 +50,9 @@ public sealed class OpeningDepthMigrationTests
         var old = CombatContent.Parse(Combat(true));
         var current = CombatContent.Parse(Combat(false));
         Assert.Equal("campaign-combat.pacing.7", old.Campaign!.Version);
-        Assert.Equal("campaign-combat.midgame_depth.9", current.Campaign!.Version);
+        Assert.Equal("campaign-combat.late_depth.10", current.Campaign!.Version);
         Assert.Equal("campaign.pacing.7", Campaign(true).Capture().Version);
-        Assert.Equal("campaign.midgame_depth.9", Campaign(false).Capture().Version);
+        Assert.Equal("campaign.late_depth.10", Campaign(false).Capture().Version);
         Assert.Equal("98BF4001F7DB8EEDDD2EEEAE5DC439DD94CB65C9AB36F7BB0A14D822E981DF9A",
             Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures/campaign-pacing.json")))));
         var oldRewards = Campaign(true).Capture().Acts.SelectMany(act => act.Encounters).Select(e => new { e.Id, e.Experience, e.Materials });

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign-combat.late_depth.10",
+  "version": "campaign-combat.midgame_depth.9",
   "enemies": [
     {
       "id": "enemy.funeral_guard",
@@ -258,7 +258,7 @@
     },
     {
       "enemyId": "enemy.contract_keeper",
-      "pattern": "OathWard"
+      "pattern": "OathMark"
     },
     {
       "enemyId": "enemy.bone_sentinel",
@@ -963,7 +963,7 @@
         {
           "enemyId": "enemy.oath_giant",
           "position": {
-            "x": -1700,
+            "x": -1200,
             "z": 0
           },
           "modifiers": [
@@ -974,8 +974,8 @@
         {
           "enemyId": "enemy.contract_keeper",
           "position": {
-            "x": 400,
-            "z": 600
+            "x": 2500,
+            "z": -3500
           },
           "modifiers": [],
           "hidden": false
@@ -983,8 +983,8 @@
         {
           "enemyId": "enemy.oath_giant",
           "position": {
-            "x": 2700,
-            "z": 1700
+            "x": 4200,
+            "z": 2500
           },
           "modifiers": [],
           "hidden": false
@@ -1038,8 +1038,8 @@
         {
           "enemyId": "enemy.contract_keeper",
           "position": {
-            "x": 300,
-            "z": -1200
+            "x": -1200,
+            "z": 0
           },
           "modifiers": [],
           "hidden": false
@@ -1047,8 +1047,8 @@
         {
           "enemyId": "enemy.bone_sentinel",
           "position": {
-            "x": -1700,
-            "z": 0
+            "x": 2500,
+            "z": -3500
           },
           "modifiers": [],
           "hidden": false
@@ -1056,8 +1056,8 @@
         {
           "enemyId": "enemy.contract_keeper",
           "position": {
-            "x": 700,
-            "z": 1700
+            "x": 4200,
+            "z": 2500
           },
           "modifiers": [],
           "hidden": false
@@ -1168,8 +1168,8 @@
         {
           "enemyId": "enemy.doubled_shadow",
           "position": {
-            "x": -2200,
-            "z": 800
+            "x": -1200,
+            "z": 0
           },
           "modifiers": [
             "Riftborn"
@@ -1179,8 +1179,8 @@
         {
           "enemyId": "enemy.memory_archer",
           "position": {
-            "x": 1400,
-            "z": -800
+            "x": 2500,
+            "z": -3500
           },
           "modifiers": [],
           "hidden": false
@@ -1188,20 +1188,11 @@
         {
           "enemyId": "enemy.doubled_shadow",
           "position": {
-            "x": -400,
-            "z": 1600
+            "x": 4200,
+            "z": 2500
           },
           "modifiers": [],
           "hidden": true
-        },
-        {
-          "enemyId": "enemy.memory_archer",
-          "position": {
-            "x": 2700,
-            "z": 1700
-          },
-          "modifiers": [],
-          "hidden": false
         }
       ],
       "room": {
@@ -1253,7 +1244,7 @@
           "enemyId": "enemy.breach_echo",
           "position": {
             "x": -1200,
-            "z": -1400
+            "z": 0
           },
           "modifiers": [],
           "hidden": false
@@ -1261,8 +1252,8 @@
         {
           "enemyId": "enemy.doubled_shadow",
           "position": {
-            "x": -2100,
-            "z": 1000
+            "x": 2500,
+            "z": -3500
           },
           "modifiers": [],
           "hidden": true
@@ -1270,17 +1261,8 @@
         {
           "enemyId": "enemy.breach_echo",
           "position": {
-            "x": 2500,
-            "z": 1300
-          },
-          "modifiers": [],
-          "hidden": false
-        },
-        {
-          "enemyId": "enemy.memory_archer",
-          "position": {
-            "x": 3500,
-            "z": -1000
+            "x": 4200,
+            "z": 2500
           },
           "modifiers": [],
           "hidden": false

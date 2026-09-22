@@ -24,7 +24,7 @@ public static class CampaignTestaments
     {
         "campaign.greybox.1" or "campaign.grey_march.2" or "campaign.verdant.3" or
             "campaign.cinder.4" or "campaign.spine.5" or "campaign.hollow.6" => false,
-        "campaign.pacing.7" or "campaign.opening_depth.8" or "campaign.midgame_depth.9" => true,
+        "campaign.pacing.7" or "campaign.opening_depth.8" or "campaign.midgame_depth.9" or "campaign.late_depth.10" => true,
         _ => throw new InvalidDataException("Campaign testament policy is not declared for this catalog version.")
     };
 

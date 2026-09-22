@@ -22,6 +22,8 @@
     <None Include="../../content/text.en.json" Link="text.en.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/campaign.json" Link="campaign.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/campaign-combat.json" Link="campaign-combat.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/campaign-midgame-depth.json" Link="fixtures/campaign-midgame-depth.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/campaign-combat-midgame-depth.json" Link="fixtures/campaign-combat-midgame-depth.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/campaign-opening-depth.json" Link="fixtures/campaign-opening-depth.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/campaign-combat-opening-depth.json" Link="fixtures/campaign-combat-opening-depth.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/campaign-pacing.json" Link="fixtures/campaign-pacing.json" CopyToOutputDirectory="PreserveNewest" />

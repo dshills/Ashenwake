@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "campaign.late_depth.10",
+  "version": "campaign.midgame_depth.9",
   "acts": [
     {
       "number": 1,
@@ -175,7 +175,7 @@
             "enemy.contract_keeper"
           ],
           "mechanic": "sequential_seismic_faults",
-          "counterplay": "Interrupt the keeper before its ward protects the giants; read the numbered faults and move to unbroken stone.",
+          "counterplay": "Read the numbered fault sequence and move to unbroken stone.",
           "eliteModifiers": [
             "Hunter"
           ],
@@ -190,7 +190,7 @@
             "enemy.bone_sentinel"
           ],
           "mechanic": "visible_oath_zones",
-          "counterplay": "Interrupt warding keepers or draw the sentinel outside their circles. Wards refresh a fixed barrier cap; keep clear of oath zones.",
+          "counterplay": "Break the keeper's channel from an unmarked zone; no damage family is mandatory.",
           "eliteModifiers": [],
           "experience": 425,
           "materials": 12,
@@ -202,7 +202,7 @@
             "boss.covenant_warden"
           ],
           "mechanic": "oath_marks_faults_and_stagger_windows",
-          "counterplay": "Evade the first oath mark and second fault in order, then attack when the guarded countdown ends and recovery opens.",
+          "counterplay": "Spread oath marks, cross the announced fault, then exploit the recovery window.",
           "eliteModifiers": [
             "Null"
           ],
@@ -227,7 +227,7 @@
             "enemy.memory_archer"
           ],
           "mechanic": "marked_real_exit_and_shadow_decoys",
-          "counterplay": "Shadows pressure the approach while memory archers cover the flanks. Read their attack lanes; real exits retain their anchor glyph.",
+          "counterplay": "Real exits keep their anchor glyph; decoys never cover required telegraphs.",
           "eliteModifiers": [
             "Riftborn"
           ],
@@ -239,11 +239,10 @@
           "id": "campaign.identity_memory",
           "enemyIds": [
             "enemy.breach_echo",
-            "enemy.doubled_shadow",
-            "enemy.memory_archer"
+            "enemy.doubled_shadow"
           ],
           "mechanic": "causal_echo_warnings",
-          "counterplay": "Move clear of causal echo outlines before their countdown ends; account for shadow pressure and the archer lane before choosing a safe position.",
+          "counterplay": "Future attack outlines appear before their source; follow the timing marks rather than decorative perspective.",
           "eliteModifiers": [],
           "experience": 650,
           "materials": 15,
@@ -255,7 +254,7 @@
             "boss.breach_heart"
           ],
           "mechanic": "three_seal_channels_and_returning_echoes",
-          "counterplay": "Break a seal channel to expose the Heart. Follow the numbered echo and sweep sequence, then use the recovery window.",
+          "counterplay": "Rotate through visible seal channels, interrupt exposed echoes, and stabilize the breach during each recovery.",
           "eliteModifiers": [
             "Mirrorborn"
           ],

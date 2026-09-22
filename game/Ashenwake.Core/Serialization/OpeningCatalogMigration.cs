@@ -17,6 +17,7 @@ internal static class OpeningCatalogMigration
     private sealed record Release(string Campaign, string Combat, string PreviousCombat, string Resource, string Discovery);
     private static readonly Release[] Releases =
     [
+        new("campaign.late_depth.10", "campaign-combat.late_depth.10", "campaign-combat.midgame_depth.9", "PreviousLateDepth", ""),
         new("campaign.midgame_depth.9", "campaign-combat.midgame_depth.9", "campaign-combat.opening_depth.8", "PreviousMidgameDepth", ""),
         new("campaign.opening_depth.8", "campaign-combat.opening_depth.8", "campaign-combat.pacing.7", "PreviousOpeningDepth", ""),
         new("campaign.pacing.7", "campaign-combat.pacing.7", "campaign-combat.hollow.6", "PreviousPacing", ""),

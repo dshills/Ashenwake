@@ -59,7 +59,7 @@ public sealed class CampaignTestamentTests
         _ = definition; _ = rarity; _ = slot; _ = affix; _ = amount; _ = resource;
         var published = Session();
         Success(CampaignTestaments.Grant(published, receipt, Pacing));
-        foreach (string version in new[] { "campaign.opening_depth.8", "campaign.midgame_depth.9" })
+        foreach (string version in new[] { "campaign.opening_depth.8", "campaign.midgame_depth.9", "campaign.late_depth.10" })
         {
             var current = Session();
             Success(CampaignTestaments.Grant(current, receipt, version));

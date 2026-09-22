@@ -12,7 +12,7 @@ public sealed partial class CombatSession
     private bool StormOvercharged => CampaignRule == "Storm" && _state.Campaign is { } campaign && Tick >= campaign.StartedTick + 45 && Tick < campaign.RuleUntil && (Tick - campaign.StartedTick - 45) % 150 < 45;
     private bool FragmentSuppressed(string id) => _state.Campaign is { } campaign && campaign.SuppressedUntil > Tick && campaign.SuppressedFragmentId == id;
     private bool CampaignRewardEligible(CombatActor actor) => !EndgameMechanicNoRewards(actor) && _state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.IsEcho != true && !_state.ConsumedCorpseIds.Contains(actor.Id);
-    private IEnumerable<CombatHazardView> CampaignHazards() => _state.Campaign?.Hazards.Select(h => new CombatHazardView(h.Id, h.Kind, h.Position, h.End, h.Radius, Math.Max(0, h.ResolveTick - Tick), h.ContentId, h.SourceId)) ?? [];
+    private IEnumerable<CombatHazardView> CampaignHazards() => _state.Campaign?.Hazards.Select(CampaignHazardView) ?? [];
     private void PopulateCampaignEncounter()
     {
         _state.Campaign = null;
@@ -71,7 +71,7 @@ public sealed partial class CombatSession
             campaign.Hazards.Remove(hazard);
             var source = _state.Actors.FirstOrDefault(a => a.Id == hazard.SourceId);
             if (source is null) continue;
-            if (ResolveMidgameSupport(source, hazard))
+            if (ResolveMidgameSupport(source, hazard) || ResolveOathWard(source, hazard))
             {
                 Emit("CampaignHazardResolved", source.Id, content: hazard.ContentId, action: hazard.ActionId);
                 continue;
@@ -162,8 +162,8 @@ public sealed partial class CombatSession
         if (pattern is "" or "SupportFire") return false;
         if (pattern == "Root") { actor.State = "Feeding"; return true; }
         var definition = _content.Enemies.Single(e => e.Id == actor.DefinitionId);
-        if (TryMidgameSupport(actor, pattern)) return true;
-        pattern = pattern switch { "SporeMend" => "PoisonBurst", "ForgeBellows" => "HeatVent", _ => pattern };
+        if (TryMidgameSupport(actor, pattern) || TryOathWard(actor, pattern)) return true;
+        pattern = pattern switch { "SporeMend" => "PoisonBurst", "ForgeBellows" => "HeatVent", "OathWard" => "OathMark", _ => pattern };
         bool close = pattern is "Swarm" or "PoisonBurst" or "ForgeSweep" or "Fault" or "ShadowDouble" or "Antler";
         if (close && Position.DistanceSquared(actor.Position, Player.Position) > (long)definition.Range * definition.Range)
         { actor.State = pattern == "Antler" ? "BurrowApproach" : "Approach"; MoveTowardTarget(actor, Player.Position, HasElite(actor, "Hunter") ? Math.Min(500, definition.Speed * 5 / 4) : definition.Speed); return true; }
@@ -257,7 +257,7 @@ public sealed partial class CombatSession
     private void CampaignDeath(CombatActor actor)
     {
         if (_state.Campaign is null) return;
-        ClearMidgameSupport(actor);
+        ClearCampaignSupport(actor);
         _state.Campaign.Hazards.RemoveAll(h => h.SourceId == actor.Id);
         if (HasElite(actor, "Martyr"))
             foreach (var ally in _state.Actors.Where(a => a.Id != actor.Id && a.Health > 0 && a.Faction == CombatFaction.Enemy && Position.DistanceSquared(actor.Position, a.Position) <= 7000L * 7000))

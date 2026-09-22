@@ -116,7 +116,7 @@ public partial class Sandbox
                     Feedback(targetId, $"BLOCK {e.Amount}", "heal");
                     if (!_openingAudio.Play("impact_armor", target?.Current ?? Vector3.Zero)) PlayTone("armor"); break;
                 case "BarrierGranted":
-                    if (e.ContentId != "elite.dirgebound") break;
+                    if (e.ContentId is not ("elite.dirgebound" or "campaign.oath_ward")) break;
                     if (target is not null) _combatEffects.Emit("block", target.Current, Vector3.Up, _mint, _reduceEffects);
                     PlayTone("armor"); break;
                 case "Healed": Feedback(targetId, $"+{e.Amount}", "heal"); PlayTone("heal"); break;

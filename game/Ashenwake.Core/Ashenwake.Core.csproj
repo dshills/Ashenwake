@@ -4,6 +4,8 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Frozen catalogs authenticate published campaign releases before upgrades. -->
+    <EmbeddedResource Include="../../fixtures/campaign-midgame-depth.json" LogicalName="Ashenwake.PreviousLateDepth.Campaign.json" />
+    <EmbeddedResource Include="../../fixtures/campaign-combat-midgame-depth.json" LogicalName="Ashenwake.PreviousLateDepth.Combat.json" />
     <EmbeddedResource Include="../../fixtures/campaign-opening-depth.json" LogicalName="Ashenwake.PreviousMidgameDepth.Campaign.json" />
     <EmbeddedResource Include="../../fixtures/campaign-combat-opening-depth.json" LogicalName="Ashenwake.PreviousMidgameDepth.Combat.json" />
     <EmbeddedResource Include="../../fixtures/campaign-pacing.json" LogicalName="Ashenwake.PreviousOpeningDepth.Campaign.json" />

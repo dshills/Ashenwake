@@ -1,3 +1,4 @@
+using Ashenwake.Core.Combat;
 using Godot;
 
 namespace Ashenwake.Client;
@@ -229,6 +230,7 @@ public partial class Sandbox
                 mat.AlbedoColor = new Color(mat.AlbedoColor, overlaps ? .25f : 1);
             }
         }
+        LayoutCampaignWarningLabels();
     }
 
     private static float DefaultCameraSize(int halfWidth, int halfDepth)
@@ -254,8 +256,11 @@ public partial class Sandbox
         { _effects[id].QueueFree(); _effects.Remove(id); }
     }
 
-    private void PresentCampaignWarning(long id, string kind, int x, int z, int endX, int endZ, int radius, long ticks, string contentId)
+    private void PresentCampaignWarning(CombatHazardView hazard)
     {
+        long id = hazard.Id, ticks = hazard.RemainingTicks;
+        string kind = hazard.Kind, contentId = hazard.ContentId;
+        int x = hazard.Position.X, z = hazard.Position.Z, endX = hazard.End.X, endZ = hazard.End.Z, radius = hazard.Radius;
         if (contentId == "elite.dirgebound") { PresentDirgeWarning(id, x, z, radius, ticks); return; }
         if (IsMidgameSupport(contentId)) { PresentMidgameSupport(id, x, z, radius, ticks, contentId); return; }
         Color color = ticks <= 12 ? new Color(1, .2f, .12f, .5f) : new Color(1, .58f, .12f, .35f);
@@ -270,40 +275,7 @@ public partial class Sandbox
                 _effects[rimId] = rim; AddChild(rim);
             }
             rim.Position = PositionOf(x, z) + Vector3.Up * .075f;
-            PresentMidgameHazardLabel(rim, id, contentId, ticks, PositionOf(x, z) + new Vector3(0, .4f, width * .68f));
-            string echo = contentId switch
-            {
-                "rule.causalechoes" or "campaign.causalecho" => "ECHO",
-                "campaign.breach_echo" => "FIRST",
-                "campaign.returning_echo" => "RETURN",
-                _ => ""
-            };
-            if (echo.Length != 0)
-            {
-                // The two boss echoes can share a center. Opposing labels distinguish their
-                // authoritative deadlines; their parent rim owns their cache and lifetime.
-                string echoLabelName = "EchoWarning_" + id;
-                var label = rim.GetNodeOrNull<Label3D>(echoLabelName);
-                if (label is null)
-                {
-                    label = new Label3D
-                    {
-                        Name = echoLabelName,
-                        FontSize = 44,
-                        PixelSize = .011f,
-                        OutlineSize = 10,
-                        Modulate = new("fff3d4"),
-                        OutlineModulate = new("141521"),
-                        Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-                        NoDepthTest = true
-                    };
-                    rim.AddChild(label);
-                }
-                double seconds = Math.Ceiling(ticks * Ashenwake.Core.Simulation.FixedStepClock.SecondsPerTick * 10) / 10;
-                label.Text = echo + "\n" + seconds.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "s";
-                float side = echo == "FIRST" ? -1 : echo == "RETURN" ? 1 : 0;
-                label.Position = new(side * width * .65f, echo == "RETURN" ? .85f : .38f, 0);
-            }
+            PresentMidgameHazardLabel(rim, hazard, CampaignCircleLabelPosition(hazard));
             return;
         }
         PresentEffect($"warning{id}-end", endX, endZ, width, color);
@@ -317,7 +289,7 @@ public partial class Sandbox
         line.Position = (start + end) / 2 + Vector3.Up * .08f;
         line.Rotation = new(0, Mathf.Atan2(delta.X, delta.Z), 0);
         ((StandardMaterial3D)line.MaterialOverride).AlbedoColor = color;
-        PresentMidgameHazardLabel(line, id, contentId, ticks, (start + end) / 2 + Vector3.Up * .4f);
+        PresentMidgameHazardLabel(line, hazard, (start + end) / 2 + Vector3.Up * .4f);
         string order = contentId switch { "rule.fault.1" => "1", "rule.fault.2" => "2", "rule.fault.3" => "3", _ => "" };
         if (order.Length == 0) return;
         // These numbers belong to the authoritative warning, including its reversed memory

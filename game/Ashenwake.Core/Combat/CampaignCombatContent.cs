@@ -9,7 +9,11 @@ public sealed record CampaignCombatSpawn(string EnemyId, Position Position, stri
 public sealed record CampaignCombatEncounter(string Id, string Name, string Rule, int DurationTicks, CampaignCombatSpawn[] Spawns,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RoomDefinition? Room = null);
 public sealed record CampaignCombatDefinition(int SchemaVersion, string Version, CombatEnemy[] Enemies, CampaignEnemyBehavior[] Behaviors, CampaignCombatEncounter[] Encounters);
-public sealed record CombatHazardView(long Id, string Kind, Position Position, Position End, int Radius, long RemainingTicks, string ContentId, int SourceId);
+public sealed record CombatHazardView(long Id, string Kind, Position Position, Position End, int Radius, long RemainingTicks, string ContentId, int SourceId)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int SequenceIndex { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int SequenceCount { get; init; }
+}
 public sealed record CampaignHazard(long Id, string Kind, Position Position, Position End, int Radius, long ResolveTick,
     string ContentId, int SourceId, int Damage, DamageFamily Family, string Status, long ActionId);
 public sealed record CampaignActorState
@@ -65,7 +69,7 @@ public sealed class CampaignCombatContent
 public sealed partial class CombatSession
 {
     public static IReadOnlyList<string> EliteModifiers { get; } = Array.AsReadOnly(new[] { "Mirrorborn", "Gravewake", "Stormbound", "Devourer", "Null", "Hunter", "Martyr", "Riftborn", "Dirgebound" });
-    private static readonly string[] CampaignPatterns = ["SonicLane", "MemoryArrow", "VenomPod", "Swarm", "PoisonBurst", "ForgeSweep", "HeatVent", "Fault", "OathMark", "ShadowDouble", "CausalEcho", "Rootheart", "Furnace", "Covenant", "Breach", "Bell", "Antler", "Root", "SupportFire", "SporeMend", "ForgeBellows"];
+    private static readonly string[] CampaignPatterns = ["SonicLane", "MemoryArrow", "VenomPod", "Swarm", "PoisonBurst", "ForgeSweep", "HeatVent", "Fault", "OathMark", "ShadowDouble", "CausalEcho", "Rootheart", "Furnace", "Covenant", "Breach", "Bell", "Antler", "Root", "SupportFire", "SporeMend", "ForgeBellows", "OathWard"];
     private static readonly string[] CampaignRules = ["Ambush", "SonicLanes", "Bell", "PoisonLanes", "Quarantine", "Rootheart", "Cinder", "Conveyor", "Furnace", "Faults", "OathZones", "Covenant", "Shadows", "CausalEchoes", "Breach", "Storm", "Memory", "Hunt"];
     public static void ValidateEliteModifiers(IReadOnlyList<string> modifiers)
     {
