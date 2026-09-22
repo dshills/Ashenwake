@@ -8,6 +8,7 @@
         "game/Ashenwake.Client/SandboxPresentation.cs",
         "game/Ashenwake.Client/CharacterVisual.cs",
         "game/Ashenwake.Client/CharacterVisual.Humanoids.cs",
+        "game/Ashenwake.Client/CharacterVisual.Armor.cs",
         "game/Ashenwake.Client/CharacterVisual.Monsters.cs",
         "game/Ashenwake.Client/CharacterVisual.Animation.cs",
         "game/Ashenwake.Client/CharacterVisual.Equipment.cs",
@@ -32,6 +33,10 @@
         "game/Ashenwake.Client/EnvironmentGround.cs",
         "game/Ashenwake.Client/GreyhavenArt.cs",
         "game/Ashenwake.Client/GreyMarchArt.cs",
+        "game/Ashenwake.Client/GreyMarchExplorationArt.cs",
+        "game/Ashenwake.Client/OpeningGround.cs",
+        "game/Ashenwake.Client/OpeningObstacleArt.cs",
+        "game/Ashenwake.Client/OpeningLighting.cs",
         "game/Ashenwake.Client/SandboxEnvironment.cs",
         "game/Ashenwake.Client/BellSanctuaryVisual.cs"
       ],

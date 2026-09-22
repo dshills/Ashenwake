@@ -60,7 +60,15 @@ public partial class CharacterVisual
         var body = Joint(BodyRoot, new(0, 1.05f, 0), "sway", 0.5f);
         Orb(body, new(0, 0.43f, -0.1f), new(0.79f, 0.93f, 0.65f), Main);
         Orb(body, new(0, 0.73f, 0.08f), new(0.7f, 0.58f, 0.67f), Skin);
-        Box(body, new(0, 0.06f, 0), new(0.48f, 0.3f, 0.44f), Dark);
+        TaperedBox(body, new(0, 0.06f, 0), new(0.48f, 0.3f, 0.44f), Dark, .75f);
+        // Scapulae and a torn burial wrap reinforce the bent, hungry silhouette.
+        for (int side = -1; side <= 1; side += 2)
+        {
+            TaperedBox(body, new(side * .25f, .78f, .215f), new(.24f, .32f, .11f), Bone, .42f, new(-20, 0, side * -24));
+            Rod(body, new(side * .075f, .79f, -.32f), new(side * .37f, .79f, -.12f), .052f, Bone);
+            TaperedBox(body, new(side * .13f, -.18f - (side > 0 ? .035f : 0), -.18f), new(.22f, .42f, .065f),
+                Main, .48f, new(-8, 0, side * -11));
+        }
         for (var i = 0; i < 3; i++)
         {
             var y = 0.28f + i * 0.17f;
@@ -107,8 +115,16 @@ public partial class CharacterVisual
         Box(parent, at + new Vector3(0, -size * 0.07f, -size * 0.365f),
             new(size * 0.64f, size * 0.22f, size * 0.14f), Dark);
         for (var side = -1; side <= 1; side += 2)
+        {
             Box(parent, at + new Vector3(side * size * 0.19f, -size * 0.015f, -size * 0.45f),
                 new(size * 0.15f, size * 0.105f, size * 0.07f), Glow);
+            TaperedBox(parent, at + new Vector3(side * size * .18f, size * .095f, -size * .36f),
+                new(size * .35f, size * .16f, size * .21f), Bone, .74f, new(0, 0, side * -13));
+            TaperedBox(parent, at + new Vector3(side * size * .285f, -size * .22f, -size * .28f),
+                new(size * .19f, size * .23f, size * .20f), Bone, .57f, new(0, 0, side * 15));
+        }
+        TaperedBox(parent, at + new Vector3(0, -size * .195f, -size * .424f),
+            new(size * .105f, size * .16f, size * .055f), Dark, .18f);
         Box(parent, at + new Vector3(0, -size * 0.29f, -size * 0.32f),
             new(size * 0.49f, size * 0.18f, size * 0.24f), openJaw ? Dark : Bone);
         Box(parent, at + new Vector3(0, -size * (openJaw ? 0.46f : 0.4f), -size * 0.3f),
@@ -127,12 +143,18 @@ public partial class CharacterVisual
         BodyRoot.AddChild(root);
         var body = Joint(root, new(0, 1.16f, 0), "sway", 0.22f);
         Cone(body, new(0, 0.08f, 0), 0.46f, 0.34f, 0.56f, Dark);
-        Box(body, new(0, 0.64f, 0), new(0.82f, 0.85f, 0.51f), Main);
-        Box(body, new(0, 0.58f, -0.285f), new(0.59f, 0.62f, 0.13f), Metal);
+        TaperedBox(body, new(0, 0.64f, 0), new(0.82f, 0.85f, 0.51f), Main, .72f);
+        TaperedBox(body, new(0, 0.66f, -0.285f), new(0.64f, 0.48f, 0.14f), Metal, .78f);
+        TaperedBox(body, new(0, 0.37f, -0.27f), new(0.52f, 0.18f, 0.14f), Metal, .84f);
         Box(body, new(0, 0.6f, -0.365f), new(0.105f, 0.56f, 0.025f), Accent);
         Box(body, new(0, 0.63f, -0.375f), new(0.42f, 0.095f, 0.03f), Accent);
         Box(body, new(0, 0.19f, -0.035f), new(0.76f, 0.13f, 0.56f), Metal);
-        Box(body, new(0, -0.02f, -0.33f), new(0.32f, 0.55f, 0.11f), Accent);
+        for (int side = -1; side <= 1; side += 2)
+        {
+            TaperedBox(body, new(side * .29f, .025f, -.15f), new(.23f, .38f, .30f), Main, .8f, new(0, 0, side * 13));
+            Rod(body, new(side * .08f, .91f, -.29f), new(side * .30f, .82f, -.33f), .026f, Accent);
+        }
+        TaperedBox(body, new(0, -0.02f, -0.33f), new(0.32f, 0.55f, 0.11f), Accent, .64f);
         Cone(body, new(0, 1.12f, 0), 0.29f, 0.24f, 0.43f, Metal);
         Box(body, new(0, 1.13f, -0.27f), new(0.39f, 0.115f, 0.09f), Dark);
         Box(body, new(0, 1.13f, -0.324f), new(0.31f, 0.043f, 0.027f), Glow);
@@ -152,13 +174,15 @@ public partial class CharacterVisual
             Box(leg, new(0, -0.72f, 0), new(0.29f, 0.42f, 0.34f), Main);
             Box(leg, new(0, -0.94f, -0.115f), new(0.37f, 0.21f, 0.58f), Metal);
             var arm = Joint(body, new(side * 0.57f, 0.9f, 0), side < 0 ? "left_arm" : "right_arm", 0.45f);
-            Orb(arm, new(0, -0.04f, 0), new(0.55f, 0.39f, 0.57f), Metal);
+            TaperedBox(arm, new(0, .005f, 0), new(.55f, .24f, .54f), Metal, .82f, new(0, 0, side * 12));
+            TaperedBox(arm, new(side * .035f, -.17f, .01f), new(.45f, .17f, .48f), Main, .85f, new(0, 0, side * 12));
             Box(arm, new(0, -0.29f, 0), new(0.27f, 0.45f, 0.3f), Main);
             Box(arm, new(0, -0.64f, -0.075f), new(0.29f, 0.32f, 0.33f), Metal);
             Orb(arm, new(0, -0.87f, -0.09f), new(0.24f, 0.24f, 0.24f), Dark);
             if (side < 0)
             {
-                Box(arm, new(-0.12f, -0.55f, -0.35f), new(0.55f, 0.94f, 0.12f), Main);
+                TaperedBox(arm, new(-0.12f, -0.55f, -0.35f), new(0.57f, 0.94f, 0.12f), Metal, .64f);
+                TaperedBox(arm, new(-0.12f, -0.54f, -0.425f), new(.46f, .79f, .04f), Main, .64f);
                 Box(arm, new(-0.12f, -0.55f, -0.43f), new(0.44f, 0.08f, 0.04f), Metal);
                 Box(arm, new(-0.12f, -0.55f, -0.44f), new(0.08f, 0.75f, 0.04f), Accent);
             }
@@ -226,7 +250,13 @@ public partial class CharacterVisual
         Rod(body, new(0, 0.28f, -0.23f), new(0, 0.86f, -0.23f), 0.043f, Bone);
         Orb(body, new(0, 1.12f, 0.04f), new(0.65f, 0.64f, 0.55f), Main);
         MonsterSkull(body, new(0, 1.1f, -0.16f), 0.48f, false);
-        Box(body, new(0, 0.48f, 0.3f), new(0.38f, 1.22f, 0.09f), Main, new(-8, 0, 0));
+        for (int side = -1; side <= 1; side += 2)
+        {
+            TaperedBox(body, new(side * .23f, 1.08f, -.12f), new(.12f, .47f, .15f), Main, .65f, new(0, 0, side * -14));
+            TaperedBox(body, new(side * .31f, .78f, .03f), new(.25f, .23f, .38f), Main, .64f, new(0, 0, side * 21));
+        }
+        TailoredCape(body, new(0, 1.09f, .3f), .46f, 1.22f, Main);
+        Rod(body, new(-.28f, .91f, -.13f), new(.22f, .19f, -.24f), .04f, Accent);
         var quiver = new Vector3(-0.23f, 0.62f, 0.33f);
         Cone(body, quiver, 0.15f, 0.19f, 0.66f, Dark, new(0, 0, 18));
         for (var i = 0; i < 3; i++)
@@ -271,6 +301,16 @@ public partial class CharacterVisual
         Cone(body, new(0, -0.81f, 0), 0.88f, 0.88f, 0.12f, Dark);
         Ring(body, new(0, -0.58f, 0), 0.75f, 0.86f, Accent);
         Ring(body, new(0, 0.94f, 0), 0.35f, 0.43f, Accent);
+        // Broad cast ribs and inset lancets give the bell architectural weight.
+        // These remain on its existing torso joint and use the same three metal/dark batches.
+        for (int side = -1; side <= 1; side += 2)
+        {
+            Rod(body, new(side * .23f, .86f, -.415f), new(side * .49f, -.48f, -.66f), .039f, Accent);
+            Rod(body, new(side * .44f, .77f, .21f), new(side * .78f, -.47f, .29f), .035f, Accent);
+            Rod(body, new(side * .31f, .37f, -.555f), new(side * .34f, -.12f, -.695f), .036f, Dark);
+            Rod(body, new(side * .31f, .37f, -.555f), new(side * .39f, .22f, -.58f), .030f, Dark);
+            TaperedBox(body, new(side * .32f, -.60f, -.75f), new(.15f, .21f, .045f), Metal, .62f);
+        }
         Box(body, new(0, 0.25f, -0.68f), new(0.12f, 1.22f, 0.055f), Dark);
         Box(body, new(0, 0.59f, -0.59f), new(0.5f, 0.11f, 0.055f), Dark);
         Cone(body, new(0, -1.16f, 0.05f), 0.52f, 0.24f, 0.84f, Main);

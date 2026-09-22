@@ -69,6 +69,8 @@ public partial class AppearanceSmoke
         await CancelDragLifecycle("inventory_key_hidden");
         await CancelDragLifecycle("focus_out");
         await CancelDragLifecycle("panel_hide");
+        await CancelDragDuringDrop();
+        await NewDragBeforeDeferredCancellation();
         await StaleDrag();
         Check("drag_board_reuses_all_equipment_slot_controls", slots.SetEquals(EquipmentCardIds()));
         CheckOwnedItems(inventory, "all_valid_invalid_and_cancelled_drags");
@@ -263,6 +265,72 @@ public partial class AppearanceSmoke
         Check("drag_" + reason + "_preserves_equipment_and_history", _session.StateHash == hash &&
             _session.CaptureReplay().Frames.Length == operations && _equips == equips && _unequips == unequips);
         _hud.PresentInteraction("ServiceOpened:service.torren"); await Frames();
+    }
+
+    private async Task CancelDragDuringDrop()
+    {
+        string hash = _session.StateHash;
+        int operations = _session.CaptureReplay().Frames.Length, equips = _equips, unequips = _unequips;
+        var source = Find<Control>("GearEquipmentHead"); await RevealDragControl(source);
+        Check("drag_focus_during_drop_starts_real_drag", await BeginDrag(source));
+        var board = Find<GearLoadout>("GearLoadout");
+        var target = Find<GearDragCard>("GearBackpack");
+        var receive = target.Receive;
+        bool delivered = false, deferred = false;
+        target.Receive = data =>
+        {
+            // Reproduce a focus notification inside native drop dispatch, before the
+            // authoritative handler runs and while Godot still owns the drag preview.
+            delivered = true;
+            board.Notification((int)NotificationApplicationFocusOut);
+            deferred = GetViewport().GuiIsDragging();
+            receive?.Invoke(data);
+        };
+        try { await EndDrag(DropPoint(target)); }
+        finally { target.Receive = receive; }
+        Check("drag_focus_during_drop_defers_native_preview_teardown", delivered && deferred && !GetViewport().GuiIsDragging());
+        Check("drag_focus_during_drop_immediately_invalidates_transaction", _session.StateHash == hash &&
+            _session.CaptureReplay().Frames.Length == operations && _equips == equips && _unequips == unequips);
+    }
+
+    private async Task NewDragBeforeDeferredCancellation()
+    {
+        foreach (bool menu in new[] { false, true })
+        {
+            string name = menu ? "drag_newer_than_deferred_menu" : "drag_newer_than_deferred_cancel";
+            string hash = _session.StateHash;
+            int operations = _session.CaptureReplay().Frames.Length, equips = _equips, unequips = _unequips;
+            var source = Find<GearDragCard>("GearEquipmentHead"); await RevealDragControl(source);
+            Check(name + "_starts_original_pointer_drag", await BeginDrag(source));
+            var board = Find<GearLoadout>("GearLoadout");
+            var viewport = GetViewport();
+            long oldEpoch = viewport.GuiGetDragData().AsGodotDictionary()["epoch"].AsInt64();
+            int menuCalls = 0;
+            var previous = _sandbox.InventoryOverride;
+            _sandbox.InventoryOverride = () => { menuCalls++; _hud.ToggleInventory(); };
+            try
+            {
+                if (menu) board._Input(new InputEventKey { Keycode = Key.I, PhysicalKeycode = Key.I, Pressed = true });
+                else board.CancelDrag();
+                // Keep this sequence in one dispatch turn. ForceDrag uses the actual card's
+                // fresh owner payload to isolate the narrow race before deferred work runs;
+                // ordinary pointer-driven drag coverage surrounds this scheduling check.
+                viewport.GuiCancelDrag();
+                Variant fresh = source.DragDataRequested!();
+                long freshEpoch = fresh.AsGodotDictionary()["epoch"].AsInt64();
+                source.ForceDrag(fresh, new Control { CustomMinimumSize = new(24, 24), MouseFilter = Control.MouseFilterEnum.Ignore });
+                _dragGestures++;
+                Check(name + "_starts_new_native_drag_before_callbacks", freshEpoch != oldEpoch && viewport.GuiIsDragging());
+                await Frames();
+                Check(name + "_preserves_new_native_drag", viewport.GuiIsDragging() &&
+                    viewport.GuiGetDragData().AsGodotDictionary()["epoch"].AsInt64() == freshEpoch && DragPauseOwners.Contains("equipment-drag"));
+                Check(name + "_does_not_replay_menu", menuCalls == 0 && board.IsVisibleInTree());
+                await EndDrag(new(8, viewport.GetVisibleRect().Size.Y - 8));
+                Check(name + "_preserves_equipment_and_history", _session.StateHash == hash &&
+                    _session.CaptureReplay().Frames.Length == operations && _equips == equips && _unequips == unequips);
+            }
+            finally { _sandbox.InventoryOverride = previous; }
+        }
     }
 
     private async Task<bool> BeginDrag(Control source)

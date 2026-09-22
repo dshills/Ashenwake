@@ -95,8 +95,6 @@ public static class GreyhavenArt
             new(new(x + .92f, -.57f, -1.9f), new(1.65f, .51f, 1.5f)),
             new(new(x + .92f, -.57f, 1.9f), new(1.65f, .51f, 1.5f))
         ]);
-        Light(parent, new(forgeX + 1.2f, 1.25f, -z - .7f), new("ffae58"), 1.05f, 6f);
-        Light(parent, new(lodgeX - .3f, 2.1f, -z - 1f), new("ffd59a"), .6f, 5.5f);
     }
 
     internal static Vector3[] SmokeAnchors(float x, float z)
@@ -392,15 +390,4 @@ public static class GreyhavenArt
         }
     }
 
-    private static void Light(Node parent, Vector3 p, Color color, float energy, float range)
-    {
-        parent.AddChild(new OmniLight3D
-        {
-            Position = p,
-            LightColor = color,
-            LightEnergy = energy,
-            OmniRange = range,
-            ShadowEnabled = false
-        });
-    }
 }

@@ -25,6 +25,7 @@ public partial class JourneySmoke : Node
     private readonly List<string> _captures = [];
     private readonly List<EnvironmentEvidence> _environments = [];
     private readonly List<OpeningEnvironmentChecks.Evidence> _openingLayouts = [];
+    private readonly List<OpeningLightingChecks.Evidence> _openingLighting = [];
     private long _revision;
     private readonly Dictionary<string, int> _combatEvents = new(StringComparer.Ordinal);
     private readonly HashSet<string> _feedbackWitnesses = new(StringComparer.Ordinal);
@@ -53,6 +54,9 @@ public partial class JourneySmoke : Node
             _hud.ChoiceRequested += (id, value) => Execute(new(CampaignRuntimeAction.Choose, Id: id, Value: value));
             _hud.HubRequested += () => Execute(new(CampaignRuntimeAction.ReturnToHub));
             Refresh(); await Settle();
+            string beforeLightingFixtures = _session.StateHash;
+            OpeningLightingChecks.Detached(Check);
+            Check("opening_lighting_detached_fixtures_preserve_campaign", _session.StateHash == beforeLightingFixtures);
             Check("greyhaven_has_direct_first_destination", NextStep().Visible && NextStep().Text.StartsWith("Travel to Act 1", StringComparison.Ordinal));
             Check("greyhaven_environment_is_visible", VisibleArchitecture("GreyhavenArchitecture") is not null && VisibleArchitecture("GreyMarchArchitecture") is null);
             ObserveEnvironment("greyhaven", "GreyhavenArchitecture");
@@ -157,7 +161,7 @@ public partial class JourneySmoke : Node
             var replay = CampaignRuntimeReplayRunner.Run(_combatJson, _adventure, _progression, _campaign, _session.CaptureReplay());
             Check("navigation_and_combat_replay", replay.Success);
             await CheckJourneySaveReplay();
-            CheckReplacedSession();
+            await CheckReplacedSession();
             Finish(true, "");
         }
         catch (Exception ex) { await Capture("journey-failure.png"); GD.PushError(ex.ToString()); Finish(false, ex.Message); }
@@ -198,6 +202,8 @@ public partial class JourneySmoke : Node
         if (top is { } value && !float.IsFinite(value)) top = null;
         bool cosmeticOnly = !Descendants(_stage).Any(n => n is CollisionObject3D or CollisionShape3D or NavigationRegion3D);
         _environments.Add(new(district, meshes.Length, materials, groundMeshes.Length, top, cosmeticOnly));
+        if (OpeningLighting.Supports(_sandbox.EnvironmentStyle))
+            _openingLighting.Add(OpeningLightingChecks.Inspect(_sandbox, district, _sandbox.EnvironmentStyle, Check));
         if (district is "greyhaven" or "road" or "monastery" or "sanctum")
         {
             var targets = _session.Interactions.Select(i => new WorldInteractionTarget(i.ActionId, i.Name,
@@ -215,6 +221,7 @@ public partial class JourneySmoke : Node
     private async Task CheckGraphicsProfiles()
     {
         string quality = _sandbox.GraphicsQuality, hash = _session.StateHash;
+        var originalLights = _sandbox.OpeningLights;
         var environment = _sandbox.GetChildren().OfType<WorldEnvironment>().Single().Environment;
         var samples = new List<object>();
         foreach (string preset in new[] { "High", "Performance" })
@@ -242,11 +249,14 @@ public partial class JourneySmoke : Node
                 primitives = Performance.GetMonitor(Performance.Monitor.RenderTotalPrimitivesInFrame)
             });
             Check(preset.ToLowerInvariant() + "_graphics_preserves_campaign_state", _session.StateHash == hash);
+            Check(preset.ToLowerInvariant() + "_graphics_preserves_lighting_node", ReferenceEquals(originalLights, _sandbox.OpeningLights));
+            _openingLighting.Add(OpeningLightingChecks.Inspect(_sandbox, "quality_" + preset.ToLowerInvariant(), "greyhaven", Check));
             Check(preset.ToLowerInvariant() + "_graphics_applies_to_gameplay_view", environment.SsaoEnabled == (preset == "High") &&
                 GetViewport().Msaa3D == (preset == "High" ? Viewport.Msaa.Msaa4X : Viewport.Msaa.Msaa2X));
             await Capture("greyhaven-graphics-" + preset.ToLowerInvariant() + ".png");
         }
         _sandbox.SetGraphicsQuality(quality);
+        Check("restoring_quality_preserves_campaign_and_light_identity", _session.StateHash == hash && ReferenceEquals(originalLights, _sandbox.OpeningLights));
         System.IO.File.WriteAllText(Path.Combine(_output, "graphics-frame-samples.json"), JsonData.Write(new
         {
             scope = "Fixed Greyhaven view, capped at 60 FPS; local frame pacing samples, not a GPU benchmark or hardware certification.",
@@ -260,8 +270,20 @@ public partial class JourneySmoke : Node
         var environment = _sandbox.GetChildren().OfType<WorldEnvironment>().Single().Environment;
         var effects = Descendants(_sandbox).OfType<CheckButton>().Single(b => b.Text == "Reduced visual effects");
         bool originalReducedEffects = effects.ButtonPressed;
+        string lightingStateHash = _session.StateHash;
         if (originalReducedEffects)
         { await Click("Settings [Esc]"); await Click("Accessibility"); await ClickNode(effects); await Click("Close settings"); }
+        var lights = _sandbox.OpeningLights!;
+        double lightingTime = lights.MotionTime;
+        for (int i = 0; i < 4; i++) await Settle();
+        Check("opening_lights_advance_in_live_scene", lights.MotionTime != lightingTime && lights.ActiveCount > 0);
+        _sandbox.SetPaused(true); lightingTime = lights.MotionTime;
+        var frozenLighting = OpeningLightingChecks.Energies(lights);
+        for (int i = 0; i < 4; i++) await Settle();
+        Check("opening_lights_freeze_in_live_paused_scene", lights.MotionTime == lightingTime && OpeningLightingChecks.SameEnergy(lights, frozenLighting) && _session.StateHash == lightingStateHash);
+        _sandbox.SetPaused(false);
+        for (int i = 0; i < 4; i++) await Settle();
+        Check("opening_lights_resume_without_replacement", ReferenceEquals(lights, _sandbox.OpeningLights) && lights.MotionTime != lightingTime);
         bool rendered = DisplayServer.GetName() != "headless";
         if (rendered)
         {
@@ -289,11 +311,18 @@ public partial class JourneySmoke : Node
         await Click("Settings [Esc]"); await Click("Accessibility"); await ClickNode(effects);
         Check("reduced_effects_disable_environment_atmosphere", effects.ButtonPressed && !motes.IsVisibleInTree() && !environment.FogEnabled);
         Check("reduced_effects_disable_opening_motion_live", _sandbox.OpeningMotion!.ActiveCount == 0);
-        await ClickNode(effects); await Click("Close settings");
+        var steadyLighting = OpeningLightingChecks.Energies(lights);
+        Check("reduced_effects_keeps_live_lighting_while_paused", _sandbox.IsPaused && lights.MotionTime == 0 && lights.ActiveCount > 0);
+        for (int i = 0; i < 4; i++) await Settle();
+        Check("reduced_effects_holds_live_light_energy", lights.MotionTime == 0 && OpeningLightingChecks.SameEnergy(lights, steadyLighting) && _session.StateHash == lightingStateHash);
+        await ClickNode(effects);
+        Check("restoring_effects_keeps_light_phase_paused", _sandbox.IsPaused && lights.MotionTime == 0 && ReferenceEquals(lights, _sandbox.OpeningLights));
+        await Click("Close settings");
         var pose = motes.Multimesh.GetInstanceTransform(0);
         for (int i = 0; i < 4; i++) await Settle();
         Check("restoring_effects_restores_environment_atmosphere", !effects.ButtonPressed && !_sandbox.IsPaused && motes.IsVisibleInTree() && environment.FogEnabled && (!rendered || !motes.Multimesh.GetInstanceTransform(0).IsEqualApprox(pose)));
         Check("restoring_effects_restores_opening_motion_live", _sandbox.OpeningMotion!.ActiveCount == _sandbox.OpeningMotion.Capacity);
+        Check("restoring_effects_resumes_live_lighting_without_mutating_core", lights.MotionTime > 0 && lights.ActiveCount > 0 && _session.StateHash == lightingStateHash);
         if (originalReducedEffects)
         { await Click("Settings [Esc]"); await Click("Accessibility"); await ClickNode(effects); await Click("Close settings"); }
     }
@@ -409,7 +438,7 @@ public partial class JourneySmoke : Node
             }
         }
     }
-    private void CheckReplacedSession()
+    private async Task CheckReplacedSession()
     {
         Check("replacement_regression_uses_real_kill_event", _firstKillSnapshot is not null && _firstKillBatch.Any(e => e.Kind == "EntityKilled"));
         var sandbox = new Sandbox { ContentJsonOverride = _combatJson, AutomaticStep = true, AdvanceOverride = _ => [] };
@@ -428,16 +457,32 @@ public partial class JourneySmoke : Node
             sandbox.SetPaused(true);
             sandbox.PresentAuthoredRoom(room, "opening-lifecycle", "greyhaven");
             var firstMotion = sandbox.OpeningMotion!;
+            var firstLights = sandbox.OpeningLights!; string lightingHash = sandbox.Session.StateHash;
+            _openingLighting.Add(OpeningLightingChecks.Inspect(sandbox, "lifecycle_greyhaven", "greyhaven", Check));
             sandbox.PresentAuthoredRoom(room, "opening-lifecycle", "greyhaven");
             Check("opening_same_room_preserves_motion_node", ReferenceEquals(firstMotion, sandbox.OpeningMotion));
+            Check("opening_same_room_preserves_lighting_node", ReferenceEquals(firstLights, sandbox.OpeningLights) && Descendants(sandbox).OfType<OpeningLighting>().Count() == 1);
             var largerRoom = room with { HalfWidth = room.HalfWidth + 3000, HalfDepth = room.HalfDepth + 2000 };
             sandbox.PresentAuthoredRoom(largerRoom, "opening-lifecycle", "greyhaven");
             Check("opening_resize_replaces_motion_while_paused", sandbox.IsPaused && !ReferenceEquals(firstMotion, sandbox.OpeningMotion) &&
                 firstMotion.GetParent() is null && sandbox.OpeningMotion!.MotionTime == 0 &&
                 Descendants(sandbox).OfType<OpeningAtmosphere>().Count() == 1);
+            Check("opening_resize_replaces_lights_while_paused", sandbox.IsPaused && !ReferenceEquals(firstLights, sandbox.OpeningLights) &&
+                firstLights.GetParent() is null && sandbox.OpeningLights!.MotionTime == 0 && Descendants(sandbox).OfType<OpeningLighting>().Count() == 1);
+            var resizedLights = sandbox.OpeningLights!;
+            sandbox.PresentAuthoredRoom(room, "opening-lifecycle-crypt", "crypt");
+            Check("opening_style_change_detaches_previous_lights", resizedLights.GetParent() is null && sandbox.OpeningLights!.Style == "crypt" && sandbox.IsPaused &&
+                Descendants(sandbox).OfType<OpeningLighting>().Count() == 1);
+            _openingLighting.Add(OpeningLightingChecks.Inspect(sandbox, "lifecycle_crypt_fixture", "crypt", Check));
+            var cryptLights = sandbox.OpeningLights!;
+            await Frames(2);
+            Check("detached_lighting_is_freed_after_deferred_boundary", !GodotObject.IsInstanceValid(firstLights) && !GodotObject.IsInstanceValid(resizedLights) && Descendants(sandbox).OfType<OpeningLighting>().Count() == 1);
             sandbox.PresentAuthoredRoom(room, "opening-lifecycle-exit", "verdant_ruins");
             Check("leaving_opening_region_removes_optional_motion", sandbox.OpeningMotion is null &&
                 !Descendants(sandbox).OfType<OpeningAtmosphere>().Any());
+            Check("leaving_opening_region_removes_local_lights", sandbox.OpeningLights is null && cryptLights.GetParent() is null && !Descendants(sandbox).OfType<OpeningLighting>().Any());
+            await Frames(2);
+            Check("lighting_lifecycle_releases_native_nodes_without_mutating_core", !GodotObject.IsInstanceValid(cryptLights) && sandbox.Session.StateHash == lightingHash);
         }
         finally { sandbox.Free(); }
     }
@@ -483,6 +528,7 @@ public partial class JourneySmoke : Node
             skippedChecks = _skippedChecks,
             environments = _environments,
             openingLayouts = _openingLayouts,
+            openingLighting = _openingLighting,
             combatEvents = _combatEvents,
             feedbackWitnesses = _feedbackWitnesses.Order().ToArray(),
             captures = _captures,

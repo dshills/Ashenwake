@@ -29,13 +29,14 @@ public partial class CharacterVisual
         Material shell = ArmorShell(kind), cloth = SharedMaterial(palette.Cloth), trim = SharedMaterial(palette.Trim);
         bool plate = palette.Metallic;
         // Wakeguard Mantle: layered funeral cloth, an engraved clasp and a protective crest.
-        Orb(parent, new(side * .035f, -.025f, 0), new(plate ? .53f : .46f, .28f, .47f), shell);
-        Box(parent, new(side * .16f, -.22f, .045f), new(.22f, .40f, .34f), cloth, new(0, 0, side * 12));
-        for (int fold = 0; fold < 3; fold++)
+        TaperedBox(parent, new(side * .035f, -.015f, 0), new(plate ? .51f : .44f, .23f, .44f), shell, .84f, new(0, 0, side * 10));
+        TailoredCape(parent, new(side * .16f, -.06f, .11f), .22f, .40f, cloth);
+        for (int layer = 0; layer < 2; layer++)
         {
-            float x = side * (.075f + fold * .073f);
-            Box(parent, new(x, -.24f - fold * .025f, -.144f), new(.045f, .32f, .035f), cloth, new(0, 0, side * 8));
-            Rod(parent, new(x, -.30f, -.17f), new(x, -.37f - fold * .025f, -.17f), .012f, trim);
+            float y = -.14f - layer * .10f;
+            TaperedBox(parent, new(side * (.065f + layer * .035f), y, -.025f), new(.39f - layer * .045f, .13f, .37f),
+                plate ? shell : cloth, .86f, new(0, 0, side * 13));
+            Rod(parent, new(side * .065f - .15f, y - .048f, -.22f), new(side * .065f + .15f, y - .048f, -.22f), .017f, trim);
         }
         if (kind is "gravecaller" or "warden")
             for (int i = 0; i < 3; i++)
@@ -92,8 +93,9 @@ public partial class CharacterVisual
         Material shell = ArmorShell(kind), cloth = SharedMaterial(palette.Cloth), trim = SharedMaterial(palette.Trim);
         // Mourner's Greaves: overlapping knee plates and a hanging mourning ribbon.
         Cone(parent, new(0, -.17f, 0), .15f, .17f, .34f, cloth);
-        Box(parent, new(side * .025f, -.20f, -.145f), new(.23f, .26f, .07f), shell, new(-8, 0, side * -4));
-        Orb(parent, new(0, -.385f, -.08f), new(.30f, .25f, .28f), shell);
+        TaperedBox(parent, new(side * .025f, -.20f, -.145f), new(.23f, .26f, .07f), shell, .78f, new(-8, 0, side * -4));
+        TaperedBox(parent, new(0, -.385f, -.10f), new(.30f, .24f, .24f), shell, .68f);
+        TaperedBox(parent, new(0, -.29f, -.165f), new(.26f, .105f, .09f), shell, .85f, new(-14, 0, 0));
         for (int direction = -1; direction <= 1; direction += 2)
             Rod(parent, new(direction * .10f, -.355f, -.21f), new(0, -.43f, -.23f), .021f, trim);
         Box(parent, new(side * .155f, -.30f, .015f), new(.055f, .45f, .16f), cloth, new(0, 0, side * 6));
@@ -163,11 +165,15 @@ public partial class CharacterVisual
     {
         // A front opening exposes independently equipped knees/boots. Back and side panels retain the robe silhouette.
         using var surface = new SurfaceTool(); surface.Begin(Mesh.PrimitiveType.Triangles);
-        // Keep front/back normals separate. Sixteen extra back faces let the skirt batch with
-        // the chest fabric without duplicating or changing the shared material's culling mode.
+        // Keep front/back normals separate. Explicit back faces let the folded skirt batch
+        // with the chest fabric without changing the shared material's culling mode.
         surface.SetSmoothGroup(uint.MaxValue);
-        Vector3 Point(float angle, bool bottom) => new(MathF.Sin(angle) * (bottom ? radius : .28f), bottom ? .18f : 1.13f,
-            .035f + MathF.Cos(angle) * (bottom ? radius : .28f) * .76f);
+        Vector3 Point(float angle, int row, bool fold = false)
+        {
+            float down = row * .5f;
+            float spread = Mathf.Lerp(.28f, radius, down) - (fold ? .035f * down : 0);
+            return new(MathF.Sin(angle) * spread, Mathf.Lerp(1.13f, .18f, down), .035f + MathF.Cos(angle) * spread * .76f);
+        }
         void Triangle(Vector3 a, Vector3 b, Vector3 c)
         {
             void Vertex(Vector3 point)
@@ -182,15 +188,22 @@ public partial class CharacterVisual
         for (int i = 0; i < panels; i++)
         {
             float a = -Mathf.Pi * 2 / 3 + i * Mathf.Pi / 6, b = a + Mathf.Pi / 6;
-            Triangle(Point(a, false), Point(a, true), Point(b, true));
-            Triangle(Point(a, false), Point(b, true), Point(b, false));
-            Rod(parent, Point(a, true), Point(b, true), .019f, trim);
+            float middle = (a + b) * .5f;
+            for (int row = 0; row < 2; row++)
+            {
+                Triangle(Point(a, row), Point(a, row + 1), Point(middle, row + 1, true));
+                Triangle(Point(a, row), Point(middle, row + 1, true), Point(middle, row, true));
+                Triangle(Point(middle, row, true), Point(middle, row + 1, true), Point(b, row + 1));
+                Triangle(Point(middle, row, true), Point(b, row + 1), Point(b, row));
+            }
+            Rod(parent, Point(a, 2), Point(middle, 2, true), .019f, trim);
+            Rod(parent, Point(middle, 2, true), Point(b, 2), .019f, trim);
         }
         surface.GenerateNormals();
         surface.GenerateTangents();
         surface.Index();
         parent.AddChild(new MeshInstance3D { Mesh = surface.Commit(), MaterialOverride = fabric });
         foreach (float angle in new[] { -Mathf.Pi * 2 / 3, Mathf.Pi * 2 / 3 })
-            Rod(parent, Point(angle, false), Point(angle, true), .018f, trim);
+            Rod(parent, Point(angle, 0), Point(angle, 2), .018f, trim);
     }
 }

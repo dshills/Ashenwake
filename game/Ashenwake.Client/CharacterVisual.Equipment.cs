@@ -252,7 +252,7 @@ public partial class CharacterVisual
             EquippedRobeSkirt(parent, chest == "serath_shroud" ? .51f : .46f, fabric, trim);
         }
         float capeLength = robe ? 1.26f : kind == "veilwalker" ? 1.15f : .80f;
-        TaperedBox(parent, new(0, 1.68f - capeLength * .5f, .33f), new(chest == "serath_shroud" ? .73f : .62f, capeLength, .065f), (chest == "starter_chest" && kind is "vanguard" or "warden") ? Accent : fabric, 1.10f, new(10, 0, 0));
+        TailoredCape(parent, new(0, 1.68f, .33f), chest == "serath_shroud" ? .73f : .62f, capeLength, (chest == "starter_chest" && kind is "vanguard" or "warden") ? Accent : fabric);
         if (chest == "oath_plate")
         {
             Box(parent, new(0, 1.41f, -.354f), new(.29f, .055f, .035f), Metal);

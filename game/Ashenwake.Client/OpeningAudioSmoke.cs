@@ -377,6 +377,17 @@ public partial class OpeningAudioSmoke : Node
                 _route.Add(new { kind = "room", room, style, tick = _session.Tick, audio.Mode, audio.BankStarts, audio.FootstepCount, stateHash = _session.StateHash });
                 Check("earned_" + style + "_selects_authored_score", audio.DesiredStyle == style && audio.PlayingStyle == style);
                 if (style == "sanctum") Check("earned_bell_saint_raises_boss_layer", audio.Mode == "boss" && audio.BossGain >= .39f);
+                if (style == "crypt")
+                {
+                    // This earned route reaches the optional vault that the main Journey
+                    // smoke bypasses; use the same ground, obstacle and lighting checks here.
+                    var architecture = _stage.FindChild("GreyMarchArchitecture", true, false) as Node3D
+                        ?? throw new InvalidDataException("Missing earned crypt architecture.");
+                    var targets = _session.Interactions.Select(interaction => new WorldInteractionTarget(interaction.ActionId,
+                        interaction.Name, interaction.Position, interaction.Range, _stage.GetInteractionVisual(interaction.ActionId))).ToArray();
+                    _route.Add(OpeningEnvironmentChecks.Inspect(_sandbox, architecture, _session.Room, style, targets, Check));
+                    _route.Add(OpeningLightingChecks.Inspect(_sandbox, "earned_crypt", style, Check));
+                }
                 await Capture("opening-audio-" + style + ".png");
             }
             else if (i % 30 == 0) { Refresh(); await Frames(1); }

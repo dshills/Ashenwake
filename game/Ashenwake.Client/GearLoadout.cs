@@ -97,7 +97,27 @@ public partial class GearLoadout : HBoxContainer
     {
         _epoch++;
         HidePresentation();
-        if (IsInsideTree() && Owns(GetViewport().GuiGetDragData())) GetViewport().GuiCancelDrag();
+        if (!IsInsideTree()) return;
+        var viewport = GetViewport();
+        var data = viewport.GuiGetDragData();
+        if (!Owns(data)) return;
+        var values = data.AsGodotDictionary();
+        if (!values.TryGetValue("epoch", out var epoch) || epoch.VariantType != Variant.Type.Int) return;
+        string owner = values["owner"].AsString();
+        long dragEpoch = epoch.AsInt64();
+        // Focus/visibility notifications can arrive while Godot removes the drag preview.
+        // Reject drops immediately above, but let native tree mutation finish before cancelling.
+        // Capture the old payload identity: a queued cancellation must never end a newer drag.
+        Callable.From(() =>
+        {
+            if (!GodotObject.IsInstanceValid(viewport) || viewport.IsQueuedForDeletion() || !viewport.GuiIsDragging()) return;
+            var current = viewport.GuiGetDragData();
+            if (current.VariantType != Variant.Type.Dictionary) return;
+            var currentValues = current.AsGodotDictionary();
+            if (currentValues.TryGetValue("owner", out var currentOwner) && currentOwner.VariantType == Variant.Type.String && currentOwner.AsString() == owner &&
+                currentValues.TryGetValue("epoch", out var currentEpoch) && currentEpoch.VariantType == Variant.Type.Int && currentEpoch.AsInt64() == dragEpoch)
+                viewport.GuiCancelDrag();
+        }).CallDeferred();
     }
 
     public override void _Input(InputEvent input)
@@ -120,7 +140,7 @@ public partial class GearLoadout : HBoxContainer
                 Callable.From(() =>
                 {
                     if (GodotObject.IsInstanceValid(this) && IsInsideTree() && IsVisibleInTree() &&
-                        _epoch == canceledEpoch && GodotObject.IsInstanceValid(viewport)) viewport.PushInput(menuPress, true);
+                        _epoch == canceledEpoch && GodotObject.IsInstanceValid(viewport) && !viewport.GuiIsDragging()) viewport.PushInput(menuPress, true);
                 }).CallDeferred();
             }
             else GetViewport().SetInputAsHandled();

@@ -63,10 +63,8 @@ public partial class CharacterVisual : Node3D
 
         if (robe)
         {
-            var skirt = Cone(BodyRoot, new Vector3(0, .77f, .035f), .46f, .27f, 1.2f, Main);
-            skirt.Scale = new Vector3(1, 1, .76f);
+            EquippedRobeSkirt(BodyRoot, .46f, Main, Metal);
             Box(BodyRoot, new Vector3(0, .86f, -.30f), new Vector3(.12f, 1.1f, .045f), Accent);
-            Ring(BodyRoot, new Vector3(0, .2f, .035f), .38f, .43f, Metal);
         }
 
         var left = HumanArm(-1, plate);
@@ -168,14 +166,52 @@ public partial class CharacterVisual : Node3D
         Box(BodyRoot, new Vector3(-.073f, 2.025f, -.265f), new Vector3(.05f, .03f, .018f), face == Dark ? Glow : Dark);
         Box(BodyRoot, new Vector3(.073f, 2.025f, -.265f), new Vector3(.05f, .03f, .018f), face == Dark ? Glow : Dark);
         Cone(BodyRoot, new Vector3(0, 1.735f, 0), .32f, .19f, .22f, fabric);
+        // A broad folded rim frames the face instead of reading as a second round head.
+        for (int side = -1; side <= 1; side += 2)
+        {
+            TaperedBox(BodyRoot, new(side * .175f, 2.035f, -.187f), new(.10f, .39f, .09f), fabric, .65f, new(0, 0, side * -14));
+            Rod(BodyRoot, new(side * .02f, 2.245f, -.095f), new(side * .16f, 2.185f, -.175f), .036f, fabric);
+        }
     }
 
     private void HumanCape(float length, Material fabric)
     {
         var cape = Joint(BodyRoot, new Vector3(0, 1.68f, .19f), "sway", .4f);
-        TaperedBox(cape, new Vector3(0, -length * .5f, .085f), new Vector3(.61f, length, .055f), fabric, 1.12f, new Vector3(10, 0, 0));
+        TailoredCape(cape, new(0, 0, .035f), .61f, length, fabric);
         Box(BodyRoot, new Vector3(0, 1.61f, -.26f), new Vector3(.3f, .14f, .08f), fabric);
         Orb(BodyRoot, new Vector3(.13f, 1.63f, -.315f), new Vector3(.09f, .09f, .05f), Metal);
+    }
+
+    private static void TailoredCape(Node parent, Vector3 top, float width, float length, Material fabric)
+    {
+        // Four broad folds and a lifted center hem remain readable from the gameplay camera.
+        // Back faces are authored explicitly so this never changes a shared material's culling mode.
+        using var surface = new SurfaceTool(); surface.Begin(Mesh.PrimitiveType.Triangles);
+        surface.SetSmoothGroup(uint.MaxValue);
+        Vector3 Point(int column, int row)
+        {
+            float down = row * .5f;
+            float hem = row == 2 && column == 2 ? length * .10f : 0;
+            return top + new Vector3((column * .25f - .5f) * width * Mathf.Lerp(.86f, 1.10f, down),
+                -length * down + hem, down * length * .16f + (column % 2 == 0 ? 0 : .045f) * MathF.Sin(down * Mathf.Pi * .5f));
+        }
+        void Triangle(Vector3 a, Vector3 b, Vector3 c)
+        {
+            void Vertex(Vector3 point)
+            {
+                surface.SetUV(new((point.X - top.X) / width + .5f, (top.Y - point.Y) / length));
+                surface.AddVertex(point);
+            }
+            Vertex(a); Vertex(b); Vertex(c); Vertex(c); Vertex(b); Vertex(a);
+        }
+        for (int row = 0; row < 2; row++)
+            for (int column = 0; column < 4; column++)
+            {
+                Triangle(Point(column, row), Point(column, row + 1), Point(column + 1, row + 1));
+                Triangle(Point(column, row), Point(column + 1, row + 1), Point(column + 1, row));
+            }
+        surface.GenerateNormals(); surface.GenerateTangents(); surface.Index();
+        parent.AddChild(new MeshInstance3D { Mesh = surface.Commit(), MaterialOverride = fabric });
     }
 
     private void HumanVanguard(Node3D left, Node3D right)

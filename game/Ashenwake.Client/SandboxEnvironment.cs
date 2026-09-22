@@ -8,6 +8,8 @@ public partial class Sandbox
     private DirectionalLight3D _sun = null!;
     private MultiMeshInstance3D? _ambientMotes;
     private OpeningAtmosphere? _openingAtmosphere;
+    private OpeningLighting? _openingLighting;
+    private (float Width, float Depth) _openingLightingBounds;
     private (float Width, float Depth) _openingAtmosphereBounds;
     private string _environmentStyle = "";
     private double _atmosphereTime;
@@ -21,6 +23,7 @@ public partial class Sandbox
     public bool AmbiencePaused => _regionalAmbience?.StreamPaused ?? false;
     public int AmbientMoteCount => _ambientMotes?.Multimesh.InstanceCount ?? 0;
     public OpeningAtmosphere? OpeningMotion => _openingAtmosphere;
+    public OpeningLighting? OpeningLights => _openingLighting;
 
     public void SetEnvironmentStyle(string style)
     {
@@ -153,6 +156,20 @@ public partial class Sandbox
             _regionalAmbience.StreamPaused = _clock.Paused;
         float x = (_authoredBounds.Width > 0 ? _authoredBounds.Width : _content.Room.HalfWidth) * .001f;
         float z = (_authoredBounds.Depth > 0 ? _authoredBounds.Depth : _content.Room.HalfDepth) * .001f;
+        bool litOpening = OpeningLighting.Supports(_environmentStyle);
+        if (_openingLighting is not null && (!litOpening || _openingLighting.Style != _environmentStyle || _openingLightingBounds != (x, z)))
+        {
+            RemoveChild(_openingLighting);
+            _openingLighting.QueueFree();
+            _openingLighting = null;
+        }
+        if (litOpening && _openingLighting is null)
+        {
+            _openingLighting = OpeningLighting.Create(_environmentStyle, x, z);
+            _openingLightingBounds = (x, z);
+            AddChild(_openingLighting);
+        }
+        _openingLighting?.Animate(delta, _clock.Paused, _reduceEffects, _graphicsQuality);
         bool opening = _environmentStyle is "greyhaven" or "road" or "monastery" or "sanctum";
         if (_openingAtmosphere is not null && (!opening || _openingAtmosphere.Style != _environmentStyle || _openingAtmosphereBounds != (x, z)))
         {
