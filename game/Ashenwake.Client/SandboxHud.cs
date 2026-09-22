@@ -103,6 +103,7 @@ public partial class Sandbox
         float top = 218;
         if (_campaignObjective is not null && _campaignObjective.IsVisibleInTree()) top = Math.Max(top, _campaignObjective.GetGlobalRect().End.Y + 10);
         if (_expeditionObjective is not null && _expeditionObjective.IsVisibleInTree()) top = Math.Max(top, _expeditionObjective.GetGlobalRect().End.Y + 10);
+        if (_endgameRulePanel?.IsVisibleInTree() == true) top = Math.Max(top, _endgameRulePanel.GetGlobalRect().End.Y + 10);
         _targetDetail.Position = width >= 1220 ? new(615, 88) : new(22, top);
         _targetDetail.Size = new(Math.Min(width < 900 && _localMap is not null ? 250 : 286, width - 340), 104);
     }

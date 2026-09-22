@@ -18,6 +18,8 @@ The [opening environment composition pass](../docs/environment_art.md) adds conn
 
 The [Act I](../docs/opening_combat_depth.md), [Acts II–III](../docs/midgame_combat_depth.md) and [Acts IV–V](../docs/late_campaign_combat_depth.md) combat-depth passes add authored enemy formations, interruptible support roles and clearer boss windows across the campaign. Automated discipline, replay and migration checks are documented separately from the human playtest gates below.
 
+The [endgame combat polish pass](../docs/endgame_combat_polish.md) extends live protection, vulnerability and warning cues to Fractures and all God Hunts, and adds repeatable earned-build measurements through the first three Fracture tiers.
+
 Build a small, satisfying, replayable single-player game loop first. Prove that Divine Anatomy creates surprising build interactions, then establish a repeatable content pipeline, produce the campaign and endgame, and release a reliable single-player game. Cooperative play follows as a separately gated expansion.
 
 At the planning baseline, the repository contained the two source specifications and no implementation. This plan therefore starts from project setup. It preserves the architecture's Phases 0–4, adds explicit endgame and release phases, and moves its optional online prototype from Phase 5 to Phase 7. Phase numbers describe dependencies, not calendar commitments.

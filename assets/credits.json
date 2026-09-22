@@ -21,7 +21,9 @@
         "game/Ashenwake.Client/CharacterVisual.MidgameEquipment.cs",
         "game/Ashenwake.Client/GearItemIcon.Midgame.cs",
         "game/Ashenwake.Client/SandboxLegendaryPresentation.cs",
-        "game/Ashenwake.Client/SandboxMidgameCombat.cs"
+        "game/Ashenwake.Client/SandboxMidgameCombat.cs",
+        "game/Ashenwake.Client/SandboxEndgameReadability.cs",
+        "game/Ashenwake.Client/CombatLabelLayout.cs"
       ],
       "origin": "Authored in the Ashenwake repository from Godot primitive meshes and synthesized waveforms; no downloaded art or audio samples are declared.",
       "rightsStatus": "Project-authored source. The repository does not yet declare a distribution license or owner approval.",

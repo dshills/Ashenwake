@@ -70,9 +70,9 @@ public sealed partial class CombatSession
                 hunt ? e.EncounterIndex + 1 : 0, hunt ? 3 : 0, counterplay, active, active ? 30 - cycle : 0,
                 EndgameRule("fragment_overcharge") ? active ? 0 : 120 - cycle : 0, HighestResistance, LowestResistance, FamilyResistance(HighestResistance),
                 FamilyResistance(LowestResistance) - (EndgameRule("resistance_inversion") ? 1500 : 0), e.Manifest.Rooms[^1].EliteModifiers.ToArray(),
-                e.Hazards.Select(h => new EndgameHazardView(h.Id, h.Kind, h.Position, h.End, h.Radius, Tick < h.StartsTick ? "Warning" : "Active",
-                    Math.Max(0, (Tick < h.StartsTick ? h.StartsTick : h.EndsTick) - Tick), h.ContentId, h.SourceId, h.Sequence)).ToArray(),
-                e.Mechanisms.Select(m => new EndgameMechanismView(m.Id, m.Kind, m.Position, m.Radius, MechanismAvailable(m), MechanismPrompt(m))).ToArray());
+                e.Hazards.Select(EndgameHazardCue).ToArray(),
+                e.Mechanisms.Select(m => new EndgameMechanismView(m.Id, m.Kind, m.Position, m.Radius, MechanismAvailable(m), MechanismPrompt(m)) { Used = m.Used }).ToArray())
+            { BossCue = EndgameBossCue(), HastedActorIds = EndgameHastedActors() };
         }
     }
     private void ObserveEndgameEvent(CombatEvent ev)

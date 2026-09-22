@@ -30,8 +30,10 @@ public sealed class CampaignBalancePolicy(bool mainPath = false, bool managedBui
         return command;
     }
 
-    private static CampaignRuntimeCommand? ManagedCommand(CampaignRuntimeSession session)
+    /// <summary>Read-only selector shared with earned endgame diagnostics; returns null when the owned build is managed.</summary>
+    public static CampaignRuntimeCommand? ManagedCommand(CampaignRuntimeSession session)
     {
+        if (!session.InHub) return null;
         var view = session.Production.ProgressionView;
         if (view.AvailablePassivePoints > 0)
         {

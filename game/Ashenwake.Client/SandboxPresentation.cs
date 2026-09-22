@@ -231,6 +231,7 @@ public partial class Sandbox
             }
         }
         LayoutCampaignWarningLabels();
+        LayoutEndgameCombatLabels();
     }
 
     private static float DefaultCameraSize(int halfWidth, int halfDepth)
@@ -373,6 +374,7 @@ public partial class Sandbox
         foreach (var actor in _actors.Values) { RemoveChild(actor.Root); actor.Root.QueueFree(); }
         _actors.Clear();
         foreach (var mesh in _effects.Values) mesh.QueueFree(); _effects.Clear();
+        _warningLabelAnchors.Clear();
         foreach (var node in _transientNodes) node.QueueFree(); _transientNodes.Clear();
         _floatingActors.Clear(); _floatingLabels.Clear(); _combatEffects?.Clear(); _lastSounds.Clear();
         if (_legendaryReadiness is not null) { _legendaryReadiness.QueueFree(); _legendaryReadiness = null; }

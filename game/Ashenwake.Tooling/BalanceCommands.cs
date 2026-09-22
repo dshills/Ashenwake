@@ -10,6 +10,7 @@ internal static class BalanceCommands
     public static int Run(string[] args)
     {
         if (args.Length >= 2 && args[1] == "campaign") return CampaignBalanceCommands.Run(args);
+        if (args.Length >= 2 && args[1] == "endgame") return EndgameBalanceCommands.Run(args);
         if (args.Length is < 2 or > 4 || args[1] is not ("run" or "loot")) return 2;
         int seeds = args[1] == "loot" ? 20 : 3;
         if (args.Length > 3 && !int.TryParse(args[3], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out seeds))

@@ -60,6 +60,9 @@ public partial class Sandbox
         "rule.causalechoes" => "ROOM ECHO",
         "campaign.memoryarrow" => "MEMORY ARROW",
         "campaign.shadowdouble" => "SHADOW STRIKE",
+        "elite.stormbound" => "LIGHTNING LINK",
+        "elite.null" => "NULL FIELD · MOVE AWAY",
+        "elite.riftborn" => "RIFT STRIKE",
         _ => ""
     };
 

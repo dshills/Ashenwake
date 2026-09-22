@@ -30,7 +30,7 @@ public partial class Sandbox
     {
         "MarkedEcho" => "◆ MARKED ECHO · BREAK THIS",
         "FalseEcho" => "FALSE ECHO · REFORMS ONCE",
-        "RebuildingLimb" => "REBUILDING LIMB · INTERRUPT",
+        "RebuildingLimb" => "REBUILDING LIMB · DESTROY",
         "BroodChannel" => "BROOD CHANNEL · CLOSE THIS",
         "SeedGuard" => "SEED GUARD · BREAK SHIELD",
         "ContractSeal" => "CONTRACT SEAL · BREAK SHIELD",

@@ -1,5 +1,6 @@
 using Ashenwake.Core.Content;
 using Ashenwake.Core.Simulation;
+using System.Text.Json.Serialization;
 
 namespace Ashenwake.Core.Combat;
 
@@ -16,13 +17,27 @@ public sealed record EndgameCombatManifest(int SchemaVersion, string RulesVersio
     string Kind, string ContentId, long SigilId, ulong Seed, int Tier, string Region, string RewardTendency,
     string[] RuleIds, EndgameManifestRoom[] Rooms, EndgameInheritanceSource[] Inheritance);
 public sealed record EndgameHazardView(long Id, string Kind, Position Position, Position End, int Radius,
-    string Stage, long RemainingTicks, string ContentId, int SourceId, int Sequence = 0);
-public sealed record EndgameMechanismView(int Id, string Kind, Position Position, int Radius, bool Available, string Prompt);
+    string Stage, long RemainingTicks, string ContentId, int SourceId, int Sequence = 0)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int SequenceIndex { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int SequenceCount { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int LaneIndex { get; init; }
+}
+public sealed record EndgameMechanismView(int Id, string Kind, Position Position, int Radius, bool Available, string Prompt)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool Used { get; init; }
+}
+public sealed record EndgameBossCueView(int BossId, bool Shielded, int GuardedTicks, int VulnerableTicks,
+    bool PermanentlyVulnerable, int RecoveryTicks, int[] PriorityActorIds, int[] PriorityMechanismIds);
 public sealed record CombatEndgameView(string ContextKey, long RunId, int EncounterIndex, int EncounterCount,
     int Attempt, int Tier, string[] RuleIds, string HuntId, string PhaseName, int PhaseIndex, int PhaseCount,
     string Counterplay, bool OverchargeActive, int OverchargeRemainingTicks, int NextOverchargeTicks,
     DamageFamily HighestResistanceFamily, DamageFamily LowestResistanceFamily, int HighestResistanceBasisPoints,
-    int LowestResistanceBasisPoints, string[] BossModifiers, EndgameHazardView[] Hazards, EndgameMechanismView[] Mechanisms);
+    int LowestResistanceBasisPoints, string[] BossModifiers, EndgameHazardView[] Hazards, EndgameMechanismView[] Mechanisms)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public EndgameBossCueView? BossCue { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int[]? HastedActorIds { get; init; }
+}
 
 public sealed record EndgameHazard(long Id, string Kind, Position Position, Position End, int Radius,
     long StartsTick, long EndsTick, long NextTick, string ContentId, int SourceId, int Damage,

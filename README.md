@@ -44,6 +44,8 @@ Press **J** for the connected Journey map. Select Greyhaven or a campaign region
 
 Press **B** for the visual expedition board: inspect Sigil cards and connected routes, preview attunement, browse God Hunt emblems and unlock requirements, and track rooms, attempts and earned rewards. Sigil consumption, hunt entry, abandonment and leaving ground loot have explicit confirmation controls. See [Fractures & God Hunts controls](docs/expedition_board.md).
 
+[Endgame combat cues](docs/endgame_combat_polish.md) identify the weak points or mechanisms that expose a boss, distinguish timed vulnerability from a permanently broken shield, and name incoming attacks. Fracture rules show live hazards, surge timing and inherited traits with counterplay. `aw balance endgame <new-directory> 3` measures fresh earned builds through Fracture tiers 1–3 across all five disciplines and seeds 42–44.
+
 The [campaign pacing pass](docs/campaign_pacing.md) smooths level gains across all five acts, gives optional testaments useful craftable affixes, and adds **Walk to the Fracture gate** to the expedition board. Existing saves retain earned equipment and receive any earlier XP difference once.
 
 The [Act I combat-depth pass](docs/opening_combat_depth.md) gives the opening enemy groups clearer roles, adds the monastery's interruptible Dirgebound ally ward, and guides the first Pyrebound Treads and Heart of Serath upgrades through the existing services.

@@ -1,5 +1,7 @@
 # Endgame combat adapter
 
+The [endgame combat polish pass](endgame_combat_polish.md) adds live boss openings, priority targets, named warnings and modifier guidance, with earned campaign-to-tier-three progression measurements.
+
 The Phase 5 adapter runs Fractures and God Hunts in `Ashenwake.Core`, using the existing fixed-tick skills, damage rules, statuses, projectiles, corpse ownership, elite behaviors and permanent-build projection. Godot displays the authoritative state and sends commands. The environments, bosses and effects remain greybox assets; automated completion does not establish final visual quality or human readability.
 
 ## Catalog, manifest and lifetime

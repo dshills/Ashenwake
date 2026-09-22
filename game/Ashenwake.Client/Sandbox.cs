@@ -272,7 +272,7 @@ public partial class Sandbox : Node3D
             var hazard = (_view.CampaignHazards ?? []).Where(h => h.SourceId == actor.Id && h.RemainingTicks > 0 && !h.ContentId.StartsWith("rule.", StringComparison.Ordinal))
                 .OrderBy(h => h.RemainingTicks).FirstOrDefault();
             var conditions = actor.Statuses.Select(s => s.Id).Concat(actor.EliteModifiers ?? []);
-            string? mechanic = MidgameCombatLabel(actor, hazard) ?? (IsDirge(hazard) ? OpeningCombatLabel(actor, hazard) :
+            string? mechanic = EndgameCombatLabel(actor) ?? MidgameCombatLabel(actor, hazard) ?? (IsDirge(hazard) ? OpeningCombatLabel(actor, hazard) :
                 CampaignActorLabel(actor) ?? EndgameActorLabel(actor.State) ?? OpeningCombatLabel(actor, hazard));
             if (mechanic is not null) _mechanicLabels.Add(actor.Id);
             if (mechanic is not null) conditions = conditions.Append(mechanic);
@@ -289,9 +289,11 @@ public partial class Sandbox : Node3D
             var presentation = _actors[actor.Id];
             if (aim is { } destination) presentation.Facing = PositionOf(destination.X, destination.Z) - presentation.Current;
             else if (presentation.Body.ActiveCue is not ("attack" or "dodge")) presentation.Facing = null;
-            if (actor.Id != 1) _actors[actor.Id].Body.SetAccent(actor.State == "MarkedEcho" ? new Color("ffe297") : actor.State == "FalseEcho" ? new Color("69818f") : _actors[actor.Id].Body.BaseAccentColor);
+            if (actor.Id != 1) _actors[actor.Id].Body.SetAccent(actor.State == "MarkedEcho" || _view.Endgame?.BossCue?.PriorityActorIds.Contains(actor.Id) == true ? new Color("ffe297") : actor.State == "FalseEcho" ? new Color("69818f") : _actors[actor.Id].Body.BaseAccentColor);
         }
         BeginEffects();
+        foreach (var actor in _view.Actors.Where(a => a.Health > 0 && a.Visible && _view.Endgame?.BossCue?.PriorityActorIds.Contains(a.Id) == true))
+            PresentEndgamePriority(actor);
         foreach (var actor in _view.Actors.Where(a => a.Health > 0 && a.Visible && a.State is "MarkedEcho" or "FalseEcho"))
             PresentEffect($"identity{actor.Id}", actor.Position.X, actor.Position.Z, .75f, actor.State == "MarkedEcho" ? new Color(1, .85f, .3f, .4f) : new Color(.4f, .6f, .7f, .15f));
         if (_view.Discipline == "Gravecaller" || _manifestations.Contains("manifestation.voracious_renewal"))
