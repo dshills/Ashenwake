@@ -13,30 +13,10 @@ public static class SpineGround
         float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
         bool memory = style == "spine_memory", hall = style is "spine_hall" or "spine_archive", warden = style == "spine_warden";
         string baseColor = memory ? "424d46" : "45525b";
-        string paving = memory ? "596158" : "596872";
-        string lightPaving = memory ? "666b60" : "63717a";
-        string darkPaving = memory ? "515b54" : "53616b";
         string line = memory ? "899281" : "7d8a8f";
         string inset = memory ? "48574f" : "4b5b64";
         string engraving = memory ? "6c7769" : "697b82";
         b.Box(new(x * 2 + 11, .36f, z * 2 + 11), new(0, -.26f, 0), baseColor);
-        int columns = Math.Clamp((int)(x * 1.03f), 6, 26), rows = Math.Clamp((int)(z * 1.04f), 6, 26);
-        float width = x * 2 / columns, depth = z * 2 / rows;
-        for (int row = 0; row < rows; row++)
-            for (int col = 0; col < columns; col++)
-            {
-                int pattern = (row * 11 + col * 17 + row * col * 3) % 19;
-                float px = -x + (col + .5f) * width, pz = -z + (row + .5f) * depth;
-                if (!ClearFloor(room, px, pz, width * .5f, depth * .5f)) continue;
-                string color = pattern % 5 == 0 ? lightPaving : pattern % 3 == 0 ? darkPaving : paving;
-                b.Box(new(width - .037f, .025f, depth - .037f), new(px, -.051f, pz), color);
-                if (!memory && pattern % 6 == 0)
-                {
-                    // Small surface wear is local and quiet; full-width faults remain exclusive to active mechanics.
-                    b.Box(new(width * .27f, .008f, .029f), new(px + width * .13f, -.029f, pz - depth * .17f), inset, new(0, 23, 0));
-                    b.Box(new(.035f, .008f, depth * .15f), new(px + width * .03f, -.029f, pz - depth * .12f), inset, new(0, -16, 0));
-                }
-            }
         if (hall) Hall(b, x, z, inset, engraving);
         else if (warden) Court(b, x, z, inset, engraving);
         else if (memory) Memory(b, x, z, inset, engraving);
@@ -52,6 +32,7 @@ public static class SpineGround
             b.Box(new(.105f, .01f, z * 2 / 20 - .07f), new(x, -.014f, pz), line);
         }
         b.Flush();
+        CourtMasonry(parent.GetNode<Node3D>("AuthoredGround"), room, style);
     }
 
     public static Vector2[][] Routes(string style)
@@ -84,18 +65,130 @@ public static class SpineGround
             {
                 var point = new Vector2(px, pz);
                 if (!routes.Any(route => DistanceToRoute(point, route) < 1.18f) || !ClearFloor(room, px, pz, .45f, .4f)) continue;
-                int pattern = (row * 13 + column * 7) % 5;
-                string color = memory ? pattern == 0 ? "858776" : "747c70" : pattern == 0 ? "829092" : "71838b";
-                b.Box(new(.85f, .012f, .76f), new(px, -.008f, pz), color);
+                uint wear = SurfaceHash(row, column);
+                string color = memory ? wear % 5 == 0 ? "858776" : "747c70" : wear % 5 == 0 ? "7c898c" : "6e7d84";
+                RouteSlab(b, point, color, memory, !memory && RouteDistance(point, routes) > .70f && wear % 9 == 0);
                 // Small, subdued witness marks belong to the paving; glowing lines and
                 // complete numbered bands remain exclusive to announced fault attacks.
-                if (archive || pattern == 0)
+                if (RouteDistance(point, routes) > .45f && wear % (archive ? 4 : 11) == 0)
                 {
-                    b.Box(new(.21f, .0015f, .025f), new(px, -.001f, pz - .17f), memory ? "9b9982" : "a0a694");
-                    b.Box(new(.025f, .0015f, .13f), new(px + .06f, -.001f, pz - .11f), memory ? "9b9982" : "a0a694");
+                    b.Box(new(.21f, .001f, .018f), new(px, -.002f, pz - .17f), memory ? "626c5c" : "52636c");
+                    b.Box(new(.018f, .001f, .13f), new(px + .06f, -.002f, pz - .11f), memory ? "626c5c" : "52636c");
                 }
             }
         }
+    }
+
+    private static void RouteSlab(EnvironmentBuilder b, Vector2 point, string color, bool memory, bool chipped)
+    {
+        void Slab(Vector2 offset, float width, float depth)
+        {
+            Vector2 at = point + offset;
+            b.Box(new(width, .025f, depth), new(at.X, -.025f, at.Y), memory ? "566153" : "42545f", surface: SurfaceKind.Stone);
+            b.Box(new(width - .034f, .010f, depth - .034f), new(at.X, -.009f, at.Y), color, surface: SurfaceKind.Stone);
+        }
+        if (!chipped) { Slab(Vector2.Zero, .85f, .76f); return; }
+        // A missing outer corner reveals the mortar; the flat walkable Core plane is unchanged.
+        Slab(new(-.125f, 0), .60f, .76f);
+        Slab(new(.303f, .08f), .232f, .60f);
+    }
+
+    private static void CourtMasonry(Node3D root, RoomDefinition room, string style)
+    {
+        bool memory = style == "spine_memory";
+        float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
+        int columns = Math.Clamp((int)(x * 1.03f), 6, 26), rows = Math.Clamp((int)(z * 1.04f), 6, 26);
+        float width = x * 2 / columns, depth = z * 2 / rows;
+        var routes = Routes(style);
+        Color paving = new(memory ? "666e61" : "596872"), light = new(memory ? "747b6b" : "63717a"), dark = new(memory ? "606a5d" : "53616b");
+        Color boneDust = new("a3a494");
+        using var surface = new SurfaceTool(); surface.Begin(Mesh.PrimitiveType.Triangles);
+        int slabs = 0;
+        void Triangle(Vector3 a, Vector3 b, Vector3 c, Vector3 outward, Color color, bool dust)
+        {
+            if ((b - a).Cross(c - a).Dot(outward) > 0) (b, c) = (c, b);
+            Vector3 normal = -(b - a).Cross(c - a).Normalized();
+            Vector3 guide = Math.Abs(normal.Y) < .9f ? Vector3.Up : Vector3.Right;
+            Vector3 u = guide.Cross(normal).Normalized(), v = normal.Cross(u);
+            foreach (var point in new[] { a, b, c })
+            {
+                var tint = dust ? color.Lerp(boneDust, SettledDust(new(point.X, point.Z), room, routes, style) * .15f) : color;
+                // Per-face projection also gives the vertical mortar sides valid tangents.
+                surface.SetColor(tint); surface.SetNormal(normal); surface.SetUV(new(point.Dot(u) * .45f, point.Dot(v) * .45f)); surface.AddVertex(point);
+            }
+        }
+        for (int row = 0; row < rows; row++)
+            for (int column = 0; column < columns; column++)
+            {
+                Vector2 center = new(-x + (column + .5f) * width, -z + (row + .5f) * depth);
+                float slabWidth = width - .052f, slabDepth = depth - .052f;
+                if (!ClearFloor(room, center.X, center.Y, slabWidth * .5f + .012f, slabDepth * .5f + .012f)) continue;
+                uint wear = SurfaceHash(row, column);
+                Color color = wear % 5 == 0 ? light : wear % 3 == 0 ? dark : paving;
+                bool shoulder = RouteDistance(center, routes) > 1.7f && (style != "spine_warden" || center.Length() > 5.4f);
+                bool chipped = !memory && shoulder && wear % 4 == 0;
+                float halfX = slabWidth * .5f, halfZ = slabDepth * .5f;
+                float bevel = memory ? .032f : .042f + ((wear >> 8) & 3) * .008f;
+                float corner = Math.Min(halfX, halfZ) * (chipped ? .28f : memory ? .055f : .085f);
+                // The court retains coherent broad slabs. Cut corners and chamfered edges
+                // supply depth, while only a few outer corners are lost to weathering.
+                Vector2[] outline = [new(-halfX + corner, -halfZ), new(halfX - corner, -halfZ),
+                    new(halfX, -halfZ + corner), new(halfX, halfZ - corner), new(halfX - corner, halfZ),
+                    new(-halfX + corner, halfZ), new(-halfX, halfZ - corner), new(-halfX, -halfZ + corner)];
+                if (chipped) outline[(int)((wear >> 12) % 8)] *= .83f;
+                Vector3 Upper(Vector2 p) => new(center.X + p.X * (1 - bevel / halfX), -.037f, center.Y + p.Y * (1 - bevel / halfZ));
+                Vector3 Rim(Vector2 p) => new(center.X + p.X, -.049f, center.Y + p.Y);
+                Vector3 Lower(Vector2 p) => new(center.X + p.X, -.077f, center.Y + p.Y);
+                var middle = new Vector3(center.X, -.037f, center.Y);
+                for (int edge = 0; edge < outline.Length; edge++)
+                {
+                    Vector2 a = outline[edge], b = outline[(edge + 1) % outline.Length];
+                    Vector3 outward = new((a.X + b.X) * .5f, 0, (a.Y + b.Y) * .5f);
+                    Triangle(middle, Upper(a), Upper(b), Vector3.Up, color, !memory);
+                    Triangle(Upper(a), Rim(a), Rim(b), Vector3.Up + outward, color.Darkened(memory ? .035f : .07f), !memory);
+                    Triangle(Upper(a), Rim(b), Upper(b), Vector3.Up + outward, color.Darkened(memory ? .035f : .07f), !memory);
+                    Triangle(Rim(a), Lower(a), Lower(b), outward, color.Darkened(.23f), false);
+                    Triangle(Rim(a), Lower(b), Rim(b), outward, color.Darkened(.23f), false);
+                }
+                slabs++;
+            }
+        if (slabs == 0) return;
+        surface.Index(); surface.GenerateTangents();
+        var material = SurfaceMaterials.Create("ffffff", SurfaceKind.Stone, worldScale: true);
+        material.VertexColorUseAsAlbedo = true; material.VertexColorIsSrgb = true;
+        surface.SetMaterial(material);
+        root.AddChild(new MeshInstance3D { Name = memory ? "IntactIvoryCourt" : "WeatheredMountainCourt", Mesh = surface.Commit() });
+    }
+
+    private static float SettledDust(Vector2 point, RoomDefinition room, Vector2[][] routes, string style)
+    {
+        float x = room.HalfWidth * .001f, z = room.HalfDepth * .001f;
+        float distance = Math.Min(x - Math.Abs(point.X), z - Math.Abs(point.Y));
+        foreach (var obstacle in room.Obstacles)
+        {
+            float dx = Math.Max(obstacle.MinX * .001f - point.X, Math.Max(0, point.X - obstacle.MaxX * .001f));
+            float dz = Math.Max(obstacle.MinZ * .001f - point.Y, Math.Max(0, point.Y - obstacle.MaxZ * .001f));
+            distance = Math.Min(distance, MathF.Sqrt(dx * dx + dz * dz));
+        }
+        float quiet = Mathf.SmoothStep(.95f, 2.2f, RouteDistance(point, routes));
+        if (style == "spine_warden") quiet *= Mathf.SmoothStep(4.8f, 6.8f, point.Length());
+        if (style == "spine_archive")
+            quiet *= Mathf.SmoothStep(1.8f, 3, point.DistanceTo(new(SpineCampaignLayout.ArchiveTreasure.X * .001f, SpineCampaignLayout.ArchiveTreasure.Z * .001f)));
+        return (1 - Mathf.SmoothStep(.10f, 1.55f, distance)) * quiet;
+    }
+
+    private static float RouteDistance(Vector2 point, Vector2[][] routes)
+    {
+        float distance = float.PositiveInfinity;
+        foreach (var route in routes) distance = Math.Min(distance, DistanceToRoute(point, route));
+        return distance;
+    }
+
+    private static uint SurfaceHash(int row, int column)
+    {
+        uint hash = unchecked((uint)row * 0x9E3779B9u ^ (uint)column * 0x85EBCA6Bu ^ 0xC2B2AE35u);
+        hash ^= hash >> 16; hash *= 0x7FEB352Du; hash ^= hash >> 15; hash *= 0x846CA68Bu;
+        return hash ^ (hash >> 16);
     }
 
     private static bool ClearFloor(RoomDefinition room, float x, float z, float halfWidth, float halfDepth)

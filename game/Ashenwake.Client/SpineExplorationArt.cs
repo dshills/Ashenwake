@@ -19,7 +19,8 @@ public static class SpineExplorationArt
             float px = bay * 2.55f;
             float height = 4.1f - Math.Abs(bay) * .27f;
             b.Box(new(2.23f, height, .65f), wall + new Vector3(px, height * .5f + .28f, 0), Bone);
-            b.Box(new(2.0f, .23f, .92f), wall + new Vector3(px, height + .4f, 0), Edge);
+            b.Box(new(1.88f, .15f, .86f), wall + new Vector3(px, height + .32f, 0), Edge);
+            ShatteredSpineArt.Vertebra(b, wall + new Vector3(px, height + .43f, -.08f), 1.8f, .23f, false);
             for (int shelf = 0; shelf < 3; shelf++)
             {
                 float py = .85f + shelf * .96f;
@@ -29,12 +30,21 @@ public static class SpineExplorationArt
                 for (int tablet = -1; tablet <= 1; tablet++)
                 {
                     var p = wall + new Vector3(px + tablet * .56f, py, .47f);
-                    b.Box(new(.42f, .58f, .14f), p, (bay + shelf + tablet) % 3 == 0 ? Ivory : Edge);
+                    string face = (bay + shelf + tablet) % 3 == 0 ? Ivory : Edge;
+                    b.Box(new(.42f, .58f, .10f), p + Vector3.Forward * .02f, Bone);
+                    b.Box(new(.32f, .47f, .035f), p + new Vector3(0, 0, .045f), face);
+                    foreach (float edge in new[] { -1f, 1f })
+                    {
+                        b.Box(new(.044f, .58f, .095f), p + new Vector3(edge * .188f, 0, .04f), face);
+                        b.Box(new(.35f, .044f, .095f), p + new Vector3(0, edge * .268f, .04f), face);
+                    }
                     for (int line = 0; line < 4; line++)
-                        b.Box(new(.26f - line % 2 * .04f, .025f, .009f), p + new Vector3(0, -.17f + line * .11f, .077f), Stone);
+                        b.Box(new(.26f - line % 2 * .04f, .025f, .009f), p + new Vector3(0, -.17f + line * .11f, .070f), Stone);
                 }
             }
             b.Box(new(.075f, height * .83f, .065f), wall + new Vector3(px - 1.01f, height * .5f + .3f, .37f), Brass);
+            if (bay != 0)
+                ShatteredSpineArt.Weathering(b, wall + new Vector3(px + .99f, height * .68f, .341f), height * .23f);
         }
         foreach (float side in new[] { -1f, 1f })
         {
@@ -45,6 +55,10 @@ public static class SpineExplorationArt
                 b.Box(new(1.2f, .24f, 2.25f), p + Vector3.Up * .12f, Stone);
                 b.Box(new(.88f, 2.05f, 1.93f), p + Vector3.Up * 1.22f, Bone);
                 b.Box(new(1.13f, .2f, 2.12f), p + Vector3.Up * 2.35f, Edge);
+                foreach (float end in new[] { -1f, 1f })
+                    b.Branch(p + new Vector3(-side * .49f, .35f, end * .77f), p + new Vector3(-side * .47f, 2.23f, end * .73f),
+                        .075f, .048f, Edge, SurfaceKind.Bone);
+                ShatteredSpineArt.Vertebra(b, p + new Vector3(0, 2.47f, .65f), .86f, .16f, false);
                 for (int seal = -1; seal <= 1; seal++)
                 {
                     b.Box(new(.035f, 1.7f, .1f), p + new Vector3(-side * .46f, 1.22f, seal * .55f), Brass);
@@ -58,8 +72,7 @@ public static class SpineExplorationArt
             b.Box(new(2.75f, .14f, .81f), desk + Vector3.Up * .77f, Edge);
             for (int page = 0; page < 3; page++)
                 b.Box(new(.47f, .08f, .44f), desk + new Vector3((page - 1) * .68f, .88f, 0), Ivory, new(0, (page - 1) * 9, 0));
-            b.Box(new(.54f, 1.5f, .05f), new(side * x * .91f, 2.95f, -z - 1.85f), Cloth);
-            b.Box(new(.07f, 1.3f, .07f), new(side * x * .91f, 2.95f, -z - 1.82f), Brass);
+            ShatteredSpineArt.FoldedCloth(b, new(side * x * .91f, 2.95f, -z - 1.85f), .54f, 1.5f, false);
         }
     }
 

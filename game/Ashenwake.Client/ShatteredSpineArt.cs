@@ -72,7 +72,9 @@ public static class ShatteredSpineArt
         b.Box(new(width * .48f, .24f, 2.25f), p + Vector3.Up * (height + .84f), BoneEdge);
         foreach (float side in new[] { -1f, 1f })
         {
-            b.Cylinder(.43f, .33f, height + .3f, p + new Vector3(side * width * .44f, height * .5f + .45f, .99f), Bone);
+            var column = p + new Vector3(side * width * .44f, .30f, .99f);
+            b.Branch(column, column + new Vector3(-side * .08f, height * .57f, .045f), .43f, .32f, Bone, SurfaceKind.Bone);
+            b.Branch(column + new Vector3(-side * .08f, height * .57f, .045f), column + new Vector3(-side * .04f, height + .3f, -.025f), .32f, .24f, Bone, SurfaceKind.Bone);
             for (int floor = 0; floor < 3; floor++)
             {
                 float py = 1.07f + floor * 1.27f;
@@ -91,8 +93,14 @@ public static class ShatteredSpineArt
             for (int rail = 0; rail < 7; rail++)
                 b.Box(new(.065f, .62f, .07f), p + new Vector3((rail - 3) * width * .13f, py + .31f, 1.7f), DarkBrass);
         }
-        b.Box(new(.57f, 1.42f, .06f), p + new Vector3(width * .13f, height - .33f, 1.34f), Cloth);
-        b.Box(new(.13f, 1.15f, .025f), p + new Vector3(width * .13f, height - .33f, 1.383f), Brass);
+        FoldedCloth(b, p + new Vector3(width * .13f, height - .33f, 1.34f), .57f, 1.42f, false);
+        // The dwelling's crown retains the transverse processes of an excavated
+        // vertebra instead of looking like a stack of conventional roof tiles.
+        foreach (float side in new[] { -1f, 1f })
+            b.Branch(p + new Vector3(side * width * .14f, height + .60f, .1f),
+                p + new Vector3(side * width * .45f, height + .76f, .25f), .31f, .12f, BoneEdge, SurfaceKind.Bone);
+        b.Branch(p + new Vector3(0, height + .59f, -.61f), p + new Vector3(0, height + 1.18f, -.12f), .27f, .045f, Bone, SurfaceKind.Bone);
+        Weathering(b, p + new Vector3(-width * .39f, height * .67f, 1.212f), height * .23f);
         // A rib curves over the rear facade, its feet wholly behind the playable edge.
         RearRib(b, p + new Vector3(0, 0, -.2f), width * .71f, height + 1.45f, BoneEdge);
     }
@@ -122,8 +130,7 @@ public static class ShatteredSpineArt
                 float pz = -z * .64f + i * z * .59f;
                 var post = new Vector3(side * (x + 1.23f), 0, pz);
                 RibPillar(b, post, 4.35f - i * .63f, false);
-                b.Box(new(.06f, 1.65f, .83f), post + new Vector3(-side * .44f, 2.52f - i * .32f, .21f), Cloth);
-                b.Box(new(.08f, 1.39f, .11f), post + new Vector3(-side * .49f, 2.52f - i * .32f, .21f), Brass);
+                FoldedCloth(b, post + new Vector3(-side * .44f, 2.52f - i * .32f, .21f), .83f, 1.65f, false, -side * 90);
             }
         }
         // The witness desk and its shut volumes are scenery beyond the north boundary.
@@ -153,7 +160,11 @@ public static class ShatteredSpineArt
                 if (i < 2)
                 {
                     float nextX = side * (4.4f + (i + 1) * 2.2f);
-                    b.Beam(p + new Vector3(0, height - .43f, -.14f), new(nextX, height - 1.13f, p.Z - .3f), .27f, BoneShade);
+                    var joint = p + new Vector3(0, height - .43f, -.14f);
+                    var end = new Vector3(nextX, height - 1.13f, p.Z - .3f);
+                    var middle = joint.Lerp(end, .5f) + Vector3.Down * .18f;
+                    b.Branch(joint, middle, .19f, .14f, BoneShade, SurfaceKind.Bone);
+                    b.Branch(middle, end, .14f, .11f, BoneShade, SurfaceKind.Bone);
                 }
             }
             SideRib(b, side, x, -z * .51f, 5.0f, false);
@@ -182,8 +193,7 @@ public static class ShatteredSpineArt
             {
                 var post = new Vector3(side * (x * .52f + i * 1.67f), 0, -z - 3.03f);
                 RibPillar(b, post, 4.2f - i * .53f, true);
-                b.Box(new(.66f, 1.64f, .04f), post + new Vector3(0, 2.55f - i * .2f, .67f), OldCloth);
-                b.Box(new(.12f, 1.35f, .06f), post + new Vector3(0, 2.55f - i * .2f, .71f), IvoryEdge);
+                FoldedCloth(b, post + new Vector3(0, 2.55f - i * .2f, .67f), .66f, 1.64f, true);
             }
             SideRib(b, side, x, -z * .46f, 4.7f, true);
             SideRib(b, side, x, z * .24f, 3.65f, true);
@@ -196,12 +206,25 @@ public static class ShatteredSpineArt
 
     private static void LawTablet(EnvironmentBuilder b, Vector3 p, float width, float height, bool memory)
     {
-        b.Box(new(width, height, .64f), p + Vector3.Up * (height * .5f), memory ? OldIvory : Bone);
-        b.Box(new(width * .83f, height * .83f, .04f), p + new Vector3(0, height * .51f, .341f), memory ? IvoryEdge : BoneShade);
+        // The broad face sits behind a substantial lip. The cast shadow supplies
+        // depth to the inscriptions without giving them an interface-like glow.
+        b.Box(new(width, height, .50f), p + new Vector3(0, height * .5f, -.07f), memory ? OldIvory : Bone);
+        b.Box(new(width * .83f, height * .83f, .065f), p + new Vector3(0, height * .51f, .2225f), memory ? IvoryEdge : BoneShade);
         foreach (float side in new[] { -1f, 1f })
-            b.Box(new(width * .045f, height * .89f, .055f), p + new Vector3(side * width * .43f, height * .51f, .365f), memory ? Brass : BoneEdge);
-        Carving(b, p + new Vector3(0, height * .51f, .379f), width * .64f, height * .72f, memory ? DarkBrass : Shadow, 9);
-        b.Box(new(width * .8f, .055f, .04f), p + new Vector3(0, height * .89f, .39f), Brass);
+        {
+            if (memory)
+                b.Box(new(width * .075f, height * .89f, .19f), p + new Vector3(side * width * .455f, height * .51f, .31f), OldIvory);
+            else
+            {
+                b.Box(new(width * .075f, height * .54f, .19f), p + new Vector3(side * width * .455f, height * .335f, .31f), BoneEdge);
+                b.Box(new(width * .071f, height * .33f, .18f), p + new Vector3(side * (width * .455f + .013f), height * .79f, .31f), BoneEdge, new(0, 0, -side));
+            }
+        }
+        foreach (float end in new[] { -1f, 1f })
+            b.Box(new(width * .91f, height * .055f, .20f), p + new Vector3(0, height * (.51f + end * .43f), .31f), memory ? OldIvory : BoneEdge);
+        Carving(b, p + new Vector3(0, height * .51f, .266f), width * .64f, height * .72f, memory ? DarkBrass : Shadow, 9);
+        b.Box(new(width * .8f, .055f, .022f), p + new Vector3(0, height * .89f, .275f), Brass);
+        if (!memory) Weathering(b, p + new Vector3(width * .39f, height * .32f, .268f), height * .21f);
     }
 
     private static void Carving(EnvironmentBuilder b, Vector3 p, float width, float height, string color, int rows)
@@ -224,11 +247,17 @@ public static class ShatteredSpineArt
     {
         string bone = memory ? OldIvory : Bone, edge = memory ? IvoryEdge : BoneEdge;
         b.Box(new(1.34f, .35f, 1.4f), p + Vector3.Up * .175f, memory ? OldIvory : Mountain);
-        b.Cylinder(.49f, .37f, height, p + Vector3.Up * (height * .5f + .3f), bone);
-        b.Box(new(.36f, height * .81f, .16f), p + new Vector3(0, height * .5f + .38f, .42f), edge);
+        var basePoint = p + Vector3.Up * .30f;
+        var shoulder = p + new Vector3(.025f, height * .56f + .3f, -.06f);
+        var crown = p + new Vector3(0, height + .3f, -.015f);
+        b.Branch(basePoint, shoulder, .47f, .34f, bone, SurfaceKind.Bone);
+        b.Branch(shoulder, crown, .34f, .275f, bone, SurfaceKind.Bone);
+        b.Branch(basePoint + new Vector3(0, .08f, .39f), shoulder + new Vector3(0, 0, .30f), .10f, .07f, edge, SurfaceKind.Bone);
+        b.Branch(shoulder + new Vector3(0, 0, .30f), crown + new Vector3(0, -.13f, .245f), .07f, .04f, edge, SurfaceKind.Bone);
         for (int i = 0; i < 3; i++)
-            b.Box(new(.86f - i * .08f, .16f, .89f - i * .08f), p + Vector3.Up * (.63f + i * height * .36f), edge);
-        b.Box(new(1.06f, .29f, 1.13f), p + Vector3.Up * (height + .39f), edge);
+            Vertebra(b, p + Vector3.Up * (.63f + i * height * .36f), 1.0f - i * .08f, .20f, memory);
+        Vertebra(b, p + Vector3.Up * (height + .39f), 1.1f, .30f, memory);
+        if (!memory) Weathering(b, p + new Vector3(-.15f, height * .40f, .39f), height * .20f);
     }
 
     private static void SideRib(EnvironmentBuilder b, float side, float x, float pz, float height, bool memory)
@@ -237,18 +266,26 @@ public static class ShatteredSpineArt
         var foot = new Vector3(side * (x + 1.0f), .2f, pz);
         b.Box(new(1.14f, .4f, 1.8f), foot, memory ? OldIvory : Mountain);
         // These ribs curve outward from the bridge, so the whole silhouette stays beyond its boundary.
-        var points = new[]
+        var start = foot + new Vector3(0, .04f, 0);
+        var control = foot + new Vector3(side * .12f, height * .70f, -.05f);
+        var end = foot + new Vector3(side * 2.5f, height * .95f, -.35f);
+        Vector3 Point(float t) => start.Lerp(control, t).Lerp(control.Lerp(end, t), t);
+        const int segments = 8;
+        float extent = memory ? 1 : .93f;
+        for (int i = 0; i < segments; i++)
         {
-            foot + new Vector3(0, .04f, 0),
-            foot + new Vector3(side * .12f, height * .27f, 0),
-            foot + new Vector3(side * .62f, height * .56f, -.1f),
-            foot + new Vector3(side * 1.45f, height * .8f, -.21f),
-            foot + new Vector3(side * 2.5f, height * .95f, -.35f)
-        };
-        for (int i = 0; i < points.Length - 1; i++)
+            float t0 = i * extent / segments, t1 = (i + 1) * extent / segments;
+            float r0 = Mathf.Lerp(.34f, .045f, t0), r1 = Mathf.Lerp(.34f, .045f, t1);
+            b.Branch(Point(t0), Point(t1), r0, r1, bone, SurfaceKind.Bone);
+            b.Branch(Point(t0) + new Vector3(-side * .06f, 0, r0 * .85f), Point(t1) + new Vector3(-side * .06f, 0, r1 * .85f),
+                r0 * .21f, r1 * .21f, edge, SurfaceKind.Bone);
+        }
+        if (!memory)
         {
-            b.Beam(points[i], points[i + 1], .55f - i * .08f, bone);
-            b.Beam(points[i] + new Vector3(-side * .1f, 0, .24f), points[i + 1] + new Vector3(-side * .1f, 0, .24f), .12f, edge);
+            var tip = Point(extent);
+            var direction = (tip - Point(extent - .04f)).Normalized();
+            b.Branch(tip - direction * .015f, tip + direction * .018f, .071f, .061f, BoneShade, SurfaceKind.Bone);
+            Weathering(b, Point(.34f) + new Vector3(0, 0, .24f), height * .13f);
         }
         b.Box(new(.66f, .2f, .87f), foot + new Vector3(side * .11f, height * .24f, 0), Brass);
     }
@@ -257,23 +294,69 @@ public static class ShatteredSpineArt
     {
         foreach (float side in new[] { -1f, 1f })
         {
-            var points = new[]
+            var start = p + new Vector3(side * halfSpan, .25f, 0);
+            var control = p + new Vector3(side * halfSpan, height * .93f, -.045f);
+            var end = p + new Vector3(0, height, 0);
+            Vector3 Point(float t) => start.Lerp(control, t).Lerp(control.Lerp(end, t), t);
+            for (int i = 0; i < 8; i++)
             {
-                p + new Vector3(side * halfSpan, .25f, 0),
-                p + new Vector3(side * halfSpan * .98f, height * .42f, 0),
-                p + new Vector3(side * halfSpan * .74f, height * .76f, 0),
-                p + new Vector3(side * halfSpan * .33f, height * .94f, 0),
-                p + new Vector3(0, height, 0)
-            };
-            for (int i = 0; i < points.Length - 1; i++) b.Beam(points[i], points[i + 1], .4f - i * .035f, color);
+                float t0 = i / 8f, t1 = (i + 1) / 8f;
+                b.Branch(Point(t0), Point(t1), Mathf.Lerp(.27f, .10f, t0), Mathf.Lerp(.27f, .10f, t1), color, SurfaceKind.Bone);
+            }
         }
+    }
+
+    internal static void Vertebra(EnvironmentBuilder b, Vector3 p, float width, float thickness, bool memory)
+    {
+        string bone = memory ? OldIvory : Bone, edge = memory ? IvoryEdge : BoneEdge;
+        b.Cylinder(width * .43f, width * .35f, thickness, p, edge);
+        foreach (float side in new[] { -1f, 1f })
+        {
+            float reach = !memory && side < 0 ? .51f : .64f;
+            b.Branch(p + new Vector3(side * width * .27f, 0, -.025f),
+                p + new Vector3(side * width * reach, thickness * .22f, -.11f), thickness * .46f, thickness * .17f, bone, SurfaceKind.Bone);
+        }
+        b.Branch(p + new Vector3(0, 0, width * .23f), p + new Vector3(0, thickness * .17f, width * .52f),
+            thickness * .50f, thickness * .13f, edge, SurfaceKind.Bone);
+    }
+
+    internal static void FoldedCloth(EnvironmentBuilder b, Vector3 center, float width, float height, bool memory, float yawDegrees = 0)
+    {
+        const int folds = 6;
+        var basis = Basis.FromEuler(Vector3.Up * Mathf.DegToRad(yawDegrees));
+        for (int strip = 0; strip < folds; strip++)
+        {
+            float u0 = strip / (float)folds, u1 = (strip + 1) / (float)folds;
+            float z0 = .045f * Mathf.Sin(u0 * Mathf.Tau * 2 + .35f), z1 = .045f * Mathf.Sin(u1 * Mathf.Tau * 2 + .35f);
+            var across = new Vector3(width / folds, 0, z1 - z0);
+            float stripHeight = memory ? height : height * (1 - strip % 3 * .025f);
+            var local = new Vector3((u0 + u1 - 1) * width * .5f, (height - stripHeight) * .5f, (z0 + z1) * .5f);
+            float angle = yawDegrees - Mathf.RadToDeg(Mathf.Atan2(across.Z, across.X));
+            b.Box(new(across.Length() + .003f, stripHeight, .022f), center + basis * local, memory ? OldCloth : Cloth, new(0, angle, 0));
+            if (strip == 2)
+                b.Box(new(Math.Min(across.Length() * .55f, .10f), height * .82f, .012f),
+                    center + basis * (local + new Vector3(0, .025f, .025f)), memory ? IvoryEdge : Brass, new(0, angle, 0));
+        }
+    }
+
+    internal static void Weathering(EnvironmentBuilder b, Vector3 p, float height)
+    {
+        // A few broad, broken seams read as age from the gameplay camera. The
+        // original ivory in the First Oath never receives these present-day scars.
+        var split = p + new Vector3(.055f, height * .12f, .004f);
+        b.Branch(p + new Vector3(-.025f, -height * .40f, 0), split, .018f, .013f, Shadow, SurfaceKind.Stone);
+        b.Branch(split, p + new Vector3(-.027f, height * .47f, 0), .013f, .006f, Shadow, SurfaceKind.Stone);
+        b.Branch(split, split + new Vector3(.12f, height * .17f, 0), .012f, .003f, Shadow, SurfaceKind.Stone);
     }
 
     private static void MountainShard(EnvironmentBuilder b, Vector3 p, float height)
     {
-        b.Cylinder(1.55f, .21f, height, p + Vector3.Up * (height * .5f), Mountain);
-        b.Cylinder(.93f, .18f, height * .7f, p + new Vector3(.67f, height * .35f, .6f), MountainEdge);
+        var split = p + new Vector3(.14f, height * .60f, -.10f);
+        b.Branch(p, split, 1.55f, .65f, Mountain, SurfaceKind.Stone);
+        b.Branch(split + Vector3.Up * .065f, p + new Vector3(.28f, height, -.23f), .59f, .18f, Mountain, SurfaceKind.Stone);
+        b.Cylinder(.93f, .18f, height * .7f, p + new Vector3(.67f, height * .35f, .6f), MountainEdge, new(0, 0, -7));
         b.Cylinder(.76f, .07f, height * .58f, p + new Vector3(-.76f, height * .29f, .81f), Mountain);
+        b.Cylinder(.39f, .11f, .65f, p + new Vector3(.68f, .30f, 1.20f), MountainEdge, new(0, 17, -12));
     }
 
     private static void Perimeter(EnvironmentBuilder b, float x, float z, bool memory)
@@ -290,7 +373,10 @@ public static class ShatteredSpineArt
             for (int i = 0; i < 15; i++)
             {
                 float px = -x * .96f + i * x * 1.92f / 14;
-                b.Box(new(x * 1.92f / 15 - .055f, .14f, .31f), new(px, .07f, side * (z + .52f)), memory ? OldIvory : BoneShade);
+                float wear = memory ? 0 : i * 7 % 5 * .012f;
+                b.Box(new(x * 1.92f / 15 - .055f - wear, .14f - wear * .5f, .31f),
+                    new(px, .07f - wear * .25f, side * (z + .52f)), memory ? OldIvory : BoneShade,
+                    new(0, 0, memory ? 0 : (i % 3 - 1) * 2));
             }
         }
     }

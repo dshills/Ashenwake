@@ -30,6 +30,9 @@ public partial class Sandbox
     private CinderAtmosphere? _cinderAtmosphere;
     private (float Width, float Depth) _cinderAtmosphereBounds;
     public CinderAtmosphere? CinderMotion => _cinderAtmosphere;
+    private SpineAtmosphere? _spineAtmosphere;
+    private (float Width, float Depth) _spineAtmosphereBounds;
+    public SpineAtmosphere? SpineMotion => _spineAtmosphere;
 
     public void SetEnvironmentStyle(string style)
     {
@@ -104,15 +107,15 @@ public partial class Sandbox
         {
             bool memory = style == "spine_memory", hall = style is "spine_hall" or "spine_archive";
             environment.BackgroundColor = new Color(memory ? "30312c" : "202833");
-            environment.AmbientLightColor = new Color(memory ? "bbc3ba" : "a9b8cb");
+            environment.AmbientLightColor = new Color(memory ? "c6bda5" : "a9b8cb");
             environment.AmbientLightEnergy = memory ? .38f : .42f;
-            environment.FogLightColor = new Color(memory ? "777666" : "5b687b");
+            environment.FogLightColor = new Color(memory ? "80745c" : "5b687b");
             environment.FogLightEnergy = .19f;
             environment.FogDensity = hall ? .13f : .17f;
             environment.FogDepthBegin = 35;
             environment.FogDepthEnd = 68;
-            _sun.LightColor = new Color(memory ? "e9e3d1" : "dae3f1");
-            _sun.LightEnergy = memory ? .68f : .8f;
+            _sun.LightColor = new Color(memory ? "ffe2af" : "dae3f1");
+            _sun.LightEnergy = memory ? .76f : .8f;
             _sun.RotationDegrees = new(-54, -32, 0);
         }
         if (hollow)
@@ -162,6 +165,17 @@ public partial class Sandbox
             _regionalAmbience.StreamPaused = _clock.Paused;
         float x = (_authoredBounds.Width > 0 ? _authoredBounds.Width : _content.Room.HalfWidth) * .001f;
         float z = (_authoredBounds.Depth > 0 ? _authoredBounds.Depth : _content.Room.HalfDepth) * .001f;
+        bool spineRoom = SpineAtmosphere.Supports(_environmentStyle);
+        if (_spineAtmosphere is not null && (!spineRoom || _spineAtmosphere.Style != _environmentStyle || _spineAtmosphereBounds != (x, z)))
+        {
+            RemoveChild(_spineAtmosphere); _spineAtmosphere.QueueFree(); _spineAtmosphere = null;
+        }
+        if (spineRoom && _spineAtmosphere is null)
+        {
+            _spineAtmosphere = SpineAtmosphere.Create(_environmentStyle, x, z);
+            _spineAtmosphereBounds = (x, z); AddChild(_spineAtmosphere);
+        }
+        _spineAtmosphere?.Animate(delta, _clock.Paused, _reduceEffects, _graphicsQuality);
         bool cinderRoom = CinderAtmosphere.Supports(_environmentStyle);
         if (_cinderAtmosphere is not null && (!cinderRoom || _cinderAtmosphere.Style != _environmentStyle || _cinderAtmosphereBounds != (x, z)))
         {

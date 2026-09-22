@@ -81,6 +81,23 @@
       "requiredCredit": "Ashenwake project contributors; final release credit names and distribution terms await the owner."
     },
     {
+      "id": "asset.procedural_shattered_spine",
+      "name": "Shattered Spine sculpted bone courts, recessed law tablets, archive shelves, worn ivory paving, witness lamps, folded banners, Covenant Warden and synthesized regional ambience",
+      "sourceFiles": [
+        "game/Ashenwake.Client/ShatteredSpineArt.cs",
+        "game/Ashenwake.Client/SpineExplorationArt.cs",
+        "game/Ashenwake.Client/SpineGround.cs",
+        "game/Ashenwake.Client/SpineObstacleArt.cs",
+        "game/Ashenwake.Client/SpineAtmosphere.cs",
+        "game/Ashenwake.Client/CovenantWardenVisual.cs",
+        "game/Ashenwake.Client/SpineAmbience.cs"
+      ],
+      "origin": "Authored in the Ashenwake repository using Godot primitive and custom indexed meshes, materials and synthesized waveforms; no downloaded art or audio samples are declared.",
+      "rightsStatus": "Project-authored source. The repository does not yet declare a distribution license or owner approval.",
+      "redistributionApproved": false,
+      "requiredCredit": "Ashenwake project contributors; final release credit names and distribution terms await the owner."
+    },
+    {
       "id": "asset.procedural_campaign_endgame",
       "name": "Procedural regional environments, Fracture arenas, God Hunt mechanisms and warning geometry",
       "sourceFiles": [

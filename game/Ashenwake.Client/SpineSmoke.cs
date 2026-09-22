@@ -35,6 +35,8 @@ public partial class SpineSmoke : Node
     private readonly Dictionary<string, int[]> _faultOrders = [];
     private readonly HashSet<bool> _guards = [];
     private readonly List<string> _audioFingerprints = [];
+    private readonly List<SpineDepthChecks.Evidence> _depthEvidence = [];
+    private readonly List<object> _frameSamples = [];
     private bool _memoryObserved, _memoryCleaned, _wardenObserved, _victoryObserved, _memoryBranchesChecked, _oathObserved, _wardenBranchChecked;
     private CombatView? _liveWarden;
     private sealed record EnvironmentEvidence(string Encounter, string Style, int ArchitectureMeshes, int ArchitectureMaterials,
@@ -49,6 +51,7 @@ public partial class SpineSmoke : Node
             if (!args.Contains("--spine-smoke") || _output.Length == 0)
                 throw new InvalidDataException("Spine smoke requires --spine-smoke --output=<isolated-directory>.");
             Directory.CreateDirectory(_output); Engine.MaxFps = 60;
+            SpineDepthChecks.Detached(Check);
             _combatJson = CampaignCombatContent.Parse(Read("combat"), Read("campaign-combat")).CombatJson;
             _campaign = CampaignContent.Parse(Read("campaign"));
             _adventure = AdventureContent.Parse(Read("adventure"));
@@ -113,8 +116,11 @@ public partial class SpineSmoke : Node
             Check("warden_victory_observed", _wardenObserved && _victoryObserved);
             string hash = _session.StateHash; CheckAudioSamples();
             Check("audio_generation_does_not_change_core_state", _session.StateHash == hash);
+            var departedAtmosphere = _sandbox.SpineMotion;
             Check("can_return_to_hub_after_act_four", _session.ReturnToHub().Success); _commands++;
             Refresh(); await Settle();
+            Check("hub_releases_spine_motion_and_lights", _sandbox.SpineMotion is null && !GodotObject.IsInstanceValid(departedAtmosphere) &&
+                !Descendants(_sandbox).Any(n => n is SpineAtmosphere));
             Check("hub_stops_spine_ambience", _sandbox.AmbienceCue.Length == 0 && !_sandbox.AmbiencePlaying);
             Check("hub_hides_warden_and_spine_architecture", !Descendants(_stage).OfType<CovenantWardenVisual>().Any(n => n.IsVisibleInTree()) &&
                 !Descendants(_stage).OfType<Node3D>().Any(n => n.Name == "ShatteredSpineArchitecture" && n.IsVisibleInTree()));
@@ -124,6 +130,7 @@ public partial class SpineSmoke : Node
             Check("completed_act_four_retains_regional_floor_and_atmosphere", _sandbox.EnvironmentStyle == "spine_causeway" && _sandbox.AmbienceCue == "spine_wind" &&
                 Descendants(_stage).OfType<Node3D>().Any(n => n.Name == "ShatteredSpineArchitecture" && n.IsVisibleInTree()));
             Check("completed_revisit_does_not_respawn_warden", !Descendants(_stage).Any(n => n is CovenantWardenVisual));
+            InspectDepth("revisit", "spine_causeway");
             Check("completed_revisit_can_return_to_hub", _session.ReturnToHub().Success); _commands++;
             Refresh(); await Settle();
             var replay = CampaignRuntimeReplayRunner.Run(_combatJson, _adventure, _progression, _campaign, _session.CaptureReplay());
@@ -181,6 +188,7 @@ public partial class SpineSmoke : Node
             Check("bounded_motes_" + style, _sandbox.AmbientMoteCount == 24);
             await Capture(style + ".png");
             await CheckMouseDestination(style);
+            await CheckDepthQuality(style);
             if (style == "spine_causeway") await CheckAtmosphere();
             if (style == "spine_memory")
             {
@@ -406,6 +414,7 @@ public partial class SpineSmoke : Node
         string signalState = $"{boss.Guarded}_{orientation}_{oath}";
         if (boss.Health > 0 && _reducedSignalStates.Add(signalState))
         {
+            SpineWardenDepthChecks.Detached(view, Check, fullCycle: _reducedSignalStates.Count == 1);
             var reduced = CovenantWardenVisual.Create(_session.Room.HalfWidth * .001f, _session.Room.HalfDepth * .001f, view);
             try
             {
@@ -498,7 +507,7 @@ public partial class SpineSmoke : Node
         var ground = Descendants(_sandbox).OfType<Node3D>().Single(n => n.Name == "AuthoredGround");
         var groundMeshes = Meshes(ground); var groundVertices = groundMeshes.SelectMany(Vertices).ToArray();
         float top = groundVertices.Max(p => p.Y);
-        Check("ground_below_combat_warnings_" + style, float.IsFinite(top) && top <= .001f && groundVertices.All(p => float.IsFinite(p.X) && float.IsFinite(p.Z)));
+        Check("ground_below_combat_warnings_" + style, float.IsFinite(top) && top < 0 && groundVertices.All(p => float.IsFinite(p.X) && float.IsFinite(p.Z)));
         Check("bounded_ground_batches_" + style, groundMeshes.Length is > 0 and <= 32 && MaterialCount(groundMeshes) <= 32);
         Check("ground_has_no_physics_" + style, !Descendants(ground).Any(n => n is CollisionObject3D or CollisionShape3D or NavigationRegion3D));
         var room = _session.Room;
@@ -533,12 +542,20 @@ public partial class SpineSmoke : Node
             _sandbox.SetPaused(true); await Settle();
             var frozen = motes.Multimesh.GetInstanceTransform(0); await Frames(8);
             Check("spine_motes_freeze_with_pause", motes.Multimesh.GetInstanceTransform(0).IsEqualApprox(frozen));
+            var originalMotion = _sandbox.SpineMotion;
             var expanded = _session.Room with { HalfWidth = 18000, HalfDepth = 15000 };
             _sandbox.PresentAuthoredRoom(expanded, "spine:bounds-check", "spine_causeway");
             Check("paused_same_style_resize_places_motes_immediately", Outside(expanded));
+            _depthEvidence.Add(SpineDepthChecks.Inspect(_sandbox, "paused-resize", "spine_causeway", 18, 15, Check));
+            await Settle();
+            Check("paused_resize_releases_old_spine_resources", !GodotObject.IsInstanceValid(originalMotion));
+            var resizedMotion = _sandbox.SpineMotion;
             expanded = expanded with { HalfWidth = 20000, HalfDepth = 18000 };
             _sandbox.PresentAuthoredRoom(expanded, "spine:style-bounds-check", "spine_warden");
             Check("paused_new_style_uses_current_bounds_immediately", Outside(expanded));
+            _depthEvidence.Add(SpineDepthChecks.Inspect(_sandbox, "paused-style-change", "spine_warden", 20, 18, Check));
+            await Settle();
+            Check("paused_style_change_releases_old_spine_resources", !GodotObject.IsInstanceValid(resizedMotion));
             Refresh();
 
             bool Outside(RoomDefinition room) => Enumerable.Range(0, 24).Select(i => motes.Multimesh.GetInstanceTransform(i).Origin)
@@ -558,6 +575,54 @@ public partial class SpineSmoke : Node
         Check("reduced_effects_disable_fog_and_motes", _sandbox.ReducedEffects && !environment.FogEnabled && !motes.IsVisibleInTree());
         effects.ButtonPressed = false; await Settle();
         Check("restoring_effects_restores_atmosphere", !_sandbox.ReducedEffects && environment.FogEnabled && motes.IsVisibleInTree());
+    }
+
+    private void InspectDepth(string context, string style) => _depthEvidence.Add(SpineDepthChecks.Inspect(_sandbox, context, style,
+        _session.Room.HalfWidth * .001f, _session.Room.HalfDepth * .001f, Check));
+
+    private async Task CheckDepthQuality(string style)
+    {
+        string hash = _session.StateHash;
+        var atmosphere = _sandbox.SpineMotion!;
+        ulong id = atmosphere.GetInstanceId();
+        InspectDepth(style + "-high", style);
+        await SampleFrames(style, "High");
+        _sandbox.SetPaused(true); await Settle();
+        double frozen = atmosphere.MotionTime;
+        var selector = Descendants(_sandbox).OfType<OptionButton>().Single(n => n.Name == "SettingsGraphicsQuality");
+        selector.Select(1); selector.EmitSignal(OptionButton.SignalName.ItemSelected, 1L);
+        InspectDepth(style + "-performance", style);
+        Check("paused_quality_keeps_room_and_clock_" + style, atmosphere.GetInstanceId() == id && atmosphere.MotionTime == frozen);
+        _sandbox.SetPaused(false); await Settle();
+        await Capture(style + "-performance.png");
+        await SampleFrames(style, "Performance");
+        _sandbox.SetPaused(true); await Settle();
+        var effects = Descendants(_sandbox).OfType<CheckButton>().Single(b => b.Text == "Reduced visual effects");
+        effects.ButtonPressed = true; await Settle();
+        Check("paused_reduced_effects_settles_live_banners_" + style, _sandbox.ReducedEffects && atmosphere.MotionTime == 0);
+        InspectDepth(style + "-reduced", style);
+        if (style is "spine_causeway" or "spine_warden" or "spine_memory") await Capture(style + "-reduced.png");
+        effects.ButtonPressed = false;
+        selector.Select(0); selector.EmitSignal(OptionButton.SignalName.ItemSelected, 0L);
+        Check("restoring_spine_preferences_preserves_paused_room_" + style,
+            atmosphere.GetInstanceId() == id && atmosphere.MotionTime == 0 && atmosphere.ActiveLightCount == 4);
+        _sandbox.SetPaused(false); await Settle();
+        Check("spine_quality_and_effects_do_not_mutate_core_" + style, _session.StateHash == hash);
+    }
+
+    private async Task SampleFrames(string style, string quality)
+    {
+        if (DisplayServer.GetName() == "headless") return;
+        var samples = new List<double>();
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        for (int frame = 0; frame < 30; frame++)
+        {
+            double before = timer.Elapsed.TotalMilliseconds;
+            await Frames(1);
+            samples.Add(timer.Elapsed.TotalMilliseconds - before);
+        }
+        samples.Sort();
+        _frameSamples.Add(new { style, quality, frames = samples.Count, medianMs = samples[15], p95Ms = samples[28] });
     }
 
     private void CheckAudioSamples()
@@ -628,6 +693,8 @@ public partial class SpineSmoke : Node
             commands = _commands,
             finalStateHash = _session?.StateHash,
             environments = _environments,
+            depthEvidence = _depthEvidence,
+            frameSamples = _frameSamples,
             memoryTicks = _memoryTicks,
             faultLanes = _orientations.Order().ToArray(),
             faultOrders = _faultOrders,
