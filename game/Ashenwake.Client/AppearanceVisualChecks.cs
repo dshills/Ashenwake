@@ -24,6 +24,7 @@ public static partial class AppearanceVisualChecks
         CheckArmor(require);
         CheckLegendaryArmor(require);
         CheckMidgameLegendaryArmor(require);
+        CheckLateLegendaryArmor(require);
         CheckLoot(require);
         require(CharacterVisual.CachedEquipmentResourceCount <= 160 && CharacterVisual.CachedResourceCounts.Models <= 96 &&
             CharacterVisual.CachedResourceCounts.Materials <= 256 && CharacterVisual.CachedShapeResourceCount <= 128, "appearance_character_caches_are_bounded");

@@ -9,9 +9,11 @@ public static class LegendaryEquipment
     public const string PyrePower = "property.pyre_trail", OathPower = "property.oath_reprisal", WidowPower = "property.widow_echo";
     public const string Rotwake = "item.rotwake_signet", Mourning = "item.mourning_choir", Furnace = "item.furnaceheart_cinch";
     public const string RotwakePower = "property.virulent_wake", MourningPower = "property.rallying_chorus", FurnacePower = "property.cinder_cycle";
-    public static bool IsItem(string id) => id is Pyre or Oath or Widow or Rotwake or Mourning or Furnace;
-    public static bool IsPower(string id) => id is PyrePower or OathPower or WidowPower or RotwakePower or MourningPower or FurnacePower;
-    public static bool IsEffect(string id) => id is "effect.pyre_trail" or "effect.oath_reprisal" or "effect.widow_echo" or "effect.virulent_wake" or "effect.rallying_chorus" or "effect.cinder_cycle";
+    public const string Crown = "item.crown_unsworn", Witness = "item.last_witness", Hour = "item.stolen_hour";
+    public const string CrownPower = "property.unspoken_verdict", WitnessPower = "property.witness_vow", HourPower = "property.borrowed_hour";
+    public static bool IsItem(string id) => id is Pyre or Oath or Widow or Rotwake or Mourning or Furnace or Crown or Witness or Hour;
+    public static bool IsPower(string id) => id is PyrePower or OathPower or WidowPower or RotwakePower or MourningPower or FurnacePower or CrownPower or WitnessPower or HourPower;
+    public static bool IsEffect(string id) => id is "effect.pyre_trail" or "effect.oath_reprisal" or "effect.widow_echo" or "effect.virulent_wake" or "effect.rallying_chorus" or "effect.cinder_cycle" or "effect.witness_vow";
     public static string EncounterReward(string encounter) => encounter switch
     {
         "campaign.road" => Pyre,
@@ -20,6 +22,9 @@ public static class LegendaryEquipment
         "campaign.plague_village" => Rotwake,
         "campaign.extraction_floor" => Mourning,
         "campaign.furnace_spindle" => Furnace,
+        "campaign.contract_hall" => Crown,
+        "campaign.identity_memory" => Witness,
+        "campaign.breach_heart" => Hour,
         _ => ""
     };
 }
@@ -32,14 +37,31 @@ public sealed record LegendaryCombatState
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public long VirulentReadyTick { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public long ChorusReadyTick { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public long CinderUntil { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public long VerdictReadyTick { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public int WitnessStacks { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public int WitnessTargetId { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public long WitnessUntil { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public int HourCharges { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public long HourUntil { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public List<long>? WitnessActions { get; set; }
 }
 
 public sealed partial class CombatSession
 {
     private string LegendaryReward()
     {
+        if (_state.Endgame is { } hunt && hunt.Manifest.Kind == "GodHunt" && hunt.EncounterIndex == hunt.Manifest.Rooms.Length - 1)
+            return hunt.Manifest.ContentId switch
+            {
+                "hunt.orrun_without_oath" => LegendaryEquipment.Crown,
+                "hunt.thousand_memories" => LegendaryEquipment.Witness,
+                "hunt.nhal_reconstruction" => LegendaryEquipment.Hour,
+                _ => ""
+            };
         if (_state.Endgame is { } run && run.Manifest.Kind == "Fracture")
         {
+            if (run.EncounterIndex == 1 && run.Manifest.Region == "act.shattered_spine") return LegendaryEquipment.Crown;
+            if (run.EncounterIndex == 1 && run.Manifest.Region == "act.hollow_night") return LegendaryEquipment.Witness;
             if (run.EncounterIndex < run.Manifest.Rooms.Length - 1 && run.Manifest.Region == "act.verdant_maw")
                 return run.EncounterIndex switch { 0 => LegendaryEquipment.Rotwake, 1 => LegendaryEquipment.Mourning, _ => "" };
             if (run.EncounterIndex != run.Manifest.Rooms.Length - 1) return "";
@@ -49,6 +71,7 @@ public sealed partial class CombatSession
                 "act.verdant_maw" => LegendaryEquipment.Widow,
                 "act.shattered_spine" => LegendaryEquipment.Oath,
                 "act.cinder_reach" => LegendaryEquipment.Furnace,
+                "act.hollow_night" => LegendaryEquipment.Hour,
                 _ => ""
             };
         }
@@ -111,7 +134,8 @@ public sealed partial class CombatSession
         if (!_state.ProgressionBuild.OathReprisal || state.OathUntil <= Tick || Player.Health <= 0) { state.OathCharge = 0; state.OathUntil = 0; }
         if (!_state.ProgressionBuild.WidowEcho || state.WidowUntil <= Tick || Player.Health <= 0) state.WidowUntil = 0;
         TrimMidgameLegendaryState(state);
-        if (state.OathCharge == 0 && state.WidowUntil == 0 && state.VirulentReadyTick == 0 && state.ChorusReadyTick == 0 && state.CinderUntil == 0) _state.Legendary = null;
+        TrimLateLegendaryState(state);
+        if (state.OathCharge == 0 && state.WidowUntil == 0 && state.VirulentReadyTick == 0 && state.ChorusReadyTick == 0 && state.CinderUntil == 0 && state.VerdictReadyTick == 0 && state.WitnessUntil == 0 && state.WitnessActions is null && state.HourUntil == 0) _state.Legendary = null;
     }
 
     private void ClearInactiveLegendaryEffects()
@@ -126,6 +150,7 @@ public sealed partial class CombatSession
     private void ValidateLegendaryState()
     {
         ValidateMidgameLegendaryState();
+        ValidateLateLegendaryState();
         if (_state.Legendary is { } state && (Player.Health <= 0 || state.OathCharge is < 0 or > 60 ||
             (state.OathCharge == 0) != (state.OathUntil == 0) || state.OathUntil != 0 && (state.OathUntil < Tick || state.OathUntil > Tick + 240) ||
             state.WidowUntil != 0 && (state.WidowUntil < Tick || state.WidowUntil > Tick + 150) || !_state.ProgressionBuild.OathReprisal && (state.OathCharge != 0 || state.OathUntil != 0) ||

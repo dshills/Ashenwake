@@ -19,6 +19,8 @@
         "game/Ashenwake.Client/CombatAudio.cs",
         "game/Ashenwake.Client/SandboxCombatFeedback.cs",
         "game/Ashenwake.Client/CharacterVisual.MidgameEquipment.cs",
+        "game/Ashenwake.Client/CharacterVisual.LateLegendaries.cs",
+        "game/Ashenwake.Client/GearItemIcon.LateLegendaries.cs",
         "game/Ashenwake.Client/GearItemIcon.Midgame.cs",
         "game/Ashenwake.Client/SandboxLegendaryPresentation.cs",
         "game/Ashenwake.Client/SandboxMidgameCombat.cs",

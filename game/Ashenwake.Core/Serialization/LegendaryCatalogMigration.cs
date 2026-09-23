@@ -14,47 +14,54 @@ namespace Ashenwake.Core.Serialization;
 /// archive against that catalog before rebinding its content identities.</summary>
 internal static class LegendaryCatalogMigration
 {
-    private static bool AddedItem(string id) => id is LegendaryEquipment.Pyre or LegendaryEquipment.Oath or LegendaryEquipment.Widow;
-    private static bool AddedPower(string id) => id is LegendaryEquipment.PyrePower or LegendaryEquipment.OathPower or LegendaryEquipment.WidowPower;
-    private static bool MidgameItem(string id) => id is "item.rotwake_signet" or "item.mourning_choir" or "item.furnaceheart_cinch";
-    private static bool MidgamePower(string id) => id is "property.virulent_wake" or "property.rallying_chorus" or "property.cinder_cycle";
+    private sealed record Generation(string[] Items, string[] Powers);
+    private static readonly Generation[] Generations =
+    [
+        new(["item.crown_unsworn", "item.last_witness", "item.stolen_hour"],
+            ["property.unspoken_verdict", "property.witness_vow", "property.borrowed_hour"]),
+        new(["item.rotwake_signet", "item.mourning_choir", "item.furnaceheart_cinch"],
+            ["property.virulent_wake", "property.rallying_chorus", "property.cinder_cycle"]),
+        new([LegendaryEquipment.Pyre, LegendaryEquipment.Oath, LegendaryEquipment.Widow],
+            [LegendaryEquipment.PyrePower, LegendaryEquipment.OathPower, LegendaryEquipment.WidowPower])
+    ];
 
     internal static bool TryPrevious(string combatJson, ProgressionContent policy,
         out string previousCombatJson, out ProgressionContent previousPolicy)
     {
         var node = JsonNode.Parse(combatJson)!;
         var items = node["items"]!.AsArray();
-        bool midgame = HasMidgame(policy) || items.Any(item => MidgameItem(item!["id"]!.GetValue<string>()));
-        previousPolicy = PreviousPolicy(policy, midgame);
-        bool changed = previousPolicy.Hash != policy.Hash;
+        var source = policy.Capture();
+        var generation = Generations.FirstOrDefault(g => Contains(source, g) ||
+            items.Any(item => g.Items.Contains(item!["id"]!.GetValue<string>(), StringComparer.Ordinal)));
+        previousCombatJson = combatJson; previousPolicy = policy;
+        if (generation is null) return false;
+        previousPolicy = PreviousPolicy(policy, generation);
         for (int i = items.Count - 1; i >= 0; i--)
-            if (midgame ? MidgameItem(items[i]!["id"]!.GetValue<string>()) : AddedItem(items[i]!["id"]!.GetValue<string>()))
-            { items.RemoveAt(i); changed = true; }
+            if (generation.Items.Contains(items[i]!["id"]!.GetValue<string>(), StringComparer.Ordinal)) items.RemoveAt(i);
         // Preserve the original optional-field shape of maintained legacy combat bundles.
-        previousCombatJson = changed ? node.ToJsonString() : combatJson;
-        return changed;
+        previousCombatJson = node.ToJsonString();
+        return true;
     }
 
     internal static ProgressionContent PreviousPolicy(ProgressionContent policy)
-        => PreviousPolicy(policy, HasMidgame(policy));
-
-    private static bool HasMidgame(ProgressionContent policy)
     {
         var source = policy.Capture();
-        return source.Items.Any(i => MidgameItem(i.Id)) || source.Properties.Any(p => MidgamePower(p.Id));
+        var generation = Generations.FirstOrDefault(g => Contains(source, g));
+        return generation is null ? policy : PreviousPolicy(policy, generation);
     }
 
-    private static ProgressionContent PreviousPolicy(ProgressionContent policy, bool midgame)
+    private static bool Contains(ProgressionDefinition source, Generation generation)
+        => source.Items.Any(i => generation.Items.Contains(i.Id, StringComparer.Ordinal)) ||
+            source.Properties.Any(p => generation.Powers.Contains(p.Id, StringComparer.Ordinal));
+
+    private static ProgressionContent PreviousPolicy(ProgressionContent policy, Generation generation)
     {
         var source = policy.Capture();
-        bool RemoveItem(string id) => midgame ? MidgameItem(id) : AddedItem(id);
-        bool RemovePower(string id) => midgame ? MidgamePower(id) : AddedPower(id);
-        if (!source.Items.Any(i => RemoveItem(i.Id)) &&
-            !source.Properties.Any(p => RemovePower(p.Id))) return policy;
+        if (!Contains(source, generation)) return policy;
         return ProgressionContent.Create(source with
         {
-            Items = source.Items.Where(i => !RemoveItem(i.Id)).ToArray(),
-            Properties = source.Properties.Where(p => !RemovePower(p.Id)).ToArray()
+            Items = source.Items.Where(i => !generation.Items.Contains(i.Id, StringComparer.Ordinal)).ToArray(),
+            Properties = source.Properties.Where(p => !generation.Powers.Contains(p.Id, StringComparer.Ordinal)).ToArray()
         });
     }
 

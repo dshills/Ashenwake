@@ -109,6 +109,21 @@
     "power.property.cinder_cycle.description": { "other": "Using a skill costing at least 20 resource prepares one charge for 6 seconds. Your next free, resource-generating direct skill hit restores 12 extra resource. Arcanists instead Vent 12 extra Instability; Gravecallers harvest 12 extra Remains from a corpse. Charges and copies do not stack." },
     "source.rotwake_signet": { "other": "Found: secure Plague Village in Act II; also Verdant Maw Fracture room 1." },
     "source.mourning_choir": { "other": "Found: clear the Extraction Floor in Act III; also Verdant Maw Fracture room 2." },
-    "source.furnaceheart_cinch": { "other": "Found: defeat the Furnace Spindle in Act III; also Cinder Reach Fracture final rooms." }
+    "source.furnaceheart_cinch": { "other": "Found: defeat the Furnace Spindle in Act III; also Cinder Reach Fracture final rooms." },
+    "equipment.crown_unsworn": { "other": "Crown of the Unsworn" },
+    "equipment.last_witness": { "other": "Vow of the Last Witness" },
+    "equipment.stolen_hour": { "other": "Greaves of the Stolen Hour" },
+    "lore.crown_unsworn": { "other": "The judge broke his oath before the final sentence. The crown remembers the words he refused to speak." },
+    "lore.last_witness": { "other": "When every name had been erased, one witness remained. Her vow became the weight around the executioner’s neck." },
+    "lore.stolen_hour": { "other": "A thief stole one hour from a dying god. These greaves still outrun the debt." },
+    "power.property.unspoken_verdict.name": { "other": "Unspoken Verdict" },
+    "power.property.unspoken_verdict.description": { "other": "Interrupting an enemy cast or warning with hard crowd control grants 40 barrier. 3-second cooldown. Resisted control and idle targets do not trigger it. Copies do not stack." },
+    "power.property.witness_vow.name": { "other": "Witness’s Vow" },
+    "power.property.witness_vow.description": { "other": "Hit the same surviving foe with 4 distinct direct skill actions, each within 4 seconds of the previous, to release 24 base Void damage. Changing targets resets the count. The burst cannot critically hit or trigger other hit powers. Copies do not stack." },
+    "power.property.borrowed_hour.name": { "other": "Borrowed Hour" },
+    "power.property.borrowed_hour.description": { "other": "Using an ultimate prepares 3 charges for 8 seconds. Your next 3 accepted non-ultimate skills with a cooldown have their assigned cooldown halved, with a minimum of 1 tick. Free skills without a cooldown do not spend charges. Copies do not stack." },
+    "source.crown_unsworn": { "other": "Found: clear the Contract Hall in Act IV; also Shattered Spine Fracture room 2 and the final phase of Orrun Without an Oath." },
+    "source.last_witness": { "other": "Found: secure Identity Memory in Act V; also Hollow Night Fracture room 2 and the final phase of The Thousand Memories of Serath." },
+    "source.stolen_hour": { "other": "Found: defeat the Breach Heart in Act V; also Hollow Night Fracture final rooms and the final phase of The Shape That Remembers Nhal." }
   }
 }

@@ -8,7 +8,7 @@ public sealed partial class CombatSession
     {
         var state = _state.Legendary;
         var build = _state.ProgressionBuild;
-        if (state is null && !build.VirulentWake && !build.RallyingChorus && !build.CinderCycle) return null;
+        if (state is null && !build.VirulentWake && !build.RallyingChorus && !build.CinderCycle && !build.UnspokenVerdict && !build.WitnessVow && !build.BorrowedHour) return null;
         return new(state?.OathCharge ?? 0, Remaining(state?.OathUntil ?? 0), Remaining(state?.WidowUntil ?? 0))
         {
             VirulentEquipped = build.VirulentWake,
@@ -17,7 +17,16 @@ public sealed partial class CombatSession
             ChorusSummons = _state.Actors.Count(a => a.Faction == CombatFaction.Ally && a.OwnerId == 1 && a.Health > 0 && a.ExpiresTick > Tick && !Stunned(a)),
             ChorusRemainingTicks = Remaining(state?.ChorusReadyTick ?? 0),
             CinderEquipped = build.CinderCycle,
-            CinderRemainingTicks = Remaining(state?.CinderUntil ?? 0)
+            CinderRemainingTicks = Remaining(state?.CinderUntil ?? 0),
+            VerdictEquipped = build.UnspokenVerdict,
+            VerdictRemainingTicks = Remaining(state?.VerdictReadyTick ?? 0),
+            WitnessEquipped = build.WitnessVow,
+            WitnessStacks = state?.WitnessStacks ?? 0,
+            WitnessTargetId = state?.WitnessTargetId ?? 0,
+            WitnessRemainingTicks = Remaining(state?.WitnessUntil ?? 0),
+            HourEquipped = build.BorrowedHour,
+            HourCharges = state?.HourCharges ?? 0,
+            HourRemainingTicks = Remaining(state?.HourUntil ?? 0)
         };
     }
 

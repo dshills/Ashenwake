@@ -1304,45 +1304,6 @@
       ],
       "hands": 0,
       "disciplines": []
-    },
-    {
-      "id": "item.crown_unsworn",
-      "name": "Crown of the Unsworn",
-      "slot": "Head",
-      "damage": 0,
-      "armor": 800,
-      "criticalBasisPoints": 0,
-      "compatibleSlots": [
-        "Head"
-      ],
-      "hands": 0,
-      "disciplines": []
-    },
-    {
-      "id": "item.last_witness",
-      "name": "Vow of the Last Witness",
-      "slot": "Amulet",
-      "damage": 0,
-      "armor": 0,
-      "criticalBasisPoints": 350,
-      "compatibleSlots": [
-        "Amulet"
-      ],
-      "hands": 0,
-      "disciplines": []
-    },
-    {
-      "id": "item.stolen_hour",
-      "name": "Greaves of the Stolen Hour",
-      "slot": "Legs",
-      "damage": 0,
-      "armor": 800,
-      "criticalBasisPoints": 0,
-      "compatibleSlots": [
-        "Legs"
-      ],
-      "hands": 0,
-      "disciplines": []
     }
   ],
   "loadouts": [

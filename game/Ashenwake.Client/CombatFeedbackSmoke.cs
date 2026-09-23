@@ -47,6 +47,8 @@ public partial class CombatFeedbackSmoke : Node3D
             await ReleaseGallery();
             await MidgameLegendaryPowerFeedback();
             await ReleaseGallery();
+            await LateLegendaryPowerFeedback();
+            await ReleaseGallery();
             Finish(true, "");
         }
         catch (Exception ex) { GD.PushError(ex.ToString()); Finish(false, ex.Message); }
@@ -173,7 +175,7 @@ public partial class CombatFeedbackSmoke : Node3D
         AddChild(effects);
         try
         {
-            foreach (string cue in new[] { "slash", "thrust", "spell", "hit", "block", "dodge", "dust", "death", "phase", "victory", "loot_legendary", "loot_godwrought", "legendary_pyre", "legendary_oath", "legendary_widow", "legendary_ready", "legendary_rotwake", "legendary_chorus", "legendary_cinder" })
+            foreach (string cue in new[] { "slash", "thrust", "spell", "hit", "block", "dodge", "dust", "death", "phase", "victory", "loot_legendary", "loot_godwrought", "legendary_pyre", "legendary_oath", "legendary_widow", "legendary_ready", "legendary_rotwake", "legendary_chorus", "legendary_cinder", "legendary_verdict", "legendary_witness", "legendary_hour" })
             {
                 effects.Clear(); effects.Emit(cue, new(2, .1f, -1), Vector3.Forward, new Color("f7c786"));
                 Check(cue + "_effect_builds_visible_geometry", effects.Count > 0 && Descendants(effects).OfType<MeshInstance3D>().Any(m => m.IsVisibleInTree()));
@@ -324,7 +326,7 @@ public partial class CombatFeedbackSmoke : Node3D
             captures = _captures,
             legendaryReplay = new { file = "legendary-drop.replay.json", commands = _legendaryCommands, hash = _legendaryHash },
             error,
-            scope = "Cosmetic attack, dodge, hit, death, monster windup/recovery, pause, root motion, material isolation, sanctuary phase sequences, special-loot cues and Legendary equipment feedback. A fresh Vanguard fights the authored road at seed20, earning Pyrebound Treads through ordinary commands. Its independent replay verifies exact delivery, duplicate suppression and a quiet restored-loot baseline. Isolated equipped combat fixtures verify Pyre, Oath and Widow trigger presentation and readiness without advancing Core from the renderer. Godwrought drop visuals use detached presentation fixtures; no Godwrought reward is earned here."
+            scope = "Cosmetic attack, dodge, hit, death, monster windup/recovery, pause, root motion, material isolation, sanctuary phase sequences, special-loot cues and Legendary equipment feedback. A fresh Vanguard fights the authored road at seed20, earning Pyrebound Treads through ordinary commands. Its independent replay verifies exact delivery, duplicate suppression and a quiet restored-loot baseline. Isolated equipped combat fixtures verify all nine signature legendary powers, including real interrupt, repeated direct strike and ultimate events, HUD readiness at minimum window size, and reduced effects without advancing Core from the renderer. These fixtures do not earn the midgame or late-game items. Godwrought drop visuals use detached presentation fixtures; no Godwrought reward is earned here."
         };
         if (_writeReport) System.IO.File.WriteAllText(Path.Combine(_output, "combat-feedback-smoke.json"), JsonData.Write(report));
         GD.Print(JsonData.Write(report)); GetTree().Quit(passed ? 0 : 1);

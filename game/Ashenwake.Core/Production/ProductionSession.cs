@@ -382,7 +382,10 @@ public sealed partial class ProductionSession
             WidowEcho = properties.Contains(LegendaryEquipment.WidowPower),
             VirulentWake = properties.Contains(LegendaryEquipment.RotwakePower),
             RallyingChorus = properties.Contains(LegendaryEquipment.MourningPower),
-            CinderCycle = properties.Contains(LegendaryEquipment.FurnacePower)
+            CinderCycle = properties.Contains(LegendaryEquipment.FurnacePower),
+            UnspokenVerdict = properties.Contains(LegendaryEquipment.CrownPower),
+            WitnessVow = properties.Contains(LegendaryEquipment.WitnessPower),
+            BorrowedHour = properties.Contains(LegendaryEquipment.HourPower)
         };
     }
     private void SynchronizeItemSequence()

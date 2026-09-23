@@ -31,6 +31,7 @@ public partial class CharacterVisual
         string kind = appearance.Discipline.ToLowerInvariant();
         BuildSlot(BodyRoot, "EquipmentChest", "chest", appearance.Chest, kind, n => EquippedChest(n, appearance.Chest, kind));
         BuildArmor(appearance, kind);
+        BuildSlot(BodyRoot, "EquipmentAmulet", "amulet", appearance.Amulet, kind, n => EquippedAmulet(n, appearance.Amulet));
         BuildSlot(BodyRoot, "EquipmentHead", "head", appearance.Head, kind, n => EquippedHead(n, appearance.Head, kind));
         BuildSlot(_equipmentLeft, "EquipmentOffHand", "offhand", appearance.OffHand, kind, n => EquippedOffHand(n, appearance.OffHand, kind));
         BuildSlot(_equipmentRight, "EquipmentMainHand", "mainhand", appearance.MainHand, kind, n => EquippedWeapon(n, appearance.MainHand, kind));
@@ -192,6 +193,7 @@ public partial class CharacterVisual
 
     private void EquippedHead(Node3D parent, ItemAppearance item, string kind)
     {
+        if (ItemKind(item) == "crown_unsworn") { EquippedUnswornCrown(parent, item); return; }
         switch (kind)
         {
             case "vanguard":

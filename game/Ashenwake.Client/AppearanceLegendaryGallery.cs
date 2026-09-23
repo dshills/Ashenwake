@@ -8,20 +8,26 @@ public partial class AppearanceSmoke
 {
     private async Task LegendaryArmorGallery(Node3D gallery, Camera3D camera, CanvasLayer canvas, Label title, Label subtitle)
     {
-        foreach (bool midgame in new[] { false, true })
+        foreach (int era in new[] { 0, 1, 2 })
         {
-            title.Text = midgame ? "THREE RELICS OF A DYING WORLD" : "THREE OATHS IN THE ASH";
-            subtitle.Text = midgame ? "Rotwake Signet · Mantle of the Mourning Choir · Furnaceheart Cinch\nA thorn seal, ivory choir pipes and a caged ember each carry a different power." : "Pyrebound Treads · Oathkeeper's Reprisal · Widow's Last Echo\nFlame seams, a shield crest and spectral silk match their inventory silhouettes.";
+            bool midgame = era == 1, late = era == 2;
+            title.Text = late ? "RELICS AT THE EDGE OF TIME" : midgame ? "THREE RELICS OF A DYING WORLD" : "THREE OATHS IN THE ASH";
+            subtitle.Text = late ? "RELICS AT THE EDGE OF TIME" : midgame ? "Rotwake Signet · Mantle of the Mourning Choir · Furnaceheart Cinch\nA thorn seal, ivory choir pipes and a caged ember each carry a different power." : "Pyrebound Treads · Oathkeeper's Reprisal · Widow's Last Echo\nFlame seams, a shield crest and spectral silk match their inventory silhouettes.";
             var actors = new Node3D(); gallery.AddChild(actors);
             var captions = new Control(); canvas.AddChild(captions);
-            string[] ids = midgame ? [LegendaryEquipment.Rotwake, LegendaryEquipment.Mourning, LegendaryEquipment.Furnace] : [LegendaryEquipment.Pyre, LegendaryEquipment.Oath, LegendaryEquipment.Widow];
-            EquipmentSlot[] slots = midgame ? [EquipmentSlot.Ring1, EquipmentSlot.Shoulders, EquipmentSlot.Belt] : [EquipmentSlot.Boots, EquipmentSlot.Chest, EquipmentSlot.Gloves];
+            string[] ids = late ? [LegendaryEquipment.Crown, LegendaryEquipment.Witness, LegendaryEquipment.Hour] : midgame ? [LegendaryEquipment.Rotwake, LegendaryEquipment.Mourning, LegendaryEquipment.Furnace] : [LegendaryEquipment.Pyre, LegendaryEquipment.Oath, LegendaryEquipment.Widow];
+            EquipmentSlot[] slots = late ? [EquipmentSlot.Head, EquipmentSlot.Amulet, EquipmentSlot.Legs] : midgame ? [EquipmentSlot.Ring1, EquipmentSlot.Shoulders, EquipmentSlot.Belt] : [EquipmentSlot.Boots, EquipmentSlot.Chest, EquipmentSlot.Gloves];
             string[] disciplines = midgame ? ["Veilwalker", "Gravecaller", "Vanguard"] : ["Vanguard", "Vanguard", "Arcanist"];
             for (int i = 0; i < ids.Length; i++)
             {
                 var appearance = new CharacterAppearance(disciplines[i], ItemAppearance.Empty, ItemAppearance.Empty, ItemAppearance.Empty, new("item.starter_chest"))
                 { Gloves = new("item.starter_gloves"), Legs = new("item.starter_legs"), Boots = new("item.starter_boots") };
-                appearance = midgame ? i switch
+                appearance = late ? i switch
+                {
+                    0 => appearance with { Head = new(ids[i], "Legendary") },
+                    1 => appearance with { Amulet = new(ids[i], "Legendary") },
+                    _ => appearance with { Legs = new(ids[i], "Legendary") }
+                } : midgame ? i switch
                 {
                     0 => appearance with { Ring1 = new(ids[i], "Legendary") },
                     1 => appearance with { Shoulders = new(ids[i], "Legendary") },
@@ -42,7 +48,7 @@ public partial class AppearanceSmoke
                 caption.AddThemeColorOverride("font_color", new("e0c181")); captions.AddChild(caption);
             }
             camera.Position = new(0, 3.6f, -14); camera.LookAt(new(0, 1.1f, 0)); camera.Size = 7.3f;
-            await Capture(midgame ? "midgame-legendary-armor.png" : "legendary-armor.png");
+            await Capture(late ? "late-legendary-armor.png" : midgame ? "midgame-legendary-armor.png" : "legendary-armor.png");
             gallery.RemoveChild(actors); actors.QueueFree(); canvas.RemoveChild(captions); captions.QueueFree(); await Frames();
         }
         camera.Position = new(0, 4, -14); camera.LookAt(new(0, 1.3f, 0)); camera.Size = 11.8f;

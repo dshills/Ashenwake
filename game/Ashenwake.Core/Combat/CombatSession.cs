@@ -252,6 +252,7 @@ public sealed partial class CombatSession
         Pay(skill, cost); _state.Cooldowns[skill.Id] = Tick + AttackDuration(skill.Cooldown);
         Player.Pending = new(skill.Id, target?.Id ?? 0, target?.Position ?? Player.Position, Tick + (mutation?.Id == "mutation.orruns_patience" ? 60 : AttackDuration(skill.Windup)), _state.NextActionId++, StartTick: Tick);
         PrepareCinderCycle(cost, Player.Pending.ActionId);
+        AcceptBorrowedHour(skill, Player.Pending.ActionId);
         if (_state.FragmentHeat >= 100 && skill.Cost >= 20 && ActiveFragments().Any(f => f.Effect == "Heat")) { _state.FragmentHeat = 0; _state.OverheatedActionId = Player.Pending.ActionId; }
         Player.RecoveryUntil = Tick + (mutation?.Id == "mutation.orruns_patience" ? 60 : AttackDuration(skill.Windup)) + AttackDuration(skill.Recovery); Player.State = "Windup";
         Emit("AbilityStarted", 1, target?.Id ?? 0, content: skill.Id, action: Player.Pending.ActionId);
@@ -441,6 +442,7 @@ public sealed partial class CombatSession
         ApplyBuildHitEffects(hit, source, target, healthDamage, physical);
         ProductionHitEffects(hit, source, target, healthDamage, critical);
         MidgameLegendaryHit(hit, target);
+        WitnessHit(hit, target);
         if (target.Health <= 0 && !target.DeathProcessed) Kill(target, hit);
     }
     private IEnumerable<CombatFragment> ActiveFragments() => _content.Fragments.Where(f => _state.Fragments.Values.Contains(f.Id) && !FragmentSuppressed(f.Id) && !(BorrowedMindSuppressed && f.Slot == AnatomySlot.Mind));
@@ -460,12 +462,13 @@ public sealed partial class CombatSession
         // Refresh ownership is stable: the first source retains kill credit until expiration.
         status.ExpiresTick = Tick + duration;
         if (id == "Chilled" && status.Stacks >= 3) { target.Statuses.Remove(status); ApplyStatus(target, "Frozen", hit with { Depth = hit.Depth + 1 }, fragmentId); return; }
-        if (id is "Staggered" or "Frozen" or "Terrified") { target.Pending = null; target.State = "Staggered"; _state.Campaign?.Hazards.RemoveAll(h => h.SourceId == target.Id); }
+        if (id is "Staggered" or "Frozen" or "Terrified") { RewardUnspokenVerdict(target, hit); target.Pending = null; target.State = "Staggered"; _state.Campaign?.Hazards.RemoveAll(h => h.SourceId == target.Id); }
         Emit("StatusApplied", hit.SourceId, target.Id, status.Stacks, id, hit.ActionId, hit.Depth);
     }
     private void Kill(CombatActor target, Hit hit)
     {
         if (TryEndgameReform(target) || TryCampaignPhaseTransition(target)) return;
+        if (_state.Legendary?.WitnessTargetId == target.Id) ClearWitness(_state.Legendary);
         target.DeathProcessed = true; target.Pending = null; target.State = "Dead"; target.MoveX = 0; target.MoveZ = 0;
         Emit(EndgameMechanicNoRewards(target) ? "MechanismDestroyed" : _state.Campaign?.Actors.GetValueOrDefault(target.Id)?.IsEcho == true ? "EliteCopyKilled" : "EntityKilled", hit.OwnerId, target.Id, content: hit.ContentId, action: hit.ActionId, depth: hit.Depth);
         if (target.Id == 1) { _state.BufferedCommand = null; ClearInactiveLegendaryEffects(); }

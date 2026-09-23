@@ -32,6 +32,15 @@ public sealed record CombatLegendaryView(int OathCharge, long OathRemainingTicks
     public long ChorusRemainingTicks { get; init; }
     public bool CinderEquipped { get; init; }
     public long CinderRemainingTicks { get; init; }
+    public bool VerdictEquipped { get; init; }
+    public long VerdictRemainingTicks { get; init; }
+    public bool WitnessEquipped { get; init; }
+    public int WitnessStacks { get; init; }
+    public int WitnessTargetId { get; init; }
+    public long WitnessRemainingTicks { get; init; }
+    public bool HourEquipped { get; init; }
+    public int HourCharges { get; init; }
+    public long HourRemainingTicks { get; init; }
 }
 public sealed record CombatView(long Tick, string Preset, IReadOnlyList<CombatActorView> Actors, IReadOnlyList<CombatProjectileView> Projectiles,
     IReadOnlyList<CombatAreaView> Areas, IReadOnlyList<CombatLoot> Loot, IReadOnlyList<CombatItem> Inventory,

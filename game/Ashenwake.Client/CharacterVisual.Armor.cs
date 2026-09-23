@@ -93,6 +93,7 @@ public partial class CharacterVisual
 
     private void EquippedGreave(Node3D parent, int side, ItemAppearance item, string kind)
     {
+        if (ItemKind(item) == "stolen_hour") { EquippedHourGreave(parent, side, item); return; }
         var palette = ArmorPalette.For(kind);
         Material shell = ArmorShell(kind), cloth = SharedMaterial(palette.Cloth), trim = SharedMaterial(palette.Trim);
         // Mourner's Greaves: overlapping knee plates and a hanging mourning ribbon.

@@ -103,6 +103,9 @@ public sealed partial class CombatSession
             "effect.virulent_wake" or "property.virulent_wake" => "Rotwake Signet",
             "effect.rallying_chorus" or "property.rallying_chorus" => "Mourning Choir",
             "effect.cinder_cycle" or "property.cinder_cycle" => "Furnaceheart Cinch",
+            "property.unspoken_verdict" => "Crown of the Unsworn",
+            "effect.witness_vow" or "property.witness_vow" => "Vow of the Last Witness",
+            "property.borrowed_hour" => "Greaves of the Stolen Hour",
             "summon.companion_bite" => "Companion bite",
             "summon.spirit_bolt" => "Summon spirit bolt",
             _ => id

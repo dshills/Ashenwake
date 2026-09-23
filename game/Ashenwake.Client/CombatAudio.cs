@@ -6,9 +6,9 @@ namespace Ashenwake.Client;
 public static class CombatAudio
 {
     private const int SampleRate = 22050;
-    private enum Sound { Blade, Bow, Arcane, Bone, Spear, Enemy, Hit, Armor, Death, Dodge, Bell, Chain, Victory, Heal, Loot, Tell, Legendary, Godwrought, Pyre, Reprisal, Widow, Rotwake, Chorus, Cinder }
+    private enum Sound { Blade, Bow, Arcane, Bone, Spear, Enemy, Hit, Armor, Death, Dodge, Bell, Chain, Victory, Heal, Loot, Tell, Legendary, Godwrought, Pyre, Reprisal, Widow, Rotwake, Chorus, Cinder, Verdict, Witness, Hour }
     public static IReadOnlyList<string> CueNames { get; } = Array.AsReadOnly<string>(
-        ["blade", "bow", "arcane", "bone", "spear", "enemy", "hit", "armor", "death", "dodge", "bell", "chain", "victory", "heal", "loot", "tell", "loot_legendary", "loot_godwrought", "legendary_pyre", "legendary_oath", "legendary_widow", "legendary_rotwake", "legendary_chorus", "legendary_cinder"]);
+        ["blade", "bow", "arcane", "bone", "spear", "enemy", "hit", "armor", "death", "dodge", "bell", "chain", "victory", "heal", "loot", "tell", "loot_legendary", "loot_godwrought", "legendary_pyre", "legendary_oath", "legendary_widow", "legendary_rotwake", "legendary_chorus", "legendary_cinder", "legendary_verdict", "legendary_witness", "legendary_hour"]);
 
     public static byte[] CreateSamples(string cue)
     {
@@ -38,6 +38,9 @@ public static class CombatAudio
             "legendary_rotwake" => (Sound.Rotwake, .48),
             "legendary_chorus" => (Sound.Chorus, .72),
             "legendary_cinder" => (Sound.Cinder, .50),
+            "legendary_verdict" => (Sound.Verdict, .56),
+            "legendary_witness" => (Sound.Witness, .60),
+            "legendary_hour" => (Sound.Hour, .65),
             _ => throw new ArgumentException($"Unknown combat audio cue: {cue}", nameof(cue))
         };
         int count = (int)Math.Ceiling(duration * SampleRate);
@@ -100,6 +103,9 @@ public static class CombatAudio
                     .23 * Sweep(460, 110, t, duration) * Envelope(t, .018, 8),
                 Sound.Chorus => .24 * Note(t, 0, 220, 6) + .22 * Note(t, .04, 261.63, 6) +
                     .20 * Note(t, .08, 329.63, 6) + .12 * lowNoise * Swell(t, .03, .6),
+                Sound.Verdict => .36 * Bell(t, 523.25, 9) + .27 * Bell(t, 1046.5, 13) + .18 * highNoise * Burst(t, 0, 40),
+                Sound.Witness => .28 * Sweep(740, 185, t, duration) * Envelope(t, .005, 7) + .25 * Note(t, .08, 277.18, 8),
+                Sound.Hour => .24 * Note(t, 0, 1174.66, 11) + .22 * Note(t, .12, 880, 11) + .20 * Note(t, .24, 587.33, 9),
                 Sound.Cinder => .35 * Bell(t, 392, 11) + .34 * warmNoise * Swell(t, .01, .40) +
                     .20 * Sweep(150, 380, t, duration) * Envelope(t, .005, 8),
                 _ => 0

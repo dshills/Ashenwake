@@ -6,7 +6,7 @@ namespace Ashenwake.Client;
 /// <summary>Small equipment silhouettes drawn locally; inspecting an item creates no world or preview resources.</summary>
 public partial class GearItemIcon : Control
 {
-    private enum Silhouette { Sword, Dagger, Axe, Ashcleaver, Hammer, Pike, Staff, BoneStaff, Shield, Focus, Skull, Helmet, Hood, Plate, OathPlate, Robe, Tunic, Shoulders, MourningShoulders, Gloves, WidowGloves, Belt, FurnaceBelt, Legs, Boots, PyreBoots, Ring, RotwakeRing, Amulet }
+    private enum Silhouette { Sword, Dagger, Axe, Ashcleaver, Hammer, Pike, Staff, BoneStaff, Shield, Focus, Skull, Helmet, Hood, Plate, OathPlate, Robe, Tunic, Shoulders, MourningShoulders, Gloves, WidowGloves, Belt, FurnaceBelt, Legs, Boots, PyreBoots, Ring, RotwakeRing, Amulet, UnswornCrown, WitnessAmulet, HourLegs }
     private static readonly Color Steel = new("c2d1d3"), SteelShade = new("536e7d"), Ink = new("15252f");
     private static readonly Color Leather = new("886048"), Bone = new("e4d5b1"), Ember = new("ff9166");
     private static readonly Color EmptyFill = new("30465099"), EmptyEdge = new("6c8793aa");
@@ -100,6 +100,9 @@ public partial class GearItemIcon : Control
             case Silhouette.Ring: Ring(); break;
             case Silhouette.RotwakeRing: RotwakeRing(); break;
             case Silhouette.Amulet: Amulet(); break;
+            case Silhouette.UnswornCrown: UnswornCrown(); break;
+            case Silhouette.WitnessAmulet: WitnessAmulet(); break;
+            case Silhouette.HourLegs: HourLegs(); break;
         }
     }
 
@@ -139,7 +142,7 @@ public partial class GearItemIcon : Control
         }
         return slot switch
         {
-            EquipmentSlot.Head => discipline is "veilwalker" or "arcanist" or "gravecaller" or "warden" ? Silhouette.Hood : Silhouette.Helmet,
+            EquipmentSlot.Head => id == "crown_unsworn" ? Silhouette.UnswornCrown : discipline is "veilwalker" or "arcanist" or "gravecaller" or "warden" ? Silhouette.Hood : Silhouette.Helmet,
             EquipmentSlot.Chest => id switch
             {
                 "oathkeeper_reprisal" => Silhouette.OathPlate,
@@ -150,10 +153,10 @@ public partial class GearItemIcon : Control
             EquipmentSlot.Shoulders => id == "mourning_choir" ? Silhouette.MourningShoulders : Silhouette.Shoulders,
             EquipmentSlot.Gloves => id == "widows_last_echo" ? Silhouette.WidowGloves : Silhouette.Gloves,
             EquipmentSlot.Belt => id == "furnaceheart_cinch" ? Silhouette.FurnaceBelt : Silhouette.Belt,
-            EquipmentSlot.Legs => Silhouette.Legs,
+            EquipmentSlot.Legs => id == "stolen_hour" ? Silhouette.HourLegs : Silhouette.Legs,
             EquipmentSlot.Boots => id == "pyrebound_treads" ? Silhouette.PyreBoots : Silhouette.Boots,
             EquipmentSlot.Ring1 or EquipmentSlot.Ring2 => id == "rotwake_signet" ? Silhouette.RotwakeRing : Silhouette.Ring,
-            EquipmentSlot.Amulet => Silhouette.Amulet,
+            EquipmentSlot.Amulet => id == "last_witness" ? Silhouette.WitnessAmulet : Silhouette.Amulet,
             _ => Silhouette.Sword
         };
     }
