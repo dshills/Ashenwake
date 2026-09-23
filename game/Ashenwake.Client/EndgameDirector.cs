@@ -88,7 +88,7 @@ public partial class EndgameDirector : Node3D
             _campaignHud = new CampaignHud(); _sandbox.AddOverlay(_campaignHud);
             _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = () => { _collection?.SetOpen(false); _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); if (_deathRecapHud?.IsOpen == true) return; if (_training is not null) _trainingHud.SetReportOpen(true); else _character.ToggleInventory(); };
             _board = new EndgameHud(); _sandbox.AddOverlay(_board);
-            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeTraining(); InitializeFrontMenu(); InitializeDeathRecap(); InitializeCollection(); InitializeRegionalHunts(); InitializeSecretChambers(); InitializePersonalStash(); InitializeRoamingChampions();
+            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeTraining(); InitializeFrontMenu(); InitializeDeathRecap(); InitializeCollection(); InitializeRegionalHunts(); InitializeSecretChambers(); InitializePersonalStash(); InitializeRoamingChampions(); InitializeOpeningGuidance();
             _sandbox.ConfigureLocalMap(() => _training is null && _hasActiveCharacter && !_frontMenu.IsOpen && !_classSelection.Visible, () => _session.LocalMap);
             if (_hasActiveCharacter) EnableLocalMap();
             Refresh();
@@ -246,6 +246,7 @@ public partial class EndgameDirector : Node3D
             bool reportPreset = command.Production?.Action is ProductionAction.SaveEquipmentPreset or ProductionAction.RenameEquipmentPreset or ProductionAction.DeleteEquipmentPreset or ProductionAction.ApplyEquipmentPreset;
             bool reportLoadout = command.Production?.Action is ProductionAction.SaveBuildLoadout or ProductionAction.RenameBuildLoadout or ProductionAction.DeleteBuildLoadout or ProductionAction.ApplyBuildLoadout;
             bool reportLoot = command.Production?.Action is ProductionAction.SetItemFavorite or ProductionAction.SetItemLocked or ProductionAction.Salvage;
+            BeginOpeningGuidanceObservation();
             var result = ExecuteActive(command); if (!result.Success) { Notice(result.Reason); if (reportCraft) _character.ReportCraftResult(false, result.Reason); if (reportBuild) _character.ReportBuildResult(false, result.Reason); if (reportLoot) _character.ReportLootManagementResult(false, result.Reason); if (reportPreset) _character.ReportEquipmentPresetResult(false, result.Reason); if (reportLoadout) _character.ReportBuildLoadoutResult(false, result.Reason); return; }
             _revision++; Observe(result);
             if (!ReferenceEquals(_sandbox.Session, _session.Combat)) _sandbox.AdoptSession(_session.Combat);
@@ -266,6 +267,7 @@ public partial class EndgameDirector : Node3D
             if (_echoesSmoke) return AdvanceExperimentSmoke();
             if (_smoke && ++_steps > EndgameRuntimeSmoke.MaximumCommands + 10000L) throw new InvalidDataException("Endgame client smoke exceeded its bounded public-action route.");
             var command = _smoke ? SmokeNext() : new EndgameRuntimeCommand(EndgameRuntimeAction.Tick, Commands: commands);
+            BeginOpeningGuidanceObservation();
             var result = ExecuteActive(command);
             if (_smoke && !result.Success) throw new InvalidDataException("Endgame smoke action rejected: " + result.Reason);
             Observe(result); Refresh();
@@ -346,6 +348,7 @@ public partial class EndgameDirector : Node3D
     };
     private void Observe(EndgameRuntimeResult result)
     {
+        ObserveOpeningGuidance(result);
         if (result.WorldEvents.Length > 0 || result.CombatEvents.Any(e => e.Kind is "LootPickedUp" or "LootDropped")) _revision++;
         if (result.CombatEvents.Any(e => e.Kind == "LootPickedUp") || result.WorldEvents.Any(e => e.StartsWith("RegionalHuntRewardClaimed:", StringComparison.Ordinal) || e.StartsWith("SecretTreasureClaimed:", StringComparison.Ordinal) || e.StartsWith("RoamingChampionRewardClaimed:", StringComparison.Ordinal))) RefreshCollection(_session.Capture(), persist: true);
         foreach (var e in result.CombatEvents) _events[e.Kind] = _events.GetValueOrDefault(e.Kind) + 1;
@@ -437,7 +440,7 @@ public partial class EndgameDirector : Node3D
         ObserveDeathRecap();
         _sandbox.SetWorldSubtitle(_session.InRoamingChampion ? "ROAMING CHAMPION / " + _session.CurrentRoamingChampion!.Name.ToUpperInvariant() : _session.InSecretChamber ? "HIDDEN CHAMBER / " + _session.CurrentSecretChamber!.Name.ToUpperInvariant() : _session.InRegionalHunt ? "REGIONAL HUNT / " + _session.CurrentRegionalHunt!.Name.ToUpperInvariant() : combat.Endgame is null ? $"CAMPAIGN / {_session.Campaign.View.Region.ToUpperInvariant()}" : $"{view.Run?.Kind.ToUpperInvariant()} / {view.Run?.Name.ToUpperInvariant()}");
         UpdatePanelVisibility();
-        RefreshExperiment();
+        RefreshExperiment(); RefreshOpeningGuidance();
         if (_capture && DisplayServer.GetName() != "headless")
         {
             string? key = combat.Endgame?.Hazards.Length > 0 ? combat.Endgame.HuntId.Length > 0 ? $"hunt-{combat.Endgame.HuntId}-{combat.Endgame.PhaseIndex}" : $"fracture-tier-{combat.Endgame.Tier}" :
@@ -485,7 +488,7 @@ public partial class EndgameDirector : Node3D
     }
     private void UpdatePanelVisibility()
     {
-        if (_campaignHud is not null && _board is not null) _campaignHud.Visible = _championPanel?.IsOpen != true && !_session.InRoamingChampion && _stashPanel?.IsOpen != true && !_session.InSecretChamber && _secretPanel?.IsOpen != true && !_board.IsOpen && _huntBoard?.IsOpen != true && !_session.HasUnresolvedRegionalHunt && _session.Combat.View.Endgame is null;
+        if (_campaignHud is not null && _board is not null) _campaignHud.Visible = _openingGuide?.IsOpen != true && _championPanel?.IsOpen != true && !_session.InRoamingChampion && _stashPanel?.IsOpen != true && !_session.InSecretChamber && _secretPanel?.IsOpen != true && !_board.IsOpen && _huntBoard?.IsOpen != true && !_session.HasUnresolvedRegionalHunt && _session.Combat.View.Endgame is null;
         if (_championObjective is not null) _championObjective.Visible = ChampionObjectiveVisible();
         if (_secretObjective is not null) _secretObjective.Visible = SecretObjectiveVisible();
         if (_huntObjective is not null) _huntObjective.Visible = _session.HasUnresolvedRegionalHunt && _huntBoard?.IsOpen != true && _deathRecapHud?.IsOpen != true && _frontMenu?.IsOpen != true;
@@ -578,7 +581,7 @@ public partial class EndgameDirector : Node3D
     }
     private void Adopt(EndgameRuntimeSession session, bool retainExperiment = false)
     {
-        ResetPersonalStash(); ResetCollection(); ClearDeathRecap(); EndTraining(false); ClearTrainingComparison();
+        ResetPersonalStash(); ResetCollection(); ClearDeathRecap(); EndTraining(false); ClearTrainingComparison(); ResetOpeningGuidance();
         _championPanel?.SessionRestored(); _championPresentation?.Reset(); _championSelection = _championNotice = "";
         _secretPanel?.SessionRestored(); _secretPresentation?.Reset(); _secretSelection = _secretClue = _secretNotice = "";
         _huntBoard?.SessionRestored(); _shownHuntOutcome = _huntNotice = "";

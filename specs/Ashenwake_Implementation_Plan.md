@@ -44,6 +44,8 @@ At the planning baseline, the repository contained the two source specifications
 
 The personal stash milestone adds a chest beside Torren, four named storage tabs, drag-and-drop transfers, search and filters, and saved-build retrieval guidance. Equipment remains under one permanent ownership ledger, with stored items excluded from carried combat and crafting projections. See [personal stash](../docs/personal_stash.md) for controls and [verification](../docs/personal_stash_verification.md) for evidence.
 
+The optional [First steps guide](../docs/opening_guidance.md) connects movement, interactions, dodging, interrupts and loot to the first equipment/anatomy upgrades, training and earned services. Preferences persist outside authoritative saves. Five-discipline opening route measurements and verification are documented separately; independent novice playtests remain open.
+
 ## 1. Scope, assumptions, and planning rules
 
 The roaming champion milestone adds three optional, seeded side encounters in Acts I–III, each with a custom silhouette, distinct combat mechanic and one-time signature equipment. Discoveries, victories and treasure receipts survive saves and deterministic replay; retreat restores the preserved campaign source room. See [roaming champions](../docs/roaming_champions.md) and [verification](../docs/roaming_champions_verification.md).

@@ -11,6 +11,8 @@ public partial class CampaignHud : Control
 {
     public event Action? DiscoveriesRequested;
     public event Action? ChampionsRequested;
+    public event Action? OpeningGuideRequested;
+    public bool IsOpen => _panel is { Visible: true };
     public event Action<int>? ActRequested;
     public event Action? HubRequested, ContinueRequested, LeaveExplorationRequested, SaveRequested, LoadRequested;
     public event Action<string, string>? ChoiceRequested;
@@ -78,6 +80,8 @@ public partial class CampaignHud : Control
         _anatomyWorkbench.VisitMaraRequested += () => RequestInteraction("service.mara");
         _anatomyWorkbench.ReturnRequested += () => { if (_combat.Loot.Count > 0) OpenTab("Map"); else { SetOpen(false); HubRequested?.Invoke(); } };
         var footer = new HBoxContainer(); column.AddChild(footer);
+        var guide = new Button { Name = "JourneyOpeningGuide", Text = "First steps", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        guide.Pressed += () => OpeningGuideRequested?.Invoke(); footer.AddChild(guide);
         foreach (var (text, action) in new[] { ("Save", (Action)(() => SaveRequested?.Invoke())), ("Load", (Action)(() => LoadRequested?.Invoke())), ("Close", (Action)Toggle) })
         { var button = new Button { Text = text, SizeFlagsHorizontal = SizeFlags.ExpandFill }; button.Pressed += action; footer.AddChild(button); }
         _choiceDialog = new ConfirmationDialog { Name = "JourneyChoiceConfirmation", DialogAutowrap = true, Title = "Commit this decision", OkButtonText = "Choose this future", CancelButtonText = "Consider the options" };

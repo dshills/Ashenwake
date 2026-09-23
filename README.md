@@ -56,6 +56,8 @@ The [campaign pacing pass](docs/campaign_pacing.md) smooths level gains across a
 
 The [Act I combat-depth pass](docs/opening_combat_depth.md) gives the opening enemy groups clearer roles, adds the monastery's interruptible Dirgebound ally ward, and guides the first Pyrebound Treads and Heart of Serath upgrades through the existing services.
 
+The optional [First steps guide](docs/opening_guidance.md), available from Journey, connects those upgrades to training and unlocked Greyhaven services. Contextual control hints remember dismissals per character and can be disabled or revisited from the guide.
+
 The [Acts II–III combat-depth pass](docs/midgame_combat_depth.md) gives Living Ruins, Plague Village, the Cinder fields and Extraction Floor deliberate enemy formations. Interrupt Bloom Carriers before they mend wounded allies and Heat Tenders before they empower forge sentinels. Fixed support rings distinguish these channels from damaging warnings; Rootheart and Furnace Spindle show their actual attack and recovery windows.
 
 The [Acts IV–V combat-depth pass](docs/late_campaign_combat_depth.md) adds interruptible contract-keeper wards, coordinated shadow/archer formations, and numbered Covenant Warden and Breach Heart attacks. Protection, guard and recovery countdowns make the final bosses’ existing openings explicit.
