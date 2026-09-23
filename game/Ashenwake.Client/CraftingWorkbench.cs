@@ -112,7 +112,7 @@ public partial class CraftingWorkbench : VBoxContainer
     {
         if (_state is null) return;
         Clear(_options);
-        var item = _state.Character.Items.FirstOrDefault(i => i.Id == SelectedItemId);
+        var item = _state.Character.Items.FirstOrDefault(i => i.Id == SelectedItemId && !CharacterStash.IsStored(_state.Character, i.Id));
         _description.Text = Description(_service);
         _target.Text = _service == CraftingService.Purification ? "DIVINE FRAGMENT\nChoose a fragment below" : item is null ? "Drop an item here\nor choose one in your inventory" : $"{EquipmentNames.For(item.DefinitionId)} · {item.Rarity}\n#{item.Id}" + (_state.Character.Equipment.Values.Contains(item.Id) ? " · EQUIPPED" : "");
         var slot = item is null ? EquipmentSlot.MainHand : _definition.Items.Single(i => i.Id == item.DefinitionId).Slots[0];
@@ -184,6 +184,7 @@ public partial class CraftingWorkbench : VBoxContainer
     private string Eligibility()
     {
         if (_state is null) return "Choose an item to begin.";
+        if (_service != CraftingService.Purification && CharacterStash.IsStored(_state.Character, SelectedItemId)) return "Retrieve the item from your personal stash before crafting.";
         if (!_state.Character.Services.Contains(_service)) return UnlockReason(_service);
         if (!_inTown) return "Return to Greyhaven to craft.";
         if (!_alive) return "Cannot craft while defeated.";

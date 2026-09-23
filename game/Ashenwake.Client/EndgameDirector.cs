@@ -86,9 +86,9 @@ public partial class EndgameDirector : Node3D
             _sandbox.SaveOverride = () => Safely(Save); _sandbox.LoadOverride = () => Safely(Load); _sandbox.ReplayOverride = () => Safely(VerifyReplay);
             _stage = new CampaignStage(); AddChild(_stage); _effects = new EndgamePresentation(); AddChild(_effects); _effects.AttachOverlay(_sandbox);
             _campaignHud = new CampaignHud(); _sandbox.AddOverlay(_campaignHud);
-            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = () => { _collection?.SetOpen(false); _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); if (_deathRecapHud?.IsOpen == true) return; if (_training is not null) _trainingHud.SetReportOpen(true); else _character.ToggleInventory(); };
+            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = () => { _collection?.SetOpen(false); _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); if (_deathRecapHud?.IsOpen == true) return; if (_training is not null) _trainingHud.SetReportOpen(true); else _character.ToggleInventory(); };
             _board = new EndgameHud(); _sandbox.AddOverlay(_board);
-            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeTraining(); InitializeFrontMenu(); InitializeDeathRecap(); InitializeCollection(); InitializeRegionalHunts(); InitializeSecretChambers();
+            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeTraining(); InitializeFrontMenu(); InitializeDeathRecap(); InitializeCollection(); InitializeRegionalHunts(); InitializeSecretChambers(); InitializePersonalStash();
             _sandbox.ConfigureLocalMap(() => _training is null && _hasActiveCharacter && !_frontMenu.IsOpen && !_classSelection.Visible, () => _session.LocalMap);
             if (_hasActiveCharacter) EnableLocalMap();
             Refresh();
@@ -170,7 +170,7 @@ public partial class EndgameDirector : Node3D
         _board.GateApproachRequested += () => { UpdatePanelVisibility(); _sandbox.RequestWorldInteraction("endgame.gate"); };
         _board.SaveRequested += () => Safely(Save); _board.LoadRequested += () => Safely(Load);
         _board.ReplayRequested += () => Safely(VerifyReplay); _board.ImportRequested += () => _importDialog.PopupCentered(new(860, 560));
-        _board.VisibilityChangedByPlayer += open => { if (open) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _collection?.SetOpen(false); _campaignHud.SetOpen(false); _character.Close(); } UpdatePanelVisibility(); };
+        _board.VisibilityChangedByPlayer += open => { if (open) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _collection?.SetOpen(false); _campaignHud.SetOpen(false); _character.Close(); } UpdatePanelVisibility(); };
         _board.ModalChanged += open => _sandbox.SetModalPaused("endgame-confirmation", open);
     }
     private void BindBoardInput()
@@ -191,7 +191,7 @@ public partial class EndgameDirector : Node3D
     {
         if (HandleExperimentInput(input)) return;
         if (_smoke || _finished || _session is null || _classSelection.Visible) return;
-        if (input.IsActionPressed("aw_character")) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _collection?.SetOpen(false); _character.Toggle(); GetViewport().SetInputAsHandled(); }
+        if (input.IsActionPressed("aw_character")) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _collection?.SetOpen(false); _character.Toggle(); GetViewport().SetInputAsHandled(); }
         if (input.IsActionPressed("aw_endgame")) { if (_session.InSecretChamber) OpenSecretChambers(); else if (_session.HasUnresolvedRegionalHunt) OpenRegionalHunts(); else _board.Toggle(); GetViewport().SetInputAsHandled(); }
         if (input.IsActionPressed("aw_journey"))
         {
@@ -221,7 +221,7 @@ public partial class EndgameDirector : Node3D
     private void Interact(string id)
     {
         if (_training is not null) return;
-        if (InteractSecretChamber(id) || InteractRegionalHunt(id)) return;
+        if (InteractPersonalStash(id) || InteractSecretChamber(id) || InteractRegionalHunt(id)) return;
         if (id == Ashenwake.Core.Training.TrainingSession.InteractionId) { Safely(StartTraining); return; }
         if (id == "journey.next") { _campaignHud.RequestNextStep(); return; }
         if (id.StartsWith("opening.", StringComparison.Ordinal)) { Campaign(new(CampaignRuntimeAction.InteractOpening, Id: id)); return; }
@@ -375,7 +375,7 @@ public partial class EndgameDirector : Node3D
             _cachedDisplay = Display(view, snapshot); _displayKey = displayKey;
         }
         _board.SetView(_cachedDisplay);
-        RefreshCollection(snapshot);
+        RefreshCollection(snapshot); RefreshPersonalStash(snapshot);
         // Public-command replay diagnostics observe combat without interactive menus.
         if (_smoke || _echoesSmoke) _board.SetOpen(false);
         var manifestations = _session.Production.View.ActiveManifestations;
@@ -478,20 +478,24 @@ public partial class EndgameDirector : Node3D
     }
     private void UpdatePanelVisibility()
     {
-        if (_campaignHud is not null && _board is not null) _campaignHud.Visible = !_session.InSecretChamber && _secretPanel?.IsOpen != true && !_board.IsOpen && _huntBoard?.IsOpen != true && !_session.HasUnresolvedRegionalHunt && _session.Combat.View.Endgame is null;
+        if (_campaignHud is not null && _board is not null) _campaignHud.Visible = _stashPanel?.IsOpen != true && !_session.InSecretChamber && _secretPanel?.IsOpen != true && !_board.IsOpen && _huntBoard?.IsOpen != true && !_session.HasUnresolvedRegionalHunt && _session.Combat.View.Endgame is null;
         if (_secretObjective is not null) _secretObjective.Visible = SecretObjectiveVisible();
         if (_huntObjective is not null) _huntObjective.Visible = _session.HasUnresolvedRegionalHunt && _huntBoard?.IsOpen != true && _deathRecapHud?.IsOpen != true && _frontMenu?.IsOpen != true;
     }
     private string Region(string id) => _campaignDefinition.Acts.FirstOrDefault(a => a.Id == id)?.Name ?? Readable(id);
     private string RuleName(string id) => _endgameDefinition.Modifiers.FirstOrDefault(m => m.Id == id || m.Rule == id)?.Name ?? Readable(id);
     private void Notice(string message)
-    { if (_session.HasUnresolvedRegionalHunt || _session.InSecretChamber || message.StartsWith("Move closer", StringComparison.Ordinal)) _sandbox.Notify(message); _secretNotice = message; _secretPanel?.Notice(message); _huntNotice = message; _huntBoard?.Notice(message); _board.Notice(message); _campaignHud.Notice(message); _character.Notice(message); if (_echoesBoard?.IsOpen == true) _echoesBoard.Notice(message); if (_frontMenu?.IsOpen == true) _frontMenu.Notice(message); }
+    { if (_session.HasUnresolvedRegionalHunt || _session.InSecretChamber || message.StartsWith("Move closer", StringComparison.Ordinal)) _sandbox.Notify(message); _secretNotice = message; _secretPanel?.Notice(message); if (_stashPanel?.IsOpen == true) { _stashNotice = message; _stashPanel.Notice(message); } _huntNotice = message; _huntBoard?.Notice(message); _board.Notice(message); _campaignHud.Notice(message); _character.Notice(message); if (_echoesBoard?.IsOpen == true) _echoesBoard.Notice(message); if (_frontMenu?.IsOpen == true) _frontMenu.Notice(message); }
     private string? PlayerNotice(string message)
     {
         string[] parts = message.Split(':'); string value = parts.Length > 1 ? parts[1] : "";
         return parts[0] switch
         {
             "RegionalHunt" => value switch { "Tracking" => "Follow the three marked clues to find your quarry.", "Combat" => "The quarry has emerged. Read its attacks and defeat the pack.", "Victory" => "Quarry defeated. Return to Greyhaven and claim your bounty.", "Failed" => "Hunt failed. Return to Greyhaven to prepare another attempt.", "Abandoned" => "Hunt abandoned. No bounty was claimed.", _ => null },
+            "ItemStored" => "Item stored safely in your personal stash.",
+            "ItemRetrieved" => "Item returned to your backpack.",
+            "StashedItemMoved" => "Item moved to its new stash tab.",
+            "StashTabRenamed" => "Stash tab renamed.",
             "SecretClueResolved" => "The markings respond. Another detail awaits inspection nearby.",
             "SecretEntranceRevealed" => "A hidden passage opens. Its discovery is recorded in your journal.",
             "SecretTreasureClaimed" => "Hidden treasure claimed. Your unique equipment is in your permanent inventory.",
@@ -563,7 +567,7 @@ public partial class EndgameDirector : Node3D
     }
     private void Adopt(EndgameRuntimeSession session, bool retainExperiment = false)
     {
-        ResetCollection(); ClearDeathRecap(); EndTraining(false); ClearTrainingComparison();
+        ResetPersonalStash(); ResetCollection(); ClearDeathRecap(); EndTraining(false); ClearTrainingComparison();
         _secretPanel?.SessionRestored(); _secretPresentation?.Reset(); _secretSelection = _secretClue = _secretNotice = "";
         _huntBoard?.SessionRestored(); _shownHuntOutcome = _huntNotice = "";
         _echoesBoard?.SessionRestored();

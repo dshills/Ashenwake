@@ -76,6 +76,11 @@ public sealed partial class ProgressionSession
                 issues.Add(new(slot, itemId, $"{slot}: item #{itemId} is no longer owned; replace or re-save this preset."));
                 continue;
             }
+            if (CharacterStash.IsStored(state, itemId))
+            {
+                issues.Add(new(slot, itemId, $"{slot}: item #{itemId} is stored in {CharacterStash.TabName(state, CharacterStash.TabForItem(state, itemId))}; retrieve it before applying this build or outfit."));
+                continue;
+            }
             var definition = Data.Items.Single(i => i.Id == item.DefinitionId);
             if (!definition.Slots.Contains(slot)) issues.Add(new(slot, itemId, $"{slot}: item #{itemId} cannot occupy this slot."));
             if (definition.Disciplines.Length > 0 && !definition.Disciplines.Contains(state.Discipline))

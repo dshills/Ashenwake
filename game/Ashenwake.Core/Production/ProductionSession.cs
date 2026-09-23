@@ -7,7 +7,7 @@ using Ashenwake.Core.Simulation;
 
 namespace Ashenwake.Core.Production;
 
-public enum ProductionAction { Expedition, Equip, Unequip, Craft, Passive, Respec, Retrain, Mutation, Discard, SaveEquipmentPreset, RenameEquipmentPreset, DeleteEquipmentPreset, ApplyEquipmentPreset, SetItemFavorite, SetItemLocked, Salvage, SaveBuildLoadout, RenameBuildLoadout, DeleteBuildLoadout, ApplyBuildLoadout }
+public enum ProductionAction { Expedition, Equip, Unequip, Craft, Passive, Respec, Retrain, Mutation, Discard, SaveEquipmentPreset, RenameEquipmentPreset, DeleteEquipmentPreset, ApplyEquipmentPreset, SetItemFavorite, SetItemLocked, Salvage, SaveBuildLoadout, RenameBuildLoadout, DeleteBuildLoadout, ApplyBuildLoadout, StoreItem, RetrieveItem, MoveStashedItem, RenameStashTab }
 public sealed record ProductionCommand(ProductionAction Action, ExpeditionCommand? Expedition = null, long ItemId = 0,
     EquipmentSlot Slot = EquipmentSlot.MainHand, string Id = "", string Value = "", CraftingRequest? Crafting = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool ConfirmPermanent = false);
@@ -46,6 +46,7 @@ public sealed partial class ProductionSession
            new("service.mara", "Mara · Divine Anatomy", new(-4500, -1800), 2400),
            new("npc.torren", "Torren · tempering", new(2000, -2000), 2600),
            new("service.torren", "Torren · equipment", new(2000, -2000), 2600),
+           new(PersonalStashCatalog.InteractionId, "Personal stash · stored equipment", PersonalStashCatalog.Position, PersonalStashCatalog.Range),
            new("npc.cael", "Sister Cael · purification", new(-4500, 1800), 2600),
            new("npc.oris", "Oris · rebinding", new(0, 4200), 2600),
            new("npc.kesh", "Kesh · extraction", new(4500, 2600), 2600),
@@ -53,7 +54,7 @@ public sealed partial class ProductionSession
            new("dungeon.replay", "Begin another expedition", new(6500, 0), 2600)] : Expedition.Interactions;
 
     private ProductionSession(string combatJson, AdventureContent adventure, ProgressionContent content, ExpeditionSession expedition, ProgressionSession progression)
-    { this.combatJson = combatJson; combatContent = CombatContent.Parse(combatJson); AdventureContent = adventure; Content = content; Expedition = expedition; this.progression = progression; }
+    { this.combatJson = combatJson; combatContent = CombatContent.Parse(combatJson); AdventureContent = adventure; Content = content; Expedition = expedition; this.progression = progression; ProjectStoredGodwrought(); }
 
     public static ProductionSession Create(string combatJson, AdventureContent adventure, ProgressionContent content, ulong seed = 42,
         string discipline = "Vanguard", LocalProfileState? profile = null)
@@ -138,7 +139,7 @@ public sealed partial class ProductionSession
     private void RestoreFields(ProductionSnapshot value)
     {
         Expedition = ExpeditionSession.Restore(combatJson, AdventureContent, value.Expedition);
-        progression = ProgressionSession.Restore(Content, value.Progression); operationSequence = value.OperationSequence;
+        progression = ProgressionSession.Restore(Content, value.Progression); operationSequence = value.OperationSequence; ProjectStoredGodwrought();
     }
     private ProductionResult ExecuteExpedition(ExpeditionCommand command)
     {
@@ -166,6 +167,7 @@ public sealed partial class ProductionSession
     {
         if (IsItemOrganizationAction(command.Action)) return ExecuteItemOrganization(command);
         if (IsBuildLoadoutAction(command.Action)) return ExecuteBuildLoadout(command);
+        if (IsStashAction(command.Action)) return ExecuteStash(command);
         if (View.RoomId != "room.greyhaven") return new(false, "Change permanent builds at Greyhaven's workshops.", [], []);
         SynchronizeItemSequence();
         string operation = "player." + operationSequence; ProgressionResult result;
@@ -334,13 +336,18 @@ public sealed partial class ProductionSession
         }
         return changed;
     }
+    // The legacy Adventure Godwrought ledger represents Ashcleaver instances specifically;
+    // other equipment, regardless of rarity, is projected solely from canonical Items.
+    private void ProjectStoredGodwrought() => Expedition.SetStoredGodwrought(progression.CharacterState.Items
+        .Where(i => i.DefinitionId == "item.ashcleaver" && CharacterStash.IsStored(progression.CharacterState, i.Id))
+        .Select(i => i.LegacyInstanceId == "" ? "ashcleaver.production." + i.Id : i.LegacyInstanceId));
     private void ProjectPermanentInventory()
     {
         var canonical = progression.CharacterState; var source = Expedition.Capture(); var world = source.Adventure;
         var derived = CombatSession.Restore(combatJson, source.Combat); derived.ApplyProgressionBuild(DeriveBuild());
         var combat = derived.Capture();
         world.Materials = canonical.Materials; world.OwnedFragments = new(canonical.OwnedFragments);
-        var projected = canonical.Items.OrderBy(i => canonical.Equipment.Values.Contains(i.Id) ? 0 : 1).ThenBy(i => i.Id).Take(512).ToArray();
+        var projected = canonical.Items.Where(i => !CharacterStash.IsStored(canonical, i.Id)).OrderBy(i => canonical.Equipment.Values.Contains(i.Id) ? 0 : 1).ThenBy(i => i.Id).Take(512).ToArray();
         combat.Inventory.Clear();
         foreach (var item in projected)
         {
@@ -363,6 +370,7 @@ public sealed partial class ProductionSession
             if (!world.Godwrought.Any(g => g.InstanceId == id)) world.Godwrought = [.. world.Godwrought, existing];
             if (projected.Any(i => i.Id == item.Id)) mapping[id] = item.Id;
         }
+        ProjectStoredGodwrought();
         Expedition.ApplyPermanentProjection(world, combat, mapping);
     }
     private CombatProgressionBuild DeriveBuild()
@@ -425,7 +433,7 @@ public sealed partial class ProductionSession
         foreach (var item in snapshot.Combat.Inventory)
         {
             var canonical = permanent.Items.FirstOrDefault(i => i.Id == item.Id);
-            if (canonical is null || canonical.DefinitionId != item.DefinitionId || canonical.BaseDamage != item.Damage || canonical.BaseArmor != item.Armor || canonical.BaseCriticalBasisPoints != item.CriticalBasisPoints || canonical.Rarity.ToString() != item.Rarity)
+            if (canonical is null || CharacterStash.IsStored(permanent, item.Id) || canonical.DefinitionId != item.DefinitionId || canonical.BaseDamage != item.Damage || canonical.BaseArmor != item.Armor || canonical.BaseCriticalBasisPoints != item.CriticalBasisPoints || canonical.Rarity.ToString() != item.Rarity)
                 throw new InvalidDataException("Runtime inventory differs from its permanent item owner.");
         }
         if (snapshot.Adventure.Godwrought.Length != permanent.Items.Count(i => i.DefinitionId == "item.ashcleaver") ||

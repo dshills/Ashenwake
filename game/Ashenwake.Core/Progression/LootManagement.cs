@@ -40,6 +40,7 @@ public sealed partial class ProgressionSession
         SalvagePreview Blocked(string reason) => new(false, reason, itemId, 0, names);
         var item = state.Character.Items.FirstOrDefault(i => i.Id == itemId);
         if (item is null) return Blocked("Select an item you own.");
+        if (CharacterStash.IsStored(state.Character, itemId)) return Blocked("Retrieve this item from your stash before salvaging it.");
         if (ProtectionBlockedReason(item) is { Length: > 0 } protection) return Blocked(protection);
         if (state.Character.Equipment.Values.Contains(itemId)) return Blocked("Unequip this item before salvaging it.");
         if (item.Rarity == ItemRarity.Godwrought) return Blocked("Godwrought equipment cannot be salvaged; its progression belongs to this character.");

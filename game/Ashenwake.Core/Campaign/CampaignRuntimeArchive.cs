@@ -59,6 +59,7 @@ public static class CampaignRuntimeSaveStore
         ArchiveHeaders.Identity(expedition, "adventureHash", ProductionContent.ResolveAdventure(combatJson, adventure).Hash);
         var body = ArchiveHeaders.Object(expedition, "combat"); ArchiveHeaders.Require(body, 1, "combat.1"); ArchiveHeaders.Identity(body, "contentHash", identity);
         var character = ArchiveHeaders.Object(ArchiveHeaders.Object(permanent, "progression"), "character"); ArchiveHeaders.Require(character, 1);
+        if (character.TryGetProperty("stash", out var personalStash) && personalStash.ValueKind != JsonValueKind.Null) ArchiveHeaders.Require(personalStash, 1);
         var resolved = ProductionContent.Resolve(combatJson, CampaignRuntimeSession.ResolvePolicy(policy, campaign), adventure);
         ArchiveHeaders.Identity(character, "contentHash", resolved.Hash);
         ArchiveHeaders.Checksum(document.RootElement, "state");

@@ -42,6 +42,8 @@ Build a small, satisfying, replayable single-player game loop first. Prove that 
 
 At the planning baseline, the repository contained the two source specifications and no implementation. This plan therefore starts from project setup. It preserves the architecture's Phases 0–4, adds explicit endgame and release phases, and moves its optional online prototype from Phase 5 to Phase 7. Phase numbers describe dependencies, not calendar commitments.
 
+The personal stash milestone adds a chest beside Torren, four named storage tabs, drag-and-drop transfers, search and filters, and saved-build retrieval guidance. Equipment remains under one permanent ownership ledger, with stored items excluded from carried combat and crafting projections. See [personal stash](../docs/personal_stash.md) for controls and [verification](../docs/personal_stash_verification.md) for evidence.
+
 ## 1. Scope, assumptions, and planning rules
 
 ### 1.1 Release boundaries

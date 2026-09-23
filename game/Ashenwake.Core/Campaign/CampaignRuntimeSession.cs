@@ -75,7 +75,7 @@ public sealed partial class CampaignRuntimeSession
                 return Production.Interactions.Where(i => i.ActionId switch
                 {
                     "npc.mara" or "service.mara" => true,
-                    "npc.torren" or "service.torren" => residents.Contains("Torren Bale"),
+                    "npc.torren" or "service.torren" or "hub.stash" => residents.Contains("Torren Bale"),
                     "npc.cael" => residents.Contains("Sister Cael"),
                     "npc.oris" => residents.Contains("Oris Fen"),
                     "npc.kesh" => residents.Contains("Kesh"),
@@ -287,6 +287,7 @@ public sealed partial class CampaignRuntimeSession
                 }
                 string specialist = command.Production.Action switch
                 {
+                    ProductionAction.StoreItem or ProductionAction.RetrieveItem or ProductionAction.MoveStashedItem or ProductionAction.RenameStashTab => PersonalStashCatalog.InteractionId,
                     ProductionAction.Equip or ProductionAction.Unequip or ProductionAction.Discard or ProductionAction.Salvage or ProductionAction.SaveEquipmentPreset or
                         ProductionAction.RenameEquipmentPreset or ProductionAction.DeleteEquipmentPreset or ProductionAction.ApplyEquipmentPreset => "service.torren",
                     ProductionAction.Craft => command.Production.Crafting?.Service switch
@@ -296,6 +297,8 @@ public sealed partial class CampaignRuntimeSession
                 };
                 if (!Interactions.Any(i => i.ActionId == specialist)) return Failed("Rescue this specialist before using their Greyhaven workshop.");
                 var permanent = Production.Execute(command.Production, recordReplay: false);
+                if (permanent.Success && ProductionSession.IsStashAction(command.Production.Action))
+                    foreach (string room in clearedRooms.Keys.ToArray()) clearedRooms[room] = Production.ProjectCampaignCombat(clearedRooms[room]).Capture();
                 return new(permanent.Success, permanent.Reason, permanent.CombatEvents, permanent.WorldEvents);
             case CampaignRuntimeAction.EnterAct:
                 if (!state.InHub && (!EncounterCleared || state.Exploration is not null)) return Failed("Clear this encounter or return to Greyhaven before changing regions.");

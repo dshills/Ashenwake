@@ -67,6 +67,7 @@ public static class EndgameRuntimeSaveStore
         ArchiveHeaders.Identity(expedition, "adventureHash", ProductionContent.ResolveAdventure(combatJson, adventure).Hash);
         CombatHeader(ArchiveHeaders.Object(expedition, "combat"));
         var character = ArchiveHeaders.Object(ArchiveHeaders.Object(permanent, "progression"), "character"); ArchiveHeaders.Require(character, 1);
+        if (character.TryGetProperty("stash", out var personalStash) && personalStash.ValueKind != JsonValueKind.Null) ArchiveHeaders.Require(personalStash, 1);
         if (character.TryGetProperty("endgame", out var permanentEndgame) && permanentEndgame.ValueKind != JsonValueKind.Null) ArchiveHeaders.Require(permanentEndgame, 1);
         var resolved = ProductionContent.Resolve(combatJson, CampaignRuntimeSession.ResolvePolicy(EndgameProgression.Resolve(policy), campaign), adventure);
         ArchiveHeaders.Identity(character, "contentHash", resolved.Hash);

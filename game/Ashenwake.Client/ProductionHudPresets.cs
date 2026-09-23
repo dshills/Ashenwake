@@ -37,6 +37,9 @@ public partial class ProductionHud
         presets.Name = "OpenEquipmentPresets";
         presets.TooltipText = "Inspect eight saved equipment sets. Save, rename, remove, or equip a complete set at Torren.";
         AddBuildLoadoutControl();
+        var stash = Button("Open personal stash", () => StashRequested?.Invoke());
+        stash.Name = "OpenPersonalStash";
+        stash.TooltipText = "Inspect your stored gear. Deposit and retrieve items at the personal stash in Greyhaven.";
         var training = Button("Practice this build · training grounds", () => TrainingRequested?.Invoke());
         training.Name = "OpenBuildTraining"; training.Disabled = !_inTown;
         training.TooltipText = _inTown ? "Walk to Greyhaven's training grounds to practice without risking your character." : "Return to Greyhaven to practice your build.";

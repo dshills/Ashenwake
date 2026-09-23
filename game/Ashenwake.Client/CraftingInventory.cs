@@ -38,7 +38,7 @@ public partial class CraftingInventory : VBoxContainer
         MouseForcePassScrollEvents = false;
         AddThemeConstantOverride("separation", 6);
         _heading = Caption("YOUR EQUIPMENT"); _heading.Name = "CraftInventoryHeading"; AddChild(_heading);
-        AddChild(Caption("Click an item or drag it to the workbench."));
+        AddChild(Caption("Click an item or drag it to the workbench. Retrieve stored gear in Greyhaven first."));
         BuildFilters();
         _scroll = new ScrollContainer
         {
@@ -73,7 +73,8 @@ public partial class CraftingInventory : VBoxContainer
             state.Character.Discipline,
             state.Character.Items,
             state.Character.Equipment,
-            state.Character.EquipmentPresets
+            state.Character.EquipmentPresets,
+            state.Character.Stash
         });
         if (!ReferenceEquals(_content, content))
         {
@@ -83,7 +84,7 @@ public partial class CraftingInventory : VBoxContainer
         _state = state;
         if (_signature == signature) return;
         _signature = signature;
-        _owned = state.Character.Items.ToDictionary(item => item.Id);
+        _owned = state.Character.Items.Where(item => !CharacterStash.IsStored(state.Character, item.Id)).ToDictionary(item => item.Id);
         _presetNames = (state.Character.EquipmentPresets ?? []).SelectMany(preset => preset.Equipment.Values.Select(id => (Id: id, preset.Name)))
             .GroupBy(pair => pair.Id).ToDictionary(group => group.Key, group => group.Select(pair => pair.Name).ToArray());
         if (!_owned.ContainsKey(SelectedItemId)) SelectedItemId = 0;

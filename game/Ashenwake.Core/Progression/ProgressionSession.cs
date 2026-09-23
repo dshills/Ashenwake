@@ -45,6 +45,8 @@ public sealed record ProgressionState
     public EquipmentPreset[]? EquipmentPresets { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public BuildLoadout[]? BuildLoadouts { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PersonalStashState? Stash { get; set; }
     public SortedDictionary<string, int> Mastery { get; set; } = [];
     public SortedDictionary<string, string> SelectedMutations { get; set; } = [];
     public SortedDictionary<string, int> Passives { get; set; } = [];
@@ -214,6 +216,7 @@ public sealed partial class ProgressionSession
     }
     public ProgressionResult Equip(string operationId, long itemId, EquipmentSlot slot) => Change(operationId, new { Action = "Equip", itemId, slot }, (next, events) =>
     {
+        if (CharacterStash.IsStored(next.Character, itemId)) return "Retrieve this item from your stash before equipping it.";
         var item = next.Character.Items.FirstOrDefault(i => i.Id == itemId);
         var definition = item is null ? null : Data.Items.Single(i => i.Id == item.DefinitionId);
         if (definition is null || !definition.Slots.Contains(slot) || (definition.Disciplines.Length > 0 && !definition.Disciplines.Contains(next.Character.Discipline))) return "Item is incompatible with the slot or discipline.";
@@ -264,6 +267,7 @@ public sealed partial class ProgressionSession
         var state = next.Character;
         if (!Enum.IsDefined(request.Service) || !state.Services.Contains(request.Service)) return "Crafting service is not unlocked.";
         int cost = Data.CraftingCosts[request.Service];
+        if (request.Service != CraftingService.Purification && CharacterStash.IsStored(state, request.ItemId)) return "Retrieve this item from your stash before crafting or extracting it.";
         var item = state.Items.FirstOrDefault(i => i.Id == request.ItemId);
         var definition = item is null ? null : Data.Items.Single(d => d.Id == item.DefinitionId);
         if (request.Service != CraftingService.Purification && item is null) return "Item does not exist.";
@@ -344,6 +348,7 @@ public sealed partial class ProgressionSession
         foreach (var item in s.Items) ValidateItem(content, item);
         Check(s.Items.Select(i => i.Id).Distinct().Count() == s.Items.Length && s.Items.All(i => i.Id < s.NextItemId), "Duplicate or invalid item sequence.");
         ValidateEquipmentPresets(content, s);
+        ValidatePersonalStash(s);
         ValidateBuildLoadouts(content, s);
         Check(s.UnlockedDisciplines.Contains(s.Discipline) && s.UnlockedDisciplines.All(id => d.Disciplines.Any(x => x.Id == id)), "Unknown unlocked discipline.");
         Check(s.Equipment.Values.Distinct().Count() == s.Equipment.Count && s.Equipment.All(pair => Enum.IsDefined(pair.Key) && s.Items.Any(i => i.Id == pair.Value)), "Invalid equipment references.");

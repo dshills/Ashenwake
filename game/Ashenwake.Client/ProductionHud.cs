@@ -16,6 +16,7 @@ public partial class ProductionHud : Control
     public event Action<long, EquipmentSlot>? EquipRequested;
     public event Action<EquipmentSlot>? UnequipRequested;
     public event Action<long>? DiscardRequested;
+    public event Action? StashRequested;
     public event Action<CraftingRequest>? CraftRequested;
     public event Action<string, string>? MutationRequested;
     public event Action<string>? ServiceRequested;
@@ -120,6 +121,7 @@ public partial class ProductionHud : Control
         _skillsPanel.CloseRequested += () => { _panel.Hide(); _gearInspecting = false; };
         _skillsPanel.MinimumSizeChanged += () => Callable.From(LayoutPanel).CallDeferred();
         _equipmentPresets = new EquipmentPresetsPanel { Visible = false }; gearColumn.AddChild(_equipmentPresets);
+        _equipmentPresets.StashRequested += () => StashRequested?.Invoke();
         _equipmentPresets.Requested += (action, id, value) => EquipmentPresetRequested?.Invoke(action, id, value);
         _equipmentPresets.CloseRequested += () => { _tab = "Gear"; Rebuild(true); _tabs["Gear"].GrabFocus(); };
         _equipmentPresets.MinimumSizeChanged += QueuePanelLayout;
@@ -177,7 +179,7 @@ public partial class ProductionHud : Control
         IReadOnlyList<InteractionDisplay> interactions, bool inTown, long revision, IReadOnlyList<string>? unlockedMutations, bool openingRewards = false)
     {
         _view = view; _state = state; _content = content; _combat = combat; _interactions = interactions; _inTown = inTown; _revision = revision; _openingRewards = openingRewards;
-        if (_gearInspecting && _gearItemId != 0 && !state.Character.Items.Any(i => i.Id == _gearItemId)) _gearInspecting = false;
+        if (_gearInspecting && _gearItemId != 0 && (!state.Character.Items.Any(i => i.Id == _gearItemId) || CharacterStash.IsStored(state.Character, _gearItemId))) _gearInspecting = false;
         SynchronizeDiscard();
         SynchronizeSalvage();
         _unlockedMutations = unlockedMutations;
@@ -307,7 +309,7 @@ public partial class ProductionHud : Control
         var candidate = _state.Character.Items.FirstOrDefault(i => i.Id == _gearItemId);
         var choice = new OptionButton { Name = "GearItem" };
         choice.AddItem("Empty · preview unequipped slot"); choice.SetItemMetadata(0, 0L);
-        foreach (var item in _state.Character.Items.Where(i => Compatible(i, _gearSlot) || i.Id == _gearItemId))
+        foreach (var item in _state.Character.Items.Where(i => !CharacterStash.IsStored(_state.Character, i.Id) && (Compatible(i, _gearSlot) || i.Id == _gearItemId)))
         {
             int index = choice.ItemCount;
             choice.AddItem($"#{item.Id} {EquipmentNames.For(item.DefinitionId)} · {item.Rarity}"); choice.SetItemMetadata(index, item.Id);
@@ -373,6 +375,7 @@ public partial class ProductionHud : Control
 
     private string GearRestriction(long id, EquipmentSlot slot)
     {
+        if (CharacterStash.IsStored(_state.Character, id)) return "Retrieve this item from stash tab “" + CharacterStash.TabName(_state.Character, CharacterStash.TabForItem(_state.Character, id)) + "” before equipping it.";
         if (!_combat.Actors.Any(a => a.Id == 1 && a.Health > 0)) return "Cannot change equipment while defeated.";
         if (!At("service.torren")) return "Visit Torren in Greyhaven to change equipment.";
         var item = _state.Character.Items.FirstOrDefault(i => i.Id == id);
@@ -414,7 +417,7 @@ public partial class ProductionHud : Control
         CharacterAppearance shown = _appearance;
         bool inspecting = _tab == "Gear" && _gearInspecting && _state is not null &&
             _gearItemId != _state.Character.Equipment.GetValueOrDefault(_gearSlot);
-        if (inspecting && _state is not null && (_gearItemId == 0 || _state.Character.Items.Any(i => i.Id == _gearItemId && Compatible(i, _gearSlot))))
+        if (inspecting && _state is not null && (_gearItemId == 0 || _state.Character.Items.Any(i => i.Id == _gearItemId && !CharacterStash.IsStored(_state.Character, i.Id) && Compatible(i, _gearSlot))))
         {
             var equipment = new SortedDictionary<EquipmentSlot, long>(_state.Character.Equipment);
             foreach (var occupied in equipment.Where(p => p.Value == _gearItemId).Select(p => p.Key).ToArray()) equipment.Remove(occupied);

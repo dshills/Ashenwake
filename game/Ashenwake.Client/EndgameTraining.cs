@@ -28,13 +28,14 @@ public partial class EndgameDirector
     {
         if (_training is not null || !_hasActiveCharacter || _frontMenu.IsOpen || _sandbox.IsPaused) return;
         var training = _session.CreateTrainingSession(_lastTrainingMode);
+        _stashPanel?.SetOpen(false);
         _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel();
         // Preserve each overlay's visibility, including the experiment navigation button.
         // Sandbox combat controls remain live, while the permanent journey is untouched.
         _trainingHidden.Clear();
         foreach (var child in _trainingHud.GetParent().GetChildren().OfType<CanvasItem>())
         {
-            if (child == _trainingHud || !child.Visible || child is not (ProductionHud or CampaignHud or EndgameHud or EchoesBoard or EchoesMemoryHud or RegionalHuntBoard or SecretChamberPanel) && child.Name != "EchoesNavigation" && child.Name != "RegionalHuntNavigation" && child.Name != "RegionalHuntObjective" && child.Name != "SecretChamberObjective") continue;
+            if (child == _trainingHud || !child.Visible || child is not (ProductionHud or CampaignHud or EndgameHud or EchoesBoard or EchoesMemoryHud or RegionalHuntBoard or SecretChamberPanel or PersonalStashPanel) && child.Name != "EchoesNavigation" && child.Name != "RegionalHuntNavigation" && child.Name != "RegionalHuntObjective" && child.Name != "SecretChamberObjective") continue;
             _trainingHidden.Add(child); child.Hide();
         }
         _training = training; _trainingReset = 0; _trainingCompletionShown = false;

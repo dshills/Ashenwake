@@ -14,6 +14,7 @@ public partial class BuildLoadoutsPanel : VBoxContainer
     public event Action<ProductionAction, string, string>? Requested;
     public event Action? CloseRequested;
     public event Action? TrainingRequested;
+    public event Action? StashRequested;
     public string SelectedId { get; private set; } = "loadout.1";
     private IReadOnlyList<BuildLoadoutView> _loadouts = [];
     private IReadOnlyDictionary<string, string> _fragments = new Dictionary<string, string>();
@@ -35,7 +36,7 @@ public partial class BuildLoadoutsPanel : VBoxContainer
     private Label _description = null!, _cost = null!, _status = null!, _result = null!;
     private VBoxContainer _comparison = null!;
     private ScrollContainer _scroll = null!;
-    private Button _save = null!, _rename = null!, _delete = null!, _apply = null!, _practice = null!;
+    private Button _save = null!, _rename = null!, _delete = null!, _apply = null!, _practice = null!, _stash = null!;
     private ConfirmationDialog _confirmation = null!;
 
     public override void _Ready()
@@ -65,6 +66,8 @@ public partial class BuildLoadoutsPanel : VBoxContainer
         _apply = ActionButton("BuildLoadoutApply", "Review and apply…", () => Begin(ProductionAction.ApplyBuildLoadout)); actions.AddChild(_apply);
         _delete = ActionButton("BuildLoadoutDelete", "Delete saved build…", () => Begin(ProductionAction.DeleteBuildLoadout)); actions.AddChild(_delete);
         _result = Caption("", 12); _result.Name = "BuildLoadoutResult"; _result.MaxLinesVisible = 2; _result.MouseFilter = MouseFilterEnum.Stop; AddChild(_result);
+        _stash = ActionButton("BuildLoadoutStash", "Open stash · retrieve saved equipment", () => { CancelInteraction(); StashRequested?.Invoke(); });
+        _stash.Visible = false; AddChild(_stash);
         var navigation = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; navigation.AddThemeConstantOverride("separation", 8); AddChild(navigation);
         _practice = ActionButton("BuildLoadoutPractice", "Practice current build", () => { CancelInteraction(); TrainingRequested?.Invoke(); });
         _practice.TooltipText = "Test your currently equipped build in the training grounds. A selected saved loadout must be applied first."; navigation.AddChild(_practice);
@@ -90,7 +93,7 @@ public partial class BuildLoadoutsPanel : VBoxContainer
     public void SetView(ProgressionSnapshot state, ProgressionDefinition definition, IReadOnlyList<BuildLoadoutView> loadouts,
         Func<string, BuildLoadoutPreview>? preview, bool canManage, long revision)
     {
-        string context = state.Character.CharacterId + ":" + revision + ":" + canManage + ":" + JsonData.Hash(loadouts) + ":" + _anatomyContext;
+        string context = state.Character.CharacterId + ":" + revision + ":" + canManage + ":" + JsonData.Hash(loadouts) + ":" + _anatomyContext + ":" + JsonData.Hash(state.Character.Stash);
         bool changed = _context != context || !ReferenceEquals(_seenSession, _sandbox?.Session);
         if (changed) CancelConfirmation();
         _context = context; _state = state; _definition = definition; _loadouts = loadouts; _preview = preview;
@@ -140,7 +143,7 @@ public partial class BuildLoadoutsPanel : VBoxContainer
         {
             long before = _state.Character.Equipment.GetValueOrDefault(slot);
             long after = saved?.Equipment.GetValueOrDefault(slot) ?? before;
-            Row(SlotName(slot), ItemName(before), ItemName(after), saved is not null, before == after, after != 0 && !_state.Character.Items.Any(i => i.Id == after));
+            Row(SlotName(slot), ItemName(before), ItemName(after), saved is not null, before == after, after != 0 && (!_state.Character.Items.Any(i => i.Id == after) || CharacterStash.IsStored(_state.Character, after)));
         }
         Heading("DIVINE ANATOMY");
         foreach (var slot in Enum.GetValues<AnatomySlot>())
@@ -181,7 +184,8 @@ public partial class BuildLoadoutsPanel : VBoxContainer
     {
         if (id == 0) return "Empty";
         var item = _state!.Character.Items.FirstOrDefault(i => i.Id == id);
-        return item is null ? $"Missing item #{id}" : EquipmentNames.For(item.DefinitionId) + $" · #{id}";
+        return item is null ? $"Missing item #{id}" : EquipmentNames.For(item.DefinitionId) + $" · #{id}" +
+            (CharacterStash.IsStored(_state.Character, id) ? " · Stored in tab “" + CharacterStash.TabName(_state.Character, CharacterStash.TabForItem(_state.Character, id)) + "”" : "");
     }
 
     private void Heading(string text) => _comparison.AddChild(Caption(text, 12, "dec99a"));
@@ -203,6 +207,8 @@ public partial class BuildLoadoutsPanel : VBoxContainer
         _delete.Disabled = _busy || blocked || saved is null;
         _apply.Disabled = _busy || blocked || _shownPreview?.Success != true;
         _practice.Disabled = _busy || blocked;
+        _stash.Visible = saved?.Equipment.Values.Any(id => CharacterStash.IsStored(_state.Character, id)) == true;
+        _stash.Disabled = _busy;
         _cost.Text = _shownPreview is null ? $"Saving is free · {_state.Character.Materials:N0} materials owned" :
             $"Apply cost: {_shownPreview.MaterialCost:N0} materials · Owned: {_state.Character.Materials:N0}\nPassive refund {_shownPreview.RespecCost:N0} · Fragment removal {_shownPreview.FragmentRemovalCost:N0}";
         _status.Text = blocked ? _restriction : _shownPreview is { Success: false } ? _shownPreview.Reason :

@@ -81,7 +81,7 @@ public partial class GearLoadout
         if (_state is null || _inventory is null) return;
         HideComparison();
         string query = _search.Text.Trim();
-        var entries = _state.Character.Items.Where(i => _items.ContainsKey(i.Id))
+        var entries = _state.Character.Items.Where(i => !CharacterStash.IsStored(_state.Character, i.Id) && _items.ContainsKey(i.Id))
             .Select(i => new { Item = i, Category = ItemCategory(i), Name = ItemName(i) }).ToArray();
         var ordered = _sort.Selected switch
         {

@@ -39,10 +39,10 @@ public partial class ProductionHud
 
     private void AddDiscardControls(PermanentItem? candidate)
     {
-        int count = _state.Character.Items.Length;
-        _rows.AddChild(Label(count >= 512
-            ? $"Inventory full · {count} owned. Salvage or discard unequipped items at Torren until fewer than 512 remain to collect more loot."
-            : $"{count}/512 items owned · salvage or discard unwanted equipment at Torren to free inventory space.", 12));
+        int count = CharacterStash.BackpackCount(_state.Character);
+        _rows.AddChild(Label(count >= CharacterStash.BackpackCapacity
+            ? $"Inventory full · {count} carried. Store items in Greyhaven, or salvage or discard unequipped gear at Torren to collect more loot."
+            : $"{count}/{CharacterStash.BackpackCapacity} items carried · stored gear does not use inventory space.", 12));
         string reason = DiscardRestriction(candidate?.Id ?? 0);
         var discard = Button("Discard selected item…", () => BeginDiscard(candidate!.Id));
         discard.Name = "DiscardItem"; discard.Disabled = reason.Length > 0;

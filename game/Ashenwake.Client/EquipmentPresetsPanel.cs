@@ -11,6 +11,7 @@ public partial class EquipmentPresetsPanel : VBoxContainer
 {
     public event Action<ProductionAction, string, string>? Requested;
     public event Action? CloseRequested;
+    public event Action? StashRequested;
     public string SelectedId { get; private set; } = "preset.1";
     private IReadOnlyList<EquipmentPresetView> _presets = [];
     private Func<string, EquipmentPresetPreview>? _preview;
@@ -28,7 +29,7 @@ public partial class EquipmentPresetsPanel : VBoxContainer
     private LineEdit _name = null!;
     private Label _status = null!, _result = null!, _description = null!;
     private VBoxContainer _equipment = null!;
-    private Button _save = null!, _rename = null!, _delete = null!, _apply = null!;
+    private Button _save = null!, _rename = null!, _delete = null!, _apply = null!, _stash = null!;
     private ConfirmationDialog _confirmation = null!;
 
     public override void _Ready()
@@ -55,6 +56,8 @@ public partial class EquipmentPresetsPanel : VBoxContainer
         _apply = ActionButton("EquipmentPresetApply", "Equip saved set", () => Begin(ProductionAction.ApplyEquipmentPreset)); actions.AddChild(_apply);
         _delete = ActionButton("EquipmentPresetDelete", "Delete saved set…", () => Begin(ProductionAction.DeleteEquipmentPreset)); actions.AddChild(_delete);
         _result = Caption("", 12); _result.Name = "EquipmentPresetResult"; _result.MaxLinesVisible = 2; AddChild(_result);
+        _stash = ActionButton("EquipmentPresetStash", "Open stash · retrieve saved equipment", () => { CancelInteraction(); StashRequested?.Invoke(); });
+        _stash.Visible = false; AddChild(_stash);
         var back = ActionButton("EquipmentPresetBack", "Back to gear", () => CloseRequested?.Invoke()); AddChild(back);
         _confirmation = new ConfirmationDialog { Name = "EquipmentPresetConfirmation", Title = "Review equipment preset", DialogAutowrap = true, Exclusive = true, CancelButtonText = "Cancel" };
         AddChild(_confirmation); _confirmation.Canceled += CancelConfirmation;
@@ -67,7 +70,7 @@ public partial class EquipmentPresetsPanel : VBoxContainer
     public void SetView(ProgressionSnapshot state, ProgressionDefinition definition, IReadOnlyList<EquipmentPresetView> presets,
         Func<string, EquipmentPresetPreview>? preview, bool canChangeGear, long revision)
     {
-        string context = state.Character.CharacterId + ":" + revision + ":" + canChangeGear + ":" + JsonData.Hash(presets);
+        string context = state.Character.CharacterId + ":" + revision + ":" + canChangeGear + ":" + JsonData.Hash(presets) + ":" + JsonData.Hash(state.Character.Stash);
         bool changed = _context != context;
         if (changed) CancelConfirmation();
         _context = context; _state = state; _definition = definition; _presets = presets; _preview = preview;
@@ -113,8 +116,10 @@ public partial class EquipmentPresetsPanel : VBoxContainer
             long target = (saved?.Equipment ?? _state.Character.Equipment).GetValueOrDefault(slot);
             var item = _state.Character.Items.FirstOrDefault(i => i.Id == target);
             string name = target == 0 ? "Empty" : item is null ? $"Missing item #{target}" : EquipmentNames.For(item.DefinitionId) + $" · {item.Rarity} · #{item.Id}";
+            bool stored = CharacterStash.IsStored(_state.Character, target);
+            if (stored) name += " · Stored in tab “" + CharacterStash.TabName(_state.Character, CharacterStash.TabForItem(_state.Character, target)) + "”";
             long equipped = _state.Character.Equipment.GetValueOrDefault(slot);
-            var row = Caption(SlotName(slot) + "  ·  " + name + (saved is not null && equipped == target ? "  ✓" : ""), 12, target != 0 && item is null ? "eeb196" : "ced8dc");
+            var row = Caption(SlotName(slot) + "  ·  " + name + (saved is not null && equipped == target ? "  ✓" : ""), 12, target != 0 && (item is null || stored) ? "eeb196" : "ced8dc");
             if (item is not null && _definition is not null) { row.TooltipText = EquipmentDetails.Inspect(item, _definition); row.MouseFilter = MouseFilterEnum.Stop; }
             _equipment.AddChild(row);
         }
@@ -128,6 +133,8 @@ public partial class EquipmentPresetsPanel : VBoxContainer
         if (_save is null) return;
         var saved = Current();
         var preview = saved is null ? null : _preview?.Invoke(SelectedId);
+        _stash.Visible = _state is not null && saved?.Equipment.Values.Any(id => CharacterStash.IsStored(_state.Character, id)) == true;
+        _stash.Disabled = _busy;
         bool named = !string.IsNullOrWhiteSpace(_name.Text);
         string block = _restriction;
         _save.Text = saved is null ? "Save current gear" : "Replace with current gear…";

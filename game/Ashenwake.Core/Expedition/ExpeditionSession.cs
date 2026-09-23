@@ -32,6 +32,9 @@ public sealed partial class ExpeditionSession
     private AdventureSession adventure;
     private readonly SortedDictionary<string, long> godwroughtItems = new(StringComparer.Ordinal);
     private readonly List<ExpeditionFrame> frames = [];
+    // Derived from Production ownership; standalone Expedition archives retain their original reward projection.
+    private HashSet<string> storedGodwrought = new(StringComparer.Ordinal);
+    internal void SetStoredGodwrought(IEnumerable<string> identities) => storedGodwrought = identities.ToHashSet(StringComparer.Ordinal);
     private ExpeditionSnapshot initial = null!;
     private string encounterId = "hub";
     private long nextKillSequence;
@@ -254,7 +257,7 @@ public sealed partial class ExpeditionSession
             state = Combat.Capture();
         }
         bool changed = false;
-        foreach (var item in permanent.Godwrought.Where(g => !godwroughtItems.ContainsKey(g.InstanceId)))
+        foreach (var item in permanent.Godwrought.Where(g => !godwroughtItems.ContainsKey(g.InstanceId) && !storedGodwrought.Contains(g.InstanceId)))
         {
             if (state.Inventory.Count >= 512) break; // Permanent reward remains owned; never discard another item to make space.
             var definition = CombatContent.Parse(combatJson).Items.Single(i => i.Id == "item.ashcleaver");

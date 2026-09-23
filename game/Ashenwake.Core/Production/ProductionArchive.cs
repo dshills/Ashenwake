@@ -35,6 +35,7 @@ public static class ProductionSaveStore
         var expedition = ArchiveHeaders.Object(logical, "expedition"); ArchiveHeaders.Require(expedition, 1, "expedition.1");
         var combatState = ArchiveHeaders.Object(expedition, "combat"); ArchiveHeaders.Require(combatState, 1, "combat.1");
         var character = ArchiveHeaders.Object(ArchiveHeaders.Object(logical, "progression"), "character"); ArchiveHeaders.Require(character, 1);
+        if (character.TryGetProperty("stash", out var personalStash) && personalStash.ValueKind != JsonValueKind.Null) ArchiveHeaders.Require(personalStash, 1);
         var resolved = ProductionContent.Resolve(combatJson, policy, adventure); var world = ProductionContent.ResolveAdventure(combatJson, adventure);
         ArchiveHeaders.Identity(expedition, "adventureHash", world.Hash);
         ArchiveHeaders.Identity(combatState, "contentHash", CombatContent.Parse(combatJson).Identity);

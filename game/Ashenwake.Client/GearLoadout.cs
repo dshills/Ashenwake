@@ -87,7 +87,8 @@ public partial class GearLoadout : HBoxContainer
         string signature = state.Character.CharacterId + "/" + state.Character.Discipline + "/" +
             string.Join(',', state.Character.Equipment.Select(p => p.Key + ":" + p.Value)) + "/" + string.Join(',', state.Character.Items.Select(i => i.Id + ":" + i.IsFavorite + ":" + i.IsLocked)) + "/" +
             string.Join(';', (state.Character.EquipmentPresets ?? []).Select(preset => preset.Id + ":" + string.Join(',', preset.Equipment.Values))) + ":" +
-            string.Join(';', (state.Character.BuildLoadouts ?? []).Select(loadout => loadout.Id + ":" + string.Join(',', loadout.Equipment.Values)));
+            string.Join(';', (state.Character.BuildLoadouts ?? []).Select(loadout => loadout.Id + ":" + string.Join(',', loadout.Equipment.Values))) + "/" +
+            Ashenwake.Core.Content.JsonData.Hash(state.Character.Stash);
         bool changed = _state is null || _revision != revision || _signature != signature || _canEdit != canEdit;
         _state = state; _content = content; _revision = revision; _signature = signature; _canEdit = canEdit;
         if (!changed) return;
@@ -174,7 +175,7 @@ public partial class GearLoadout : HBoxContainer
 
     private Variant DragData(long id, string from)
     {
-        if (id == 0 || _state is null || !_state.Character.Items.Any(i => i.Id == id)) return default;
+        if (id == 0 || _state is null || CharacterStash.IsStored(_state.Character, id) || !_state.Character.Items.Any(i => i.Id == id)) return default;
         return new Godot.Collections.Dictionary
         {
             ["owner"] = GetInstanceId().ToString(),
@@ -196,7 +197,7 @@ public partial class GearLoadout : HBoxContainer
             !values.TryGetValue("item", out var item) || item.VariantType != Variant.Type.Int ||
             !values.TryGetValue("from", out var origin) || origin.VariantType != Variant.Type.String) return false;
         long itemId = item.AsInt64(); id = itemId;
-        if (!_state.Character.Items.Any(i => i.Id == itemId)) return false;
+        if (CharacterStash.IsStored(_state.Character, itemId) || !_state.Character.Items.Any(i => i.Id == itemId)) return false;
         if (origin.AsString().Length == 0) return !_state.Character.Equipment.Values.Contains(id);
         if (!Enum.TryParse<EquipmentSlot>(origin.AsString(), out var slot) || !Enum.IsDefined(slot) || _state.Character.Equipment.GetValueOrDefault(slot) != id) return false;
         from = slot; return true;
@@ -229,7 +230,7 @@ public partial class GearLoadout : HBoxContainer
             card.SetManagementBadges(item?.IsFavorite == true, item?.IsLocked == true, item is not null && _presetItemIds.Contains(item.Id));
             card.SetItemVisual(item?.DefinitionId ?? "", slot, _state.Character.Discipline, item?.Rarity);
         }
-        var backpack = _state.Character.Items.Where(i => !_state.Character.Equipment.Values.Contains(i.Id)).OrderBy(i => i.Id).ToArray();
+        var backpack = _state.Character.Items.Where(i => !CharacterStash.IsStored(_state.Character, i.Id) && !_state.Character.Equipment.Values.Contains(i.Id)).OrderBy(i => i.Id).ToArray();
         var ids = backpack.Select(i => i.Id).ToHashSet();
         foreach (long id in _items.Keys.Where(id => !ids.Contains(id)).ToArray())
         { var removed = _items[id]; _inventory.RemoveChild(removed); removed.QueueFree(); _items.Remove(id); }
@@ -247,7 +248,7 @@ public partial class GearLoadout : HBoxContainer
                 card.Pressed += () =>
                 {
                     var owned = _state.Character.Items.FirstOrDefault(i => i.Id == id);
-                    if (owned is not null) InspectRequested?.Invoke(PreferredSlot(owned), id);
+                    if (owned is not null && !CharacterStash.IsStored(_state.Character, id)) InspectRequested?.Invoke(PreferredSlot(owned), id);
                 };
                 _items.Add(id, card); _inventory.AddChild(card);
             }

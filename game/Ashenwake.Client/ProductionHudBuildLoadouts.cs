@@ -44,6 +44,7 @@ public partial class ProductionHud
         _buildLoadouts = new BuildLoadoutsPanel { Visible = false }; column.AddChild(_buildLoadouts);
         _buildLoadouts.Requested += (action, id, value) => BuildLoadoutRequested?.Invoke(action, id, value);
         _buildLoadouts.CloseRequested += () => { _tab = "Gear"; Rebuild(true); _tabs["Gear"].GrabFocus(); };
+        _buildLoadouts.StashRequested += () => StashRequested?.Invoke();
         _buildLoadouts.TrainingRequested += () => TrainingRequested?.Invoke();
         _buildLoadouts.MinimumSizeChanged += QueuePanelLayout;
     }

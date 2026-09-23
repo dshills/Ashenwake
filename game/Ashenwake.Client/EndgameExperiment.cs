@@ -100,7 +100,7 @@ public partial class EndgameDirector
     }
     private void ShowExperimentPanel()
     {
-        _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false);
+        _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false);
         if (_classSelection.Visible) return;
         _hasEchoesSelection = TryEchoesSelection() is not null;
         _echoesBoard.Notice(""); RefreshExperiment(); _echoesBoard.SetOpen(true);

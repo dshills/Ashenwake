@@ -18,7 +18,7 @@ public partial class EndgameDirector
         _campaignHud.CollectionRequested += OpenCollection; _board.CollectionRequested += OpenCollection;
         _collection.VisibilityChangedByPlayer += open =>
         {
-            if (open) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
+            if (open) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
         };
         _collection.TrackRequested += id =>
         {
