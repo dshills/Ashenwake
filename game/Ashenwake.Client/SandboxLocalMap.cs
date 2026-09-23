@@ -84,7 +84,7 @@ public partial class Sandbox
         else
         {
             _localMap.Size = viewport.Y < 760 ? new(224, 166) : new(256, 194);
-            _localMap.Position = new(viewport.X - _localMap.Size.X - 22, 182);
+            _localMap.Position = new(viewport.X - _localMap.Size.X - 22, 182 + AdditionalNavigationRows * 38);
         }
         _localMap.SetView(_presentedLocalMap, _localMapTitle, _localMapPlayer, _localMapMarkers, ClickMoveDestination);
         // The reward feed retains all three cards, including on short windows and Echoes runs.
@@ -92,7 +92,7 @@ public partial class Sandbox
         {
             float feedWidth = available && viewport.X < 900 ? 240 : 280;
             _rewardFeed.Size = new(feedWidth, 190);
-            var feedPosition = available ? new Vector2(viewport.X - (viewport.Y < 760 ? 224 : 256) - 32 - feedWidth, 204) : new(viewport.X - 302, 182);
+            var feedPosition = available ? new Vector2(viewport.X - (viewport.Y < 760 ? 224 : 256) - 32 - feedWidth, 204 + AdditionalNavigationRows * 38) : new(viewport.X - 302, 182 + AdditionalNavigationRows * 38);
             if (available)
                 foreach (var objective in new[] { _campaignObjective, _expeditionObjective })
                     if (objective is not null && objective.IsVisibleInTree() && objective.GetGlobalRect().End.X > feedPosition.X)

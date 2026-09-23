@@ -9,7 +9,8 @@ namespace Ashenwake.Core.Endgame;
 public enum EndgameRuntimeAction
 {
     Tick, ClaimRecoverySigil, AttuneSigil, StartFracture, StartGodHunt,
-    AdvanceEncounter, RetryEncounter, Abandon, ReturnToHub, Campaign, Production, EnableExplorationMap
+    AdvanceEncounter, RetryEncounter, Abandon, ReturnToHub, Campaign, Production, EnableExplorationMap,
+    StartRegionalHunt, TrackRegionalHuntClue, ClaimRegionalHuntReward, AbandonRegionalHunt, ReturnRegionalHunt
 }
 
 public sealed record EndgameRuntimeCommand(EndgameRuntimeAction Action, long SigilId = 0, string Id = "", string Value = "",
@@ -30,6 +31,8 @@ public sealed record EndgameRuntimeSnapshot
     public bool EncounterCleared { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public LocalMapAtlasState? ExplorationMap { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RegionalHuntState? RegionalHunts { get; init; }
 }
 public sealed record EndgameRuntimeReplay(int SchemaVersion, EndgameRuntimeSnapshot Initial, EndgameRuntimeFrame[] Frames);
 public sealed record EndgameRunView(long Id, string Kind, string Name, string Region, int Tier, int EncounterIndex,

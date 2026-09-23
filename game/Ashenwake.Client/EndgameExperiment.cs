@@ -100,6 +100,7 @@ public partial class EndgameDirector
     }
     private void ShowExperimentPanel()
     {
+        _huntBoard?.SetOpen(false);
         if (_classSelection.Visible) return;
         _hasEchoesSelection = TryEchoesSelection() is not null;
         _echoesBoard.Notice(""); RefreshExperiment(); _echoesBoard.SetOpen(true);
@@ -107,6 +108,7 @@ public partial class EndgameDirector
     private void CloseExperimentPanel() => _echoesBoard.SetOpen(false);
     private void BeginExperiment(long sigil, ExperimentChoice choice)
     {
+        if (_session.HasUnresolvedRegionalHunt) { Notice("Claim or abandon your regional hunt before entering an Echoes expedition."); return; }
         if (!_session.InHub || !_session.View.Unlocked || !AtGate() || !_session.View.AvailableSigils.Any(s => s.Id == sigil) ||
             choice == ExperimentChoice.BorrowMind && !_experimentContent.AcceptingEntries)
         { Notice("This contract is no longer available. Review the selected Sigil and approach the Fracture gate."); RefreshExperiment(); return; }
@@ -143,7 +145,7 @@ public partial class EndgameDirector
         var view = _experiment?.View; var memory = view?.Memory;
         var mind = _session.Combat.View.Fragments.FirstOrDefault(f => f.Equipped && f.Slot == AnatomySlot.Mind);
         var progression = _session.Production.ProgressionView;
-        _echoesBoard.SetView(new(_cachedDisplay, view, _experimentRules, _experimentContent.AcceptingEntries,
+        _echoesBoard.SetView(new(_cachedDisplay, view, _experimentRules, _experimentContent.AcceptingEntries && !_session.HasUnresolvedRegionalHunt,
             _hasEchoesSelection, mind?.Name ?? "Mind socket empty", mind?.Description ?? "No owned Mind effect is installed.",
             $"{progression.Discipline} · Level {progression.Level}", _revision, _echoesOriginalSaveName.Length > 0));
         _memoryPresentation.Show(memory);

@@ -480,7 +480,7 @@ public sealed partial class CombatSession
         if (target.Faction != CombatFaction.Enemy) return;
         CampaignDeath(target);
         EndgameDeath(target);
-        if (!training && _state.Loot.Count < 512 && !_state.ResurrectedActorIds.Contains(target.Id) && CampaignRewardEligible(target))
+        if (!training && RegionalHuntCombat.Find(_state.EncounterId) is null && _state.Loot.Count < 512 && !_state.ResurrectedActorIds.Contains(target.Id) && CampaignRewardEligible(target))
         {
             var rng = _state.Rng.Loot;
             var eligibleItems = _content.Items.Where(i => i.Id != "item.ashcleaver" && !LegendaryEquipment.IsItem(i.Id)).ToArray();

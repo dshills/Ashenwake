@@ -23,6 +23,8 @@ public partial class Sandbox : Node3D
     public Action? LoadOverride { get; set; }
     public Action? ReplayOverride { get; set; }
     public Action? InventoryOverride { get; set; }
+    public Func<string, string?>? EnemyNameOverride { get; set; }
+    public int AdditionalNavigationRows { get; set; }
     public bool AutomaticStep { get; set; }
     private bool _campaignMode;
     private readonly List<Control> _sandboxControls = [];
@@ -269,6 +271,7 @@ public partial class Sandbox : Node3D
             if (actor.Role.EndsWith(" Elite", StringComparison.Ordinal)) name += " Elite";
             if (actor.Faction == CombatFaction.Enemy && actor.DefinitionId.Length > 0)
                 name = Readable(actor.DefinitionId[(actor.DefinitionId.IndexOf('.') + 1)..]) + (actor.Role.EndsWith(" Elite", StringComparison.Ordinal) ? " Elite" : "");
+            if (actor.Faction == CombatFaction.Enemy) name = EnemyNameOverride?.Invoke(actor.DefinitionId) ?? name;
             if (_trainingPresentation && actor.Faction == CombatFaction.Enemy)
                 name = _trainingPassiveTargets ? actor.Health > 0 ? "Practice Effigy" : "Practice Remains" : "Sparring · " + name;
             var hazard = (_view.CampaignHazards ?? []).Where(h => h.SourceId == actor.Id && h.RemainingTicks > 0 && !h.ContentId.StartsWith("rule.", StringComparison.Ordinal))

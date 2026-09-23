@@ -59,6 +59,7 @@ public sealed partial class CampaignRuntimeSession
         (ActiveEncounterId == CryptEncounter || HasVerdantExploration && ActiveEncounterId is ShrineEncounter or HuntEncounter || HasCinderExploration && ActiveEncounterId is FoundryEncounter or StormEncounter || HasSpineExploration && ActiveEncounterId is ArchiveEncounter or MemoryEncounter || HasHollowExploration && ActiveEncounterId == VaultEncounter) && !arena.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0);
     public CampaignView View => story.ViewForResonance(Production.View.Resonance);
     public CampaignView StoryView => View;
+    internal bool HasCompletedAct(int act) => story.CurrentState.CompletedActs.Contains(act);
     public IReadOnlyList<string> WorldEvents { get; private set; } = [];
     public string StateHash => JsonData.Hash(Capture());
     public IReadOnlyList<ExpeditionInteraction> Interactions
