@@ -5,6 +5,8 @@ namespace Ashenwake.Client;
 public partial class Sandbox
 {
     private string _graphicsQuality = "High";
+    private float _renderScale = 1.25f;
+    public float RenderScale => _renderScale;
     public string GraphicsQuality => _graphicsQuality;
 
     public void SetGraphicsQuality(string value)
@@ -14,10 +16,17 @@ public partial class Sandbox
         ApplyGraphicsQuality();
     }
 
+    public void SetRenderScale(float value)
+    {
+        _renderScale = GraphicsProfile.NormalizeRenderScale(value);
+        _settingsRenderScale?.Select(_renderScale == 1 ? 0 : _renderScale == 1.5f ? 2 : 1);
+        ApplyGraphicsQuality();
+    }
+
     private void ApplyGraphicsQuality()
     {
         if (_worldEnvironment is null || _sun is null) return;
-        GraphicsProfile.Apply(GetViewport(), _worldEnvironment.Environment, _sun, _graphicsQuality, _reduceEffects);
+        GraphicsProfile.Apply(GetViewport(), _worldEnvironment.Environment, _sun, _graphicsQuality, _reduceEffects, _renderScale);
         _openingLighting?.Animate(0, _clock.Paused, _reduceEffects, _graphicsQuality);
         _verdantAtmosphere?.Animate(0, _clock.Paused, _reduceEffects, _graphicsQuality);
         _cinderAtmosphere?.Animate(0, _clock.Paused, _reduceEffects, _graphicsQuality);

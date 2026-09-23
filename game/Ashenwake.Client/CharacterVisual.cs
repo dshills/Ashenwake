@@ -115,11 +115,11 @@ public partial class CharacterVisual : Node3D
         => Part(parent, PolishedBoxMesh(size), at, mat, rotationDegrees);
     private static MeshInstance3D Orb(Node parent, Vector3 at, Vector3 scale, Material mat)
     {
-        var mesh = Part(parent, new SphereMesh { Radius = .5f, Height = 1, RadialSegments = 10, Rings = 5 }, at, mat);
+        var mesh = Part(parent, OrganicSphereMesh, at, mat);
         mesh.Scale = scale; return mesh;
     }
     private static MeshInstance3D Cone(Node parent, Vector3 at, float bottomRadius, float topRadius, float height, Material mat, Vector3? rotationDegrees = null)
-        => Part(parent, new CylinderMesh { BottomRadius = bottomRadius, TopRadius = topRadius, Height = height, RadialSegments = 8, Rings = 1 }, at, mat, rotationDegrees);
+        => Part(parent, RoundedConeMesh(bottomRadius, topRadius, height), at, mat, rotationDegrees);
     private static MeshInstance3D Rod(Node parent, Vector3 start, Vector3 end, float radius, Material mat)
     {
         var direction = end - start;
@@ -128,7 +128,7 @@ public partial class CharacterVisual : Node3D
         return mesh;
     }
     private static MeshInstance3D Ring(Node parent, Vector3 at, float inner, float outer, Material mat, Vector3? rotationDegrees = null)
-        => Part(parent, new TorusMesh { InnerRadius = inner, OuterRadius = outer, Rings = 12, RingSegments = 6 }, at, mat, rotationDegrees);
+        => Part(parent, RoundedRingMesh(inner, outer), at, mat, rotationDegrees);
     private static MeshInstance3D Part(Node parent, Mesh mesh, Vector3 at, Material mat, Vector3? rotationDegrees = null)
     {
         var part = new MeshInstance3D { Mesh = mesh, Position = at, MaterialOverride = mat, RotationDegrees = rotationDegrees ?? Vector3.Zero };

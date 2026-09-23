@@ -21,8 +21,8 @@ public static partial class AppearanceVisualChecks
             {
                 identities.Add(texture.GetInstanceId());
                 using var image = texture.GetImage();
-                bounded &= image.GetWidth() == 128 && image.GetHeight() == 128 && image.GetFormat() == Image.Format.Rgba8 &&
-                    image.HasMipmaps() && image.GetMipmapCount() == 7 && image.GetData().Length < 90_000;
+                bounded &= image.GetWidth() == 512 && image.GetHeight() == 512 && image.GetFormat() == Image.Format.Rgba8 &&
+                    image.HasMipmaps() && image.GetMipmapCount() == 9 && image.GetData().Length < 1_400_000;
             }
             require(bounded, "surface_" + kind + "_textures_have_bounded_complete_mipmaps");
             require(first.NormalEnabled && first.NormalScale is > 0 and <= 1 &&

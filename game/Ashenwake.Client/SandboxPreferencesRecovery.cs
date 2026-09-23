@@ -34,7 +34,7 @@ public partial class Sandbox
                 .First(key => CanBindSettingsKey(key) && !effectiveKeys.Values.Contains(key));
         if (effectiveKeys.Values.Distinct().Count() != effectiveKeys.Count || effectiveKeys.Values.Any(key => !CanBindSettingsKey(key)))
             throw new InvalidDataException("Settings contain conflicting or reserved key bindings.");
-        return preferences with { Keys = effectiveKeys.ToDictionary(pair => pair.Key, pair => (long)pair.Value), GraphicsQuality = preferences.GraphicsQuality == "Performance" ? "Performance" : "High" };
+        return preferences with { Keys = effectiveKeys.ToDictionary(pair => pair.Key, pair => (long)pair.Value), GraphicsQuality = GraphicsProfile.Normalize(preferences.GraphicsQuality), RenderScale = GraphicsProfile.NormalizeRenderScale(preferences.RenderScale), DisplayMode = NormalizeDisplayMode(preferences.DisplayMode) };
     }
 
     private void LoadReleasePreferences()
@@ -52,7 +52,7 @@ public partial class Sandbox
         _effectsVolume = preferences.EffectsVolume; _interfaceVolume = preferences.InterfaceVolume;
         ApplySettingsAudio();
         _reduceEffects = preferences.ReducedEffects; _reduceShake = preferences.ReducedShake;
-        _graphicsQuality = preferences.GraphicsQuality;
+        _graphicsQuality = preferences.GraphicsQuality; _renderScale = preferences.RenderScale; _displayMode = preferences.DisplayMode;
         _minimumLootRarity = preferences.MinimumLootRarity; _compatibleLootOnly = preferences.CompatibleLootOnly;
         foreach (var pair in preferences.Keys) if (_keys.ContainsKey(pair.Key)) SetKey(pair.Key, (Key)pair.Value);
     }
@@ -68,7 +68,7 @@ public partial class Sandbox
             }
             AtomicFile.Write(_preferencesPath, JsonData.Write(new Preferences(_reduceEffects, _reduceShake,
                 _keys.ToDictionary(p => p.Key, p => (long)p.Value), _minimumLootRarity, _compatibleLootOnly,
-                _masterVolume, _musicVolume, _effectsVolume, _interfaceVolume, _graphicsQuality)));
+                _masterVolume, _musicVolume, _effectsVolume, _interfaceVolume, _graphicsQuality, _renderScale, _displayMode)));
             _settingsSaveFailed = false; SettingsNotice("Settings saved on this device.");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

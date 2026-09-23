@@ -12,6 +12,7 @@ public partial class SettingsSmoke : Node3D
 {
     private readonly Dictionary<string, bool> _checks = [];
     private readonly List<string> _captures = [];
+    private readonly List<object> _displaySamples = [];
     private EndgameDirector _director = null!;
     private Sandbox _sandbox = null!;
     private string _output = "";
@@ -217,13 +218,50 @@ public partial class SettingsSmoke : Node3D
         Check("next_successful_change_persists_and_clears_failure", Near(JsonNode.Parse(ReadSettings())!["masterVolume"]!.GetValue<double>(), .72) && !Status.Text.Contains("could not be saved", StringComparison.OrdinalIgnoreCase));
     }
 
+    private void RecordDisplaySample(string mode)
+    {
+        var size = GetWindow().Size;
+        _displaySamples.Add(new
+        {
+            requested = mode,
+            actual = GetWindow().Mode.ToString(),
+            width = size.X,
+            height = size.Y,
+            renderScale = GetViewport().Scaling3DScale,
+            headless = DisplayServer.GetName() == "headless"
+        });
+    }
+
+    private async Task SelectGraphicsOption(string name, int index)
+    {
+        var selector = Find<OptionButton>(name); await EnsureVisible(selector);
+        selector.Select(index); selector.EmitSignal(OptionButton.SignalName.ItemSelected, index); await Frames(6);
+    }
+
     private async Task GraphicsAndPreferences()
     {
         string hash = Session.StateHash; int frames = Session.CaptureReplay().Frames.Length;
         await Click("SettingsTabGraphics");
         Check("graphics_selector_offers_high_and_performance", Find<OptionButton>("SettingsGraphicsQuality").ItemCount == 2 &&
             Find<OptionButton>("SettingsGraphicsQuality").GetItemText(0) == "High" && Find<OptionButton>("SettingsGraphicsQuality").GetItemText(1) == "Performance");
+        Check("resolution_defaults_offer_three_bounded_choices", Find<OptionButton>("SettingsRenderScale").ItemCount == 3 && Near(_sandbox.RenderScale, 1.25));
+        Check("window_fit_preserves_aspect_and_stays_inside_small_and_large_displays", Sandbox.FitWindowSize(new(1920, 1080)) == new Vector2I(1568, 980) &&
+            Sandbox.FitWindowSize(new(3840, 2160)) == new Vector2I(1600, 1000) && Sandbox.FitWindowSize(new(800, 600)) == new Vector2I(720, 450));
+        await SelectGraphicsOption("SettingsRenderScale", 2);
+        Check("maximum_resolution_applies_and_persists", Near(_sandbox.RenderScale, 1.5) && Near(GetViewport().Scaling3DScale, 1.5) &&
+            GetViewport().Scaling3DMode == Viewport.Scaling3DModeEnum.Bilinear && Near(JsonNode.Parse(ReadSettings())!["renderScale"]!.GetValue<double>(), 1.5));
+        await SelectGraphicsOption("SettingsRenderScale", 0);
+        Check("native_resolution_removes_supersampling", Near(GetViewport().Scaling3DScale, 1));
+        await SelectGraphicsOption("SettingsRenderScale", 2);
         await SelectGraphics("Performance");
+        Check("performance_uses_native_but_remembers_high_resolution", Near(GetViewport().Scaling3DScale, 1) && Near(_sandbox.RenderScale, 1.5));
+        await SelectGraphicsOption("SettingsDisplayMode", 1);
+        Check("fullscreen_selection_persists", _sandbox.DisplayMode == "Fullscreen" && JsonNode.Parse(ReadSettings())!["displayMode"]!.GetValue<string>() == "Fullscreen" &&
+            (DisplayServer.GetName() == "headless" || GetWindow().Mode == Window.ModeEnum.Fullscreen));
+        RecordDisplaySample("fullscreen"); await Capture("settings-graphics-fullscreen.png");
+        await SelectGraphicsOption("SettingsDisplayMode", 0);
+        RecordDisplaySample("windowed");
+        Check("windowed_selection_restores_a_visible_window", _sandbox.DisplayMode == "Windowed" && (DisplayServer.GetName() == "headless" || GetWindow().Mode == Window.ModeEnum.Windowed));
         Check("graphics_selection_applies_and_persists", _sandbox.GraphicsQuality == "Performance" &&
             JsonNode.Parse(ReadSettings())!["graphicsQuality"]!.GetValue<string>() == "Performance");
         var environment = Field<WorldEnvironment>(_sandbox, "_worldEnvironment").Environment;
@@ -233,7 +271,9 @@ public partial class SettingsSmoke : Node3D
         await Click("SettingsRestore");
         Check("graphics_restore_updates_live_quality_and_selector", _sandbox.GraphicsQuality == "High" && Find<OptionButton>("SettingsGraphicsQuality").Selected == 0 &&
             JsonNode.Parse(ReadSettings())!["graphicsQuality"]!.GetValue<string>() == "High");
-        Check("high_enables_antialiasing_and_contact_shadows_but_respects_reduced_effects", GetViewport().Msaa3D == Viewport.Msaa.Msaa4X &&
+        Check("graphics_restore_resets_resolution_and_display", Near(_sandbox.RenderScale, 1.25) && Near(GetViewport().Scaling3DScale, 1.25) &&
+            _sandbox.DisplayMode == "Windowed" && Find<OptionButton>("SettingsRenderScale").Selected == 1 && Find<OptionButton>("SettingsDisplayMode").Selected == 0);
+        Check("high_enables_antialiasing_and_contact_shadows_but_respects_reduced_effects", GetViewport().Msaa3D == Viewport.Msaa.Msaa8X &&
             environment.SsaoEnabled && !environment.GlowEnabled && environment.Sky is not null);
         Check("graphics_restore_preserves_all_other_preferences", Keys["left"] == Key.O && Value<bool>(_sandbox, "_reduceEffects") && Value<bool>(_sandbox, "_reduceShake") &&
             Near(Value<float>(_sandbox, "_masterVolume"), .72) && Near(Value<float>(_sandbox, "_musicVolume"), .41) &&
@@ -261,6 +301,7 @@ public partial class SettingsSmoke : Node3D
         Check("restart_loads_persisted_graphics_quality_and_selector", _sandbox.GraphicsQuality == "Performance" && Find<OptionButton>("SettingsGraphicsQuality").Selected == 1);
         Check("restart_applies_persisted_quality_to_renderer", GetViewport().Msaa3D == Viewport.Msaa.Msaa2X &&
             !Field<WorldEnvironment>(_sandbox, "_worldEnvironment").Environment.SsaoEnabled);
+        Check("restart_loads_resolution_and_display_preferences", Near(_sandbox.RenderScale, 1.25) && _sandbox.DisplayMode == "Windowed" && Near(GetViewport().Scaling3DScale, 1));
         Check("restart_is_read_only_for_valid_preferences", ReadSettings() == saved);
         await Click("SettingsTabAudio"); await Capture("settings-restored-after-restart.png");
         await RemoveDirector();
@@ -275,6 +316,11 @@ public partial class SettingsSmoke : Node3D
                 Value<int>(_sandbox, "_minimumLootRarity") == 3 && ReadSettings() == bytes);
             await RemoveDirector();
         }
+        var unsupportedDisplay = JsonNode.Parse(saved)!.AsObject(); unsupportedDisplay["renderScale"] = 100; unsupportedDisplay["displayMode"] = "unsupported";
+        System.IO.File.WriteAllText(SettingsPath, unsupportedDisplay.ToJsonString());
+        string unsupportedBytes = ReadSettings(); await StartDirector(); _restarts++; await Click("FrontSettings");
+        Check("unsupported_resolution_and_display_normalize_without_rewriting", Near(_sandbox.RenderScale, 1.25) && _sandbox.DisplayMode == "Windowed" && Keys["left"] == Key.O && ReadSettings() == unsupportedBytes);
+        await RemoveDirector();
         var invalid = JsonNode.Parse(saved)!.AsObject(); invalid["musicVolume"] = 1.01;
         System.IO.File.WriteAllText(SettingsPath, invalid.ToJsonString());
         System.IO.File.WriteAllText(SettingsPath + ".bak", saved);
@@ -288,12 +334,13 @@ public partial class SettingsSmoke : Node3D
         Check("nonfinite_volume_and_invalid_backup_leave_safe_defaults", Near(Value<float>(_sandbox, "_masterVolume"), 1) && Near(Value<float>(_sandbox, "_musicVolume"), 1) &&
             !Value<bool>(_sandbox, "_reduceEffects") && Keys["left"] == Key.A && ReadSettings() == nonfiniteBytes && Status.Text.Length > 0);
         await RemoveDirector();
-        var legacy = JsonNode.Parse(saved)!.AsObject(); foreach (string key in VolumeProperties) legacy.Remove(key); legacy.Remove("graphicsQuality");
+        var legacy = JsonNode.Parse(saved)!.AsObject(); foreach (string key in VolumeProperties) legacy.Remove(key); legacy.Remove("graphicsQuality"); legacy.Remove("renderScale"); legacy.Remove("displayMode");
         System.IO.File.WriteAllText(SettingsPath, legacy.ToJsonString());
         string legacyBytes = ReadSettings(); await StartDirector(); _restarts++; await Click("FrontSettings");
         Check("legacy_settings_without_audio_fields_keep_options_and_default_volume", Keys["left"] == Key.O && Value<bool>(_sandbox, "_reduceEffects") &&
             Value<int>(_sandbox, "_minimumLootRarity") == 3 && Channels.All(c => Near(AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex(c)), 0)) && ReadSettings() == legacyBytes);
         Check("legacy_settings_without_graphics_field_load_high_read_only", _sandbox.GraphicsQuality == "High" && Find<OptionButton>("SettingsGraphicsQuality").Selected == 0 && ReadSettings() == legacyBytes);
+        Check("legacy_settings_default_to_enhanced_and_windowed_without_rewrite", Near(_sandbox.RenderScale, 1.25) && _sandbox.DisplayMode == "Windowed" && ReadSettings() == legacyBytes);
         Check("all_settings_restarts_leave_character_archives_absent", !Directory.EnumerateFiles(_output, "*.save.json").Any() && !System.IO.File.Exists(Path.Combine(_output, "current-character.txt")));
         await Click("SettingsClose");
     }
@@ -426,6 +473,7 @@ public partial class SettingsSmoke : Node3D
             passed,
             checks = _checks,
             captures = _captures,
+            displaySamples = _displaySamples,
             restarts = _restarts,
             error,
             scope = "Shipping EndgameDirector ordinary startup and native viewport settings clicks/keys at 1280x800, 1000x720 and 780x720; duplicate and cancelled bindings, tab restores, High/Performance selection and persistence, invalid graphics normalization, actual bus gain/mute and existing combat/interface voice routing (regional bed routing is covered by the regional diagnostics), session-only write failure, fresh director preference reloads, invalid-volume backup/default recovery, legacy settings, and in-game/manual pause isolation. The graphics and rarity OptionButtons use their public Select/ItemSelected contract because headless input does not dispatch popup-window keyboard events; sliders and all other changes use viewport input. Graphics preferences are checked for gameplay-state isolation; rendered quality is covered by the graphics diagnostic. Settings fixtures and one new native character are confined to this fresh artifact directory. No existing player saves are edited; audible quality and physical controllers are not certified."

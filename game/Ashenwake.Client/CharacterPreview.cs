@@ -6,12 +6,13 @@ namespace Ashenwake.Client;
 public partial class CharacterPreview : VBoxContainer
 {
     private SubViewport _viewport = null!;
-    private SubViewportContainer _surface = null!;
+    private TextureRect _surface = null!;
     private Camera3D _camera = null!;
     private Godot.Environment _environment = null!;
     private DirectionalLight3D _keyLight = null!;
     private string _appliedGraphics = "";
     private bool _appliedReducedEffects;
+    private float _appliedRenderScale;
     private Node3D _turntable = null!;
     private CharacterVisual? _model;
     private CharacterAppearance? _appearance;
@@ -33,10 +34,11 @@ public partial class CharacterPreview : VBoxContainer
         AddThemeConstantOverride("separation", 8);
         var heading = new Label { Text = "YOUR WANDERER", HorizontalAlignment = HorizontalAlignment.Center };
         heading.AddThemeFontSizeOverride("font_size", 15); AddChild(heading);
-        _surface = new SubViewportContainer
+        _surface = new TextureRect
         {
             Name = "PreviewSurface",
-            Stretch = true,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.Scale,
             CustomMinimumSize = new(270, 300),
             SizeFlagsVertical = SizeFlags.ExpandFill,
             MouseFilter = MouseFilterEnum.Stop,
@@ -53,6 +55,7 @@ public partial class CharacterPreview : VBoxContainer
             RenderTargetUpdateMode = SubViewport.UpdateMode.Disabled
         };
         _surface.AddChild(_viewport);
+        _surface.Texture = _viewport.GetTexture();
         var lighting = new WorldEnvironment
         {
             Environment = _environment = new Godot.Environment
@@ -117,10 +120,18 @@ public partial class CharacterPreview : VBoxContainer
         if (!IsVisibleInTree()) { UpdateActivity(); return; }
         if (_sandbox is not null) SetReducedEffects(_sandbox.ReducedEffects);
         string quality = _sandbox?.GraphicsQuality ?? "High";
-        if (_appliedGraphics != quality || _appliedReducedEffects != _reducedEffects)
+        // Render into actual screen pixels before the UI composites this texture.
+        // Supersampling a logical-size texture alone would still enlarge a small image.
+        Vector2 screenScale = _surface.GetScreenTransform().Scale.Abs();
+        Vector2 pixels = _surface.Size * screenScale;
+        pixels *= Math.Min(1f, 2048f / Math.Max(1f, Math.Max(pixels.X, pixels.Y)));
+        Vector2I target = new(Math.Max(2, (int)Math.Ceiling(pixels.X)), Math.Max(2, (int)Math.Ceiling(pixels.Y)));
+        if (_viewport.Size != target) _viewport.Size = target;
+        float renderScale = quality == "High" ? _sandbox?.RenderScale ?? 1.25f : 1f;
+        if (_appliedGraphics != quality || _appliedReducedEffects != _reducedEffects || !Mathf.IsEqualApprox(_appliedRenderScale, renderScale))
         {
-            GraphicsProfile.Apply(_viewport, _environment, _keyLight, quality, _reducedEffects);
-            _appliedGraphics = quality; _appliedReducedEffects = _reducedEffects;
+            GraphicsProfile.Apply(_viewport, _environment, _keyLight, quality, _reducedEffects, renderScale);
+            _appliedGraphics = quality; _appliedReducedEffects = _reducedEffects; _appliedRenderScale = renderScale;
         }
         _model?.Animate(delta, Vector3.Zero, paused: _sandbox?.IsPaused ?? false, facing: Vector3.Back);
     }

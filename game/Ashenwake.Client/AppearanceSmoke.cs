@@ -87,6 +87,12 @@ public partial class AppearanceSmoke : Node3D
         var preview = Find<CharacterPreview>("CharacterPreview");
         string initial = _session.StateHash;
         Check("world_and_preview_use_equipped_state", preview.AppearanceKey == _sandbox.CurrentAppearance.Key && preview.Rendering);
+        var previewSurface = Descendants(preview).OfType<TextureRect>().Single(n => n.Name == "PreviewSurface");
+        var previewViewport = Descendants(preview).OfType<SubViewport>().Single();
+        Vector2 expectedPixels = previewSurface.Size * previewSurface.GetScreenTransform().Scale.Abs();
+        Check("preview_renders_at_screen_pixel_density", previewViewport.Size.X >= Math.Min(2048, (int)expectedPixels.X) &&
+            previewViewport.Size.Y >= Math.Min(2048, (int)expectedPixels.Y));
+        Check("preview_applies_high_quality_supersampling", Mathf.IsEqualApprox(previewViewport.Scaling3DScale, _sandbox.RenderScale));
         await Capture("equipment-equipped.png");
         SelectSlot(EquipmentSlot.MainHand);
         SelectItem(0);

@@ -242,6 +242,9 @@ public partial class JourneySmoke : Node
             samples.Add(new
             {
                 quality = preset,
+                renderScale = GetViewport().Scaling3DScale,
+                windowPixels = GetWindow().Size.ToString(),
+                edgeSmoothing = GetViewport().Msaa3D.ToString(),
                 frameCap = Engine.MaxFps,
                 sampleCount = times.Count,
                 medianFrameMilliseconds = times[times.Count / 2],
@@ -253,7 +256,7 @@ public partial class JourneySmoke : Node
             Check(preset.ToLowerInvariant() + "_graphics_preserves_lighting_node", ReferenceEquals(originalLights, _sandbox.OpeningLights));
             _openingLighting.Add(OpeningLightingChecks.Inspect(_sandbox, "quality_" + preset.ToLowerInvariant(), "greyhaven", Check));
             Check(preset.ToLowerInvariant() + "_graphics_applies_to_gameplay_view", environment.SsaoEnabled == (preset == "High") &&
-                GetViewport().Msaa3D == (preset == "High" ? Viewport.Msaa.Msaa4X : Viewport.Msaa.Msaa2X));
+                GetViewport().Msaa3D == (preset == "High" ? Viewport.Msaa.Msaa8X : Viewport.Msaa.Msaa2X));
             await Capture("greyhaven-graphics-" + preset.ToLowerInvariant() + ".png");
         }
         _sandbox.SetGraphicsQuality(quality);

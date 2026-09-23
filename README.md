@@ -10,6 +10,8 @@ The [graphics polish pass](docs/graphics_polish.md) adds beveled character shape
 
 The [visual depth pass](docs/visual_depth.md) adds warm lantern and candle lighting, worn paving and ruined masonry, folded cloth and layered armor, and more distinctive opening monsters. Reduced Effects keeps the light pools steady; Performance uses fewer local lights.
 
+The [graphics smoothing pass](docs/graphics_smoothing.md) adds rounder characters and monsters, smoother armor edges, 512-pixel material maps and sharper equipment previews. Settings → Graphics offers 100%/125%/150% 3D resolution, stronger edge smoothing and native fullscreen display.
+
 The [Verdant depth pass](docs/verdant_depth.md) adds curved foliage, tapered trees and roots, connected mossy earth, village boardwalks and leaf roofs, gentle wind, fungal light, and a layered Rootheart bloom. High and Performance settings also control the new foliage and local lights.
 
 The [Cinder depth pass](docs/cinder_depth.md) adds fractured basalt, worn metal paving, round pipes and reinforced machinery, forge and inspection lighting, moving pump wheels, and a more detailed Furnace Spindle with a cooling core light.

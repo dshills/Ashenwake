@@ -10,6 +10,8 @@ internal static class GraphicsProfile
 
     public static string Normalize(string? quality) => quality == "Performance" ? "Performance" : "High";
 
+    public static float NormalizeRenderScale(float scale) => scale is 1f or 1.25f or 1.5f ? scale : 1.25f;
+
     public static void TrackEnvironment(WorldEnvironment owner)
     {
         // C# wrappers may outlive scene nodes until GC. Release GPU-backed sky
@@ -38,10 +40,14 @@ internal static class GraphicsProfile
     }
 
     public static void Apply(Viewport viewport, Godot.Environment environment, DirectionalLight3D sun,
-        string quality, bool reducedEffects)
+        string quality, bool reducedEffects, float renderScale = 1f)
     {
         bool high = Normalize(quality) == "High";
-        viewport.Msaa3D = high ? Viewport.Msaa.Msaa4X : Viewport.Msaa.Msaa2X;
+        viewport.Msaa3D = high ? Viewport.Msaa.Msaa8X : Viewport.Msaa.Msaa2X;
+        // Bilinear supersampling is supported by pinned Godot 4.6.2 GLES3.
+        // Keep text/UI at native resolution and spend the extra samples on the 3D world.
+        viewport.Scaling3DMode = Viewport.Scaling3DModeEnum.Bilinear;
+        viewport.Scaling3DScale = high ? NormalizeRenderScale(renderScale) : 1f;
         environment.SsaoEnabled = high;
         environment.SsaoRadius = .65f;
         environment.SsaoIntensity = 1.1f;

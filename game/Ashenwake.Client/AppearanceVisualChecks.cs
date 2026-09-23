@@ -58,9 +58,13 @@ public static partial class AppearanceVisualChecks
             var normals = arrays[(int)Mesh.ArrayType.Normal].AsVector3Array();
             var uv = arrays[(int)Mesh.ArrayType.TexUV].AsVector2Array();
             var indices = arrays[(int)Mesh.ArrayType.Index].AsInt32Array();
-            require(indices.Length == 132 && vertices.Length <= 132 && mesh.GetAabb().Size.IsEqualApprox(shapes[shape]) &&
+            require(indices.Length == 468 && vertices.Length <= 468 && mesh.GetAabb().Size.IsEqualApprox(shapes[shape]) &&
                 vertices.All(v => v.IsFinite()) && normals.All(n => n.IsFinite() && Math.Abs(n.LengthSquared() - 1) < .001f) &&
                 uv.Length == vertices.Length && uv.All(p => p.IsFinite()), "polished_shape_" + shape + "_has_finite_bounded_surface_and_uvs");
+            var tangents = arrays[(int)Mesh.ArrayType.Tangent].AsFloat32Array();
+            require(tangents.Length == vertices.Length * 4 && tangents.All(float.IsFinite) &&
+                normals.Any(n => Math.Abs(n.X) > .1f && Math.Abs(n.Y) > .1f && Math.Abs(n.Z) > .1f),
+                "polished_shape_" + shape + "_has_smooth_corner_normals_and_finite_tangents");
             bool facing = normals.Length == vertices.Length;
             for (int i = 0; i < indices.Length && facing; i += 3)
             {
@@ -69,6 +73,8 @@ public static partial class AppearanceVisualChecks
                 facing &= (b - a).Cross(c - a).Dot(normal) * nativeFacing > 0 && normal.Dot((a + b + c) / 3) > 0;
             }
             require(facing, "polished_shape_" + shape + "_faces_outward_with_native_box_winding");
+            require(ClosedRoundedSurface(vertices, indices, normals),
+                "polished_shape_" + shape + "_has_closed_edges_and_continuous_normals");
             require(CharacterVisual.PolishedBoxMesh(shapes[shape]).GetInstanceId() == mesh.GetInstanceId(),
                 "polished_shape_" + shape + "_reuses_immutable_geometry");
         }
@@ -76,7 +82,42 @@ public static partial class AppearanceVisualChecks
         float lower = tapered.Where(v => v.Y < -.23f).Max(v => Math.Abs(v.X));
         float upper = tapered.Where(v => v.Y > .23f).Max(v => Math.Abs(v.X));
         require(lower < upper * .8f, "polished_breastplate_has_a_narrower_waist");
+        var sphere = CharacterVisual.OrganicSphereMesh;
+        var cone = CharacterVisual.RoundedConeMesh(.3f, .1f, 1);
+        require(sphere.RadialSegments == 24 && sphere.Rings == 11 && cone.RadialSegments == 20 &&
+            sphere.SurfaceGetArrays(0)[(int)Mesh.ArrayType.Index].AsInt32Array().Length > 0 &&
+            cone.SurfaceGetArrays(0)[(int)Mesh.ArrayType.Index].AsInt32Array().Length > 0,
+            "polished_organic_shapes_have_round_indexed_silhouettes");
+        require(CharacterVisual.RoundedConeMesh(.3f, .1f, 1).GetInstanceId() == cone.GetInstanceId() &&
+            sphere.GetAabb().Size.IsEqualApprox(Vector3.One) && cone.GetAabb().Size.IsEqualApprox(new(.6f, 1, .6f)),
+            "polished_organic_shapes_reuse_resources_and_preserve_dimensions");
         CheckPolishedBatching(require);
+    }
+
+    private static bool ClosedRoundedSurface(Vector3[] vertices, int[] indices, Vector3[] normals)
+    {
+        var points = new Dictionary<Vector3, (int Id, Vector3 Normal)>();
+        var welded = new int[vertices.Length];
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            Vector3 point = vertices[i].Snapped(Vector3.One * .000001f);
+            if (!points.TryGetValue(point, out var shared))
+            {
+                shared = (points.Count, normals[i]);
+                points.Add(point, shared);
+            }
+            else if (shared.Normal.Dot(normals[i]) < .9999f) return false;
+            welded[i] = shared.Id;
+        }
+        var edges = new Dictionary<(int, int), int>();
+        for (int triangle = 0; triangle < indices.Length; triangle += 3)
+            for (int edge = 0; edge < 3; edge++)
+            {
+                int a = welded[indices[triangle + edge]], b = welded[indices[triangle + (edge + 1) % 3]];
+                var key = (Math.Min(a, b), Math.Max(a, b));
+                edges[key] = edges.GetValueOrDefault(key) + 1;
+            }
+        return edges.Values.All(count => count == 2);
     }
 
     private static void CheckPolishedBatching(Action<bool, string> require)

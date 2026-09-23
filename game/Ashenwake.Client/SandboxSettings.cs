@@ -50,7 +50,10 @@ public partial class Sandbox
     private Label _settingsStatus = null!, _settingsDescription = null!;
     private Button _settingsRestore = null!;
     private CheckButton _settingsEffects = null!, _settingsShake = null!;
-    private OptionButton _settingsGraphicsQuality = null!;
+    private OptionButton _settingsGraphicsQuality = null!, _settingsRenderScale = null!, _settingsDisplayMode = null!;
+    private Label _settingsResolution = null!;
+    private Vector2I _settingsResolutionPixels;
+    private float _settingsResolutionScale = -1;
     private string _settingsPage = "Controls";
     private Vector2 _settingsViewport = new(-1, -1), _settingsLayoutSize, _settingsLayoutOrigin;
     private bool _syncingSettings, _settingsSaveFailed;
@@ -178,7 +181,7 @@ public partial class Sandbox
             Name = "SettingsGraphicsQuality",
             CustomMinimumSize = new(0, 44),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            TooltipText = "High adds smoother edges, contact shadows and gentle bloom. Performance reduces rendering work."
+            TooltipText = "High uses 8x edge smoothing and detailed shadows. Performance uses 2x smoothing and native resolution."
         };
         _settingsGraphicsQuality.AddItem("High"); _settingsGraphicsQuality.AddItem("Performance");
         _settingsGraphicsQuality.Select(_graphicsQuality == "Performance" ? 1 : 0);
@@ -188,8 +191,25 @@ public partial class Sandbox
             SetGraphicsQuality(index == 1 ? "Performance" : "High"); SavePreferences();
         };
         body.AddChild(_settingsGraphicsQuality);
-        body.AddChild(SettingsText("HIGH · Smoother edges, richer contact shadows and gentle bloom bring out the shapes of characters, equipment and the world.", 14));
-        body.AddChild(SettingsText("PERFORMANCE · Lighter rendering with simpler shadows and less post-processing, suited to devices that need a smoother frame rate.", 14));
+        body.AddChild(SettingsText("HIGH · 8x edge smoothing, detailed shadows and gentle bloom bring out characters, equipment and the world.", 14));
+        body.AddChild(SettingsText("PERFORMANCE · 2x edge smoothing and native resolution with simpler shadows and fewer effects. Your preferred resolution is kept for High.", 14));
+        body.AddChild(new HSeparator());
+        body.AddChild(SettingsText("3D resolution", 16, new("eee1c8")));
+        _settingsRenderScale = new OptionButton { Name = "SettingsRenderScale", CustomMinimumSize = new(0, 44), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        foreach (string label in new[] { "Native · 100%", "Enhanced · 125%", "Maximum · 150%" }) _settingsRenderScale.AddItem(label);
+        _settingsRenderScale.Select(_renderScale == 1 ? 0 : _renderScale == 1.5f ? 2 : 1);
+        _settingsRenderScale.ItemSelected += index => { if (_syncingSettings) return; SetRenderScale(index == 0 ? 1 : index == 2 ? 1.5f : 1.25f); SavePreferences(); };
+        body.AddChild(_settingsRenderScale);
+        body.AddChild(SettingsText("Enhanced and Maximum render extra detail before fitting the picture to your screen. They use about 56% and 125% more 3D pixels. Choose Native if the game feels slow. Text stays sharp at every setting.", 13));
+        body.AddChild(SettingsText("Display", 16, new("eee1c8")));
+        _settingsDisplayMode = new OptionButton { Name = "SettingsDisplayMode", CustomMinimumSize = new(0, 44), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        _settingsDisplayMode.AddItem("Windowed · fit display"); _settingsDisplayMode.AddItem("Fullscreen · native display resolution");
+        _settingsDisplayMode.Select(_displayMode == "Fullscreen" ? 1 : 0);
+        _settingsDisplayMode.ItemSelected += index => { if (_syncingSettings) return; SetDisplayMode(index == 1 ? "Fullscreen" : "Windowed"); SavePreferences(); };
+        body.AddChild(_settingsDisplayMode);
+        body.AddChild(SettingsText("Windowed opens up to 1600 × 1000 and fits smaller displays. Resize or maximize the window for more screen space, or choose Fullscreen to use your whole display. Interface text scales with the window.", 13));
+        _settingsResolutionScale = -1;
+        _settingsResolution = SettingsText("", 13, new("add7ca")); _settingsResolution.Name = "SettingsResolution"; body.AddChild(_settingsResolution);
         body.AddChild(new HSeparator());
         body.AddChild(SettingsText("Reduced visual effects in Accessibility also suppresses bloom, whichever quality you choose.", 13, new("add7ca")));
     }
@@ -252,7 +272,7 @@ public partial class Sandbox
             switch (_settingsPage)
             {
                 case "Controls": foreach (var pair in DefaultKeys) SetKey(pair.Key, pair.Value); RefreshSettingsBindings(); break;
-                case "Graphics": SetGraphicsQuality("High"); _settingsGraphicsQuality.Select(0); break;
+                case "Graphics": SetGraphicsQuality("High"); SetRenderScale(1.25f); SetDisplayMode("Windowed"); break;
                 case "Audio":
                     _masterVolume = _musicVolume = _effectsVolume = _interfaceVolume = 1;
                     foreach (var slider in _volumeSliders.Values) slider.Value = 100;
@@ -385,6 +405,13 @@ public partial class Sandbox
     {
         if (_settingsPanel is not { Visible: true }) return;
         Vector2 viewport = GetViewport().GetVisibleRect().Size;
+        Vector2I pixels = GetWindow().Size;
+        float scale = GetViewport().Scaling3DScale;
+        if (_settingsResolutionPixels != pixels || _settingsResolutionScale != scale)
+        {
+            _settingsResolutionPixels = pixels; _settingsResolutionScale = scale;
+            _settingsResolution.Text = $"Window · {pixels.X} × {pixels.Y}    3D detail · {scale * 100:0}%";
+        }
         if (_settingsViewport != viewport)
         {
             _settingsViewport = viewport;

@@ -130,17 +130,17 @@ public partial class CharacterVisual : Node3D
         arm.RotationDegrees = new Vector3(0, 0, side * 7);
         Cone(arm, new Vector3(side * .025f, -.17f, 0), .11f, .14f, .35f, plate ? Metal : Main);
         Cone(arm, new Vector3(side * .04f, -.46f, -.015f), .085f, .11f, .28f, plate ? Metal : Dark);
-        TaperedBox(arm, new(side * .04f, -.64f, -.035f), new(.16f, .20f, .15f), plate ? Dark : Skin, .82f);
+        Orb(arm, new(side * .04f, -.64f, -.035f), new(.16f, .20f, .15f), plate ? Dark : Skin);
         Orb(arm, new(side * -.04f, -.60f, -.065f), new(.065f, .11f, .075f), plate ? Dark : Skin);
         return arm;
     }
 
     private void HumanFace(bool hair = true)
     {
-        // Brow, cheek and jaw planes keep a human profile at the close inventory camera.
-        // Their small facets share the original head bounds and material batches.
+        // Rounded cheeks and jaw keep the face organic at the close inventory camera.
+        // The brow and nose retain the small planes that make the profile readable.
         Orb(BodyRoot, new(0, 2.025f, .008f), new(.38f, .40f, .34f), Skin);
-        TaperedBox(BodyRoot, new(0, 1.885f, -.015f), new(.265f, .21f, .255f), Skin, .74f);
+        Orb(BodyRoot, new(0, 1.885f, -.015f), new(.265f, .21f, .255f), Skin);
         if (hair)
         {
             Orb(BodyRoot, new(0, 2.16f, .025f), new(.415f, .20f, .355f), Dark);
@@ -153,7 +153,7 @@ public partial class CharacterVisual : Node3D
             Rod(BodyRoot, new(side * .035f, 2.05f, -.177f), new(side * .12f, 2.065f, -.159f), .014f, Dark);
             Orb(BodyRoot, new(side * .073f, 2.028f, -.173f), new(.046f, .025f, .024f), Dark);
             Orb(BodyRoot, new(side * .069f, 2.032f, -.184f), new(.012f, .012f, .008f), Bone);
-            TaperedBox(BodyRoot, new(side * .103f, 1.96f, -.137f), new(.10f, .10f, .046f), Skin, .68f, new(0, 0, side * 10));
+            Orb(BodyRoot, new(side * .103f, 1.96f, -.137f), new(.10f, .10f, .046f), Skin);
         }
         TaperedBox(BodyRoot, new(0, 1.99f, -.175f), new(.05f, .115f, .065f), Skin, .8f);
         Box(BodyRoot, new(0, 1.91f, -.149f), new(.075f, .012f, .016f), Dark);

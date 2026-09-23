@@ -94,7 +94,7 @@ public partial class FrontMenuSmoke : Node3D
             string text = VisibleText(_menu);
             Check("preview_" + discipline + "_describes_its_discipline_and_resource", text.Contains(discipline, StringComparison.OrdinalIgnoreCase) &&
                 text.Contains(discipline switch { "Vanguard" => "Momentum", "Veilwalker" => "Exposure", "Arcanist" => "Instability", "Gravecaller" => "Remains", _ => "Adaptation" }, StringComparison.OrdinalIgnoreCase));
-            Check("preview_" + discipline + "_renders_character", Descendants(_menu).OfType<SubViewportContainer>().Any(n => n.IsVisibleInTree()));
+            Check("preview_" + discipline + "_renders_character", Descendants(_menu).OfType<CharacterPreview>().Any(n => n.IsVisibleInTree() && n.Rendering));
             appearanceKeys.Add(SelectedPreviewKey());
             await Capture("front-discipline-" + discipline.ToLowerInvariant() + ".png");
         }

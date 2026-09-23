@@ -8,7 +8,7 @@ public enum SurfaceKind { Stone, Wood, Metal, Cloth, Skin, Bone, Earth }
 /// callers own materials so obstacle fading and character accents cannot affect another model.</summary>
 public static class SurfaceMaterials
 {
-    private const int TextureSize = 128;
+    internal const int TextureSize = 512;
     private sealed record TextureSet(ImageTexture Albedo, ImageTexture Normal, ImageTexture Roughness);
     private static readonly Dictionary<SurfaceKind, TextureSet> Textures = [];
     internal static int CachedTextureCount => Textures.Count * 3;
@@ -81,8 +81,11 @@ public static class SurfaceMaterials
         for (int y = 0; y < TextureSize; y++)
             for (int x = 0; x < TextureSize; x++)
             {
-                var normal = new Vector3((At(x - 1, y) - At(x + 1, y)) * 7,
-                    (At(x, y + 1) - At(x, y - 1)) * 7, 1).Normalized();
+                // Keep the authored relief in UV space as texel spacing becomes finer.
+                // Merely increasing map resolution would otherwise flatten every normal.
+                const float gradientScale = 7f * TextureSize / 128;
+                var normal = new Vector3((At(x - 1, y) - At(x + 1, y)) * gradientScale,
+                    (At(x, y + 1) - At(x, y - 1)) * gradientScale, 1).Normalized();
                 int index = (y * TextureSize + x) * 4;
                 normals[index] = Byte(normal.X * .5f + .5f);
                 normals[index + 1] = Byte(normal.Y * .5f + .5f);

@@ -12,7 +12,7 @@ namespace Ashenwake.Client;
 public partial class Sandbox : Node3D
 {
     private sealed record Preferences(bool ReducedEffects, bool ReducedShake, Dictionary<string, long> Keys, int MinimumLootRarity = 0, bool CompatibleLootOnly = false,
-        float MasterVolume = 1, float MusicVolume = 1, float EffectsVolume = 1, float InterfaceVolume = 1, string GraphicsQuality = "High");
+        float MasterVolume = 1, float MusicVolume = 1, float EffectsVolume = 1, float InterfaceVolume = 1, string GraphicsQuality = "High", float RenderScale = 1.25f, string DisplayMode = "Windowed");
     public CombatSession Session => _session;
     public string CombatContentJson => _contentJson;
     public string? ContentJsonOverride { get; set; }
@@ -68,7 +68,7 @@ public partial class Sandbox : Node3D
             _preferencesPath = ResolveReleasePreferencesPath();
             _contentJson = ContentJsonOverride ?? FileAccess.GetFileAsString("res://combat.json");
             _content = CombatContent.Parse(_contentJson);
-            BindInputs(); LoadPreferences();
+            BindInputs(); LoadPreferences(); InitializeDisplay();
             BuildArena(_content.Room.HalfWidth, _content.Room.HalfDepth);
             foreach (var obstacle in _content.Room.Obstacles) AddObstacle(obstacle.MinX, obstacle.MinZ, obstacle.MaxX, obstacle.MaxZ);
             BuildHud();

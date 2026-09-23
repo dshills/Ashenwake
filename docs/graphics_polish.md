@@ -1,5 +1,7 @@
 # Stylized dark-fantasy graphics polish
 
+The later [graphics smoothing pass](graphics_smoothing.md) supersedes the original 4× MSAA and 128×128 texture budgets below with stronger edge smoothing, denser curved meshes, 512×512 textures and selectable 3D resolution.
+
 Ashenwake retains its stylized low-poly art direction, with beveled character geometry, tapered armor, defined facial features and textured surfaces. Lighting combines the regional palettes with a restrained cool fill and sky reflections. Metal, cloth, skin, bone, wood, earth and stone now have distinct albedo, roughness and normal detail.
 
 Open **Settings → Graphics** to choose **High** or **Performance**. High is the default: 4× MSAA, ambient occlusion, a 4096-pixel directional shadow atlas, four shadow splits and subtle bloom. Performance uses 2× MSAA, a 2048-pixel atlas and two splits, without ambient occlusion or bloom. Both retain the same art and combat warnings. Reduced visual effects suppresses bloom regardless of quality. Preferences apply immediately, persist between sessions and do not modify characters or replays.
