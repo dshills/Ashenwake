@@ -66,7 +66,7 @@ public partial class EndgameDirector
         _echoesBoard.OpenChanged += isOpen =>
         {
             _sandbox.SetModalPaused("echoes", isOpen);
-            if (isOpen) { _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); }
+            if (isOpen) { _collection?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); }
             RefreshExperiment();
         };
         _hasEchoesSelection = TryEchoesSelection() is not null;

@@ -30,6 +30,8 @@ The [defensive training extension](../docs/training_ground.md) adds melee/ranged
 
 The [late-game legendary expansion](../docs/late_legendaries.md) adds interrupt, sustained-target and ultimate-follow-up powers with visible equipment, readiness feedback, campaign rewards and repeatable Fracture/God Hunt sources. Its additive catalog migration preserves previous characters without retrospective rewards.
 
+The [legendary collection journal](../docs/legendary_collection.md) adds cosmetic item previews, persistent character-specific discoveries, one tracked target and source-aware navigation through Journey and expeditions. Its optional journal sidecar leaves gameplay saves and replay identities unchanged.
+
 Build a small, satisfying, replayable single-player game loop first. Prove that Divine Anatomy creates surprising build interactions, then establish a repeatable content pipeline, produce the campaign and endgame, and release a reliable single-player game. Cooperative play follows as a separately gated expansion.
 
 At the planning baseline, the repository contained the two source specifications and no implementation. This plan therefore starts from project setup. It preserves the architecture's Phases 0–4, adds explicit endgame and release phases, and moves its optional online prototype from Phase 5 to Phase 7. Phase numbers describe dependencies, not calendar commitments.

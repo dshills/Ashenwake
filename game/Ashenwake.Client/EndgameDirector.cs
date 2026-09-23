@@ -86,9 +86,9 @@ public partial class EndgameDirector : Node3D
             _sandbox.SaveOverride = () => Safely(Save); _sandbox.LoadOverride = () => Safely(Load); _sandbox.ReplayOverride = () => Safely(VerifyReplay);
             _stage = new CampaignStage(); AddChild(_stage); _effects = new EndgamePresentation(); AddChild(_effects); _effects.AttachOverlay(_sandbox);
             _campaignHud = new CampaignHud(); _sandbox.AddOverlay(_campaignHud);
-            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = () => { if (_deathRecapHud?.IsOpen == true) return; if (_training is not null) _trainingHud.SetReportOpen(true); else _character.ToggleInventory(); };
+            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = () => { _collection?.SetOpen(false); if (_deathRecapHud?.IsOpen == true) return; if (_training is not null) _trainingHud.SetReportOpen(true); else _character.ToggleInventory(); };
             _board = new EndgameHud(); _sandbox.AddOverlay(_board);
-            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeTraining(); InitializeFrontMenu(); InitializeDeathRecap();
+            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeTraining(); InitializeFrontMenu(); InitializeDeathRecap(); InitializeCollection();
             _sandbox.ConfigureLocalMap(() => _training is null && _hasActiveCharacter && !_frontMenu.IsOpen && !_classSelection.Visible, () => _session.LocalMap);
             if (_hasActiveCharacter) EnableLocalMap();
             Refresh();
@@ -168,7 +168,7 @@ public partial class EndgameDirector : Node3D
         _board.GateApproachRequested += () => { UpdatePanelVisibility(); _sandbox.RequestWorldInteraction("endgame.gate"); };
         _board.SaveRequested += () => Safely(Save); _board.LoadRequested += () => Safely(Load);
         _board.ReplayRequested += () => Safely(VerifyReplay); _board.ImportRequested += () => _importDialog.PopupCentered(new(860, 560));
-        _board.VisibilityChangedByPlayer += open => { if (open) { _campaignHud.SetOpen(false); _character.Close(); } UpdatePanelVisibility(); };
+        _board.VisibilityChangedByPlayer += open => { if (open) { _collection?.SetOpen(false); _campaignHud.SetOpen(false); _character.Close(); } UpdatePanelVisibility(); };
         _board.ModalChanged += open => _sandbox.SetModalPaused("endgame-confirmation", open);
     }
     private void BindBoardInput()
@@ -189,7 +189,7 @@ public partial class EndgameDirector : Node3D
     {
         if (HandleExperimentInput(input)) return;
         if (_smoke || _finished || _session is null || _classSelection.Visible) return;
-        if (input.IsActionPressed("aw_character")) { _character.Toggle(); GetViewport().SetInputAsHandled(); }
+        if (input.IsActionPressed("aw_character")) { _collection?.SetOpen(false); _character.Toggle(); GetViewport().SetInputAsHandled(); }
         if (input.IsActionPressed("aw_endgame")) { _board.Toggle(); GetViewport().SetInputAsHandled(); }
         if (input.IsActionPressed("aw_journey"))
         {
@@ -339,6 +339,7 @@ public partial class EndgameDirector : Node3D
     private void Observe(EndgameRuntimeResult result)
     {
         if (result.WorldEvents.Length > 0 || result.CombatEvents.Any(e => e.Kind is "LootPickedUp" or "LootDropped")) _revision++;
+        if (result.CombatEvents.Any(e => e.Kind == "LootPickedUp")) RefreshCollection(_session.Capture(), persist: true);
         foreach (var e in result.CombatEvents) _events[e.Kind] = _events.GetValueOrDefault(e.Kind) + 1;
         foreach (string message in result.WorldEvents)
         {
@@ -366,6 +367,7 @@ public partial class EndgameDirector : Node3D
             _cachedDisplay = Display(view, snapshot); _displayKey = displayKey;
         }
         _board.SetView(_cachedDisplay);
+        RefreshCollection(snapshot);
         // Public-command replay diagnostics observe combat without interactive menus.
         if (_smoke || _echoesSmoke) _board.SetOpen(false);
         var manifestations = _session.Production.View.ActiveManifestations;
@@ -515,6 +517,7 @@ public partial class EndgameDirector : Node3D
     private void Save()
     {
         if (!_hasActiveCharacter) return;
+        RefreshCollection(_session.Capture(), persist: true);
         PreserveLegacyEchoesLink();
         if (SaveExperiment()) return;
         EndgameRuntimeSaveStore.Write(SavePath, _combatJson, _adventure, _progression, _campaign, _endgame, _session.Capture());
@@ -529,7 +532,7 @@ public partial class EndgameDirector : Node3D
     }
     private void Adopt(EndgameRuntimeSession session, bool retainExperiment = false)
     {
-        ClearDeathRecap(); EndTraining(false); ClearTrainingComparison();
+        ResetCollection(); ClearDeathRecap(); EndTraining(false); ClearTrainingComparison();
         _echoesBoard?.SessionRestored();
         _memorySourceKey = default; _memorySourceName = ""; _memoryNoticeStatus = "";
         if (!retainExperiment) _experiment = null;

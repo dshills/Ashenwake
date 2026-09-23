@@ -38,6 +38,8 @@ Three more [midgame legendaries](docs/midgame_legendaries.md) expand those choic
 
 Three [late-game legendaries](docs/late_legendaries.md) reward deliberate skill sequences: **Crown of the Unsworn** grants barrier for successful interrupts, **Vow of the Last Witness** bursts after four distinct attacks against one foe, and **Greaves of the Stolen Hour** shorten three skill cooldowns after an ultimate. Earn them in Acts IV–V, regional Fractures or their corresponding God Hunts; extract spare copies to engrave their powers onto compatible gear.
 
+Open **J → Relics** or **B → Relics** for the [legendary collection journal](docs/legendary_collection.md). Preview all nine items, inspect owned copies and learned powers, and track one item through the Journey map and expedition board. Discoveries survive salvage and extraction; unreached encounter names and secret hunts remain hidden.
+
 Open **C → Skills** for ability cards, mastery progress and mutation comparisons. Preview Offense, Defense and Resource investments before spending points at Mara; passive refunds show the exact fee and effects removed. The combat bar uses the same ability icons with cooldown progress, resource-shortfall and Heat-cap feedback. See [Skills & Mastery](docs/skills_mastery.md).
 
 The solo combat HUD groups health, barrier, discipline resource, potion charges, dodge readiness and six abilities in a responsive bottom dock. Status icons show remaining duration and stacks; the XP bar tracks the current level. Earned levels, mastery milestones, ability unlocks and collected equipment appear in a compact reward feed. See [combat HUD and rewards](docs/combat_hud.md).

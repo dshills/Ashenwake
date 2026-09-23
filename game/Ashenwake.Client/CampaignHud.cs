@@ -63,6 +63,8 @@ public partial class CampaignHud : Control
             _tabButtons.Add(tab, button);
             if (tab == "Map") _firstTab = button;
         }
+        var relics = new Button { Name = "JourneyCollection", Text = "Relics", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        relics.AddThemeFontSizeOverride("font_size", 12); relics.Pressed += () => CollectionRequested?.Invoke(); tabs.AddChild(relics);
         BuildJourneyBody(column);
         _anatomyWorkbench = new AnatomyWorkbench { Visible = false }; column.AddChild(_anatomyWorkbench);
         _anatomyWorkbench.ImplantRequested += (slot, id) => ImplantRequested?.Invoke(slot, id);

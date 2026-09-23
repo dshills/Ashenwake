@@ -62,6 +62,7 @@ public partial class EndgameHud : Control
         var column = new VBoxContainer(); column.AddThemeConstantOverride("separation", 10); _panel.AddChild(column);
         column.AddChild(Text("BEYOND THE BREACH · FRACTURES & GOD HUNTS", 19));
         _wallet = Text("", 12); column.AddChild(_wallet);
+        BuildCollectionTracking(column);
         var tabs = new HBoxContainer(); column.AddChild(tabs);
         var group = new ButtonGroup();
         foreach (string tab in new[] { "Sigils", "Hunts", "Run", "Rewards" })
@@ -69,6 +70,8 @@ public partial class EndgameHud : Control
             var button = new Button { Name = "ExpeditionTab" + tab, Text = tab, CustomMinimumSize = new(0, 34), SizeFlagsHorizontal = SizeFlags.ExpandFill, ToggleMode = true, ButtonGroup = group };
             button.Pressed += () => ShowTab(tab); tabs.AddChild(button); _tabs.Add(tab, button);
         }
+        var relics = new Button { Name = "ExpeditionCollection", Text = "Relics", CustomMinimumSize = new(0, 34), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        relics.Pressed += () => CollectionRequested?.Invoke(); tabs.AddChild(relics);
         var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill }; body.AddThemeConstantOverride("separation", 16); column.AddChild(body);
         var left = new VBoxContainer { CustomMinimumSize = new(270, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = .85f }; body.AddChild(left);
         _catalogTitle = Text("", 13); left.AddChild(_catalogTitle);

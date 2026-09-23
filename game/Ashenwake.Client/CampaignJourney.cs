@@ -25,6 +25,7 @@ public partial class CampaignHud
         _regionMap.RegionSelected += SelectJourneyRegion; _regionColumn.AddChild(_regionMap);
         _regionColumn.AddChild(Label("YOUR NEXT OBJECTIVE", 13));
         _mapObjective = Label("", 14); _mapObjective.Name = "JourneyObjective"; _mapObjective.MaxLinesVisible = 4; _regionColumn.AddChild(_mapObjective);
+        BuildCollectionTracking(_regionColumn);
         _regionColumn.AddChild(Label("Select a location to inspect its route. Travel only begins when you choose a destination action.", 12));
         _journeyScroll = new ScrollContainer { CustomMinimumSize = new(280, 180), SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         body.AddChild(_journeyScroll);
