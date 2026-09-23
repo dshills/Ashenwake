@@ -31,6 +31,9 @@ public partial class CombatFeedbackSmoke : Node3D
                 throw new InvalidDataException("Combat feedback smoke requires a fresh artifact directory.");
             Directory.CreateDirectory(_output); _writeReport = true; Engine.MaxFps = 60;
             CheckCharacters();
+            WeaponMotionChecks.Run(Check);
+            LocomotionChecks.Run(Check);
+            CheckWeaponEffects();
             CheckBell();
             CheckEffects();
             CheckAudio();
@@ -38,6 +41,7 @@ public partial class CombatFeedbackSmoke : Node3D
             BuildGallery();
             await LootDiscoveryGallery();
             await HeroGallery();
+            await WeaponGallery();
             await MonsterGallery();
             await BellGallery();
             await ReleaseGallery();

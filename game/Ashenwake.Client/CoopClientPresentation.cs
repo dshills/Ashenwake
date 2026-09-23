@@ -109,7 +109,9 @@ public partial class CoopClientPresentation : Node3D
                     view.Actors.Where(a => a.PlayerId > 0 && a.Health > 0).OrderBy(a => CorePosition.DistanceSquared(a.Position, actor.Position)).FirstOrDefault();
                 if (opponent is not null) facing = Point(opponent.Position) - display;
             }
-            mesh.Body.Animate(delta, motion, actor.TelegraphTicks > 0, actor.State, facing: facing);
+            // This adapter measures rendered displacement; the rig consumes displacement per Core tick.
+            var tickMotion = delta > 0 ? motion * (float)(Ashenwake.Core.Simulation.FixedStepClock.SecondsPerTick / delta) : Vector3.Zero;
+            mesh.Body.Animate(delta, tickMotion, actor.TelegraphTicks > 0, actor.State, facing: facing);
             mesh.Root.Position = display; mesh.Root.Visible = actor.Health > 0; mesh.Tell.Visible = actor.TelegraphTicks > 0;
             string name = actor.PlayerId > 0 ? $"P{actor.PlayerId}{(actor.PlayerId == localPlayer ? " · YOU" : "")}" : Readable(actor.DefinitionId);
             mesh.Name.Text = name + (actor.Shielded ? "\nSHIELDED" : actor.Role.Contains("Anchor", StringComparison.Ordinal) ? "\nBREAK SHIELD" : "");

@@ -1,4 +1,5 @@
 using Ashenwake.Core.Expedition;
+using Ashenwake.Core.Simulation;
 using Godot;
 
 namespace Ashenwake.Client;
@@ -26,10 +27,12 @@ public partial class RoamingChampionPresentation : Node3D
     public override void _Process(double delta)
     {
         if (_sighting is null || !GodotObject.IsInstanceValid(_sighting) || _sandbox?.IsPaused == true) return;
-        _time += Math.Clamp(delta, 0, .1);
+        double elapsed = Math.Clamp(delta, 0, .1);
+        _time += elapsed;
         float drift = MathF.Sin((float)_time * .55f) * .36f;
         var previous = _sighting.Position; _sighting.Position = _sightingOrigin + new Vector3(drift, 0, 0);
-        _sighting.Animate(delta, _sighting.Position - previous, facing: new Vector3(MathF.Cos((float)_time * .55f) * .25f, 0, -1));
+        var tickMovement = elapsed > 0 ? (_sighting.Position - previous) * (float)(FixedStepClock.SecondsPerTick / elapsed) : Vector3.Zero;
+        _sighting.Animate(delta, tickMovement, facing: new Vector3(MathF.Cos((float)_time * .55f) * .25f, 0, -1));
     }
     public void Reset()
     {

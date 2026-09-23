@@ -51,6 +51,7 @@ public partial class CharacterVisual : Node3D
 
     public void SetAccent(Color color) => Accent.AlbedoColor = color;
 
+    /// <param name="movement">World-space displacement per Core tick, repeated at render frequency.</param>
     public void Animate(double delta, Vector3 movement, bool windup = false, string state = "", bool paused = false, Vector3? facing = null)
     {
         if (paused) return;
@@ -58,35 +59,10 @@ public partial class CharacterVisual : Node3D
         if (IsDying) { AnimateDeath(dt); return; }
         AdvanceCue(dt, windup);
         _time += dt;
-        bool moving = movement.LengthSquared() > .00001f;
-        _stride = Mathf.Lerp(_stride, moving ? 1 : 0, 1 - MathF.Exp(-dt * 12));
-        _windup = Mathf.Lerp(_windup, windup ? 1 : 0, 1 - MathF.Exp(-dt * 16));
-        _recovery = Mathf.Lerp(_recovery, state == "Recover" && !windup ? 1 : 0, 1 - MathF.Exp(-dt * 14));
-        Vector3 direction = facing ?? movement;
-        direction.Y = 0;
-        if (direction.LengthSquared() > .00001f)
-            _facing = Mathf.LerpAngle(_facing, Mathf.Atan2(-direction.X, -direction.Z), 1 - MathF.Exp(-dt * 14));
-        BodyRoot.Rotation = new(_windup * -.16f, _facing, 0);
-        float cycle = (float)_time * 9;
-        BodyRoot.Position = Vector3.Up * (.018f * MathF.Sin((float)_time * 2) + .045f * _stride * MathF.Abs(MathF.Sin(cycle)));
-        foreach (var limb in _limbs)
-        {
-            float swing = MathF.Sin(cycle) * _stride * .48f * limb.Amplitude;
-            Vector3 rotation = limb.Motion switch
-            {
-                "left_leg" => new(swing, 0, 0),
-                "right_leg" => new(-swing, 0, 0),
-                "left_arm" => new(-swing - _windup * .95f * limb.Amplitude, 0, -_windup * .2f),
-                "right_arm" => new(swing - _windup * 1.3f * limb.Amplitude, 0, _windup * .25f),
-                "jaw" => new((.06f + _windup * .2f) * (1 + MathF.Sin((float)_time * 3)), 0, 0),
-                _ => new(.035f * MathF.Sin((float)_time * 2) * limb.Amplitude, 0, .025f * MathF.Sin((float)_time * 1.5f) * limb.Amplitude)
-            };
-            if (limb.Motion.Contains("arm", StringComparison.Ordinal)) rotation.X += _recovery * .4f;
-            limb.Node.Rotation = limb.Rest + rotation;
-            limb.Node.Position = limb.Origin;
-        }
+        AnimateLocomotion(dt, movement, windup, state, facing);
         AnimateFamilyAnticipation();
         AnimateCue();
+        BlendPoseRelease(dt, windup);
         AnimateManifestations();
     }
 

@@ -18,6 +18,9 @@ public partial class CombatEffects : Node3D
         public float Age, Duration;
         public long Serial;
         public bool Active;
+        public CharacterVisual? Weapon;
+        public bool TrailStarted;
+        public readonly Vector3[] Trail = new Vector3[6];
     }
     private readonly List<Burst> _pool = [];
     private long _serial;
@@ -26,7 +29,11 @@ public partial class CombatEffects : Node3D
 
     public void Emit(string cue, Vector3 origin, Vector3 direction, Color color, bool reducedEffects = false)
     {
-        if (reducedEffects) return;
+        if (!reducedEffects) EmitBurst(cue, origin, direction, color);
+    }
+
+    private Burst EmitBurst(string cue, Vector3 origin, Vector3 direction, Color color)
+    {
         var burst = _pool.FirstOrDefault(b => !b.Active);
         if (burst is null && _pool.Count < Maximum)
         {
@@ -47,11 +54,26 @@ public partial class CombatEffects : Node3D
         }
         burst ??= _pool.MinBy(b => b.Serial)!;
         burst.Active = true; burst.Serial = ++_serial; burst.Age = 0; burst.Cue = cue; burst.Color = color;
+        burst.Weapon = null;
         burst.Duration = cue switch { "loot_legendary" => 1.1f, "loot_godwrought" => 1.6f, "legendary_pyre" => .55f, "legendary_oath" => .42f, "legendary_widow" or "legendary_ready" or "legendary_rotwake" or "legendary_chorus" or "legendary_cinder" or "legendary_verdict" or "legendary_witness" or "legendary_hour" => .5f, "victory" => 1.3f, "phase" => .85f, "death" => .65f, "spell" => .4f, "dodge" or "dust" => .32f, _ => .24f };
         burst.Root.Position = origin;
         burst.Root.Rotation = new(0, direction.LengthSquared() > .001f ? Mathf.Atan2(direction.X, direction.Z) : 0, 0);
         burst.Root.Visible = true;
         foreach (var piece in burst.Pieces) piece.Mesh = cue is "dodge" or "dust" or "death" ? Puff : Shard;
+        Pose(burst);
+        return burst;
+    }
+
+    /// <summary>Cosmetic contact glints follow the rendered joint; damage still resolves in Core.</summary>
+    public void EmitWeapon(CharacterVisual weapon, Color color, bool reducedEffects = false)
+    {
+        if (reducedEffects || !IsInsideTree() || !weapon.IsInsideTree() || weapon.IsDying || weapon.ActiveCue != "attack" ||
+            !weapon.TryGetWeaponEffectAnchor(out var point)) return;
+        var burst = EmitBurst(weapon.AttackEffectCue, Vector3.Zero, Vector3.Forward, color);
+        burst.Weapon = weapon;
+        burst.TrailStarted = false;
+        burst.Root.Rotation = Vector3.Zero;
+        Array.Fill(burst.Trail, ToLocal(weapon.ToGlobal(point)));
         Pose(burst);
     }
 
@@ -64,13 +86,29 @@ public partial class CombatEffects : Node3D
         {
             if (!burst.Active) continue;
             burst.Age += dt;
-            if (burst.Age >= burst.Duration) { burst.Active = false; burst.Root.Visible = false; }
-            else Pose(burst);
+            if (burst.Age >= burst.Duration) { Retire(burst); continue; }
+            if (burst.Weapon is { } weapon)
+            {
+                if (!GodotObject.IsInstanceValid(weapon) || !weapon.IsInsideTree() || weapon.IsQueuedForDeletion() ||
+                    weapon.IsDying || weapon.ActiveCue != "attack" || !weapon.TryGetWeaponEffectAnchor(out var point))
+                { Retire(burst); continue; }
+                var contact = ToLocal(weapon.ToGlobal(point));
+                if (!burst.TrailStarted) { Array.Fill(burst.Trail, contact); burst.TrailStarted = true; }
+                else
+                {
+                    for (int i = burst.Trail.Length - 1; i > 0; i--) burst.Trail[i] = burst.Trail[i - 1];
+                    burst.Trail[0] = contact;
+                }
+            }
+            Pose(burst);
         }
     }
 
     public void Clear()
-    { foreach (var burst in _pool) { burst.Active = false; burst.Root.Visible = false; } }
+    { foreach (var burst in _pool) Retire(burst); }
+
+    private static void Retire(Burst burst)
+    { burst.Active = false; burst.Root.Visible = false; burst.Weapon = null; }
 
     private static void Pose(Burst burst)
     {
@@ -81,6 +119,20 @@ public partial class CombatEffects : Node3D
             var piece = burst.Pieces[i];
             float a = i * Mathf.Tau / 6;
             piece.Rotation = Vector3.Zero;
+            if (burst.Weapon is not null)
+            {
+                float size = (1 - i / 7f) * (burst.Cue == "heavy_slash" ? .115f : .065f);
+                piece.Position = burst.Trail[i];
+                piece.Scale = Vector3.One * size;
+                if (burst.Cue == "spell")
+                {
+                    a += t * 3;
+                    piece.Position = burst.Trail[0] + new Vector3(MathF.Sin(a), MathF.Cos(a), 0) * (.09f + t * .12f);
+                    piece.Rotation = new(a, a, a);
+                    piece.Scale = new(size * .6f, size * 1.8f, size * .6f);
+                }
+                continue;
+            }
             switch (burst.Cue)
             {
                 case "legendary_pyre":

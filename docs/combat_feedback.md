@@ -10,7 +10,7 @@ Sixteen procedural PCM cues use shaped noise, pitch sweeps, layered metal harmon
 
 The sanctuary's architecture persists through phase and interaction changes. Its separate bell rig swings gently in phase I, sways more strongly with ritual lights in phase II, and drops 18 preallocated chain links as it tilts in phase III. Victory adds a finite 3.2-second toll/ember sequence. A save loaded in phase III or after victory starts in the final pose. The bell, links, lights and embers stay beyond the northern combat boundary; none adds physics or navigation. Reduced effects settles transitions immediately and reduces ambient swing.
 
-This milestone targets solo combat and the opening route through Bell Saint. Co-op shares the improved windup/recovery rigs; its network presentation does not yet dispatch the new event-driven clips, effects or audio. These procedural clips are not production skinning, equipment-specific animation sets, recorded Foley, or measured performance certification.
+This milestone targets solo combat and the opening route through Bell Saint. Co-op shares the improved windup/recovery rigs; its network presentation does not yet dispatch the new event-driven clips, effects or audio. The later [weapon animation pass](weapon_animation.md) adds equipment-specific procedural attacks and distance-driven gait. These clips are not production skinning, recorded Foley, or measured performance certification.
 
 ## Reproduce
 

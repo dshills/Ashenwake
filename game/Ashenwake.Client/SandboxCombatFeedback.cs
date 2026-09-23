@@ -46,7 +46,7 @@ public partial class Sandbox
             _eventLog.Add(e); if (_eventLog.Count > 8192) _eventLog.RemoveAt(0);
             // A room transition or respawn can replace Core's session inside the command callback.
             // IDs in that completed batch belong to the old arena, not its freshly spawned actors.
-            if (replaced && e.Kind is "AbilityStarted" or "BossPatternStarted" or "CampaignHazardWarned" or
+            if (replaced && e.Kind is "AbilityStarted" or "EliteAbilityStarted" or "BossPatternStarted" or "CampaignHazardWarned" or
                 "AbilityResolved" or "EliteAbilityResolved" or "CampaignHazardResolved" or "Dodged" or
                 "DamageApplied" or "BarrierAbsorbed" or "BarrierGranted" or "Healed" or "EntityKilled" or "EliteCopyKilled" or
                 "MechanismDestroyed" or "BossPhaseChanged" or "LootDropped" or "EnemyOvercharged" or
@@ -65,8 +65,10 @@ public partial class Sandbox
             switch (e.Kind)
             {
                 case "AbilityStarted":
+                case "EliteAbilityStarted":
                 case "BossPatternStarted":
                 case "CampaignHazardWarned":
+                    actor?.Body.BeginAttackWindup();
                     if (actor is not null && direction.LengthSquared() > .001f) actor.Facing = direction;
                     if (_view.Actors.Any(a => a.Id == e.ActorId && a.Faction == CombatFaction.Enemy) &&
                         !PlayOpeningTell(e, actor?.Current ?? Vector3.Zero)) PlayTone("tell");
@@ -96,7 +98,9 @@ public partial class Sandbox
                         _ => "enemy"
                     };
                     string cue = sound is "arcane" or "bone" or "bell" || skill is { Shape: "Projectile" or "Area" } ? "spell" : sound is "spear" or "bow" ? "thrust" : "slash";
-                    _combatEffects.Emit(cue, actor.Current, direction, SkillColor(skill), _reduceEffects);
+                    if (actor.Body.TryGetWeaponEffectAnchor(out _))
+                        _combatEffects.EmitWeapon(actor.Body, SkillColor(skill), _reduceEffects);
+                    else _combatEffects.Emit(cue, actor.Current, direction, SkillColor(skill), _reduceEffects);
                     PlayTone(sound); break;
                 case "Dodged":
                     if (actor is null) break;

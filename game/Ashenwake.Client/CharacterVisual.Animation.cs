@@ -49,6 +49,7 @@ public partial class CharacterVisual
             _ when family is "ranged" or "support" || id.Contains("nhal", StringComparison.Ordinal) || id.Contains("breach_heart", StringComparison.Ordinal) => MotionStyle.Caster,
             _ => MotionStyle.Melee
         };
+        ConfigureWeaponMotion(id, kind, allied);
     }
 
     /// <summary>React to an already-authoritative event. Clips never move the actor or schedule combat.</summary>
@@ -67,12 +68,13 @@ public partial class CharacterVisual
         if (incoming == CombatCue.Hit && (_isWinding || _cue == CombatCue.Hit)) return;
         _cue = incoming;
         _cueTime = 0;
-        _shieldAttack = skillId is "skill.iron_guard" or "skill.shield_breaker" or "skill.charge";
+        if (incoming == CombatCue.Attack) SelectWeaponAttack(skillId);
         _cueDuration = incoming switch
         {
             CombatCue.Dodge => .4f,
             CombatCue.Hit => .22f,
             CombatCue.Death => _motionStyle is MotionStyle.Bell or MotionStyle.Beast ? 1.12f : .86f,
+            _ when _weaponRig => WeaponAttackDuration,
             _ => _motionStyle switch
             {
                 MotionStyle.Vanguard => .44f,
@@ -95,9 +97,18 @@ public partial class CharacterVisual
         }
     }
 
+    /// <summary>A new authoritative action interrupts old cosmetic follow-through.</summary>
+    public void BeginAttackWindup()
+    {
+        if (_cue is CombatCue.Hit or CombatCue.Attack) _cue = CombatCue.None;
+        _isWinding = true;
+    }
+
     private void AdvanceCue(float delta, bool windup)
     {
         _isWinding = windup;
+        // Core's displayed state can still be Windup on the tick it emits AbilityResolved.
+        // Only a new start event cancels attack follow-through; the old tell must not erase contact.
         if (_cue == CombatCue.Hit && windup) _cue = CombatCue.None;
         if (_cue == CombatCue.None) return;
         _cueTime = Math.Min(_cueTime + delta, _cueDuration);
@@ -106,6 +117,7 @@ public partial class CharacterVisual
 
     private void AnimateFamilyAnticipation()
     {
+        AnimateWeaponAnticipation();
         if (_motionStyle == MotionStyle.Hound)
         {
             // Rear back into a low spring, then let the head/shoulders sag after the pounce.
@@ -138,7 +150,9 @@ public partial class CharacterVisual
         if (_cue == CombatCue.None) return;
         float t = _cueTime / _cueDuration;
         float weight = Smooth(t / .13f) * (1 - Smooth((t - .68f) / .32f));
-        float strike = Smooth((t - .16f) / .43f);
+        // Resolved attacks start at contact; only authoritative windup poses anticipate a hit.
+        if (_cue == CombatCue.Attack && _weaponRig) weight = 1 - Smooth((t - .48f) / .52f);
+        float strike = _cue == CombatCue.Attack && _weaponRig ? .52f + .48f * Smooth(t / .55f) : Smooth((t - .16f) / .43f);
         float pulse = MathF.Sin(t * Mathf.Pi);
         Vector3 lean = Vector3.Zero;
         if (_cue == CombatCue.Dodge)
@@ -162,6 +176,7 @@ public partial class CharacterVisual
                 MotionStyle.Swarm => new(-.15f, .25f, .08f),
                 _ => new(-.16f * strike, Mathf.Lerp(-.13f, .13f, strike), 0)
             };
+            if (_weaponRig) lean = WeaponBodyPose(strike);
             lean *= weight;
             if (_motionStyle is MotionStyle.Hound or MotionStyle.Swarm)
                 BodyRoot.Position += Vector3.Up * (.15f * pulse);
@@ -187,8 +202,9 @@ public partial class CharacterVisual
             }
             else if (left || right)
             {
-                pose = AttackArm(left, t, strike);
-                if (_motionStyle == MotionStyle.Veilwalker)
+                pose = _weaponRig ? WeaponArmPose(left, strike) : AttackArm(left, t, strike);
+                if (_weaponRig) shift = WeaponArmShift(left, strike) * weight;
+                else if (_motionStyle == MotionStyle.Veilwalker)
                 {
                     float thrust = left ? Pulse(t, .04f, .48f) : Pulse(t, .27f, .84f);
                     shift.Z = -.30f * thrust;
