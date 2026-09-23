@@ -62,6 +62,8 @@ In **Gear**, favorite or lock an item to protect it from discard, extraction and
 
 After a solo campaign or endgame defeat, the [death recap](docs/death_recap.md) pauses to show the killing blow, recent health loss, harmful conditions and recovery consequences. Continue from the restored campaign checkpoint, retry an expedition with remaining attempts, or return to Greyhaven after the final attempt. Loaded defeated expeditions show recovery controls without inventing missing damage history.
 
+The training ground also offers **Melee**, **Ranged**, and **Mixed sparring**. Its breakdown shows actual health loss, barrier absorption, mitigation, immunity and defensive effects. Reset or leave to retain one previous attempt, change your equipment in Greyhaven, then return to compare the results. Practice and comparison history never change your saved character. See [defensive training](docs/training_ground.md).
+
 ## Start here
 
 Requires Git/Git LFS, Python 3, `curl`, `unzip`, `ripgrep`, and **Go 1.27.1**. The bootstrap installs **.NET SDK 8.0.425** and **Godot 4.6.2 Mono** inside ignored `.tools/`; it does not replace the system Godot. Supported bootstrap hosts are macOS Apple Silicon and Linux x86_64.

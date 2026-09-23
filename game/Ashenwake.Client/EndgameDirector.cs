@@ -529,7 +529,7 @@ public partial class EndgameDirector : Node3D
     }
     private void Adopt(EndgameRuntimeSession session, bool retainExperiment = false)
     {
-        ClearDeathRecap(); EndTraining(false);
+        ClearDeathRecap(); EndTraining(false); ClearTrainingComparison();
         _echoesBoard?.SessionRestored();
         _memorySourceKey = default; _memorySourceName = ""; _memoryNoticeStatus = "";
         if (!retainExperiment) _experiment = null;

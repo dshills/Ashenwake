@@ -101,6 +101,7 @@ public partial class Sandbox
         if (_targetDetail is null) return;
         float width = GetViewport().GetVisibleRect().Size.X;
         float top = 218;
+        top = Math.Max(top, TrainingSummaryBottom() + 10);
         if (_campaignObjective is not null && _campaignObjective.IsVisibleInTree()) top = Math.Max(top, _campaignObjective.GetGlobalRect().End.Y + 10);
         if (_expeditionObjective is not null && _expeditionObjective.IsVisibleInTree()) top = Math.Max(top, _expeditionObjective.GetGlobalRect().End.Y + 10);
         if (_endgameRulePanel?.IsVisibleInTree() == true) top = Math.Max(top, _endgameRulePanel.GetGlobalRect().End.Y + 10);

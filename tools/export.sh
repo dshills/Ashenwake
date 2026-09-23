@@ -49,6 +49,12 @@ mkdir -p "$training_output"
 python3 tools/check-godot-log.py "$training_output/smoke.log"
 python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["passed"]' "$training_output/training-review.json"
 
+defensive_training_output="$package_output/defensive-training-client"
+mkdir -p "$defensive_training_output"
+"$binary" --headless --quit-after 18000 --log-file "$defensive_training_output/smoke.log" -- --defensive-training-smoke --discipline=Vanguard --output="$defensive_training_output"
+python3 tools/check-godot-log.py "$defensive_training_output/smoke.log"
+python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["passed"]' "$defensive_training_output/defensive-training-review.json"
+
 loot_management_output="$package_output/loot-management-client"
 mkdir -p "$loot_management_output"
 "$binary" --headless --quit-after 16000 --log-file "$loot_management_output/smoke.log" -- --loot-management-smoke --discipline=Vanguard --output="$loot_management_output"

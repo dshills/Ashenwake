@@ -279,7 +279,7 @@ public sealed partial class CombatSession
     }
     private void Think(CombatActor actor)
     {
-        if (training && actor.Faction == CombatFaction.Enemy) { actor.State = "Training"; actor.Pending = null; return; }
+        if (training && !trainingSparring && actor.Faction == CombatFaction.Enemy) { actor.State = "Training"; actor.Pending = null; return; }
         if (actor.Statuses.Any(s => s.Id == "Terrified" && s.ExpiresTick > Tick)) { actor.Pending = null; actor.State = "Flee"; MoveActor(actor, new(actor.Position.X + Math.Sign(actor.Position.X - Player.Position.X) * 100, actor.Position.Z + Math.Sign(actor.Position.Z - Player.Position.Z) * 100)); return; }
         if (ApproachAuthoredTarget(actor)) return;
         if (ThinkEndgameActor(actor) || ThinkCampaignActor(actor)) return;
@@ -397,13 +397,15 @@ public sealed partial class CombatSession
         if (StormOvercharged && hit.OwnerId == 1 && hit.Depth > 0) increased += 2500;
         if (source?.Statuses.Any(s => s.Id == "Cursed") == true) increased -= 2000;
         if (target.Statuses.Any(s => s.Id == "Marked") && _content.Skills.FirstOrDefault(s => s.Id == hit.ContentId)?.Behavior == "ConsumeMarked") increased += 10000;
-        var result = DamageRules.Resolve(new(hit.Damage, bonus, IncreasedBasisPoints: increased, Critical: critical, Family: hit.Family, DefenseBasisPoints: defense,
-            VulnerabilityBasisPoints: target.Statuses.Any(s => s.Id == "Vulnerable") ? 2500 : 0, Barrier: target.Barrier, MoreBasisPoints: EndgameFragmentPower(hit, source), MinimumDefenseBasisPoints: EndgameRule("resistance_inversion") ? -1500 : 0, Immune: target.InvulnerableUntil > Tick || IsRituallyShielded(target), DamageOverTime: hit.Dot));
+        var damageInput = new DamageInput(hit.Damage, bonus, IncreasedBasisPoints: increased, Critical: critical, Family: hit.Family, DefenseBasisPoints: defense,
+            VulnerabilityBasisPoints: target.Statuses.Any(s => s.Id == "Vulnerable") ? 2500 : 0, Barrier: target.Barrier, MoreBasisPoints: EndgameFragmentPower(hit, source), MinimumDefenseBasisPoints: EndgameRule("resistance_inversion") ? -1500 : 0, Immune: target.InvulnerableUntil > Tick || IsRituallyShielded(target), DamageOverTime: hit.Dot);
+        var result = DamageRules.Resolve(damageInput);
         target.Barrier -= result.Absorbed;
         ChargeOath(source, target, result.Absorbed);
         if (result.Absorbed > 0) Emit("BarrierAbsorbed", target.Id, target.Id, result.Absorbed, hit.ContentId, hit.ActionId, hit.Depth);
         int healthDamage = Math.Min(target.Health, result.HealthDamage); target.Health -= healthDamage;
         ObserveTrainingHit(hit, source, target, healthDamage);
+        ObserveTrainingDefense(hit, source, target, damageInput, result, healthDamage);
         ObserveIncomingDamage(hit, source, target, healthDamage);
         Emit("DamageApplied", hit.SourceId, hit.TargetId, healthDamage, hit.ContentId, hit.ActionId, hit.Depth);
         if (critical) Emit("CriticalHit", hit.SourceId, hit.TargetId, healthDamage, hit.ContentId, hit.ActionId, hit.Depth);

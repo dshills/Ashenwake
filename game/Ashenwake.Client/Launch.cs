@@ -11,6 +11,7 @@ public partial class Launch : Node
         string scene = arguments.Contains("--coop") || arguments.Contains("--coop-smoke") ? "res://Coop.tscn" :
             arguments.Contains("--death-recap-smoke") ? "res://DeathRecapSmoke.tscn" :
             arguments.Contains("--loot-management-smoke") ? "res://LootManagementSmoke.tscn" :
+            arguments.Contains("--defensive-training-smoke") ? "res://DefensiveTrainingSmoke.tscn" :
             arguments.Contains("--training-smoke") ? "res://TrainingSmoke.tscn" :
             arguments.Contains("--endgame-polish-smoke") ? "res://EndgameCombatPolishSmoke.tscn" :
             arguments.Contains("--late-campaign-combat-smoke") ? "res://LateCampaignCombatSmoke.tscn" :
