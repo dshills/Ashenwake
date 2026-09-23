@@ -24,6 +24,8 @@ The [Greyhaven training ground](../docs/training_ground.md) provides isolated cu
 
 The [loot management pass](../docs/loot_management.md) adds persistent favorite/lock protection, preset-use warnings, backpack organization filters, and confirmed single-item salvage with exact material returns at Torren.
 
+The [death recap](../docs/death_recap.md) adds transient incoming-damage attribution, paused recovery review and direct campaign/endgame continuation through the existing checkpoint and attempt rules.
+
 Build a small, satisfying, replayable single-player game loop first. Prove that Divine Anatomy creates surprising build interactions, then establish a repeatable content pipeline, produce the campaign and endgame, and release a reliable single-player game. Cooperative play follows as a separately gated expansion.
 
 At the planning baseline, the repository contained the two source specifications and no implementation. This plan therefore starts from project setup. It preserves the architecture's Phases 0–4, adds explicit endgame and release phases, and moves its optional online prototype from Phase 5 to Phase 7. Phase numbers describe dependencies, not calendar commitments.

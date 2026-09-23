@@ -28,6 +28,7 @@ public sealed partial class EndgameRuntimeSession
     public CampaignRuntimeSession Campaign { get; private set; }
     public ProductionSession Production => Campaign.Production;
     public CombatSession Combat => arena ?? Campaign.Combat;
+    public DeathRecap? LastDeathRecap { get; private set; }
     public EndgameContent Content { get; }
     public RoomDefinition Room => Combat.Room;
     public long Tick { get; private set; }
@@ -154,24 +155,32 @@ public sealed partial class EndgameRuntimeSession
             return new(false, "Endgame archive capacity requires an explicit migration.", [], []);
         if (recordReplay && frames.Count >= 1800) { initial = Capture(); frames.Clear(); }
         var rollback = command.Action == EndgameRuntimeAction.Tick ? null : Capture(); EndgameRuntimeResult result;
+        var previousCampaignRecap = Campaign.LastDeathRecap; var previousRecap = LastDeathRecap;
         try
         {
             result = command.Action == EndgameRuntimeAction.Tick ? Advance(command.Commands ?? []) : Change(command);
-            if (result.Success) { operationSequence++; RefreshUnlock(); RevealExplorationMap(); }
-            else if (rollback is not null) RestoreFields(rollback);
+            if (result.Success)
+            {
+                operationSequence++; RefreshUnlock(); RevealExplorationMap();
+                if (!ReferenceEquals(previousCampaignRecap, Campaign.LastDeathRecap)) LastDeathRecap = Campaign.LastDeathRecap;
+            }
+            else if (rollback is not null) { RestoreFields(rollback); LastDeathRecap = previousRecap; }
         }
-        catch { if (rollback is not null) RestoreFields(rollback); throw; }
+        catch { if (rollback is not null) { RestoreFields(rollback); LastDeathRecap = previousRecap; } throw; }
         WorldEvents = result.WorldEvents;
         if (recordReplay) frames.Add(new(JsonData.Copy(command), StateHash, JsonData.Hash(result)));
         return result;
     }
     private void RestoreFields(EndgameRuntimeSnapshot state)
     {
+        var previousCampaign = Campaign; var previousArena = arena;
         Campaign = CampaignRuntimeSession.Restore(combatJson, adventure, policy, campaignContent, state.Campaign);
         ledger = EndgameSession.Restore(Content, state.Endgame); arena = state.Combat is null ? null : CombatSession.Restore(combatJson, state.Combat);
         manifest = state.Manifest is null ? null : JsonData.Copy(state.Manifest); cleared = state.EncounterCleared; awaitingRetry = state.AwaitingRetry;
         Tick = state.Tick; operationSequence = state.OperationSequence;
         RestoreExplorationMap(state.ExplorationMap);
+        Campaign.PreserveDeathRecapFrom(previousCampaign);
+        if (arena is not null && previousArena is not null) arena.PreserveDeathRecapFrom(previousArena);
     }
     private void RefreshUnlock()
     {
@@ -189,8 +198,9 @@ public sealed partial class EndgameRuntimeSession
         if (commands.Any(c => c.Kind is CombatCommandKind.Equip or CombatCommandKind.EquipFragment or CombatCommandKind.UnequipFragment or CombatCommandKind.SetMutation))
             return Fail("Use permanent build services in Greyhaven.");
         Tick++; var before = arena.View.Actors; var events = arena.Step(commands).ToArray();
+        if (arena.LastDeathRecap is { } deathRecap) LastDeathRecap = deathRecap;
         var messages = new List<string>(Production.ReconcileEndgameCombat(arena, before, events, State.Run!.Id, State.Run.Deaths, ArenaIndex, Tick));
-        if (messages.Count > 0 || events.Any(e => e.Kind is "LootPickedUp" or "LootDropped" or "AbilityStarted")) arena = Production.ProjectCampaignCombat(arena.Capture());
+        if (messages.Count > 0 || events.Any(e => e.Kind is "LootPickedUp" or "LootDropped" or "AbilityStarted")) arena = Production.ProjectCampaignCombat(arena);
         else arena.ApplyAdventureBuild(Production.Combat.Build);
         if (arena.View.Actors.Single(a => a.Id == 1).Health <= 0)
         {
@@ -263,7 +273,7 @@ public sealed partial class EndgameRuntimeSession
                 if (completion.Reward is { } reward)
                 {
                     messages.AddRange(Production.GrantEndgameReward(reward));
-                    arena = Production.ProjectCampaignCombat(arena.Capture());
+                    arena = Production.ProjectCampaignCombat(arena);
                 }
                 else StartRoom(restoreAtAnchor: false);
                 break;
@@ -286,7 +296,7 @@ public sealed partial class EndgameRuntimeSession
     {
         Production.ClearCampaignEffects(); var previous = arena?.Capture() ?? Production.Combat.Capture();
         arena = combatContent.CreateEncounter(manifest!, State.Run!.EncounterIndex, State.Run.Deaths, previous, restoreAtAnchor);
-        arena = Production.ProjectCampaignCombat(arena.Capture()); Production.ReserveCampaignItemSequence(arena.Capture().NextObjectId);
+        arena = Production.ProjectCampaignCombat(arena); Production.ReserveCampaignItemSequence(arena.Capture().NextObjectId);
         cleared = false; awaitingRetry = false;
     }
     private void ReturnArenaToHub()

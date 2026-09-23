@@ -107,6 +107,13 @@ public sealed partial class ProductionSession
         ProjectPermanentInventory(); return events.ToArray();
     }
 
+    internal CombatSession ProjectCampaignCombat(CombatSession source)
+    {
+        var projected = ProjectCampaignCombat(source.Capture());
+        projected.PreserveDeathRecapFrom(source);
+        return projected;
+    }
+
     internal CombatSession ProjectCampaignCombat(CombatSnapshot source)
     {
         var arena = CombatSession.Restore(combatJson, source);

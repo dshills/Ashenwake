@@ -86,9 +86,9 @@ public partial class EndgameDirector : Node3D
             _sandbox.SaveOverride = () => Safely(Save); _sandbox.LoadOverride = () => Safely(Load); _sandbox.ReplayOverride = () => Safely(VerifyReplay);
             _stage = new CampaignStage(); AddChild(_stage); _effects = new EndgamePresentation(); AddChild(_effects); _effects.AttachOverlay(_sandbox);
             _campaignHud = new CampaignHud(); _sandbox.AddOverlay(_campaignHud);
-            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = () => { if (_training is not null) _trainingHud.SetReportOpen(true); else _character.ToggleInventory(); };
+            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = () => { if (_deathRecapHud?.IsOpen == true) return; if (_training is not null) _trainingHud.SetReportOpen(true); else _character.ToggleInventory(); };
             _board = new EndgameHud(); _sandbox.AddOverlay(_board);
-            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeTraining(); InitializeFrontMenu();
+            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeTraining(); InitializeFrontMenu(); InitializeDeathRecap();
             _sandbox.ConfigureLocalMap(() => _training is null && _hasActiveCharacter && !_frontMenu.IsOpen && !_classSelection.Visible, () => _session.LocalMap);
             if (_hasActiveCharacter) EnableLocalMap();
             Refresh();
@@ -251,7 +251,7 @@ public partial class EndgameDirector : Node3D
     }
     private IReadOnlyList<CombatEvent> Advance(CombatCommand[] commands)
     {
-        if (_finished || _capturing) return [];
+        if (_finished || _capturing || _deathRecapHud?.IsOpen == true) return [];
         try
         {
             if (_training is not null) return AdvanceTraining(commands);
@@ -404,6 +404,7 @@ public partial class EndgameDirector : Node3D
         _sandbox.PresentLocalMap(_session.LocalMap, LocalMapTitle(), combat);
         _sandbox.SetMechanismVisuals(_effects.GetMechanismVisual);
         _sandbox.SetManifestationPresentation(manifestations, campaign.Production.Expedition.Adventure.Anatomy.Values);
+        ObserveDeathRecap();
         _sandbox.SetWorldSubtitle(combat.Endgame is null ? $"CAMPAIGN / {_session.Campaign.View.Region.ToUpperInvariant()}" : $"{view.Run?.Kind.ToUpperInvariant()} / {view.Run?.Name.ToUpperInvariant()}");
         UpdatePanelVisibility();
         RefreshExperiment();
@@ -528,7 +529,7 @@ public partial class EndgameDirector : Node3D
     }
     private void Adopt(EndgameRuntimeSession session, bool retainExperiment = false)
     {
-        EndTraining(false);
+        ClearDeathRecap(); EndTraining(false);
         _echoesBoard?.SessionRestored();
         _memorySourceKey = default; _memorySourceName = ""; _memoryNoticeStatus = "";
         if (!retainExperiment) _experiment = null;

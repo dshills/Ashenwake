@@ -46,6 +46,12 @@ public sealed partial class CampaignRuntimeSession
     public CampaignContent Content { get; }
     public ProductionSession Production { get; private set; }
     public CombatSession Combat => InHub ? Production.Combat : arena;
+    public DeathRecap? LastDeathRecap { get; private set; }
+    internal void PreserveDeathRecapFrom(CampaignRuntimeSession previous)
+    {
+        LastDeathRecap = previous.LastDeathRecap;
+        Combat.PreserveDeathRecapFrom(previous.Combat);
+    }
     public long Tick { get; private set; }
     public string ActiveEncounterId { get; private set; } = "hub";
     public bool InHub => story.CurrentState.InHub;
@@ -159,11 +165,13 @@ public sealed partial class CampaignRuntimeSession
     }
     private void RestoreFields(CampaignRuntimeSnapshot snapshot)
     {
+        var previousCombat = Combat;
         Production = ProductionSession.Restore(combatJson, adventure, policy, snapshot.Production);
         story = CampaignSession.Restore(Content, snapshot.Campaign); arena = CombatSession.Restore(combatJson, snapshot.Combat);
         Tick = snapshot.Tick; ActiveEncounterId = snapshot.ActiveEncounterId; explorationReturnEncounter = snapshot.ExplorationReturnEncounter;
         RestoreClearedRooms(snapshot.ClearedRooms);
         RestoreExplorationMap(snapshot.ExplorationMap);
+        Combat.PreserveDeathRecapFrom(previousCombat);
     }
     private CampaignRuntimeResult Advance(CombatCommand[] commands)
     {
@@ -177,8 +185,9 @@ public sealed partial class CampaignRuntimeSession
             return new(result.Success, result.Reason, result.CombatEvents, result.WorldEvents);
         }
         var before = arena.View.Actors; var events = arena.Step(commands).ToArray(); var messages = new List<string>();
+        if (arena.LastDeathRecap is { } deathRecap) LastDeathRecap = deathRecap;
         messages.AddRange(Production.ReconcileCampaignCombat(arena, before, events, Tick));
-        if (messages.Count > 0 || events.Any(e => e.Kind is "LootPickedUp" or "LootDropped" or "AbilityStarted")) arena = Production.ProjectCampaignCombat(arena.Capture());
+        if (messages.Count > 0 || events.Any(e => e.Kind is "LootPickedUp" or "LootDropped" or "AbilityStarted")) arena = Production.ProjectCampaignCombat(arena);
         else arena.ApplyAdventureBuild(Production.Combat.Build);
         var state = story.CurrentState;
         if (arena.View.Actors.Single(a => a.Id == 1).Health <= 0)
@@ -366,7 +375,7 @@ public sealed partial class CampaignRuntimeSession
         if (state.CompletedExploration.Contains("event.wake_hunt")) unlocks.Add("profile.secret_hunt");
         Production.ReserveCampaignItemSequence(arena.Capture().NextObjectId);
         var events = Production.GrantCampaignOutcome(receipt, result.Experience, result.Materials, state.Discoveries.ToArray(), state.RescuedResidents.ToArray(), unlocks.ToArray(), state.CompletedActs.Contains(1) ? "fragment.heart_serath" : "");
-        if (!InHub) arena = Production.ProjectCampaignCombat(arena.Capture()); return events;
+        if (!InHub) arena = Production.ProjectCampaignCombat(arena); return events;
     }
     private bool ChoiceAllows(string encounter)
     {
@@ -401,7 +410,7 @@ public sealed partial class CampaignRuntimeSession
     private void StartEncounter(string id, bool restoreAtAnchor)
     {
         CacheOpeningRoom();
-        Production.ClearCampaignEffects(); var source = Production.ProjectCampaignCombat(arena.Capture()).Capture();
+        Production.ClearCampaignEffects(); var source = Production.ProjectCampaignCombat(arena).Capture();
         if (clearedRooms.ContainsKey(id)) { ResumeOpeningRoom(id, restoreAtAnchor); return; }
         arena = CombatSession.CreateEncounter(combatJson, source.Seed, id, source, restoreAtAnchor); ActiveEncounterId = id;
     }

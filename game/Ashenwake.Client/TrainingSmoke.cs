@@ -42,6 +42,8 @@ public partial class TrainingSmoke : Node
             if (DisplayServer.GetName() != "headless") GetWindow().GrabFocus();
             foreach (string discipline in new[] { "Vanguard", "Veilwalker", "Arcanist", "Gravecaller", "Warden" }) await Discipline(discipline);
             await Presets();
+            // Let the native mixer release diagnostic streams before immediate quit.
+            foreach (var player in _sandbox.AudioDirector.MusicPlayers) { player.Stop(); player.Stream = null; }
             await Frames(); Finish(true, "");
         }
         catch (Exception ex) { GD.PushError(ex.ToString()); Finish(false, ex.Message); }

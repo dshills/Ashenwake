@@ -404,6 +404,7 @@ public sealed partial class CombatSession
         if (result.Absorbed > 0) Emit("BarrierAbsorbed", target.Id, target.Id, result.Absorbed, hit.ContentId, hit.ActionId, hit.Depth);
         int healthDamage = Math.Min(target.Health, result.HealthDamage); target.Health -= healthDamage;
         ObserveTrainingHit(hit, source, target, healthDamage);
+        ObserveIncomingDamage(hit, source, target, healthDamage);
         Emit("DamageApplied", hit.SourceId, hit.TargetId, healthDamage, hit.ContentId, hit.ActionId, hit.Depth);
         if (critical) Emit("CriticalHit", hit.SourceId, hit.TargetId, healthDamage, hit.ContentId, hit.ActionId, hit.Depth);
         if (result.BeforeBarrier <= 0) return;

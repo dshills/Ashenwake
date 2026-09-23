@@ -133,7 +133,7 @@ public partial class EndgameDirector
 
     private void ShowFrontMenu()
     {
-        EndTraining();
+        _deathRecapHud?.Close(); EndTraining();
         if (_hasActiveCharacter) Save();
         RefreshFrontMenu(); _frontMenu.ShowPage("Main");
     }
@@ -142,6 +142,7 @@ public partial class EndgameDirector
     {
         if (!_hasActiveCharacter) return;
         _frontMenu.SetOpen(false); _sandbox.ResumeFromFrontMenu();
+        if (_session.RunView is { AwaitingRetry: true } or { Status: "Failed" }) { _shownRecovery = ""; _shownDeathRecap = null; ObserveDeathRecap(); }
     }
 
     private void CreateCharacter(string discipline)
