@@ -15,7 +15,7 @@ public partial class EndgameDirector
 
     private void InitializeRegionalHunts()
     {
-        _sandbox.EnemyNameOverride = id => _training is null && _session.InRegionalHunt && _session.CurrentRegionalHunt is { } quarry && id == quarry.PrimaryEnemyId ? quarry.Name : null;
+        _sandbox.EnemyNameOverride = id => _training is null && _session.InSecretChamber && _session.CurrentSecretChamber is { } guardian && id == guardian.PrimaryEnemyId ? guardian.GuardianName : _training is null && _session.InRegionalHunt && _session.CurrentRegionalHunt is { } quarry && id == quarry.PrimaryEnemyId ? quarry.Name : null;
         _huntPresentation = new RegionalHuntPresentation(); AddChild(_huntPresentation);
         _huntBoard = new RegionalHuntBoard(); _sandbox.AddOverlay(_huntBoard);
         _huntNavigation = new Button { Name = "RegionalHuntNavigation", Text = "Regional hunts", TooltipText = "Inspect the three regional contracts at Greyhaven's hunt board." };
@@ -37,7 +37,7 @@ public partial class EndgameDirector
         _huntBoard.BoardApproachRequested += () => _sandbox.RequestWorldInteraction(RegionalHuntCatalog.BoardInteraction);
         _huntBoard.VisibilityChangedByPlayer += open =>
         {
-            if (open) { _collection?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
+            if (open) { _secretPanel?.SetOpen(false); _collection?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
             UpdatePanelVisibility();
         };
         _huntBoard.MenuRequested += action =>

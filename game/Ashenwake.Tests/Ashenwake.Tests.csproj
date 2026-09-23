@@ -15,6 +15,8 @@
     <Compile Include="../Ashenwake.Client/FrontMenuModels.cs" Link="Client/FrontMenuModels.cs" />
     <None Include="../../content/phase0.json" Link="phase0.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/combat.json" Link="combat.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/combat-regional-hunts.json" Link="fixtures/combat-regional-hunts.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/progression-regional-hunts.json" Link="fixtures/progression-regional-hunts.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/combat-midgame-legendary.json" Link="fixtures/combat-midgame-legendary.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/progression-midgame-legendary.json" Link="fixtures/progression-midgame-legendary.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/combat-opening-depth.json" Link="fixtures/combat-opening-depth.json" CopyToOutputDirectory="PreserveNewest" />

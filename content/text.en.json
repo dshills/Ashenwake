@@ -124,6 +124,21 @@
     "power.property.borrowed_hour.description": { "other": "Using an ultimate prepares 3 charges for 8 seconds. Your next 3 accepted non-ultimate skills with a cooldown have their assigned cooldown halved, with a minimum of 1 tick. Free skills without a cooldown do not spend charges. Copies do not stack." },
     "source.crown_unsworn": { "other": "Found: clear the Contract Hall in Act IV; also Shattered Spine Fracture room 2 and the final phase of Orrun Without an Oath." },
     "source.last_witness": { "other": "Found: secure Identity Memory in Act V; also Hollow Night Fracture room 2 and the final phase of The Thousand Memories of Serath." },
-    "source.stolen_hour": { "other": "Found: defeat the Breach Heart in Act V; also Hollow Night Fracture final rooms and the final phase of The Shape That Remembers Nhal." }
+    "source.stolen_hour": { "other": "Found: defeat the Breach Heart in Act V; also Hollow Night Fracture final rooms and the final phase of The Shape That Remembers Nhal." },
+    "equipment.griefs_reprieve": { "other": "Grief’s Reprieve" },
+    "equipment.widowthorn": { "other": "Widowthorn" },
+    "equipment.emberwake_mantle": { "other": "Emberwake Mantle" },
+    "lore.griefs_reprieve": { "other": "The tollkeeper raised this shield between the bell and the grieving. For one stolen breath, the world was quiet." },
+    "lore.widowthorn": { "other": "She sharpened a wedding thorn until it could part bone. Every wound remembers the promise beneath the venom." },
+    "lore.emberwake_mantle": { "other": "Woven from the last smoke of a cold furnace, this mantle drinks the heat that almost claimed its wearer." },
+    "power.property.griefs_reprieve.name": { "other": "Grief’s Reprieve" },
+    "power.property.griefs_reprieve.description": { "other": "Interrupting an enemy cast or warning with hard crowd control heals up to 20 health. 3-second cooldown. Resisted control and idle targets do not trigger it. Copies do not stack." },
+    "power.property.widowthorn.name": { "other": "Widow’s Snare" },
+    "power.property.widowthorn.description": { "other": "When your Poisoned damage kills a foe, root up to 3 eligible foes within 2.6m and sight for 1.5 seconds. 3-second cooldown. The snare deals no damage and respects control immunity. Copies do not stack." },
+    "power.property.emberwake.name": { "other": "Emberwake" },
+    "power.property.emberwake.description": { "other": "Avoid an enemy’s direct Fire hit during a dodge’s invulnerable frames to gain 20% increased direct skill damage for 4 seconds. 3-second trigger cooldown. Burning damage and other invulnerability do not activate it. Copies do not stack." },
+    "source.griefs_reprieve": { "other": "Found in a hidden chamber. This secret reward can be claimed once per character." },
+    "source.widowthorn": { "other": "Found in a hidden chamber. This secret reward can be claimed once per character." },
+    "source.emberwake_mantle": { "other": "Found in a hidden chamber. This secret reward can be claimed once per character." }
   }
 }

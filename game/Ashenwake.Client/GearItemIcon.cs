@@ -131,6 +131,7 @@ public partial class GearItemIcon : Control
         }
         if (slot == EquipmentSlot.OffHand)
         {
+            if (id == "griefs_reprieve") return Silhouette.Shield;
             if (id.Contains("focus", StringComparison.Ordinal) || id.Contains("tome", StringComparison.Ordinal)) return Silhouette.Focus;
             return discipline switch
             {

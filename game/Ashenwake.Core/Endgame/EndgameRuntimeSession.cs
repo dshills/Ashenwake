@@ -27,13 +27,13 @@ public sealed partial class EndgameRuntimeSession
     private EndgameRuntimeSnapshot initial = null!;
     public CampaignRuntimeSession Campaign { get; private set; }
     public ProductionSession Production => Campaign.Production;
-    public CombatSession Combat => InRegionalHunt ? regionalArena! : arena ?? Campaign.Combat;
+    public CombatSession Combat => InSecretChamber ? secretArena! : InRegionalHunt ? regionalArena! : arena ?? Campaign.Combat;
     public DeathRecap? LastDeathRecap { get; private set; }
     public EndgameContent Content { get; }
     public RoomDefinition Room => Combat.Room;
     public long Tick { get; private set; }
-    public bool InHub => !InRegionalHunt && arena is null && Campaign.InHub;
-    public bool EncounterCleared => InRegionalHunt ? regionalHunts!.Run!.Stage == "Victory" : arena is null ? Campaign.EncounterCleared : cleared;
+    public bool InHub => !InSecretChamber && !InRegionalHunt && arena is null && Campaign.InHub;
+    public bool EncounterCleared => InSecretChamber ? secretChambers!.Active!.Stage is "Victory" or "Claimed" : InRegionalHunt ? regionalHunts!.Run!.Stage == "Victory" : arena is null ? Campaign.EncounterCleared : cleared;
     public bool AwaitingRetry => awaitingRetry;
     public IReadOnlyList<string> WorldEvents { get; private set; } = [];
     public string StateHash => JsonData.Hash(Capture());
@@ -41,7 +41,7 @@ public sealed partial class EndgameRuntimeSession
     private int ArenaIndex => Math.Min(State.Run!.EncounterIndex, manifest!.Rooms.Length - 1);
     private bool CampaignComplete => Campaign.View.Ending?.FracturesUnlocked == true;
     private bool CanRecover => InHub && State.Unlocked && State.Run?.Status != "Active" && State.Sigils.All(s => s.Consumed) && State.Sigils.Length < 10000;
-    public IReadOnlyList<ExpeditionInteraction> Interactions => InRegionalHunt ? RegionalInteractions : arena is not null ? [] : !InHub ? Campaign.Interactions :
+    public IReadOnlyList<ExpeditionInteraction> Interactions => InSecretChamber ? SecretInteractions : InRegionalHunt ? RegionalInteractions : arena is not null ? [] : !InHub ? [.. Campaign.Interactions, .. SecretInteractions] :
         [.. Campaign.Interactions, new(RegionalHuntCatalog.BoardInteraction, "Regional hunts · contracts and rewards", RegionalHuntCatalog.BoardPosition, RegionalHuntCatalog.BoardRange), new(Training.TrainingSession.InteractionId, "Training ground · practice your build", Training.TrainingSession.EntryPosition, Training.TrainingSession.InteractionRange),
             .. State.Unlocked ? new ExpeditionInteraction[] { new("endgame.gate", "Fractures · Sigils and God Hunts", new(6500, 0), 2600) } : []];
     public EndgameRunView? RunView
@@ -104,6 +104,7 @@ public sealed partial class EndgameRuntimeSession
             awaitingRetry = snapshot.AwaitingRetry
         };
         session.RestoreRegionalHunts(snapshot.RegionalHunts);
+        session.RestoreSecretChambers(snapshot.SecretChambers);
         session.RestoreExplorationMap(snapshot.ExplorationMap);
         session.ValidateState(); session.initial = session.Capture(); return session;
     }
@@ -126,7 +127,8 @@ public sealed partial class EndgameRuntimeSession
         AwaitingRetry = awaitingRetry,
         EncounterCleared = cleared,
         ExplorationMap = explorationMap?.Capture(),
-        RegionalHunts = CaptureRegionalHunts()
+        RegionalHunts = CaptureRegionalHunts(),
+        SecretChambers = CaptureSecretChambers()
     };
     public EndgameRuntimeReplay CaptureReplay() => JsonData.Copy(new EndgameRuntimeReplay(1, initial, frames.ToArray()));
     public FracturePreview PreviewSigil(long id)
@@ -181,6 +183,7 @@ public sealed partial class EndgameRuntimeSession
         manifest = state.Manifest is null ? null : JsonData.Copy(state.Manifest); cleared = state.EncounterCleared; awaitingRetry = state.AwaitingRetry;
         Tick = state.Tick; operationSequence = state.OperationSequence;
         RestoreRegionalHunts(state.RegionalHunts);
+        RestoreSecretChambers(state.SecretChambers);
         RestoreExplorationMap(state.ExplorationMap);
         Campaign.PreserveDeathRecapFrom(previousCampaign);
         if (arena is not null && previousArena is not null) arena.PreserveDeathRecapFrom(previousArena);
@@ -192,6 +195,7 @@ public sealed partial class EndgameRuntimeSession
     private EndgameRuntimeResult Advance(CombatCommand[] commands)
     {
         if (commands.Length > 64 || commands.Any(c => c is null)) throw new InvalidDataException("Invalid endgame command batch.");
+        if (InSecretChamber) return AdvanceSecretChamber(commands);
         if (InRegionalHunt) return AdvanceRegionalHunt(commands);
         if (arena is null)
         {
@@ -225,6 +229,9 @@ public sealed partial class EndgameRuntimeSession
     private EndgameRuntimeResult Change(EndgameRuntimeCommand command)
     {
         var messages = new List<string>();
+        if (command.Action is EndgameRuntimeAction.ResolveSecretClue or EndgameRuntimeAction.EnterSecretChamber or EndgameRuntimeAction.ChallengeSecretGuardian or EndgameRuntimeAction.ClaimSecretTreasure or EndgameRuntimeAction.ExitSecretChamber)
+            return ChangeSecretChamber(command);
+        if (InSecretChamber && command.Action != EndgameRuntimeAction.EnableExplorationMap) return Fail("Leave the hidden chamber before changing the campaign, build, or expedition.");
         if (command.Action is EndgameRuntimeAction.StartRegionalHunt or EndgameRuntimeAction.TrackRegionalHuntClue or EndgameRuntimeAction.ClaimRegionalHuntReward or EndgameRuntimeAction.AbandonRegionalHunt or EndgameRuntimeAction.ReturnRegionalHunt)
             return ChangeRegionalHunt(command);
         if (HasUnresolvedRegionalHunt && command.Action != EndgameRuntimeAction.EnableExplorationMap) return Fail("Resolve the regional hunt at its board before changing the campaign, build, or expedition.");
@@ -326,6 +333,7 @@ public sealed partial class EndgameRuntimeSession
         if (State.Unlocked != CampaignComplete || !Production.HasEndgameInventory) throw new InvalidDataException("Endgame unlock/permanent inventory differs from the completed campaign.");
         Production.ValidateEndgameLedger(State);
         ValidateRegionalHunts();
+        ValidateSecretChambers();
         if (arena is null)
         {
             if (manifest is not null || awaitingRetry || cleared || State.Run?.Status == "Active") throw new InvalidDataException("Inactive endgame has a live arena or run.");

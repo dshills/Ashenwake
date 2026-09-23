@@ -386,7 +386,10 @@ public sealed partial class ProductionSession
             CinderCycle = properties.Contains(LegendaryEquipment.FurnacePower),
             UnspokenVerdict = properties.Contains(LegendaryEquipment.CrownPower),
             WitnessVow = properties.Contains(LegendaryEquipment.WitnessPower),
-            BorrowedHour = properties.Contains(LegendaryEquipment.HourPower)
+            BorrowedHour = properties.Contains(LegendaryEquipment.HourPower),
+            GriefsReprieve = properties.Contains(LegendaryEquipment.GriefPower),
+            Widowthorn = properties.Contains(LegendaryEquipment.WidowthornPower),
+            Emberwake = properties.Contains(LegendaryEquipment.EmberwakePower)
         };
     }
     private void SynchronizeItemSequence()

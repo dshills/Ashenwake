@@ -8,6 +8,6 @@ public sealed partial class EndgameRuntimeSession
     {
         var preview = Campaign.PreviewBuildLoadout(id);
         const string blocked = "Finish or abandon the active hunt or expedition before changing the permanent build.";
-        return arena is null && !HasUnresolvedRegionalHunt ? preview : preview with { Success = false, Reason = blocked, Requirements = Array.AsReadOnly(new[] { blocked }.Concat(preview.Requirements).ToArray()) };
+        return arena is null && !InSecretChamber && !HasUnresolvedRegionalHunt ? preview : preview with { Success = false, Reason = blocked, Requirements = Array.AsReadOnly(new[] { blocked }.Concat(preview.Requirements).ToArray()) };
     }
 }

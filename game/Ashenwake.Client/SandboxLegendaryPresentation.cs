@@ -34,6 +34,9 @@ public partial class Sandbox
         }
         string cue = e.ContentId switch
         {
+            LegendaryEquipment.GriefPower => "legendary_verdict",
+            LegendaryEquipment.WidowthornPower => "legendary_rotwake",
+            LegendaryEquipment.EmberwakePower => "legendary_cinder",
             LegendaryEquipment.PyrePower => "legendary_pyre",
             LegendaryEquipment.OathPower => "legendary_oath",
             LegendaryEquipment.WidowPower => "legendary_widow",
@@ -62,15 +65,21 @@ public partial class Sandbox
         // Cosmetic visibility never reveals a hidden actor; all targeting remains in Core.
         var origin = cue is "legendary_rotwake" or "legendary_chorus" or "legendary_witness" ? target : actor;
         if (origin?.AuthoredVisible == true) _combatEffects.Emit(cue, origin.Current, direction, color, _reduceEffects);
-        string message = cue switch
+        string message = e.ContentId switch
         {
-            "legendary_verdict" => $"UNSPOKEN VERDICT · +{e.Amount} barrier",
-            "legendary_witness" => $"WITNESS VOW · {e.Amount} Void burst",
-            "legendary_hour" => e.Kind == "LegendaryReadied" ? "BORROWED HOUR · 3 half-cooldown casts ready" : $"BORROWED HOUR · cooldown halved · {e.Amount} left",
-            "legendary_rotwake" => $"VIRULENT WAKE · {e.Amount} {(e.Amount == 1 ? "foe" : "foes")} poisoned",
-            "legendary_chorus" => $"MOURNING CHOIR · {e.Amount} {(e.Amount == 1 ? "summon" : "summons")} rallied",
-            "legendary_cinder" => "CINDER CYCLE · " + (_view.Discipline == "Arcanist" ? "−" : "+") + e.Amount + " " + _view.ResourceName,
-            _ => ""
+            LegendaryEquipment.GriefPower => $"GRIEF’S REPRIEVE · +{e.Amount} health",
+            LegendaryEquipment.WidowthornPower => $"WIDOWTHORN · {e.Amount} foes rooted",
+            LegendaryEquipment.EmberwakePower => "EMBERWAKE · +20% direct skill damage",
+            _ => cue switch
+            {
+                "legendary_verdict" => $"UNSPOKEN VERDICT · +{e.Amount} barrier",
+                "legendary_witness" => $"WITNESS VOW · {e.Amount} Void burst",
+                "legendary_hour" => e.Kind == "LegendaryReadied" ? "BORROWED HOUR · 3 half-cooldown casts ready" : $"BORROWED HOUR · cooldown halved · {e.Amount} left",
+                "legendary_rotwake" => $"VIRULENT WAKE · {e.Amount} {(e.Amount == 1 ? "foe" : "foes")} poisoned",
+                "legendary_chorus" => $"MOURNING CHOIR · {e.Amount} {(e.Amount == 1 ? "summon" : "summons")} rallied",
+                "legendary_cinder" => "CINDER CYCLE · " + (_view.Discipline == "Arcanist" ? "−" : "+") + e.Amount + " " + _view.ResourceName,
+                _ => ""
+            }
         };
         if (message.Length > 0)
         {
@@ -126,7 +135,11 @@ public partial class Sandbox
         if (legendary.VerdictEquipped) third.Add(legendary.VerdictRemainingTicks > 0 ? "VERDICT " + Seconds(legendary.VerdictRemainingTicks) : "VERDICT READY");
         if (legendary.WitnessEquipped) third.Add(legendary.WitnessStacks > 0 ? $"WITNESS {legendary.WitnessStacks}/4 · {Seconds(legendary.WitnessRemainingTicks)}" : "WITNESS 0/4");
         if (legendary.HourEquipped) third.Add(legendary.HourCharges > 0 ? $"HOUR {legendary.HourCharges} · {Seconds(legendary.HourRemainingTicks)}" : "HOUR · ULTIMATE");
-        return string.Join("\n", new[] { string.Join("   ·   ", first), string.Join("   ·   ", second), string.Join("   ·   ", third) }.Where(line => line.Length > 0));
+        var fourth = new List<string>();
+        if (legendary.GriefEquipped) fourth.Add(legendary.GriefRemainingTicks > 0 ? "REPRIEVE " + Seconds(legendary.GriefRemainingTicks) : "REPRIEVE · INTERRUPT");
+        if (legendary.WidowthornEquipped) fourth.Add(legendary.WidowthornRemainingTicks > 0 ? "WIDOWTHORN " + Seconds(legendary.WidowthornRemainingTicks) : "WIDOWTHORN · POISON KILL");
+        if (legendary.EmberwakeEquipped) fourth.Add(legendary.EmberwakeRemainingTicks > 0 ? "EMBERWAKE +20% · " + Seconds(legendary.EmberwakeRemainingTicks) : legendary.EmberwakeCooldownTicks > 0 ? "EMBERWAKE " + Seconds(legendary.EmberwakeCooldownTicks) : "EMBERWAKE · DODGE FIRE");
+        return string.Join("\n", new[] { string.Join("   ·   ", first), string.Join("   ·   ", second), string.Join("   ·   ", third), string.Join("   ·   ", fourth) }.Where(line => line.Length > 0));
     }
 
     private void PresentLegendaryTrigger()
@@ -134,6 +147,9 @@ public partial class Sandbox
         var legendary = _view.Legendary;
         bool equipped = _legendaryTriggerPower switch
         {
+            LegendaryEquipment.GriefPower => legendary?.GriefEquipped == true,
+            LegendaryEquipment.WidowthornPower => legendary?.WidowthornEquipped == true,
+            LegendaryEquipment.EmberwakePower => legendary?.EmberwakeEquipped == true,
             LegendaryEquipment.RotwakePower => legendary?.VirulentEquipped == true,
             LegendaryEquipment.MourningPower => legendary?.ChorusEquipped == true,
             LegendaryEquipment.FurnacePower => legendary?.CinderEquipped == true,

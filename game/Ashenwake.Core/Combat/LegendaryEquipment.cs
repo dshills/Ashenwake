@@ -11,9 +11,11 @@ public static class LegendaryEquipment
     public const string RotwakePower = "property.virulent_wake", MourningPower = "property.rallying_chorus", FurnacePower = "property.cinder_cycle";
     public const string Crown = "item.crown_unsworn", Witness = "item.last_witness", Hour = "item.stolen_hour";
     public const string CrownPower = "property.unspoken_verdict", WitnessPower = "property.witness_vow", HourPower = "property.borrowed_hour";
-    public static bool IsItem(string id) => id is Pyre or Oath or Widow or Rotwake or Mourning or Furnace or Crown or Witness or Hour;
-    public static bool IsPower(string id) => id is PyrePower or OathPower or WidowPower or RotwakePower or MourningPower or FurnacePower or CrownPower or WitnessPower or HourPower;
-    public static bool IsEffect(string id) => id is "effect.pyre_trail" or "effect.oath_reprisal" or "effect.widow_echo" or "effect.virulent_wake" or "effect.rallying_chorus" or "effect.cinder_cycle" or "effect.witness_vow";
+    public const string Grief = "item.griefs_reprieve", Widowthorn = "item.widowthorn", Emberwake = "item.emberwake_mantle";
+    public const string GriefPower = "property.griefs_reprieve", WidowthornPower = "property.widowthorn", EmberwakePower = "property.emberwake";
+    public static bool IsItem(string id) => id is Pyre or Oath or Widow or Rotwake or Mourning or Furnace or Crown or Witness or Hour or Grief or Widowthorn or Emberwake;
+    public static bool IsPower(string id) => id is PyrePower or OathPower or WidowPower or RotwakePower or MourningPower or FurnacePower or CrownPower or WitnessPower or HourPower or GriefPower or WidowthornPower or EmberwakePower;
+    public static bool IsEffect(string id) => id is "effect.pyre_trail" or "effect.oath_reprisal" or "effect.widow_echo" or "effect.virulent_wake" or "effect.rallying_chorus" or "effect.cinder_cycle" or "effect.witness_vow" or "effect.widowthorn";
     public static string EncounterReward(string encounter) => encounter switch
     {
         "campaign.road" => Pyre,
@@ -34,6 +36,11 @@ public sealed record LegendaryCombatState
     public int OathCharge { get; set; }
     public long OathUntil { get; set; }
     public long WidowUntil { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public long GriefReadyTick { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public long WidowthornReadyTick { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public long EmberwakeDodgeUntil { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public long EmberwakeUntil { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public long EmberwakeReadyTick { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public long VirulentReadyTick { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public long ChorusReadyTick { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public long CinderUntil { get; set; }
@@ -135,12 +142,15 @@ public sealed partial class CombatSession
         if (!_state.ProgressionBuild.WidowEcho || state.WidowUntil <= Tick || Player.Health <= 0) state.WidowUntil = 0;
         TrimMidgameLegendaryState(state);
         TrimLateLegendaryState(state);
-        if (state.OathCharge == 0 && state.WidowUntil == 0 && state.VirulentReadyTick == 0 && state.ChorusReadyTick == 0 && state.CinderUntil == 0 && state.VerdictReadyTick == 0 && state.WitnessUntil == 0 && state.WitnessActions is null && state.HourUntil == 0) _state.Legendary = null;
+        TrimSecretLegendaryState(state);
+        if (state.OathCharge == 0 && state.WidowUntil == 0 && state.VirulentReadyTick == 0 && state.ChorusReadyTick == 0 && state.CinderUntil == 0 && state.VerdictReadyTick == 0 && state.WitnessUntil == 0 && state.WitnessActions is null && state.HourUntil == 0 && state.GriefReadyTick == 0 && state.WidowthornReadyTick == 0 && state.EmberwakeDodgeUntil == 0 && state.EmberwakeUntil == 0 && state.EmberwakeReadyTick == 0) _state.Legendary = null;
     }
 
     private void ClearInactiveLegendaryEffects()
     {
         TrimLegendaryState();
+        if (!_state.ProgressionBuild.Widowthorn || Player.Health <= 0)
+            foreach (var actor in _state.Actors) actor.Statuses.RemoveAll(s => s.OriginSkill == "effect.widowthorn");
         if (!_state.ProgressionBuild.PyreTrail || Player.Health <= 0) _state.Areas.RemoveAll(a => a.SkillId == "effect.pyre_trail");
         if (!_state.ProgressionBuild.WidowEcho || Player.Health <= 0) _state.Projectiles.RemoveAll(p => p.SkillId == "effect.widow_echo");
         if (!_state.ProgressionBuild.VirulentWake || Player.Health <= 0)
@@ -151,6 +161,7 @@ public sealed partial class CombatSession
     {
         ValidateMidgameLegendaryState();
         ValidateLateLegendaryState();
+        ValidateSecretLegendaryState();
         if (_state.Legendary is { } state && (Player.Health <= 0 || state.OathCharge is < 0 or > 60 ||
             (state.OathCharge == 0) != (state.OathUntil == 0) || state.OathUntil != 0 && (state.OathUntil < Tick || state.OathUntil > Tick + 240) ||
             state.WidowUntil != 0 && (state.WidowUntil < Tick || state.WidowUntil > Tick + 150) || !_state.ProgressionBuild.OathReprisal && (state.OathCharge != 0 || state.OathUntil != 0) ||

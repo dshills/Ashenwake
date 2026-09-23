@@ -160,12 +160,14 @@ public partial class LegendaryCollectionPanel : Control
             _details.AddChild(Text(source.Label + (source.Repeatable ? " · Repeatable" : ""), 14));
             _details.AddChild(Text(source.Requirement, 12));
             var kind = source.Kind;
-            string label = kind == LegendaryCollectionSourceKind.Campaign ? "View Journey route" : kind == LegendaryCollectionSourceKind.Fracture ? "View Fractures" : "View God Hunt";
+            string label = kind == LegendaryCollectionSourceKind.SecretChamber ? "View discovery" : kind == LegendaryCollectionSourceKind.Campaign ? "View Journey route" : kind == LegendaryCollectionSourceKind.Fracture ? "View Fractures" : "View God Hunt";
             var route = Button(label, "CollectionSource" + kind, () => SourceRequested?.Invoke(_selected, kind));
-            route.Disabled = kind == LegendaryCollectionSourceKind.GodHunt && source.HuntId.Length == 0;
+            route.Disabled = kind == LegendaryCollectionSourceKind.GodHunt && source.HuntId.Length == 0 || kind == LegendaryCollectionSourceKind.SecretChamber && source.ChamberId.Length == 0;
             _details.AddChild(route); _details.AddChild(new HSeparator());
         }
-        _details.AddChild(Text("Collect the ground drop to own it. Extract a spare copy at its specialist to learn its power. Previewing and tracking never change your equipment.", 12));
+        _details.AddChild(Text(selected.Entry.SecretChamberId.Length > 0
+            ? "Claim the chamber treasure to own it. This character receives one copy; extracting its power consumes the item. Previewing and tracking never change your equipment."
+            : "Collect the ground drop to own it. Extract a spare copy at its specialist to learn its power. Previewing and tracking never change your equipment.", 12));
         _track.Text = _view.TrackedItem == _selected ? "Stop tracking this item" : "Track this item";
         _preview.SetAppearance(Preview(_view.Appearance, selected.Entry)); _preview.SetCaption("Preview only · " + EquipmentNames.For(_selected));
     }
@@ -174,6 +176,8 @@ public partial class LegendaryCollectionPanel : Control
         var item = new ItemAppearance(entry.ItemId, "Legendary");
         return entry.Slot switch
         {
+            EquipmentSlot.MainHand => current with { MainHand = item },
+            EquipmentSlot.OffHand => current with { OffHand = item },
             EquipmentSlot.Head => current with { Head = item },
             EquipmentSlot.Chest => current with { Chest = item },
             EquipmentSlot.Shoulders => current with { Shoulders = item },

@@ -106,6 +106,9 @@ public sealed partial class CombatSession
             "property.unspoken_verdict" => "Crown of the Unsworn",
             "effect.witness_vow" or "property.witness_vow" => "Vow of the Last Witness",
             "property.borrowed_hour" => "Greaves of the Stolen Hour",
+            "property.griefs_reprieve" => "Grief’s Reprieve",
+            "effect.widowthorn" or "property.widowthorn" => "Widowthorn",
+            "property.emberwake" => "Emberwake Mantle",
             "summon.companion_bite" => "Companion bite",
             "summon.spirit_bolt" => "Summon spirit bolt",
             _ => id

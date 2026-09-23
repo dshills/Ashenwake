@@ -1343,45 +1343,6 @@
       ],
       "hands": 0,
       "disciplines": []
-    },
-    {
-      "id": "item.griefs_reprieve",
-      "name": "Grief’s Reprieve",
-      "slot": "OffHand",
-      "damage": 0,
-      "armor": 900,
-      "criticalBasisPoints": 0,
-      "compatibleSlots": [
-        "OffHand"
-      ],
-      "hands": 1,
-      "disciplines": []
-    },
-    {
-      "id": "item.widowthorn",
-      "name": "Widowthorn",
-      "slot": "MainHand",
-      "damage": 8,
-      "armor": 0,
-      "criticalBasisPoints": 0,
-      "compatibleSlots": [
-        "MainHand"
-      ],
-      "hands": 1,
-      "disciplines": []
-    },
-    {
-      "id": "item.emberwake_mantle",
-      "name": "Emberwake Mantle",
-      "slot": "Shoulders",
-      "damage": 0,
-      "armor": 700,
-      "criticalBasisPoints": 0,
-      "compatibleSlots": [
-        "Shoulders"
-      ],
-      "hands": 0,
-      "disciplines": []
     }
   ],
   "loadouts": [

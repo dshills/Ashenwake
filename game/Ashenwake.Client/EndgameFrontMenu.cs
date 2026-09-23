@@ -133,7 +133,7 @@ public partial class EndgameDirector
 
     private void ShowFrontMenu()
     {
-        _huntBoard?.SetOpen(false); _deathRecapHud?.Close(); EndTraining();
+        _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _deathRecapHud?.Close(); EndTraining();
         if (_hasActiveCharacter) Save();
         RefreshFrontMenu(); _frontMenu.ShowPage("Main");
     }

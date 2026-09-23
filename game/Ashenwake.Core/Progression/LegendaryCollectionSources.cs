@@ -6,7 +6,7 @@ namespace Ashenwake.Core.Progression;
 
 /// <summary>Authored source identities. A negative Fracture encounter index means the final room.</summary>
 public sealed record LegendaryCollectionEntry(string ItemId, string PowerId, EquipmentSlot Slot,
-    string CampaignEncounterId, string FractureRegionId, int FractureEncounterIndex, string HuntId = "");
+    string CampaignEncounterId, string FractureRegionId, int FractureEncounterIndex, string HuntId = "", string SecretChamberId = "");
 
 public static class LegendaryCollectionCatalog
 {
@@ -20,31 +20,49 @@ public static class LegendaryCollectionCatalog
         new(LegendaryEquipment.Oath, LegendaryEquipment.OathPower, EquipmentSlot.Chest, "campaign.covenant_warden", "act.shattered_spine", -1),
         new(LegendaryEquipment.Crown, LegendaryEquipment.CrownPower, EquipmentSlot.Head, "campaign.contract_hall", "act.shattered_spine", 1, "hunt.orrun_without_oath"),
         new(LegendaryEquipment.Witness, LegendaryEquipment.WitnessPower, EquipmentSlot.Amulet, "campaign.identity_memory", "act.hollow_night", 1, "hunt.thousand_memories"),
-        new(LegendaryEquipment.Hour, LegendaryEquipment.HourPower, EquipmentSlot.Legs, "campaign.breach_heart", "act.hollow_night", -1, "hunt.nhal_reconstruction")
+        new(LegendaryEquipment.Hour, LegendaryEquipment.HourPower, EquipmentSlot.Legs, "campaign.breach_heart", "act.hollow_night", -1, "hunt.nhal_reconstruction"),
+        new(LegendaryEquipment.Grief, LegendaryEquipment.GriefPower, EquipmentSlot.OffHand, "", "", 0, SecretChamberId: "secret.belfry"),
+        new(LegendaryEquipment.Widowthorn, LegendaryEquipment.WidowthornPower, EquipmentSlot.MainHand, "", "", 0, SecretChamberId: "secret.nest"),
+        new(LegendaryEquipment.Emberwake, LegendaryEquipment.EmberwakePower, EquipmentSlot.Shoulders, "", "", 0, SecretChamberId: "secret.furnace")
     });
 }
 
-public enum LegendaryCollectionSourceKind { Campaign, Fracture, GodHunt }
+public enum LegendaryCollectionSourceKind { Campaign, Fracture, GodHunt, SecretChamber }
 public enum LegendaryCollectionSourceState { Locked, Available, Active, Completed }
 
 /// <summary>A presentation-only route. IDs for unreached encounters and secret hunts are deliberately empty.</summary>
 public sealed record LegendaryCollectionSourceView(LegendaryCollectionSourceKind Kind,
     LegendaryCollectionSourceState State, string Label, string Requirement, int Act = 0,
-    string EncounterId = "", string RegionId = "", long SigilId = 0, string HuntId = "", bool Repeatable = false);
+    string EncounterId = "", string RegionId = "", long SigilId = 0, string HuntId = "", bool Repeatable = false, string ChamberId = "");
 
 /// <summary>Read-only source guidance; all travel and launch commands still use their ordinary authoritative gates.</summary>
 public static class LegendaryCollectionSources
 {
     public static LegendaryCollectionSourceView[] For(EndgameRuntimeSession session, string itemId) => Project(
         session.Campaign.Content.Capture(), session.Campaign.Capture().Campaign, session.Campaign.View,
-        session.Campaign.ActiveEncounterId, session.Content.Capture(), session.View, itemId, session.CurrentRunContentId);
+        session.Campaign.ActiveEncounterId, session.Content.Capture(), session.View, itemId, session.CurrentRunContentId, session.SecretChambers);
 
     public static LegendaryCollectionSourceView[] Project(CampaignDefinition content, CampaignState state,
         CampaignView campaign, string activeEncounterId, EndgameDefinition endgameContent,
-        EndgameRuntimeView endgame, string itemId, string activeRunContentId = "")
+        EndgameRuntimeView endgame, string itemId, string activeRunContentId = "", SecretChambersView? secrets = null)
     {
         var entry = LegendaryCollectionCatalog.Entries.FirstOrDefault(e => e.ItemId == itemId);
         if (entry is null) return [];
+        if (entry.SecretChamberId.Length > 0)
+        {
+            var chamber = secrets?.Entries.FirstOrDefault(e => e.Id == entry.SecretChamberId && e.Revealed);
+            if (chamber is null) return [new(LegendaryCollectionSourceKind.SecretChamber, LegendaryCollectionSourceState.Locked,
+                "Undiscovered hidden chamber", "Inspect unusual details in the world to uncover this one-time treasure.")];
+            var definition = SecretChamberCatalog.Find(chamber.Id)!;
+            bool inside = secrets!.Run?.Id == chamber.Id;
+            return [new(LegendaryCollectionSourceKind.SecretChamber,
+                chamber.Claimed ? LegendaryCollectionSourceState.Completed : inside ? LegendaryCollectionSourceState.Active : LegendaryCollectionSourceState.Available,
+                chamber.Name, chamber.Claimed ? "Treasure already claimed by this character. This chamber does not grant another copy."
+                    : chamber.Defeated ? "The guardian is defeated. Return through the revealed passage and claim its waiting treasure."
+                    : inside ? "Challenge the guardian, then collect the treasure. You can leave safely and return later."
+                    : "Return to the discovered doorway, enter its safe foyer, and challenge the optional guardian when ready.",
+                chamber.Act, definition.SourceEncounterId, ChamberId: chamber.Id)];
+        }
         var result = new List<LegendaryCollectionSourceView>();
         var act = content.Acts.Single(a => a.Encounters.Any(e => e.Id == entry.CampaignEncounterId));
         bool completed = state.CompletedEncounters.Contains(entry.CampaignEncounterId);

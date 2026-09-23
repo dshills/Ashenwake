@@ -24,15 +24,21 @@ public sealed class LegendaryCollectionSourceTests
         new(1, kind, "Cosmetic name", region, 1, index, rooms, 3, 0, 100, "Active", cleared, false, [], [], [], 0, false, false, true);
 
     [Fact]
-    public void NineDefinitionsMatchAuthoredItemsAndCampaignRewards()
+    public void DefinitionsMatchAuthoredItemsAndTheirExclusiveSources()
     {
         var content = ProgressionContent.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "progression.json"))).Capture();
-        Assert.Equal(9, LegendaryCollectionCatalog.Entries.Count);
-        Assert.Equal(9, LegendaryCollectionCatalog.Entries.Select(e => e.ItemId).Distinct().Count());
+        Assert.Equal(12, LegendaryCollectionCatalog.Entries.Count);
+        Assert.Equal(12, LegendaryCollectionCatalog.Entries.Select(e => e.ItemId).Distinct().Count());
         foreach (var entry in LegendaryCollectionCatalog.Entries)
         {
             var item = content.Items.Single(i => i.Id == entry.ItemId);
             Assert.Equal(item.Property, entry.PowerId); Assert.Contains(entry.Slot, item.Slots);
+            if (entry.SecretChamberId.Length > 0)
+            {
+                Assert.Equal(entry.ItemId, SecretChamberCatalog.Find(entry.SecretChamberId)!.RewardItemId);
+                Assert.Empty(entry.CampaignEncounterId); Assert.Empty(entry.FractureRegionId); Assert.Empty(entry.HuntId);
+                continue;
+            }
             Assert.Equal(entry.ItemId, LegendaryEquipment.EncounterReward(entry.CampaignEncounterId));
             Assert.Contains(entry.FractureRegionId, Endgame.Capture().Regions);
             Assert.InRange(entry.FractureEncounterIndex, -1, 1);
@@ -83,7 +89,7 @@ public sealed class LegendaryCollectionSourceTests
             Assert.All(sources, s => Assert.Empty(s.EncounterId));
             Assert.All(sources, s => Assert.Empty(s.HuntId));
             Assert.All(sources, s => Assert.DoesNotContain("Nhal", s.Label));
-            Assert.Contains(sources, s => s.Kind == LegendaryCollectionSourceKind.Fracture && s.Requirement.Contains("Complete this character's campaign"));
+            if (entry.SecretChamberId.Length == 0) Assert.Contains(sources, s => s.Kind == LegendaryCollectionSourceKind.Fracture && s.Requirement.Contains("Complete this character's campaign"));
         }
         var crown = Sources(LegendaryEquipment.Crown).First();
         Assert.Contains("Complete Act 3", crown.Requirement); Assert.Empty(crown.RegionId);
@@ -141,4 +147,31 @@ public sealed class LegendaryCollectionSourceTests
         Assert.Equal(LegendaryCollectionSourceState.Active, Hunt(view, secret).State);
         Assert.Equal(LegendaryCollectionSourceState.Locked, Hunt(view, "hunt.false_vael").State);
     }
+    [Theory]
+    [InlineData("secret.belfry")]
+    [InlineData("secret.nest")]
+    [InlineData("secret.furnace")]
+    public void SecretSourcesHideIdentityUntilDoorRevealedAndNeverPromiseRepeatRewards(string id)
+    {
+        var definition = SecretChamberCatalog.Find(id)!;
+        var story = CampaignSession.Create(Campaign);
+        LegendaryCollectionSourceView Project(bool revealed, bool claimed)
+        {
+            var secrets = new SecretChambersView([new(id, revealed ? definition.Name : "An unmarked passage", definition.Act,
+                true, revealed, claimed, revealed ? 3 : 1, false, null)], null);
+            return Assert.Single(LegendaryCollectionSources.Project(Campaign.Capture(), story.Capture(), story.View, "hub",
+                Endgame.Capture(), Locked, definition.RewardItemId, secrets: secrets));
+        }
+        var hidden = Project(false, false);
+        Assert.Equal(LegendaryCollectionSourceState.Locked, hidden.State);
+        Assert.Empty(hidden.ChamberId); Assert.Empty(hidden.EncounterId); Assert.Empty(hidden.RegionId);
+        Assert.DoesNotContain(definition.Name, hidden.Label); Assert.DoesNotContain(definition.GuardianName, hidden.Requirement);
+        var found = Project(true, false);
+        Assert.Equal(id, found.ChamberId); Assert.Equal(definition.SourceEncounterId, found.EncounterId);
+        Assert.Equal(LegendaryCollectionSourceState.Available, found.State); Assert.False(found.Repeatable);
+        var claimed = Project(true, true);
+        Assert.Equal(LegendaryCollectionSourceState.Completed, claimed.State); Assert.False(claimed.Repeatable);
+        Assert.Contains("does not grant another copy", claimed.Requirement);
+    }
+
 }

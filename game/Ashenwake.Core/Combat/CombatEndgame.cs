@@ -19,6 +19,7 @@ public sealed partial class CombatSession
             return content.Campaign?.Encounters.FirstOrDefault(e => e.Id == layout)?.Room
                 ?? throw new InvalidDataException("Unknown retained campaign room.");
         }
+        if (state.Endgame is null && SecretChamberCombat.Find(state.EncounterId) is { } chamber) return chamber.Room!;
         if (state.Endgame is null && RegionalHuntCombat.Find(state.EncounterId) is { } regional) return regional.Room!;
         if (state.Endgame is null) return content.Campaign?.Encounters.FirstOrDefault(e => e.Id == state.EncounterId)?.Room ?? content.Room;
         var e = state.Endgame;

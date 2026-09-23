@@ -52,7 +52,7 @@ public partial class LegendaryCollectionSmoke : Node
         Check("journey_opens_paused_collection", Journal.IsOpen && _sandbox.IsPaused);
         Check("fresh_collection_is_empty", Memory.DiscoveredItems.Length == 0 && Find<Label>("CollectionSummary").Text.StartsWith("0 / 9", StringComparison.Ordinal));
         Check("opening_does_not_write_sidecar", !File.Exists(LegendaryCollectionStore.PathFor(SavePath)));
-        foreach (var entry in LegendaryCollectionCatalog.Entries)
+        foreach (var entry in LegendaryCollectionCatalog.Entries.Where(e => e.SecretChamberId.Length == 0))
         {
             await Click("CollectionItem_" + entry.ItemId[5..]);
             Check("preview_" + entry.ItemId, Descendants(Journal).OfType<CharacterPreview>().Single().AppearanceKey.Contains(entry.ItemId, StringComparison.Ordinal));

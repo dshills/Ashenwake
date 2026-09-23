@@ -189,6 +189,7 @@ public sealed partial class CombatSession
                 if (_state.ProgressionBuild.BarrierOnDodge) { Player.Barrier = Math.Min(200, Player.Barrier + 15); Emit("BarrierGranted", 1, 1, 15, "rune.guard"); }
                 foreach (var dodgeFragment in ActiveFragments().Where(f => f.Trigger == "Dodge")) { Player.Barrier = Math.Min(200, Player.Barrier + FragmentAmount(10)); Emit("FragmentTriggered", 1, 1, FragmentAmount(10), dodgeFragment.Id); }
                 LegendaryDodge(dodgeStart);
+                if (_state.ProgressionBuild.Emberwake) (_state.Legendary ??= new()).EmberwakeDodgeUntil = Tick + 7;
                 Emit("Dodged", 1); break;
             case CombatCommandKind.Potion:
                 if (_state.PotionReadyTick > Tick || _state.PotionCharges <= 0 || Player.Health == Player.MaxHealth) { Reject(command, "potion_unavailable"); break; }
@@ -394,13 +395,14 @@ public sealed partial class CombatSession
         if (target.Id == 1 && Player.Pending?.SkillId == "skill.shield_breaker" && Mutation("skill.shield_breaker")?.Id == "mutation.orruns_patience") defense += 1500;
         int bonus = hit.OwnerId == 1 && source?.Id == 1 && !hit.Dot && !hit.Reflected ? Equipped.Sum(i => i.Damage) + _state.ProgressionBuild.FlatDamage + (AshcleaverActive ? _state.Build.TemperLevel * 2 : 0) : 0;
         int increased = hit.OwnerId == 1 ? PassiveEffects.OffenseBasisPoints(_state.ProgressionBuild.Offense) + (Discipline == "Arcanist" ? _state.Momentum * 40 : 0) : 0;
-        increased += CampaignDamageBonus(source) + EndgameDamageBonus(hit);
+        increased += CampaignDamageBonus(source) + EndgameDamageBonus(hit) + EmberwakeDamageBonus(hit);
         if (StormOvercharged && hit.OwnerId == 1 && hit.Depth > 0) increased += 2500;
         if (source?.Statuses.Any(s => s.Id == "Cursed") == true) increased -= 2000;
         if (target.Statuses.Any(s => s.Id == "Marked") && _content.Skills.FirstOrDefault(s => s.Id == hit.ContentId)?.Behavior == "ConsumeMarked") increased += 10000;
         var damageInput = new DamageInput(hit.Damage, bonus, IncreasedBasisPoints: increased, Critical: critical, Family: hit.Family, DefenseBasisPoints: defense,
             VulnerabilityBasisPoints: target.Statuses.Any(s => s.Id == "Vulnerable") ? 2500 : 0, Barrier: target.Barrier, MoreBasisPoints: EndgameFragmentPower(hit, source), MinimumDefenseBasisPoints: EndgameRule("resistance_inversion") ? -1500 : 0, Immune: target.InvulnerableUntil > Tick || IsRituallyShielded(target), DamageOverTime: hit.Dot);
         var result = DamageRules.Resolve(damageInput);
+        ObserveEmberwakeDodge(hit, source, target);
         target.Barrier -= result.Absorbed;
         ChargeOath(source, target, result.Absorbed);
         if (result.Absorbed > 0) Emit("BarrierAbsorbed", target.Id, target.Id, result.Absorbed, hit.ContentId, hit.ActionId, hit.Depth);
@@ -462,7 +464,7 @@ public sealed partial class CombatSession
         // Refresh ownership is stable: the first source retains kill credit until expiration.
         status.ExpiresTick = Tick + duration;
         if (id == "Chilled" && status.Stacks >= 3) { target.Statuses.Remove(status); ApplyStatus(target, "Frozen", hit with { Depth = hit.Depth + 1 }, fragmentId); return; }
-        if (id is "Staggered" or "Frozen" or "Terrified") { RewardUnspokenVerdict(target, hit); target.Pending = null; target.State = "Staggered"; _state.Campaign?.Hazards.RemoveAll(h => h.SourceId == target.Id); }
+        if (id is "Staggered" or "Frozen" or "Terrified") { RewardUnspokenVerdict(target, hit); RewardGriefsReprieve(target, hit); target.Pending = null; target.State = "Staggered"; _state.Campaign?.Hazards.RemoveAll(h => h.SourceId == target.Id); }
         Emit("StatusApplied", hit.SourceId, target.Id, status.Stacks, id, hit.ActionId, hit.Depth);
     }
     private void Kill(CombatActor target, Hit hit)
@@ -480,7 +482,7 @@ public sealed partial class CombatSession
         if (target.Faction != CombatFaction.Enemy) return;
         CampaignDeath(target);
         EndgameDeath(target);
-        if (!training && RegionalHuntCombat.Find(_state.EncounterId) is null && _state.Loot.Count < 512 && !_state.ResurrectedActorIds.Contains(target.Id) && CampaignRewardEligible(target))
+        if (!training && RegionalHuntCombat.Find(_state.EncounterId) is null && SecretChamberCombat.Find(_state.EncounterId) is null && _state.Loot.Count < 512 && !_state.ResurrectedActorIds.Contains(target.Id) && CampaignRewardEligible(target))
         {
             var rng = _state.Rng.Loot;
             var eligibleItems = _content.Items.Where(i => i.Id != "item.ashcleaver" && !LegendaryEquipment.IsItem(i.Id)).ToArray();
@@ -496,6 +498,7 @@ public sealed partial class CombatSession
         }
         if (!CampaignRewardEligible(target)) return;
         SpreadVirulentWake(target, hit);
+        SnareWidowthorn(target, hit);
         OnProductionKill(target, hit);
         if (!hit.Dot || hit.OwnerId != 1) return;
         foreach (var fragment in ActiveFragments().Where(f => f.Trigger == "DotDeath"))

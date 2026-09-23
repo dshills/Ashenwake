@@ -18,7 +18,7 @@ public partial class EndgameDirector
         _campaignHud.CollectionRequested += OpenCollection; _board.CollectionRequested += OpenCollection;
         _collection.VisibilityChangedByPlayer += open =>
         {
-            if (open) { _huntBoard?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
+            if (open) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
         };
         _collection.TrackRequested += id =>
         {
@@ -62,10 +62,11 @@ public partial class EndgameDirector
         if (persist) PersistCollection();
         _collectionRevision = _revision;
         var campaign = snapshot.Campaign.Campaign; var campaignView = _session.Campaign.View; var endgame = _session.View;
-        var cards = LegendaryCollectionCatalog.Entries.Select(entry => new LegendaryCollectionCard(entry,
+        var cards = LegendaryCollectionCatalog.Entries.Where(entry => entry.SecretChamberId.Length == 0 ||
+            _collectionMemory.DiscoveredItems.Contains(entry.ItemId) || _session.SecretChambers.Entries.Any(e => e.Id == entry.SecretChamberId && e.Revealed)).Select(entry => new LegendaryCollectionCard(entry,
             _collectionMemory.DiscoveredItems.Contains(entry.ItemId), character.Items.Count(i => i.DefinitionId == entry.ItemId),
             character.PropertyLibrary.Contains(entry.PowerId), LegendaryCollectionSources.Project(_campaignDefinition, campaign, campaignView,
-                _session.Campaign.ActiveEncounterId, _endgameDefinition, endgame, entry.ItemId, _session.CurrentRunContentId))).ToArray();
+                _session.Campaign.ActiveEncounterId, _endgameDefinition, endgame, entry.ItemId, _session.CurrentRunContentId, _session.SecretChambers))).ToArray();
         var tracked = cards.FirstOrDefault(c => c.Entry.ItemId == _collectionMemory.TrackedItem);
         string title = tracked is null ? "" : "TRACKED · " + EquipmentNames.For(tracked.Entry.ItemId);
         var best = tracked?.Sources.FirstOrDefault(s => s.State is LegendaryCollectionSourceState.Active or LegendaryCollectionSourceState.Available)
@@ -101,7 +102,8 @@ public partial class EndgameDirector
         var source = LegendaryCollectionSources.For(_session, itemId).FirstOrDefault(s => s.Kind == kind);
         if (source is null || kind == LegendaryCollectionSourceKind.GodHunt && source.HuntId.Length == 0) return;
         _collection.SetOpen(false);
-        if (kind == LegendaryCollectionSourceKind.Campaign)
+        if (kind == LegendaryCollectionSourceKind.SecretChamber) { if (source.ChamberId.Length > 0) OpenSecretChambers(source.ChamberId); }
+        else if (kind == LegendaryCollectionSourceKind.Campaign)
         {
             if (_session.Combat.View.Endgame is not null)
             { _board.ShowRun(); _board.Notice("Finish or leave this expedition to return to the campaign route."); return; }

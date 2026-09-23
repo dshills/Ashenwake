@@ -1,8 +1,8 @@
 # Legendary collection journal
 
-Open **J → Relics** or **B → Relics** to inspect the nine signature legendary items. The journal pauses the world. Its item cards, rotating character preview, power descriptions and source guidance help plan a build without granting or equipping anything.
+Open **J → Relics** or **B → Relics** to inspect the nine signature legendary items and any secret relics you have revealed. The journal pauses the world. Its item cards, rotating character preview, power descriptions and source guidance help plan a build without granting or equipping anything.
 
-**All**, **Collected** and **Missing** filter the collection. Collected means the character has discovered the item, even if no copy remains. Each item shows the current owned-copy count and whether its innate power has been learned through extraction. Uncollected items expose their equipment appearance and combat power; their lore stays hidden until discovery.
+**All**, **Collected** and **Missing** filter the collection. Collected means the character has discovered the item, even if no copy remains. Each item shows the current owned-copy count and whether its innate power has been learned through extraction. Uncollected visible items expose their equipment appearance and combat power; their lore stays hidden until discovery. The three hidden-chamber relics do not appear at all until their doorway is revealed or the item is owned.
 
 Choose **Track this item** to retain one target. Journey and the expedition board show its name and a suggested source; clicking the tracking line returns to the collection. **Stop tracking this item** clears the target. Tracking a missing item never adds it to the discovered count.
 
@@ -12,6 +12,7 @@ The source list explains campaign, Fracture and supported God Hunt routes:
 
 - Unreached campaign encounters show their act and a progression requirement. Encounter names appear only once reached. A cleared campaign source explicitly explains that revisiting does not grant another copy.
 - Fractures identify the correct region and room, an owned matching Sigil when available, and any unmet campaign or Sigil requirement. Sigils from other regions do not satisfy that source.
+- Revealed hidden chambers identify their one-time treasure. Defeated guardians keep unclaimed treasure available, and claimed chambers never promise another copy. **View discovery** opens the chamber journal without traveling. Extraction consumes the unique item, so its collection card explains the one-copy limit.
 - God Hunts use the character's actual unlocks. Secret hunt names and destinations remain hidden while locked. Known locked hunts explain their tier requirements.
 
 **View Journey route**, **View Fractures** and **View God Hunt** select the relevant existing screen. They never travel, consume a Sigil, abandon a run or begin a hunt. The normal gate, combat, loot-departure and permanent-choice controls remain authoritative. An active expedition routes campaign inspection to the run screen until the player returns.

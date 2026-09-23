@@ -8,9 +8,16 @@ public sealed partial class CombatSession
     {
         var state = _state.Legendary;
         var build = _state.ProgressionBuild;
-        if (state is null && !build.VirulentWake && !build.RallyingChorus && !build.CinderCycle && !build.UnspokenVerdict && !build.WitnessVow && !build.BorrowedHour) return null;
+        if (state is null && !build.VirulentWake && !build.RallyingChorus && !build.CinderCycle && !build.UnspokenVerdict && !build.WitnessVow && !build.BorrowedHour && !build.GriefsReprieve && !build.Widowthorn && !build.Emberwake) return null;
         return new(state?.OathCharge ?? 0, Remaining(state?.OathUntil ?? 0), Remaining(state?.WidowUntil ?? 0))
         {
+            GriefEquipped = build.GriefsReprieve,
+            GriefRemainingTicks = Remaining(state?.GriefReadyTick ?? 0),
+            WidowthornEquipped = build.Widowthorn,
+            WidowthornRemainingTicks = Remaining(state?.WidowthornReadyTick ?? 0),
+            EmberwakeEquipped = build.Emberwake,
+            EmberwakeRemainingTicks = Remaining(state?.EmberwakeUntil ?? 0),
+            EmberwakeCooldownTicks = Remaining(state?.EmberwakeReadyTick ?? 0),
             VirulentEquipped = build.VirulentWake,
             VirulentRemainingTicks = Remaining(state?.VirulentReadyTick ?? 0),
             ChorusEquipped = build.RallyingChorus,

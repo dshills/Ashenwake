@@ -25,6 +25,13 @@ public sealed record CombatBuildModifiers(string Manifestation = "", int Ashclea
 public sealed record CombatMutationView(string Id, string SkillId, string Name, string Description);
 public sealed record CombatLegendaryView(int OathCharge, long OathRemainingTicks, long WidowRemainingTicks)
 {
+    public bool GriefEquipped { get; init; }
+    public long GriefRemainingTicks { get; init; }
+    public bool WidowthornEquipped { get; init; }
+    public long WidowthornRemainingTicks { get; init; }
+    public bool EmberwakeEquipped { get; init; }
+    public long EmberwakeRemainingTicks { get; init; }
+    public long EmberwakeCooldownTicks { get; init; }
     public bool VirulentEquipped { get; init; }
     public long VirulentRemainingTicks { get; init; }
     public bool ChorusEquipped { get; init; }

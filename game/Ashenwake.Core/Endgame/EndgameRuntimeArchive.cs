@@ -40,6 +40,11 @@ public static class EndgameRuntimeSaveStore
                 var source = ArchiveHeaders.Object(runtime, "manifest"); ArchiveHeaders.Require(source, 1, "endgame-combat.1"); ArchiveHeaders.Identity(source, "contentHash", identity);
             }
         }
+        if (state.TryGetProperty("secretChambers", out var secrets) && secrets.ValueKind != JsonValueKind.Null)
+        {
+            ArchiveHeaders.Require(secrets, 1);
+            if (secrets.TryGetProperty("combat", out var secretCombat) && secretCombat.ValueKind != JsonValueKind.Null) CombatHeader(secretCombat);
+        }
         if (state.TryGetProperty("regionalHunts", out var regional) && regional.ValueKind != JsonValueKind.Null)
         {
             ArchiveHeaders.Require(regional, 1);

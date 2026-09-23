@@ -86,9 +86,9 @@ public partial class EndgameDirector : Node3D
             _sandbox.SaveOverride = () => Safely(Save); _sandbox.LoadOverride = () => Safely(Load); _sandbox.ReplayOverride = () => Safely(VerifyReplay);
             _stage = new CampaignStage(); AddChild(_stage); _effects = new EndgamePresentation(); AddChild(_effects); _effects.AttachOverlay(_sandbox);
             _campaignHud = new CampaignHud(); _sandbox.AddOverlay(_campaignHud);
-            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = () => { _collection?.SetOpen(false); _huntBoard?.SetOpen(false); if (_deathRecapHud?.IsOpen == true) return; if (_training is not null) _trainingHud.SetReportOpen(true); else _character.ToggleInventory(); };
+            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = () => { _collection?.SetOpen(false); _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); if (_deathRecapHud?.IsOpen == true) return; if (_training is not null) _trainingHud.SetReportOpen(true); else _character.ToggleInventory(); };
             _board = new EndgameHud(); _sandbox.AddOverlay(_board);
-            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeTraining(); InitializeFrontMenu(); InitializeDeathRecap(); InitializeCollection(); InitializeRegionalHunts();
+            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeTraining(); InitializeFrontMenu(); InitializeDeathRecap(); InitializeCollection(); InitializeRegionalHunts(); InitializeSecretChambers();
             _sandbox.ConfigureLocalMap(() => _training is null && _hasActiveCharacter && !_frontMenu.IsOpen && !_classSelection.Visible, () => _session.LocalMap);
             if (_hasActiveCharacter) EnableLocalMap();
             Refresh();
@@ -115,7 +115,7 @@ public partial class EndgameDirector : Node3D
         if (!result.Success) throw new InvalidDataException(result.Reason);
     }
     private string LocalMapTitle()
-        => _session.InHub ? "Greyhaven" : _session.InRegionalHunt ? _session.CurrentRegionalHunt!.Name : _session.Combat.View.Endgame is not null ? _session.View.Run?.Name ?? "Expedition" :
+        => _session.InSecretChamber ? _session.CurrentSecretChamber!.Name : _session.InHub ? "Greyhaven" : _session.InRegionalHunt ? _session.CurrentRegionalHunt!.Name : _session.Combat.View.Endgame is not null ? _session.View.Run?.Name ?? "Expedition" :
             _combat.Campaign?.Encounters.FirstOrDefault(e => e.Id == _stage.PresentedEncounter)?.Name ?? _session.Campaign.View.Region;
     private void CacheDefinitions()
     {
@@ -170,7 +170,7 @@ public partial class EndgameDirector : Node3D
         _board.GateApproachRequested += () => { UpdatePanelVisibility(); _sandbox.RequestWorldInteraction("endgame.gate"); };
         _board.SaveRequested += () => Safely(Save); _board.LoadRequested += () => Safely(Load);
         _board.ReplayRequested += () => Safely(VerifyReplay); _board.ImportRequested += () => _importDialog.PopupCentered(new(860, 560));
-        _board.VisibilityChangedByPlayer += open => { if (open) { _huntBoard?.SetOpen(false); _collection?.SetOpen(false); _campaignHud.SetOpen(false); _character.Close(); } UpdatePanelVisibility(); };
+        _board.VisibilityChangedByPlayer += open => { if (open) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _collection?.SetOpen(false); _campaignHud.SetOpen(false); _character.Close(); } UpdatePanelVisibility(); };
         _board.ModalChanged += open => _sandbox.SetModalPaused("endgame-confirmation", open);
     }
     private void BindBoardInput()
@@ -191,11 +191,12 @@ public partial class EndgameDirector : Node3D
     {
         if (HandleExperimentInput(input)) return;
         if (_smoke || _finished || _session is null || _classSelection.Visible) return;
-        if (input.IsActionPressed("aw_character")) { _huntBoard?.SetOpen(false); _collection?.SetOpen(false); _character.Toggle(); GetViewport().SetInputAsHandled(); }
-        if (input.IsActionPressed("aw_endgame")) { if (_session.HasUnresolvedRegionalHunt) OpenRegionalHunts(); else _board.Toggle(); GetViewport().SetInputAsHandled(); }
+        if (input.IsActionPressed("aw_character")) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _collection?.SetOpen(false); _character.Toggle(); GetViewport().SetInputAsHandled(); }
+        if (input.IsActionPressed("aw_endgame")) { if (_session.InSecretChamber) OpenSecretChambers(); else if (_session.HasUnresolvedRegionalHunt) OpenRegionalHunts(); else _board.Toggle(); GetViewport().SetInputAsHandled(); }
         if (input.IsActionPressed("aw_journey"))
         {
-            if (_session.HasUnresolvedRegionalHunt) OpenRegionalHunts();
+            if (_session.InSecretChamber) OpenSecretChambers();
+            else if (_session.HasUnresolvedRegionalHunt) OpenRegionalHunts();
             else if (_session.Combat.View.Endgame is not null) _board.ShowRun();
             else { _board.SetOpen(false); _campaignHud.Visible = true; _campaignHud.Toggle(); }
             GetViewport().SetInputAsHandled();
@@ -216,11 +217,11 @@ public partial class EndgameDirector : Node3D
         }
     }
     private void ReturnHub()
-    { if (_session.InRegionalHunt) { if (_session.RegionalHunts.Run?.CanReturn == true) Apply(new(EndgameRuntimeAction.ReturnRegionalHunt)); else OpenRegionalHunts(); } else if (_session.Combat.View.Endgame is null) Campaign(new(CampaignRuntimeAction.ReturnToHub)); else Apply(new(EndgameRuntimeAction.ReturnToHub)); }
+    { if (_session.InSecretChamber) OpenSecretChambers(); else if (_session.InRegionalHunt) { if (_session.RegionalHunts.Run?.CanReturn == true) Apply(new(EndgameRuntimeAction.ReturnRegionalHunt)); else OpenRegionalHunts(); } else if (_session.Combat.View.Endgame is null) Campaign(new(CampaignRuntimeAction.ReturnToHub)); else Apply(new(EndgameRuntimeAction.ReturnToHub)); }
     private void Interact(string id)
     {
         if (_training is not null) return;
-        if (InteractRegionalHunt(id)) return;
+        if (InteractSecretChamber(id) || InteractRegionalHunt(id)) return;
         if (id == Ashenwake.Core.Training.TrainingSession.InteractionId) { Safely(StartTraining); return; }
         if (id == "journey.next") { _campaignHud.RequestNextStep(); return; }
         if (id.StartsWith("opening.", StringComparison.Ordinal)) { Campaign(new(CampaignRuntimeAction.InteractOpening, Id: id)); return; }
@@ -345,7 +346,7 @@ public partial class EndgameDirector : Node3D
     private void Observe(EndgameRuntimeResult result)
     {
         if (result.WorldEvents.Length > 0 || result.CombatEvents.Any(e => e.Kind is "LootPickedUp" or "LootDropped")) _revision++;
-        if (result.CombatEvents.Any(e => e.Kind == "LootPickedUp") || result.WorldEvents.Any(e => e.StartsWith("RegionalHuntRewardClaimed:", StringComparison.Ordinal))) RefreshCollection(_session.Capture(), persist: true);
+        if (result.CombatEvents.Any(e => e.Kind == "LootPickedUp") || result.WorldEvents.Any(e => e.StartsWith("RegionalHuntRewardClaimed:", StringComparison.Ordinal) || e.StartsWith("SecretTreasureClaimed:", StringComparison.Ordinal))) RefreshCollection(_session.Capture(), persist: true);
         foreach (var e in result.CombatEvents) _events[e.Kind] = _events.GetValueOrDefault(e.Kind) + 1;
         foreach (string message in result.WorldEvents)
         {
@@ -380,7 +381,13 @@ public partial class EndgameDirector : Node3D
         var manifestations = _session.Production.View.ActiveManifestations;
         _character.SetAppearance(CharacterAppearance.FromProgression(campaign.Production.Progression, manifestations,
             campaign.Production.Expedition.Adventure.Anatomy.Values));
-        if (_session.InRegionalHunt && _session.CurrentRegionalHunt is { } hunt)
+        if (_session.InSecretChamber && _session.CurrentSecretChamber is { } chamber)
+        {
+            var stageState = campaign.Campaign with { InHub = false, CurrentAct = chamber.Act, Exploration = null };
+            var stageView = _session.Campaign.View with { Act = chamber.Act, Region = chamber.Name, EncounterId = chamber.EncounterId };
+            _stage.Show(stageState, stageView, _session.Room, [], manifestations, _session.Production.ProgressionView.HubStage, player.Position, combat.BossPhase, combat: combat, activeEncounterId: chamber.EncounterId);
+        }
+        else if (_session.InRegionalHunt && _session.CurrentRegionalHunt is { } hunt)
         {
             var stageState = campaign.Campaign with { InHub = false, CurrentAct = hunt.Act, Exploration = null };
             var stageView = _session.Campaign.View with { Act = hunt.Act, Region = hunt.Region, EncounterId = hunt.EncounterId };
@@ -397,10 +404,10 @@ public partial class EndgameDirector : Node3D
         {
             bool bellDefeated = !_session.InHub && _session.Campaign.ActiveEncounterId == "campaign.bell_saint" &&
                 (_session.Campaign.EncounterCleared || combat.Actors.Any(actor => actor.DefinitionId == "boss.bell_saint" && actor.Health <= 0));
-            _stage.Show(campaign.Campaign, _session.Campaign.View, _session.Room, _session.Interactions, manifestations, _session.Production.ProgressionView.HubStage, player.Position, combat.BossPhase, bellDefeated, combat, _session.Campaign.ActiveEncounterId);
+            _stage.Show(campaign.Campaign, _session.Campaign.View, _session.Room, _session.Interactions.Where(i => !i.ActionId.StartsWith("secret.", StringComparison.Ordinal)).ToArray(), manifestations, _session.Production.ProgressionView.HubStage, player.Position, combat.BossPhase, bellDefeated, combat, _session.Campaign.ActiveEncounterId);
         }
-        string context = _session.InRegionalHunt ? $"regional:{_session.RegionalHunts.Run!.Id}" : combat.Endgame?.ContextKey ?? $"campaign:{_session.Campaign.ActiveEncounterId}:{campaign.Campaign.Deaths}";
-        string style = _session.InRegionalHunt ? EnvironmentGround.Style(false, _session.CurrentRegionalHunt!.EncounterId, null, _session.CurrentRegionalHunt.Act) : combat.Endgame is null ? EnvironmentGround.Style(_session.InHub, _session.Campaign.ActiveEncounterId, campaign.Campaign.Exploration?.Id, campaign.Campaign.CurrentAct)
+        string context = _session.InSecretChamber ? $"secret:{_session.CurrentSecretChamber!.Id}:{snapshot.SecretChambers!.AttemptSequence}" : _session.InRegionalHunt ? $"regional:{_session.RegionalHunts.Run!.Id}" : combat.Endgame?.ContextKey ?? $"campaign:{_session.Campaign.ActiveEncounterId}:{campaign.Campaign.Deaths}";
+        string style = _session.InSecretChamber ? EnvironmentGround.Style(false, _session.CurrentSecretChamber!.EncounterId, null, _session.CurrentSecretChamber.Act) : _session.InRegionalHunt ? EnvironmentGround.Style(false, _session.CurrentRegionalHunt!.EncounterId, null, _session.CurrentRegionalHunt.Act) : combat.Endgame is null ? EnvironmentGround.Style(_session.InHub, _session.Campaign.ActiveEncounterId, campaign.Campaign.Exploration?.Id, campaign.Campaign.CurrentAct)
             : snapshot.Manifest?.Region switch
             {
                 "act.verdant_maw" => "verdant_ruins",
@@ -411,9 +418,9 @@ public partial class EndgameDirector : Node3D
             };
         _sandbox.PresentAuthoredRoom(_session.Room, context, style);
         _effects.Show(combat.Endgame, player.Position, _board.IsOpen);
-        RefreshRegionalHunts();
-        var mouseTargets = _session.Interactions.Select(i => new WorldInteractionTarget(i.ActionId, i.Name, i.Position, i.Range, _huntPresentation?.GetInteractionVisual(i.ActionId) ?? _stage.GetInteractionVisual(i.ActionId))).ToList();
-        var wayForward = _stage.PresentWayForward(_session.Room, !_session.InRegionalHunt && !_session.InHub && combat.Endgame is null && campaign.Campaign.Exploration is null &&
+        RefreshRegionalHunts(); RefreshSecretChambers();
+        var mouseTargets = _session.Interactions.Select(i => new WorldInteractionTarget(i.ActionId, i.Name, i.Position, i.Range, _secretPresentation?.GetInteractionVisual(i.ActionId) ?? _huntPresentation?.GetInteractionVisual(i.ActionId) ?? _stage.GetInteractionVisual(i.ActionId))).ToList();
+        var wayForward = _stage.PresentWayForward(_session.Room, !_session.InSecretChamber && !_session.InRegionalHunt && !_session.InHub && combat.Endgame is null && campaign.Campaign.Exploration is null &&
             _session.EncounterCleared && _campaignHud.CanRequestNextStep && _campaignHud.CanShowWayForward, _campaignHud.NextStepLabel);
         if (wayForward is not null) mouseTargets.Add(wayForward);
         _sandbox.SetWorldInteractions(mouseTargets, Interact);
@@ -421,7 +428,7 @@ public partial class EndgameDirector : Node3D
         _sandbox.SetMechanismVisuals(_effects.GetMechanismVisual);
         _sandbox.SetManifestationPresentation(manifestations, campaign.Production.Expedition.Adventure.Anatomy.Values);
         ObserveDeathRecap();
-        _sandbox.SetWorldSubtitle(_session.InRegionalHunt ? "REGIONAL HUNT / " + _session.CurrentRegionalHunt!.Name.ToUpperInvariant() : combat.Endgame is null ? $"CAMPAIGN / {_session.Campaign.View.Region.ToUpperInvariant()}" : $"{view.Run?.Kind.ToUpperInvariant()} / {view.Run?.Name.ToUpperInvariant()}");
+        _sandbox.SetWorldSubtitle(_session.InSecretChamber ? "HIDDEN CHAMBER / " + _session.CurrentSecretChamber!.Name.ToUpperInvariant() : _session.InRegionalHunt ? "REGIONAL HUNT / " + _session.CurrentRegionalHunt!.Name.ToUpperInvariant() : combat.Endgame is null ? $"CAMPAIGN / {_session.Campaign.View.Region.ToUpperInvariant()}" : $"{view.Run?.Kind.ToUpperInvariant()} / {view.Run?.Name.ToUpperInvariant()}");
         UpdatePanelVisibility();
         RefreshExperiment();
         if (_capture && DisplayServer.GetName() != "headless")
@@ -471,19 +478,24 @@ public partial class EndgameDirector : Node3D
     }
     private void UpdatePanelVisibility()
     {
-        if (_campaignHud is not null && _board is not null) _campaignHud.Visible = !_board.IsOpen && _huntBoard?.IsOpen != true && !_session.HasUnresolvedRegionalHunt && _session.Combat.View.Endgame is null;
+        if (_campaignHud is not null && _board is not null) _campaignHud.Visible = !_session.InSecretChamber && _secretPanel?.IsOpen != true && !_board.IsOpen && _huntBoard?.IsOpen != true && !_session.HasUnresolvedRegionalHunt && _session.Combat.View.Endgame is null;
+        if (_secretObjective is not null) _secretObjective.Visible = SecretObjectiveVisible();
         if (_huntObjective is not null) _huntObjective.Visible = _session.HasUnresolvedRegionalHunt && _huntBoard?.IsOpen != true && _deathRecapHud?.IsOpen != true && _frontMenu?.IsOpen != true;
     }
     private string Region(string id) => _campaignDefinition.Acts.FirstOrDefault(a => a.Id == id)?.Name ?? Readable(id);
     private string RuleName(string id) => _endgameDefinition.Modifiers.FirstOrDefault(m => m.Id == id || m.Rule == id)?.Name ?? Readable(id);
     private void Notice(string message)
-    { if (_session.HasUnresolvedRegionalHunt) _sandbox.Notify(message); _huntNotice = message; _huntBoard?.Notice(message); _board.Notice(message); _campaignHud.Notice(message); _character.Notice(message); if (_echoesBoard?.IsOpen == true) _echoesBoard.Notice(message); if (_frontMenu?.IsOpen == true) _frontMenu.Notice(message); }
+    { if (_session.HasUnresolvedRegionalHunt || _session.InSecretChamber || message.StartsWith("Move closer", StringComparison.Ordinal)) _sandbox.Notify(message); _secretNotice = message; _secretPanel?.Notice(message); _huntNotice = message; _huntBoard?.Notice(message); _board.Notice(message); _campaignHud.Notice(message); _character.Notice(message); if (_echoesBoard?.IsOpen == true) _echoesBoard.Notice(message); if (_frontMenu?.IsOpen == true) _frontMenu.Notice(message); }
     private string? PlayerNotice(string message)
     {
         string[] parts = message.Split(':'); string value = parts.Length > 1 ? parts[1] : "";
         return parts[0] switch
         {
             "RegionalHunt" => value switch { "Tracking" => "Follow the three marked clues to find your quarry.", "Combat" => "The quarry has emerged. Read its attacks and defeat the pack.", "Victory" => "Quarry defeated. Return to Greyhaven and claim your bounty.", "Failed" => "Hunt failed. Return to Greyhaven to prepare another attempt.", "Abandoned" => "Hunt abandoned. No bounty was claimed.", _ => null },
+            "SecretClueResolved" => "The markings respond. Another detail awaits inspection nearby.",
+            "SecretEntranceRevealed" => "A hidden passage opens. Its discovery is recorded in your journal.",
+            "SecretTreasureClaimed" => "Hidden treasure claimed. Your unique equipment is in your permanent inventory.",
+            "SecretChamber" => value switch { "Foyer" => "A quiet threshold. Approach the guardian's seal when ready.", "Combat" => "The guardian awakens. You can retreat through the entrance at any time.", "Victory" => "Guardian defeated. Claim the chamber's treasure.", "Exited" => "Returned through the hidden passage. Campaign progress and uncollected loot are preserved.", _ => null },
             "RegionalHuntRewardClaimed" => "Bounty claimed: a legendary item and materials are now in your permanent inventory.",
             "MasteryGained" or "ExperienceEarned" or "WorldChanged" or "ObjectiveCompleted" => null,
             "EndgameUnlocked" => "The Fractures are open. Your campaign character can continue from the expedition board.",
@@ -552,6 +564,7 @@ public partial class EndgameDirector : Node3D
     private void Adopt(EndgameRuntimeSession session, bool retainExperiment = false)
     {
         ResetCollection(); ClearDeathRecap(); EndTraining(false); ClearTrainingComparison();
+        _secretPanel?.SessionRestored(); _secretPresentation?.Reset(); _secretSelection = _secretClue = _secretNotice = "";
         _huntBoard?.SessionRestored(); _shownHuntOutcome = _huntNotice = "";
         _echoesBoard?.SessionRestored();
         _memorySourceKey = default; _memorySourceName = ""; _memoryNoticeStatus = "";

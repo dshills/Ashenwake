@@ -32,7 +32,7 @@ public static class LegendaryCollection
     {
         Validate(memory);
         if (itemId is null || itemId.Length > 0 && !IsItem(itemId))
-            throw new ArgumentException("Choose one of the nine legendary items, or clear tracking.", nameof(itemId));
+            throw new ArgumentException("Choose a legendary item, or clear tracking.", nameof(itemId));
         return memory with { DiscoveredItems = memory.DiscoveredItems.ToArray(), TrackedItem = itemId };
     }
 
@@ -42,7 +42,7 @@ public static class LegendaryCollection
     internal static void Validate(LegendaryCollectionMemory memory)
     {
         if (memory is null || string.IsNullOrWhiteSpace(memory.CharacterId) || memory.CharacterId.Length > 80 ||
-            memory.DiscoveredItems is null || memory.DiscoveredItems.Length > 9 ||
+            memory.DiscoveredItems is null || memory.DiscoveredItems.Length > LegendaryCollectionCatalog.Entries.Count ||
             memory.DiscoveredItems.Any(id => id is null || !IsItem(id)) ||
             memory.DiscoveredItems.Distinct(StringComparer.Ordinal).Count() != memory.DiscoveredItems.Length ||
             memory.TrackedItem is null || memory.TrackedItem.Length > 0 && !IsItem(memory.TrackedItem))

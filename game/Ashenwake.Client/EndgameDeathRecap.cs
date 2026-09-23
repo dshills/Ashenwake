@@ -22,7 +22,8 @@ public partial class EndgameDirector
         _deathRecapHud.CloseRequested += () =>
         {
             _deathRecapHud.Close();
-            if (_session.InRegionalHunt && _session.RegionalHunts.Run?.Stage == "Failed") OpenRegionalHunts();
+            if (_session.InSecretChamber) OpenSecretChambers();
+            else if (_session.InRegionalHunt && _session.RegionalHunts.Run?.Stage == "Failed") OpenRegionalHunts();
             else if (_session.RunView is { AwaitingRetry: true } or { Status: "Failed" }) _board.ShowRun();
         };
     }
@@ -39,12 +40,13 @@ public partial class EndgameDirector
         var run = _session.RunView;
         bool defeatedRun = !_session.InHub && run is not null && (run.AwaitingRetry || run.Status == "Failed");
         bool defeatedHunt = _session.InRegionalHunt && _session.RegionalHunts.Run?.Stage == "Failed";
-        string recoveryKey = defeatedHunt ? $"regional:{_session.RegionalHunts.Run!.Id}" : defeatedRun ? $"{run!.Id}:{run.Deaths}:{run.Status}" : "";
+        bool defeatedSecret = _session.InSecretChamber && _session.SecretChambers.Run?.Stage == "Failed";
+        string recoveryKey = defeatedSecret ? $"secret:{_session.Capture().SecretChambers!.AttemptSequence}" : defeatedHunt ? $"regional:{_session.RegionalHunts.Run!.Id}" : defeatedRun ? $"{run!.Id}:{run.Deaths}:{run.Status}" : "";
         bool newDeath = recap is not null && !ReferenceEquals(recap, _shownDeathRecap);
-        bool restoredDefeat = recap is null && (defeatedRun || defeatedHunt) && recoveryKey != _shownRecovery;
+        bool restoredDefeat = recap is null && (defeatedRun || defeatedHunt || defeatedSecret) && recoveryKey != _shownRecovery;
         if (!newDeath && !restoredDefeat) return;
         _shownDeathRecap = recap; _shownRecovery = recoveryKey;
-        _huntBoard?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel();
+        _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel();
         _deathRecapHud.SetView(DeathPresentation(recap, defeatedRun ? run : null));
         _deathRecapHud.Open();
     }
@@ -59,7 +61,9 @@ public partial class EndgameDirector
             string.Join(" · ", recap.Conditions.Select(status => $"{status.Id} ×{status.Stacks} ({status.RemainingTicks / 30d:0.0}s remaining)"));
         string recovery;
         bool failedHunt = _session.InRegionalHunt && _session.RegionalHunts.Run?.Stage == "Failed";
-        if (failedHunt) recovery = $"{_session.CurrentRegionalHunt!.Name} · Hunt failed.\nThis attempt paid no bounty. Return to Greyhaven to prepare your build and accept a new contract.";
+        bool failedSecret = _session.InSecretChamber && _session.SecretChambers.Run?.Stage == "Failed";
+        if (failedSecret) recovery = $"{_session.CurrentSecretChamber!.Name} · Guardian challenge failed.\nReturn through the passage to the room you left. Campaign progress, ground loot, and owned equipment are preserved. You can return and challenge the guardian again; no treasure was awarded.";
+        else if (failedHunt) recovery = $"{_session.CurrentRegionalHunt!.Name} · Hunt failed.\nThis attempt paid no bounty. Return to Greyhaven to prepare your build and accept a new contract.";
         else if (run is not null)
         {
             string room = _session.Combat.View.Endgame?.PhaseName ?? run.Name;
@@ -73,12 +77,12 @@ public partial class EndgameDirector
             recovery = $"Checkpoint restored: {room}.\nOwned gear, earned XP, materials and completed objectives are retained. The unfinished encounter resets; any unfinished optional activity ends.\nContinue when ready, or return to Greyhaven.";
         }
         return new("YOU FELL", killing, damage, conditions, DeathCounterplay(recap), recovery,
-            failedHunt ? "Return to Greyhaven" : run is null ? "Continue from checkpoint" : run.CanRetry ? "Retry encounter" : "Return to Greyhaven", true, run is null && !failedHunt);
+            failedSecret ? "Return through the passage" : failedHunt ? "Return to Greyhaven" : run is null ? "Continue from checkpoint" : run.CanRetry ? "Retry encounter" : "Return to Greyhaven", true, run is null && !failedHunt && !failedSecret);
     }
 
     private string DeathCounterplay(DeathRecap? recap)
     {
-        if (recap is null) return (_session.InRegionalHunt ? _session.CurrentRegionalHunt?.Counterplay : null) ?? _session.Combat.View.Endgame?.Counterplay ?? "Inspect the expedition board before retrying.";
+        if (recap is null) return (_session.InSecretChamber ? _session.CurrentSecretChamber?.Counterplay : _session.InRegionalHunt ? _session.CurrentRegionalHunt?.Counterplay : null) ?? _session.Combat.View.Endgame?.Counterplay ?? "Inspect the expedition board before retrying.";
         var hit = recap.KillingBlow;
         string tip = hit.DamageOverTime ? "The killing blow was damage over time. Leave its source and use a potion before the remaining damage overwhelms your health." : hit.AttackId switch
         {
@@ -88,7 +92,7 @@ public partial class EndgameDirector
             _ when hit.AttackId.StartsWith("hunt.", StringComparison.Ordinal) || hit.AttackId.StartsWith("campaign.", StringComparison.Ordinal) || hit.AttackId.StartsWith("rule.", StringComparison.Ordinal) || hit.AttackId.StartsWith("endgame.", StringComparison.Ordinal) => "Move clear of the marked attack area during its warning, before the hit lands.",
             _ => "Watch the attack windup and move or dodge before impact. Keep a potion available when your health is low."
         };
-        string? encounter = (_session.InRegionalHunt ? _session.CurrentRegionalHunt?.Counterplay : null) ?? _session.Combat.View.Endgame?.Counterplay;
+        string? encounter = (_session.InSecretChamber ? _session.CurrentSecretChamber?.Counterplay : _session.InRegionalHunt ? _session.CurrentRegionalHunt?.Counterplay : null) ?? _session.Combat.View.Endgame?.Counterplay;
         return encounter is { Length: > 0 } ? tip + "\nEncounter guidance: " + encounter : tip;
     }
 
@@ -104,7 +108,8 @@ public partial class EndgameDirector
     {
         if (!_deathRecapHud.IsOpen) return;
         _deathRecapHud.Close();
-        if (_session.InRegionalHunt && _session.RegionalHunts.Run?.Stage == "Failed") ReturnHub();
+        if (_session.InSecretChamber) Apply(new(EndgameRuntimeAction.ExitSecretChamber));
+        else if (_session.InRegionalHunt && _session.RegionalHunts.Run?.Stage == "Failed") ReturnHub();
         else if (_session.RunView is { CanRetry: true }) Apply(new(EndgameRuntimeAction.RetryEncounter));
         else if (!_session.InHub && _session.RunView is { Status: "Failed" }) ReturnHub();
     }

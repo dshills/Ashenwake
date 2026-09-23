@@ -17,6 +17,8 @@ internal static class LegendaryCatalogMigration
     private sealed record Generation(string[] Items, string[] Powers);
     private static readonly Generation[] Generations =
     [
+        new([LegendaryEquipment.Grief, LegendaryEquipment.Widowthorn, LegendaryEquipment.Emberwake],
+            [LegendaryEquipment.GriefPower, LegendaryEquipment.WidowthornPower, LegendaryEquipment.EmberwakePower]),
         new(["item.crown_unsworn", "item.last_witness", "item.stolen_hour"],
             ["property.unspoken_verdict", "property.witness_vow", "property.borrowed_hour"]),
         new(["item.rotwake_signet", "item.mourning_choir", "item.furnaceheart_cinch"],
@@ -102,7 +104,11 @@ internal static class LegendaryCatalogMigration
         {
             Campaign = Rebind(state.Campaign, combatJson, adventure, EndgameProgression.Resolve(policy), campaign),
             Combat = state.Combat is null ? null : RebindCombat(state.Combat, identity),
-            Manifest = state.Manifest is null ? null : state.Manifest with { ContentHash = identity }
+            Manifest = state.Manifest is null ? null : state.Manifest with { ContentHash = identity },
+            RegionalHunts = state.RegionalHunts is null ? null : state.RegionalHunts with
+            { Combat = state.RegionalHunts.Combat is null ? null : RebindCombat(state.RegionalHunts.Combat, identity) },
+            SecretChambers = state.SecretChambers is null ? null : state.SecretChambers with
+            { Combat = state.SecretChambers.Combat is null ? null : RebindCombat(state.SecretChambers.Combat, identity) }
         };
     }
 

@@ -76,6 +76,8 @@ public partial class CharacterVisual
         { "veilwalker" => "dagger", "arcanist" => "staff", "gravecaller" => "bone_staff", "warden" => "pilgrim_pike", _ => "sword" };
         switch (weapon)
         {
+            case "widowthorn":
+                EquippedWidowthorn(parent, item); break;
             case "ash_axe":
             case "ashcleaver":
                 EquippedAxe(parent, item, weapon == "ashcleaver"); break;
@@ -160,6 +162,7 @@ public partial class CharacterVisual
 
     private void EquippedOffHand(Node3D parent, ItemAppearance item, string kind)
     {
+        if (ItemKind(item) == "griefs_reprieve") { EquippedGriefShield(parent, item); return; }
         if (kind == "vanguard")
         {
             Box(parent, new(-.08f, -.41f, -.245f), new(.6f, .78f, .10f), Metal, new(0, -10, 0));

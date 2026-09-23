@@ -9,6 +9,7 @@ namespace Ashenwake.Client;
 /// <summary>Campaign navigation and narrative presentation. Every button requests an authoritative runtime action.</summary>
 public partial class CampaignHud : Control
 {
+    public event Action? DiscoveriesRequested;
     public event Action<int>? ActRequested;
     public event Action? HubRequested, ContinueRequested, LeaveExplorationRequested, SaveRequested, LoadRequested;
     public event Action<string, string>? ChoiceRequested;
@@ -65,6 +66,8 @@ public partial class CampaignHud : Control
         }
         var relics = new Button { Name = "JourneyCollection", Text = "Relics", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         relics.AddThemeFontSizeOverride("font_size", 12); relics.Pressed += () => CollectionRequested?.Invoke(); tabs.AddChild(relics);
+        var discoveries = new Button { Name = "JourneyDiscoveries", Text = "Discoveries", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        discoveries.AddThemeFontSizeOverride("font_size", 12); discoveries.Pressed += () => DiscoveriesRequested?.Invoke(); tabs.AddChild(discoveries);
         BuildJourneyBody(column);
         _anatomyWorkbench = new AnatomyWorkbench { Visible = false }; column.AddChild(_anatomyWorkbench);
         _anatomyWorkbench.ImplantRequested += (slot, id) => ImplantRequested?.Invoke(slot, id);

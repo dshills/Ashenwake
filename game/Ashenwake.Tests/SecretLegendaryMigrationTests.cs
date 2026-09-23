@@ -13,15 +13,15 @@ using Xunit;
 
 namespace Ashenwake.Tests;
 
-public sealed class LateLegendaryMigrationTests
+public sealed class SecretLegendaryMigrationTests
 {
     private static string Read(string path) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, path));
     private static AdventureContent Adventure => AdventureContent.Parse(Read("adventure.json"));
-    private static ProgressionContent Policy(bool old) => ProgressionContent.Parse(Read(old ? "fixtures/progression-midgame-legendary.json" : "progression.json"));
+    private static ProgressionContent Policy(bool old) => ProgressionContent.Parse(Read(old ? "fixtures/progression-regional-hunts.json" : "progression.json"));
     private static CampaignContent Campaign => CampaignContent.Parse(Read("campaign.json"));
     private static EndgameContent Endgame => EndgameContent.Parse(Read("endgame.json"));
     private static ExperimentContent Experiment => ExperimentContent.Parse(Read("experiments.json"));
-    private static string Base(bool old) => Read(old ? "fixtures/combat-midgame-legendary.json" : "combat.json");
+    private static string Base(bool old) => Read(old ? "fixtures/combat-regional-hunts.json" : "combat.json");
     private static readonly Lazy<string> PreviousCombat = new(() => Compose(true));
     private static readonly Lazy<string> CurrentCombat = new(() => Compose(false));
     private static string Compose(bool old) => CampaignCombatContent.Parse(Base(old), Read("campaign-combat.json")).CombatJson;
@@ -50,18 +50,18 @@ public sealed class LateLegendaryMigrationTests
     });
 
     [Fact]
-    public void FrozenMidgameLegendaryCatalogsHavePublishedBytesAndNewCatalogsOnlyAddThreeItemsAndPowers()
+    public void FrozenRegionalHuntCatalogsHavePublishedBytesAndNewCatalogsOnlyAddThreeItemsAndPowers()
     {
-        Assert.Equal("112EFA7C2CB9840599539F0F13D694F8D740EF6FA26D5EBF5BB8C656B9B62736",
-            Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures/combat-midgame-legendary.json")))));
-        Assert.Equal("61E08796E29BC241FE15C8218B121890A3256DBCFF3622A5CED5E340EEB0BC1E",
-            Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures/progression-midgame-legendary.json")))));
-        var before = CombatContent.Parse(Base(true)); var current = CombatContent.Parse(Read("fixtures/combat-regional-hunts.json"));
-        string[] newItems = ["item.crown_unsworn", "item.last_witness", "item.stolen_hour"];
-        string[] newPowers = ["property.borrowed_hour", "property.unspoken_verdict", "property.witness_vow"];
+        Assert.Equal("36F96BC37C48AAC7F966A89E40033CC74DA52DF32C5D57B430AC7EB088A051A1",
+            Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures/combat-regional-hunts.json")))));
+        Assert.Equal("16158F0DEAE5D082C1F0E0D5062DA888D5D2288F04C3BA6AFD66BFFF6CF67072",
+            Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures/progression-regional-hunts.json")))));
+        var before = CombatContent.Parse(Base(true)); var current = CombatContent.Parse(Base(false));
+        string[] newItems = ["item.emberwake_mantle", "item.griefs_reprieve", "item.widowthorn"];
+        string[] newPowers = ["property.emberwake", "property.griefs_reprieve", "property.widowthorn"];
         Assert.Equal(newItems, current.Items.Select(i => i.Id).Except(before.Items.Select(i => i.Id)).Order());
         Assert.Equal(JsonData.Hash(before), JsonData.Hash(current with { Items = current.Items.Where(i => !newItems.Contains(i.Id)).ToArray() }));
-        var oldPolicy = Policy(true).Capture(); var policy = ProgressionContent.Parse(Read("fixtures/progression-regional-hunts.json")).Capture();
+        var oldPolicy = Policy(true).Capture(); var policy = Policy(false).Capture();
         Assert.Equal(newPowers, policy.Properties.Select(p => p.Id).Except(oldPolicy.Properties.Select(p => p.Id)).Order());
         Assert.Equal(JsonData.Hash(oldPolicy), JsonData.Hash(policy with
         {
@@ -203,7 +203,7 @@ public sealed class LateLegendaryMigrationTests
         var node = JsonNode.Parse(JsonData.Write(new ProductionSave(1, original.StateHash, original.Capture())))!;
         // Explicit false deserializes to the same inactive build as the absent new field.
         // It must still fail the unchanged original checksum before catalog rebinding.
-        node["state"]!["expedition"]!["combat"]!["progressionBuild"]!["unspokenVerdict"] = false;
+        node["state"]!["expedition"]!["combat"]!["progressionBuild"]!["griefsReprieve"] = false;
         Assert.Throws<InvalidDataException>(() => ProductionSaveStore.Read(Base(false), Adventure, Policy(false), node.ToJsonString()));
     }
 
@@ -222,7 +222,7 @@ public sealed class LateLegendaryMigrationTests
             case "receipt": node["state"]!["production"]!["progression"]!["character"]!["operationReceipts"]!["campaign.encounter.campaign.road"] = new string('0', 64); break;
             case "future-cache": node["state"]!["clearedRooms"]!["campaign.road"]!["schemaVersion"] = 2; break;
             case "unknown-combat": node["state"]!["combat"]!["contentHash"] = new string('0', 64); break;
-            case "foreign-item": node["state"]!["production"]!["progression"]!["character"]!["items"]![0]!["definitionId"] = "item.crown_unsworn"; break;
+            case "foreign-item": node["state"]!["production"]!["progression"]!["character"]!["items"]![0]!["definitionId"] = "item.griefs_reprieve"; break;
         }
         if (kind != "checksum") node["stateHash"] = JsonData.Hash(JsonData.Read<CampaignRuntimeSnapshot>(node["state"]!.ToJsonString()));
         string bytes = node.ToJsonString();
@@ -234,7 +234,7 @@ public sealed class LateLegendaryMigrationTests
     [Fact]
     public void SaveAndProfileReadWithoutWritesThenRetainExactOriginalBackups()
     {
-        string directory = Path.Combine(Path.GetTempPath(), "ashenwake-late-legendary-migration-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Combine(Path.GetTempPath(), "ashenwake-secret-legendary-migration-" + Guid.NewGuid().ToString("N"));
         string path = Path.Combine(directory, "character.json");
         try
         {
@@ -253,5 +253,27 @@ public sealed class LateLegendaryMigrationTests
             Assert.Equal(save, File.ReadAllText(path + ".bak"));
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+    [Theory]
+    [InlineData("Tracking")]
+    [InlineData("Combat")]
+    public void PublishedRegionalHuntSeparateArenaMigratesWithAllLedgerFields(string stage)
+    {
+        var original = PreviousEndgame(); const string id = "hunt.regional.pallbearer";
+        for (int i = 0; i < 5000 && original.RegionalHunts.Run?.Stage != stage; i++)
+        {
+            var result = original.Execute(RegionalHuntSmoke.Next(original, id));
+            Assert.True(result.Success, result.Reason);
+        }
+        Assert.Equal(stage, original.RegionalHunts.Run?.Stage);
+        string bytes = JsonData.Write(new EndgameRuntimeSave(1, original.StateHash, original.Capture()));
+        var loaded = EndgameRuntimeSaveStore.Read(EndgameCombat(false), Adventure, Policy(false), Campaign, Endgame, bytes);
+        SameExceptCatalogs(original.Capture(), loaded.Capture(), original.Combat.ContentHash, loaded.Combat.ContentHash,
+            original.Production.Content.Hash, loaded.Production.Content.Hash);
+        Assert.NotNull(loaded.Capture().RegionalHunts!.Combat);
+        Assert.Equal(loaded.Combat.ContentHash, loaded.Capture().RegionalHunts!.Combat!.ContentHash);
+        Assert.True(loaded.Step().Success);
+        Assert.True(EndgameRuntimeReplayRunner.Run(EndgameCombat(false), Adventure, Policy(false), Campaign, Endgame, loaded.CaptureReplay()).Success);
+        Assert.Equal(bytes, JsonData.Write(new EndgameRuntimeSave(1, original.StateHash, original.Capture())));
     }
 }

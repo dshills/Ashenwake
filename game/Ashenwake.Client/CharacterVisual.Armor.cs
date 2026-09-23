@@ -27,6 +27,7 @@ public partial class CharacterVisual
 
     private void EquippedMantle(Node3D parent, int side, ItemAppearance item, string kind)
     {
+        if (ItemKind(item) == "emberwake_mantle") { EquippedEmberwake(parent, side, item); return; }
         if (ItemKind(item) == "mourning_choir") { EquippedMourningMantle(parent, side, item); return; }
         var palette = ArmorPalette.For(kind);
         Material shell = ArmorShell(kind), cloth = SharedMaterial(palette.Cloth), trim = SharedMaterial(palette.Trim);

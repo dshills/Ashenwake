@@ -60,6 +60,9 @@ public sealed partial class CampaignRuntimeSession
     public CampaignView View => story.ViewForResonance(Production.View.Resonance);
     public CampaignView StoryView => View;
     internal bool HasCompletedAct(int act) => story.CurrentState.CompletedActs.Contains(act);
+    internal bool HasCompletedEncounter(string id) => story.CurrentState.CompletedEncounters.Contains(id);
+    internal bool HasActiveExploration => story.CurrentState.Exploration is not null;
+    internal void RefreshSecretRewardProjection() => arena = Production.ProjectCampaignCombat(arena);
     public IReadOnlyList<string> WorldEvents { get; private set; } = [];
     public string StateHash => JsonData.Hash(Capture());
     public IReadOnlyList<ExpeditionInteraction> Interactions
