@@ -9,7 +9,7 @@ public partial class Sandbox
     private string? CampaignActorLabel(CombatActorView actor)
     {
         if (actor.DefinitionId == "enemy.ritual_anchor") return "DESTROY";
-        if (actor.DefinitionId == "enemy.feeding_root") return "SEVER";
+        if (actor.DefinitionId == "enemy.feeding_root") return _session.EncounterId == "championarena.rootwidow" ? null : "SEVER";
         if (actor.DefinitionId == "boss.rootheart") return actor.Shielded ? "PROTECTED" : "EXPOSED";
         if (actor.DefinitionId == "boss.furnace_spindle") return actor.Guarded ? "CORE GUARDED" : "CORE EXPOSED";
         if (actor.DefinitionId == "boss.covenant_warden") return actor.Guarded ? "OATH GUARDED" : "WARDEN EXPOSED";

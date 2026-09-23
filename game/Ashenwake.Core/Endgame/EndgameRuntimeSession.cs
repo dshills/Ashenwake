@@ -27,13 +27,13 @@ public sealed partial class EndgameRuntimeSession
     private EndgameRuntimeSnapshot initial = null!;
     public CampaignRuntimeSession Campaign { get; private set; }
     public ProductionSession Production => Campaign.Production;
-    public CombatSession Combat => InSecretChamber ? secretArena! : InRegionalHunt ? regionalArena! : arena ?? Campaign.Combat;
+    public CombatSession Combat => InRoamingChampion ? roamingArena! : InSecretChamber ? secretArena! : InRegionalHunt ? regionalArena! : arena ?? Campaign.Combat;
     public DeathRecap? LastDeathRecap { get; private set; }
     public EndgameContent Content { get; }
     public RoomDefinition Room => Combat.Room;
     public long Tick { get; private set; }
-    public bool InHub => !InSecretChamber && !InRegionalHunt && arena is null && Campaign.InHub;
-    public bool EncounterCleared => InSecretChamber ? secretChambers!.Active!.Stage is "Victory" or "Claimed" : InRegionalHunt ? regionalHunts!.Run!.Stage == "Victory" : arena is null ? Campaign.EncounterCleared : cleared;
+    public bool InHub => !InRoamingChampion && !InSecretChamber && !InRegionalHunt && arena is null && Campaign.InHub;
+    public bool EncounterCleared => InRoamingChampion ? roamingChampions!.Active!.Stage is "Victory" or "Claimed" : InSecretChamber ? secretChambers!.Active!.Stage is "Victory" or "Claimed" : InRegionalHunt ? regionalHunts!.Run!.Stage == "Victory" : arena is null ? Campaign.EncounterCleared : cleared;
     public bool AwaitingRetry => awaitingRetry;
     public IReadOnlyList<string> WorldEvents { get; private set; } = [];
     public string StateHash => JsonData.Hash(Capture());
@@ -41,7 +41,7 @@ public sealed partial class EndgameRuntimeSession
     private int ArenaIndex => Math.Min(State.Run!.EncounterIndex, manifest!.Rooms.Length - 1);
     private bool CampaignComplete => Campaign.View.Ending?.FracturesUnlocked == true;
     private bool CanRecover => InHub && State.Unlocked && State.Run?.Status != "Active" && State.Sigils.All(s => s.Consumed) && State.Sigils.Length < 10000;
-    public IReadOnlyList<ExpeditionInteraction> Interactions => InSecretChamber ? SecretInteractions : InRegionalHunt ? RegionalInteractions : arena is not null ? [] : !InHub ? [.. Campaign.Interactions, .. SecretInteractions] :
+    public IReadOnlyList<ExpeditionInteraction> Interactions => InRoamingChampion ? RoamingInteractions : InSecretChamber ? SecretInteractions : InRegionalHunt ? RegionalInteractions : arena is not null ? [] : !InHub ? [.. Campaign.Interactions, .. SecretInteractions, .. RoamingInteractions] :
         [.. Campaign.Interactions, new(RegionalHuntCatalog.BoardInteraction, "Regional hunts · contracts and rewards", RegionalHuntCatalog.BoardPosition, RegionalHuntCatalog.BoardRange), new(Training.TrainingSession.InteractionId, "Training ground · practice your build", Training.TrainingSession.EntryPosition, Training.TrainingSession.InteractionRange),
             .. State.Unlocked ? new ExpeditionInteraction[] { new("endgame.gate", "Fractures · Sigils and God Hunts", new(6500, 0), 2600) } : []];
     public EndgameRunView? RunView
@@ -77,6 +77,7 @@ public sealed partial class EndgameRuntimeSession
         this.combatJson = combatJson; this.adventure = adventure; this.policy = EndgameProgression.Resolve(policy);
         campaignContent = campaign; Content = content; Campaign = journey; this.ledger = ledger;
         combatContent = EndgameCombatContent.FromComposed(combatJson);
+        roamingCharacterSeed = Production.Capture().Expedition.Adventure.Seed;
         if (combatContent.PolicyHash != content.Hash) throw new InvalidDataException("Endgame combat and runtime policy identities differ.");
     }
     public static EndgameRuntimeSession Create(string combatJson, AdventureContent adventure, ProgressionContent policy,
@@ -105,6 +106,7 @@ public sealed partial class EndgameRuntimeSession
         };
         session.RestoreRegionalHunts(snapshot.RegionalHunts);
         session.RestoreSecretChambers(snapshot.SecretChambers);
+        session.RestoreRoamingChampions(snapshot.RoamingChampions);
         session.RestoreExplorationMap(snapshot.ExplorationMap);
         session.ValidateState(); session.initial = session.Capture(); return session;
     }
@@ -128,7 +130,8 @@ public sealed partial class EndgameRuntimeSession
         EncounterCleared = cleared,
         ExplorationMap = explorationMap?.Capture(),
         RegionalHunts = CaptureRegionalHunts(),
-        SecretChambers = CaptureSecretChambers()
+        SecretChambers = CaptureSecretChambers(),
+        RoamingChampions = CaptureRoamingChampions()
     };
     public EndgameRuntimeReplay CaptureReplay() => JsonData.Copy(new EndgameRuntimeReplay(1, initial, frames.ToArray()));
     public FracturePreview PreviewSigil(long id)
@@ -184,6 +187,7 @@ public sealed partial class EndgameRuntimeSession
         Tick = state.Tick; operationSequence = state.OperationSequence;
         RestoreRegionalHunts(state.RegionalHunts);
         RestoreSecretChambers(state.SecretChambers);
+        RestoreRoamingChampions(state.RoamingChampions);
         RestoreExplorationMap(state.ExplorationMap);
         Campaign.PreserveDeathRecapFrom(previousCampaign);
         if (arena is not null && previousArena is not null) arena.PreserveDeathRecapFrom(previousArena);
@@ -195,6 +199,7 @@ public sealed partial class EndgameRuntimeSession
     private EndgameRuntimeResult Advance(CombatCommand[] commands)
     {
         if (commands.Length > 64 || commands.Any(c => c is null)) throw new InvalidDataException("Invalid endgame command batch.");
+        if (InRoamingChampion) return AdvanceRoamingChampion(commands);
         if (InSecretChamber) return AdvanceSecretChamber(commands);
         if (InRegionalHunt) return AdvanceRegionalHunt(commands);
         if (arena is null)
@@ -205,7 +210,7 @@ public sealed partial class EndgameRuntimeSession
                 Tick++;
                 if (regionalArena is not null) regionalArena = Production.ProjectCampaignCombat(regionalArena);
             }
-            return new(outcome.Success, outcome.Reason, outcome.CombatEvents, outcome.WorldEvents);
+            return new(outcome.Success, outcome.Reason, outcome.CombatEvents, outcome.Success ? [.. outcome.WorldEvents, .. DiscoverRoamingChampions()] : outcome.WorldEvents);
         }
         if (awaitingRetry || State.Run!.Status is "Failed" or "Abandoned") return Fail("Retry the current encounter or return to Greyhaven.");
         if (commands.Any(c => c.Kind is CombatCommandKind.Equip or CombatCommandKind.EquipFragment or CombatCommandKind.UnequipFragment or CombatCommandKind.SetMutation))
@@ -229,6 +234,9 @@ public sealed partial class EndgameRuntimeSession
     private EndgameRuntimeResult Change(EndgameRuntimeCommand command)
     {
         var messages = new List<string>();
+        if (command.Action is EndgameRuntimeAction.EnterRoamingChampion or EndgameRuntimeAction.ChallengeRoamingChampion or EndgameRuntimeAction.ClaimRoamingChampionReward or EndgameRuntimeAction.ExitRoamingChampion)
+            return ChangeRoamingChampion(command);
+        if (InRoamingChampion && command.Action != EndgameRuntimeAction.EnableExplorationMap) return Fail("Leave the champion challenge before changing the campaign, build, or expedition.");
         if (command.Action is EndgameRuntimeAction.ResolveSecretClue or EndgameRuntimeAction.EnterSecretChamber or EndgameRuntimeAction.ChallengeSecretGuardian or EndgameRuntimeAction.ClaimSecretTreasure or EndgameRuntimeAction.ExitSecretChamber)
             return ChangeSecretChamber(command);
         if (InSecretChamber && command.Action != EndgameRuntimeAction.EnableExplorationMap) return Fail("Leave the hidden chamber before changing the campaign, build, or expedition.");
@@ -334,6 +342,7 @@ public sealed partial class EndgameRuntimeSession
         Production.ValidateEndgameLedger(State);
         ValidateRegionalHunts();
         ValidateSecretChambers();
+        ValidateRoamingChampions();
         if (arena is null)
         {
             if (manifest is not null || awaitingRetry || cleared || State.Run?.Status == "Active") throw new InvalidDataException("Inactive endgame has a live arena or run.");

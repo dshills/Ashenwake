@@ -56,12 +56,12 @@ public sealed class SecretLegendaryMigrationTests
             Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures/combat-regional-hunts.json")))));
         Assert.Equal("16158F0DEAE5D082C1F0E0D5062DA888D5D2288F04C3BA6AFD66BFFF6CF67072",
             Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures/progression-regional-hunts.json")))));
-        var before = CombatContent.Parse(Base(true)); var current = CombatContent.Parse(Base(false));
+        var before = CombatContent.Parse(Base(true)); var current = CombatContent.Parse(Read("fixtures/combat-personal-stash.json"));
         string[] newItems = ["item.emberwake_mantle", "item.griefs_reprieve", "item.widowthorn"];
         string[] newPowers = ["property.emberwake", "property.griefs_reprieve", "property.widowthorn"];
         Assert.Equal(newItems, current.Items.Select(i => i.Id).Except(before.Items.Select(i => i.Id)).Order());
         Assert.Equal(JsonData.Hash(before), JsonData.Hash(current with { Items = current.Items.Where(i => !newItems.Contains(i.Id)).ToArray() }));
-        var oldPolicy = Policy(true).Capture(); var policy = Policy(false).Capture();
+        var oldPolicy = Policy(true).Capture(); var policy = ProgressionContent.Parse(Read("fixtures/progression-personal-stash.json")).Capture();
         Assert.Equal(newPowers, policy.Properties.Select(p => p.Id).Except(oldPolicy.Properties.Select(p => p.Id)).Order());
         Assert.Equal(JsonData.Hash(oldPolicy), JsonData.Hash(policy with
         {

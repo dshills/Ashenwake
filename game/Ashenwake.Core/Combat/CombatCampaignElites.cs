@@ -128,6 +128,7 @@ public sealed partial class CombatSession
                 campaign.Actors[hazard.SourceId].Modifiers.Contains("Dirgebound") &&
                 _state.Actors.Any(a => a.Id == hazard.SourceId && a.Health > 0), "dirge ownership/geometry");
         Check(existing.Distinct().Count() == existing.Length, "effect identity");
+        ValidateRoamingChampionHazards();
         ValidateMidgameSupport();
         ValidateOathWard();
     }

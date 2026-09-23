@@ -1382,45 +1382,6 @@
       ],
       "hands": 0,
       "disciplines": []
-    },
-    {
-      "id": "item.last_toll",
-      "name": "Last Toll",
-      "slot": "OffHand",
-      "damage": 0,
-      "armor": 850,
-      "criticalBasisPoints": 0,
-      "compatibleSlots": [
-        "OffHand"
-      ],
-      "hands": 1,
-      "disciplines": []
-    },
-    {
-      "id": "item.broodkeepers_knot",
-      "name": "Broodkeeper’s Knot",
-      "slot": "Amulet",
-      "damage": 0,
-      "armor": 0,
-      "criticalBasisPoints": 250,
-      "compatibleSlots": [
-        "Amulet"
-      ],
-      "hands": 0,
-      "disciplines": []
-    },
-    {
-      "id": "item.tithebreakers_grasp",
-      "name": "Tithebreaker’s Grasp",
-      "slot": "Gloves",
-      "damage": 0,
-      "armor": 650,
-      "criticalBasisPoints": 0,
-      "compatibleSlots": [
-        "Gloves"
-      ],
-      "hands": 0,
-      "disciplines": []
     }
   ],
   "loadouts": [

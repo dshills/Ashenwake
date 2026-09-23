@@ -139,6 +139,15 @@
     "power.property.emberwake.description": { "other": "Avoid an enemy’s direct Fire hit during a dodge’s invulnerable frames to gain 20% increased direct skill damage for 4 seconds. 3-second trigger cooldown. Burning damage and other invulnerability do not activate it. Copies do not stack." },
     "source.griefs_reprieve": { "other": "Found in a hidden chamber. This secret reward can be claimed once per character." },
     "source.widowthorn": { "other": "Found in a hidden chamber. This secret reward can be claimed once per character." },
-    "source.emberwake_mantle": { "other": "Found in a hidden chamber. This secret reward can be claimed once per character." }
+    "source.emberwake_mantle": { "other": "Found in a hidden chamber. This secret reward can be claimed once per character." },
+    "equipment.last_toll": { "other": "Last Toll" },
+    "lore.last_toll": { "other": "The pilgrim carried no shield until the bells began to answer. Now every interrupted toll leaves a little silence in its iron." },
+    "source.last_toll": { "other": "Defeat the Bell-Torn Pilgrim on its optional Grey March trail, then claim its one-time reward." },
+    "equipment.broodkeepers_knot": { "other": "Broodkeeper’s Knot" },
+    "lore.broodkeepers_knot": { "other": "A wedding knot woven from roots and venom sacs. Cut one strand, and the whole brood remembers who held the knife." },
+    "source.broodkeepers_knot": { "other": "Defeat Widow of the Root on its optional Verdant Maw trail, then claim its one-time reward." },
+    "equipment.tithebreakers_grasp": { "other": "Tithebreaker’s Grasp" },
+    "lore.tithebreakers_grasp": { "other": "The collector counted every ember as a debt. These scorched gauntlets now return the reckoning in pairs." },
+    "source.tithebreakers_grasp": { "other": "Defeat the Cinder Tithekeeper on its optional Cinder Reach trail, then claim its one-time reward." }
   }
 }

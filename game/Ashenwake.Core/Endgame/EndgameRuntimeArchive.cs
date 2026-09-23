@@ -45,6 +45,11 @@ public static class EndgameRuntimeSaveStore
             ArchiveHeaders.Require(secrets, 1);
             if (secrets.TryGetProperty("combat", out var secretCombat) && secretCombat.ValueKind != JsonValueKind.Null) CombatHeader(secretCombat);
         }
+        if (state.TryGetProperty("roamingChampions", out var champions) && champions.ValueKind != JsonValueKind.Null)
+        {
+            ArchiveHeaders.Require(champions, 1);
+            if (champions.TryGetProperty("combat", out var championCombat) && championCombat.ValueKind != JsonValueKind.Null) CombatHeader(championCombat);
+        }
         if (state.TryGetProperty("regionalHunts", out var regional) && regional.ValueKind != JsonValueKind.Null)
         {
             ArchiveHeaders.Require(regional, 1);

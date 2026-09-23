@@ -37,7 +37,7 @@ public partial class EndgameDirector
         _huntBoard.BoardApproachRequested += () => _sandbox.RequestWorldInteraction(RegionalHuntCatalog.BoardInteraction);
         _huntBoard.VisibilityChangedByPlayer += open =>
         {
-            if (open) { _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _collection?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
+            if (open) { _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _collection?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
             UpdatePanelVisibility();
         };
         _huntBoard.MenuRequested += action =>
@@ -46,6 +46,7 @@ public partial class EndgameDirector
             if (action == "aw_inventory") _character.ToggleInventory();
             else if (action == "aw_character") _character.Toggle();
             else if (action == "aw_experiment") ShowExperimentPanel();
+            else if (_session.InRoamingChampion) OpenRoamingChampions();
             else if (_session.HasUnresolvedRegionalHunt) OpenRegionalHunts();
             else if (action == "aw_endgame") _board.SetOpen(true);
             else { _campaignHud.Visible = true; _campaignHud.SetOpen(true); }

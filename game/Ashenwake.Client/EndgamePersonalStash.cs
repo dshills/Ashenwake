@@ -40,6 +40,7 @@ public partial class EndgameDirector
             if (action == "aw_inventory") _character.ToggleInventory();
             else if (action == "aw_character") _character.Toggle();
             else if (action == "aw_experiment") ShowExperimentPanel();
+            else if (_session.InRoamingChampion) OpenRoamingChampions();
             else if (_session.InSecretChamber) OpenSecretChambers();
             else if (_session.HasUnresolvedRegionalHunt) OpenRegionalHunts();
             else if (action == "aw_endgame" || _session.Combat.View.Endgame is not null) _board.ShowRun();

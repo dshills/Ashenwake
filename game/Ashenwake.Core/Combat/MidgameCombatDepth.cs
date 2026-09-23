@@ -60,11 +60,14 @@ public sealed partial class CombatSession
     }
 
     private int BossGuardedTicks(CombatActor actor)
-        => actor.Health <= 0 || actor.DefinitionId is not ("boss.furnace_spindle" or "boss.covenant_warden") ? 0 :
+        => _state.EncounterId == "championarena.tithekeeper" && IsRoamingChampion(actor) && actor.Health > 0
+            ? Remaining(_state.Campaign!.Actors[actor.Id].GuardedUntil)
+            : actor.Health <= 0 || actor.DefinitionId is not ("boss.furnace_spindle" or "boss.covenant_warden") ? 0 :
             Remaining(_state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.GuardedUntil ?? 0);
 
     private int BossRecoveryTicks(CombatActor actor)
     {
+        if (TithekeeperExposed(actor) && actor.Health > 0) return Remaining(actor.RecoveryUntil);
         if (actor.Health <= 0 || actor.DefinitionId is not ("boss.rootheart" or "boss.furnace_spindle" or "boss.covenant_warden" or "boss.breach_heart") ||
             !IsCampaignBoss(actor) || CampaignShielded(actor) || CampaignDefenseBonus(actor) > 0 ||
             actor.Pending is not null || _state.Campaign!.Hazards.Any(h => h.SourceId == actor.Id)) return 0;

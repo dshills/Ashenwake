@@ -277,7 +277,7 @@ public partial class Sandbox : Node3D
             var hazard = (_view.CampaignHazards ?? []).Where(h => h.SourceId == actor.Id && h.RemainingTicks > 0 && !h.ContentId.StartsWith("rule.", StringComparison.Ordinal))
                 .OrderBy(h => h.RemainingTicks).FirstOrDefault();
             var conditions = actor.Statuses.Select(s => s.Id).Concat(actor.EliteModifiers ?? []);
-            string? mechanic = EndgameCombatLabel(actor) ?? MidgameCombatLabel(actor, hazard) ?? (IsDirge(hazard) ? OpeningCombatLabel(actor, hazard) :
+            string? mechanic = EndgameCombatLabel(actor) ?? RoamingChampionCombatLabel(actor, hazard) ?? MidgameCombatLabel(actor, hazard) ?? (IsDirge(hazard) ? OpeningCombatLabel(actor, hazard) :
                 CampaignActorLabel(actor) ?? EndgameActorLabel(actor.State) ?? OpeningCombatLabel(actor, hazard));
             if (mechanic is not null) _mechanicLabels.Add(actor.Id);
             if (mechanic is not null) conditions = conditions.Append(mechanic);

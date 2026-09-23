@@ -124,6 +124,17 @@ public partial class Sandbox
     {
         Vector3 target = PositionOf(x, z);
         if (definitionId is "boss.bell_saint" && _view.BossPhase >= 3) definitionId = "enemy.bell_beast";
+        if (id != 1 && !allied)
+        {
+            (definitionId, name) = (_session.EncounterId, definitionId) switch
+            {
+                ("championarena.pilgrim", "enemy.funeral_guard") => ("champion.pilgrim", "The Bell-Torn Pilgrim"),
+                ("championarena.rootwidow", "enemy.bloom_carrier") => ("champion.rootwidow", "Widow of the Root"),
+                ("championarena.rootwidow", "enemy.feeding_root") => ("champion.nest", "Poisonous Root Nest"),
+                ("championarena.tithekeeper", "enemy.forge_sentinel") => ("champion.tithekeeper", "The Cinder Tithekeeper"),
+                _ => (definitionId, name)
+            };
+        }
         string discipline = id == 1 ? _view.Discipline : "";
         CharacterAppearance? appearance = id == 1 ? _playerAppearance : null;
         string visualKey = $"{definitionId}/{role}/{discipline}/{allied}/{appearance?.Key}";

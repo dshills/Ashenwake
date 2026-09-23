@@ -7,7 +7,7 @@ public sealed partial class EndgameRuntimeSession
 {
     private LocalMapAtlas? explorationMap;
     private string MapRoomId(int index) => "run." + State.Run!.Id + ".room." + index;
-    public LocalMapView? LocalMap => InSecretChamber || InRegionalHunt ? null : arena is null ? Campaign.LocalMap : explorationMap?.View(MapRoomId(ArenaIndex), Room);
+    public LocalMapView? LocalMap => InRoamingChampion || InSecretChamber || InRegionalHunt ? null : arena is null ? Campaign.LocalMap : explorationMap?.View(MapRoomId(ArenaIndex), Room);
     public EndgameRuntimeResult EnableExplorationMap() => Execute(new(EndgameRuntimeAction.EnableExplorationMap));
     private RoomDefinition? ResolveMapRoom(string id)
     {
@@ -19,7 +19,7 @@ public sealed partial class EndgameRuntimeSession
     private void RestoreExplorationMap(LocalMapAtlasState? source) => explorationMap = LocalMapAtlas.Restore(source, ResolveMapRoom);
     private void RevealExplorationMap()
     {
-        if (InSecretChamber || InRegionalHunt) return;
+        if (InRoamingChampion || InSecretChamber || InRegionalHunt) return;
         if (arena is null) { Campaign.RevealExplorationMap(); return; }
         if (explorationMap is null) return;
         var player = Combat.View.Actors.Single(a => a.Id == 1);

@@ -400,13 +400,14 @@ public sealed partial class CombatSession
         if (source?.Statuses.Any(s => s.Id == "Cursed") == true) increased -= 2000;
         if (target.Statuses.Any(s => s.Id == "Marked") && _content.Skills.FirstOrDefault(s => s.Id == hit.ContentId)?.Behavior == "ConsumeMarked") increased += 10000;
         var damageInput = new DamageInput(hit.Damage, bonus, IncreasedBasisPoints: increased, Critical: critical, Family: hit.Family, DefenseBasisPoints: defense,
-            VulnerabilityBasisPoints: target.Statuses.Any(s => s.Id == "Vulnerable") ? 2500 : 0, Barrier: target.Barrier, MoreBasisPoints: EndgameFragmentPower(hit, source), MinimumDefenseBasisPoints: EndgameRule("resistance_inversion") ? -1500 : 0, Immune: target.InvulnerableUntil > Tick || IsRituallyShielded(target), DamageOverTime: hit.Dot);
+            VulnerabilityBasisPoints: TithekeeperExposed(target) || target.Statuses.Any(s => s.Id == "Vulnerable") ? 2500 : 0, Barrier: target.Barrier, MoreBasisPoints: EndgameFragmentPower(hit, source), MinimumDefenseBasisPoints: EndgameRule("resistance_inversion") ? -1500 : 0, Immune: target.InvulnerableUntil > Tick || IsRituallyShielded(target), DamageOverTime: hit.Dot);
         var result = DamageRules.Resolve(damageInput);
         ObserveEmberwakeDodge(hit, source, target);
         target.Barrier -= result.Absorbed;
         ChargeOath(source, target, result.Absorbed);
         if (result.Absorbed > 0) Emit("BarrierAbsorbed", target.Id, target.Id, result.Absorbed, hit.ContentId, hit.ActionId, hit.Depth);
         int healthDamage = Math.Min(target.Health, result.HealthDamage); target.Health -= healthDamage;
+        RoamingChampionHit(hit, source, target, healthDamage);
         ObserveTrainingHit(hit, source, target, healthDamage);
         ObserveTrainingDefense(hit, source, target, damageInput, result, healthDamage);
         ObserveIncomingDamage(hit, source, target, healthDamage);
@@ -482,7 +483,7 @@ public sealed partial class CombatSession
         if (target.Faction != CombatFaction.Enemy) return;
         CampaignDeath(target);
         EndgameDeath(target);
-        if (!training && RegionalHuntCombat.Find(_state.EncounterId) is null && SecretChamberCombat.Find(_state.EncounterId) is null && _state.Loot.Count < 512 && !_state.ResurrectedActorIds.Contains(target.Id) && CampaignRewardEligible(target))
+        if (!training && !IsRoamingChampionArena && RegionalHuntCombat.Find(_state.EncounterId) is null && SecretChamberCombat.Find(_state.EncounterId) is null && _state.Loot.Count < 512 && !_state.ResurrectedActorIds.Contains(target.Id) && CampaignRewardEligible(target))
         {
             var rng = _state.Rng.Loot;
             var eligibleItems = _content.Items.Where(i => i.Id != "item.ashcleaver" && !LegendaryEquipment.IsItem(i.Id)).ToArray();

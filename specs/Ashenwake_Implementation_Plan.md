@@ -46,6 +46,8 @@ The personal stash milestone adds a chest beside Torren, four named storage tabs
 
 ## 1. Scope, assumptions, and planning rules
 
+The roaming champion milestone adds three optional, seeded side encounters in Acts I–III, each with a custom silhouette, distinct combat mechanic and one-time signature equipment. Discoveries, victories and treasure receipts survive saves and deterministic replay; retreat restores the preserved campaign source room. See [roaming champions](../docs/roaming_champions.md) and [verification](../docs/roaming_champions_verification.md).
+
 ### 1.1 Release boundaries
 
 | Milestone | Required scope | Intentionally later |

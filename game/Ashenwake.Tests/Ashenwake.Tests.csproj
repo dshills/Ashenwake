@@ -22,6 +22,8 @@
     <None Include="../../fixtures/combat-opening-depth.json" Link="fixtures/combat-opening-depth.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/progression-opening-depth.json" Link="fixtures/progression-opening-depth.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/adventure.json" Link="adventure.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/combat-personal-stash.json" Link="fixtures/combat-personal-stash.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/progression-personal-stash.json" Link="fixtures/progression-personal-stash.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/progression.json" Link="progression.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/text.en.json" Link="text.en.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/campaign.json" Link="campaign.json" CopyToOutputDirectory="PreserveNewest" />

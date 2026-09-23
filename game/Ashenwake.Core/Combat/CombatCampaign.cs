@@ -4,7 +4,7 @@ namespace Ashenwake.Core.Combat;
 
 public sealed partial class CombatSession
 {
-    private CampaignCombatEncounter? CampaignEncounter => _content.Campaign?.Encounters.FirstOrDefault(e => e.Id == _state.EncounterId) ?? EndgameCampaignEncounter ?? RegionalHuntCombat.Find(_state.EncounterId) ?? SecretChamberCombat.Find(_state.EncounterId);
+    private CampaignCombatEncounter? CampaignEncounter => _content.Campaign?.Encounters.FirstOrDefault(e => e.Id == _state.EncounterId) ?? EndgameCampaignEncounter ?? RegionalHuntCombat.Find(_state.EncounterId) ?? SecretChamberCombat.Find(_state.EncounterId) ?? RoamingChampionCombat.Find(_state.EncounterId);
     private string CampaignRule => CampaignEncounter?.Rule ?? "";
     private string CampaignPattern(CombatActor actor) => _content.Campaign?.Behaviors.FirstOrDefault(b => b.EnemyId == actor.DefinitionId)?.Pattern ?? "";
     private bool HasElite(CombatActor actor, string id) => _state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.Modifiers.Contains(id) == true;
@@ -19,6 +19,7 @@ public sealed partial class CombatSession
         if (CampaignEncounter is not { } encounter) return;
         _state.Campaign = new() { StartedTick = Tick, RuleUntil = encounter.DurationTicks == 0 ? 0 : Tick + encounter.DurationTicks, NextHazardTick = Tick + 45 };
         foreach (var spawn in encounter.Spawns) AddCampaignActor(spawn.EnemyId, spawn.Position, spawn.Modifiers, spawn.Hidden);
+        PopulateRoamingChampion();
         if (encounter.Rule == "Rootheart")
             foreach (var position in new[] { new Position(-1200, -3500), new Position(2500, 3500), new Position(5500, -2500) }) AddCampaignActor("enemy.feeding_root", position, []);
         if (encounter.Rule == "Breach")
@@ -155,6 +156,7 @@ public sealed partial class CombatSession
     {
         if (_state.Campaign is null || actor.Faction != CombatFaction.Enemy) return false;
         if (Stunned(actor)) return false;
+        if (ThinkRoamingChampion(actor)) return true;
         if (_state.Campaign.Actors.GetValueOrDefault(actor.Id)?.GuardedUntil > Tick && actor.RecoveryUntil > Tick) { actor.State = "Guarded"; return true; }
         if (actor.Pending is not null || actor.RecoveryUntil > Tick || Player.Health <= 0) return false;
         if (TryEliteAbility(actor)) return true;
@@ -253,7 +255,7 @@ public sealed partial class CombatSession
     }
     private int CampaignDamageBonus(CombatActor? actor) => actor is null ? 0 :
         (_state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.Empowerment ?? 0) * 1500 + (ForgeOverchargeTicks(actor) > 0 ? 2000 : 0);
-    private int CampaignDefenseBonus(CombatActor actor) => _state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.GuardedUntil > Tick ? 6000 : 0;
+    private int CampaignDefenseBonus(CombatActor actor) => IsRoamingChampionArena ? RoamingChampionDefense(actor) : _state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.GuardedUntil > Tick ? 6000 : 0;
     private void CampaignDeath(CombatActor actor)
     {
         if (_state.Campaign is null) return;

@@ -13,7 +13,8 @@ public static class LegendaryEquipment
     public const string CrownPower = "property.unspoken_verdict", WitnessPower = "property.witness_vow", HourPower = "property.borrowed_hour";
     public const string Grief = "item.griefs_reprieve", Widowthorn = "item.widowthorn", Emberwake = "item.emberwake_mantle";
     public const string GriefPower = "property.griefs_reprieve", WidowthornPower = "property.widowthorn", EmberwakePower = "property.emberwake";
-    public static bool IsItem(string id) => id is Pyre or Oath or Widow or Rotwake or Mourning or Furnace or Crown or Witness or Hour or Grief or Widowthorn or Emberwake;
+    public const string LastToll = "item.last_toll", BroodkeepersKnot = "item.broodkeepers_knot", TithebreakersGrasp = "item.tithebreakers_grasp";
+    public static bool IsItem(string id) => id is Pyre or Oath or Widow or Rotwake or Mourning or Furnace or Crown or Witness or Hour or Grief or Widowthorn or Emberwake or LastToll or BroodkeepersKnot or TithebreakersGrasp;
     public static bool IsPower(string id) => id is PyrePower or OathPower or WidowPower or RotwakePower or MourningPower or FurnacePower or CrownPower or WitnessPower or HourPower or GriefPower or WidowthornPower or EmberwakePower;
     public static bool IsEffect(string id) => id is "effect.pyre_trail" or "effect.oath_reprisal" or "effect.widow_echo" or "effect.virulent_wake" or "effect.rallying_chorus" or "effect.cinder_cycle" or "effect.witness_vow" or "effect.widowthorn";
     public static string EncounterReward(string encounter) => encounter switch

@@ -68,6 +68,8 @@ Open **C → Character → Build loadouts** or **Gear → Build loadouts** to sa
 
 Greyhaven’s **Regional hunts** board offers three repeatable contracts unlocked after Acts 1–3. Follow three clues, defeat the quarry, then return to claim a named legendary item and materials. See [regional hunts](docs/regional_hunts.md).
 
+Three optional [roaming champions](docs/roaming_champions.md) inhabit secured side areas in Acts I–III: **The Bell-Torn Pilgrim**, **Widow of the Root**, and **The Cinder Tithekeeper**. Inspect their signs, enter a safe refuge and explicitly accept the challenge. Each guards named signature equipment, claimed once per character. **J → Champions** records discovered sightings; retreat preserves the source room, and victory preserves unclaimed treasure.
+
 In **Gear**, favorite or lock an item to protect it from discard, extraction and salvage. Filter the backpack by favorites, locked gear, unused items or saved outfits. Item details and permanent-removal confirmations identify affected outfits. At Torren, **Salvage selected item…** previews an exact material return before permanently consuming eligible unequipped gear. See [loot management](docs/loot_management.md).
 
 After a solo campaign or endgame defeat, the [death recap](docs/death_recap.md) pauses to show the killing blow, recent health loss, harmful conditions and recovery consequences. Continue from the restored campaign checkpoint, retry an expedition with remaining attempts, or return to Greyhaven after the final attempt. Loaded defeated expeditions show recovery controls without inventing missing damage history.

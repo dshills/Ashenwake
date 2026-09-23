@@ -160,12 +160,14 @@ public partial class LegendaryCollectionPanel : Control
             _details.AddChild(Text(source.Label + (source.Repeatable ? " · Repeatable" : ""), 14));
             _details.AddChild(Text(source.Requirement, 12));
             var kind = source.Kind;
-            string label = kind == LegendaryCollectionSourceKind.SecretChamber ? "View discovery" : kind == LegendaryCollectionSourceKind.Campaign ? "View Journey route" : kind == LegendaryCollectionSourceKind.Fracture ? "View Fractures" : "View God Hunt";
+            string label = kind == LegendaryCollectionSourceKind.RoamingChampion ? "View champion sighting" : kind == LegendaryCollectionSourceKind.SecretChamber ? "View discovery" : kind == LegendaryCollectionSourceKind.Campaign ? "View Journey route" : kind == LegendaryCollectionSourceKind.Fracture ? "View Fractures" : "View God Hunt";
             var route = Button(label, "CollectionSource" + kind, () => SourceRequested?.Invoke(_selected, kind));
-            route.Disabled = kind == LegendaryCollectionSourceKind.GodHunt && source.HuntId.Length == 0 || kind == LegendaryCollectionSourceKind.SecretChamber && source.ChamberId.Length == 0;
+            route.Disabled = kind == LegendaryCollectionSourceKind.RoamingChampion && source.ChampionId.Length == 0 || kind == LegendaryCollectionSourceKind.GodHunt && source.HuntId.Length == 0 || kind == LegendaryCollectionSourceKind.SecretChamber && source.ChamberId.Length == 0;
             _details.AddChild(route); _details.AddChild(new HSeparator());
         }
-        _details.AddChild(Text(selected.Entry.SecretChamberId.Length > 0
+        _details.AddChild(Text(selected.Entry.RoamingChampionId.Length > 0
+            ? "Claim the champion’s signature treasure to own it. This character receives one copy; extraction consumes it and teaches its existing power. Previewing and tracking never change your equipment."
+            : selected.Entry.SecretChamberId.Length > 0
             ? "Claim the chamber treasure to own it. This character receives one copy; extracting its power consumes the item. Previewing and tracking never change your equipment."
             : "Collect the ground drop to own it. Extract a spare copy at its specialist to learn its power. Previewing and tracking never change your equipment.", 12));
         _track.Text = _view.TrackedItem == _selected ? "Stop tracking this item" : "Track this item";

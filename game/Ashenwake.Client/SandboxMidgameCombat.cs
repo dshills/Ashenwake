@@ -47,6 +47,12 @@ public partial class Sandbox
 
     private static string MidgameHazardName(string contentId) => contentId switch
     {
+        "campaign.champion_chain" => "DRAGGING CHAIN · SIDESTEP",
+        "campaign.champion_bell" => "BELL TOLL · INTERRUPT",
+        "campaign.champion_poison" => "POISON BLOOM · LEAVE",
+        "campaign.champion_thorns" => "THORN LANCE",
+        "campaign.champion_vent" => "FURNACE BLAST",
+        "campaign.champion_slag" => "MOLTEN TITHE",
         "campaign.root_tangle" => "ROOT TANGLE",
         "campaign.root_spores" => "SPORE BURST",
         "campaign.furnace_vent" => "FURNACE VENT",

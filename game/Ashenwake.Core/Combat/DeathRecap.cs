@@ -37,7 +37,7 @@ public sealed partial class CombatSession
         if (training || target.Id != 1 || amount <= 0) return;
         string attackId = hit.OriginSkill.Length > 0 ? hit.OriginSkill : hit.ContentId;
         string definition = source?.DefinitionId ?? "";
-        string sourceName = source is null ? "Unknown source" : source.Id == 1 ? "You" : RecapContentLabel(definition);
+        string sourceName = source is null ? "Unknown source" : source.Id == 1 ? "You" : RoamingChampionName(source) ?? RecapContentLabel(definition);
         var entry = new DeathDamageEntry(Tick, hit.SourceId, sourceName, attackId,
             _content.Skills.FirstOrDefault(s => s.Id == attackId)?.Name ?? RecapContentLabel(attackId), hit.Family, amount)
         {

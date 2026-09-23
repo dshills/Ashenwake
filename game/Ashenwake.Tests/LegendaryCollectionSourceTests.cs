@@ -27,12 +27,18 @@ public sealed class LegendaryCollectionSourceTests
     public void DefinitionsMatchAuthoredItemsAndTheirExclusiveSources()
     {
         var content = ProgressionContent.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "progression.json"))).Capture();
-        Assert.Equal(12, LegendaryCollectionCatalog.Entries.Count);
-        Assert.Equal(12, LegendaryCollectionCatalog.Entries.Select(e => e.ItemId).Distinct().Count());
+        Assert.Equal(15, LegendaryCollectionCatalog.Entries.Count);
+        Assert.Equal(15, LegendaryCollectionCatalog.Entries.Select(e => e.ItemId).Distinct().Count());
         foreach (var entry in LegendaryCollectionCatalog.Entries)
         {
             var item = content.Items.Single(i => i.Id == entry.ItemId);
             Assert.Equal(item.Property, entry.PowerId); Assert.Contains(entry.Slot, item.Slots);
+            if (entry.RoamingChampionId.Length > 0)
+            {
+                Assert.Equal(entry.ItemId, RoamingChampionCatalog.Find(entry.RoamingChampionId)!.RewardItemId);
+                Assert.Empty(entry.CampaignEncounterId); Assert.Empty(entry.FractureRegionId); Assert.Empty(entry.HuntId);
+                continue;
+            }
             if (entry.SecretChamberId.Length > 0)
             {
                 Assert.Equal(entry.ItemId, SecretChamberCatalog.Find(entry.SecretChamberId)!.RewardItemId);
@@ -88,8 +94,9 @@ public sealed class LegendaryCollectionSourceTests
             Assert.All(sources, s => Assert.Equal(LegendaryCollectionSourceState.Locked, s.State));
             Assert.All(sources, s => Assert.Empty(s.EncounterId));
             Assert.All(sources, s => Assert.Empty(s.HuntId));
+            Assert.All(sources, s => Assert.Empty(s.ChampionId));
             Assert.All(sources, s => Assert.DoesNotContain("Nhal", s.Label));
-            if (entry.SecretChamberId.Length == 0) Assert.Contains(sources, s => s.Kind == LegendaryCollectionSourceKind.Fracture && s.Requirement.Contains("Complete this character's campaign"));
+            if (entry.SecretChamberId.Length == 0 && entry.RoamingChampionId.Length == 0) Assert.Contains(sources, s => s.Kind == LegendaryCollectionSourceKind.Fracture && s.Requirement.Contains("Complete this character's campaign"));
         }
         var crown = Sources(LegendaryEquipment.Crown).First();
         Assert.Contains("Complete Act 3", crown.Requirement); Assert.Empty(crown.RegionId);

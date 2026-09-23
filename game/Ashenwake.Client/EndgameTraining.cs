@@ -28,20 +28,20 @@ public partial class EndgameDirector
     {
         if (_training is not null || !_hasActiveCharacter || _frontMenu.IsOpen || _sandbox.IsPaused) return;
         var training = _session.CreateTrainingSession(_lastTrainingMode);
-        _stashPanel?.SetOpen(false);
+        _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false);
         _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel();
         // Preserve each overlay's visibility, including the experiment navigation button.
         // Sandbox combat controls remain live, while the permanent journey is untouched.
         _trainingHidden.Clear();
         foreach (var child in _trainingHud.GetParent().GetChildren().OfType<CanvasItem>())
         {
-            if (child == _trainingHud || !child.Visible || child is not (ProductionHud or CampaignHud or EndgameHud or EchoesBoard or EchoesMemoryHud or RegionalHuntBoard or SecretChamberPanel or PersonalStashPanel) && child.Name != "EchoesNavigation" && child.Name != "RegionalHuntNavigation" && child.Name != "RegionalHuntObjective" && child.Name != "SecretChamberObjective") continue;
+            if (child == _trainingHud || !child.Visible || child is not (ProductionHud or CampaignHud or EndgameHud or EchoesBoard or EchoesMemoryHud or RegionalHuntBoard or SecretChamberPanel or PersonalStashPanel or RoamingChampionPanel) && child.Name != "EchoesNavigation" && child.Name != "RegionalHuntNavigation" && child.Name != "RegionalHuntObjective" && child.Name != "SecretChamberObjective" && child.Name != "RoamingChampionObjective") continue;
             _trainingHidden.Add(child); child.Hide();
         }
         _training = training; _trainingReset = 0; _trainingCompletionShown = false;
         string loadoutName = MatchingBuildLoadoutName();
         _trainingBuild = (loadoutName.Length == 0 ? "Custom build" : "Loadout: " + loadoutName) + "\n" + DescribeTrainingBuild(training.Combat);
-        _stage.Hide(); _effects.Hide(); _memoryPresentation.Hide(); _huntPresentation?.Hide(); _secretPresentation?.Hide();
+        _stage.Hide(); _effects.Hide(); _memoryPresentation.Hide(); _huntPresentation?.Hide(); _secretPresentation?.Hide(); _championPresentation?.Hide();
         _trainingScenery = TrainingGroundVisual.Create(_training.Combat.Room); AddChild(_trainingScenery);
         _sandbox.SetTrainingPresentation(true, _training.Mode is TrainingTargetMode.Single or TrainingTargetMode.Group); _sandbox.SetSession(_training.Combat);
         _sandbox.SetWorldInteractions([], _ => { }); _sandbox.SetMechanismVisuals(_ => null);
@@ -88,7 +88,7 @@ public partial class EndgameDirector
         _trainingHud.Dismiss();
         if (_trainingScenery is not null) { RemoveChild(_trainingScenery); _trainingScenery.QueueFree(); _trainingScenery = null; }
         foreach (var control in _trainingHidden) if (GodotObject.IsInstanceValid(control)) control.Show();
-        _trainingHidden.Clear(); _stage.Visible = true; _effects.Visible = true; _memoryPresentation.Visible = true; _huntPresentation?.Show(); _secretPresentation?.Show();
+        _trainingHidden.Clear(); _stage.Visible = true; _effects.Visible = true; _memoryPresentation.Visible = true; _huntPresentation?.Show(); _secretPresentation?.Show(); _championPresentation?.Show();
         _sandbox.SetTrainingPresentation(false); _sandbox.SetSession(_session.Combat);
         if (refresh) { Refresh(); _sandbox.Notify("Returned to Greyhaven. Your character, equipment, health and progression are unchanged by practice."); }
     }

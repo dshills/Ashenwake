@@ -21,7 +21,7 @@ public partial class EndgameDirector
         _secretPanel.ActionRequested += SecretAction;
         _secretPanel.VisibilityChangedByPlayer += open =>
         {
-            if (open) { _stashPanel?.SetOpen(false); _collection?.SetOpen(false); _huntBoard?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
+            if (open) { _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _collection?.SetOpen(false); _huntBoard?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
             UpdatePanelVisibility();
         };
         _secretPanel.ModalChanged += open => _sandbox.SetModalPaused("secret-confirmation", open);
@@ -31,6 +31,7 @@ public partial class EndgameDirector
             if (action == "aw_inventory") _character.ToggleInventory();
             else if (action == "aw_character") _character.Toggle();
             else if (action == "aw_experiment") ShowExperimentPanel();
+            else if (_session.InRoamingChampion) OpenRoamingChampions();
             else if (_session.HasUnresolvedRegionalHunt) OpenRegionalHunts();
             else if (!_session.InSecretChamber)
             {
