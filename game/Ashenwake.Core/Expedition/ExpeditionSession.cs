@@ -105,6 +105,12 @@ public sealed partial class ExpeditionSession
         Combat = Combat.Capture(),
         GodwroughtItems = new(godwroughtItems, StringComparer.Ordinal)
     };
+    internal AdventureResult ApplyBuildAnatomy(SortedDictionary<string, string> fragments, SortedDictionary<int, string> manifestations)
+    {
+        var result = adventure.ApplyBuildAnatomy(fragments, manifestations);
+        if (result.Success) SynchronizeBuild();
+        return result;
+    }
     internal AdventureState CaptureAdventure() => adventure.Capture();
     public ExpeditionReplay CaptureReplay() => JsonData.Copy(new ExpeditionReplay(1, initial, frames.ToArray()));
     public IReadOnlyList<CombatEvent> Step(params CombatCommand[] commands) => Execute(new(ExpeditionAction.Tick, Commands: commands)).CombatEvents;

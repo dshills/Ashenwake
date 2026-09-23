@@ -43,6 +43,8 @@ public sealed record ProgressionState
     public SortedDictionary<EquipmentSlot, long> Equipment { get; set; } = [];
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public EquipmentPreset[]? EquipmentPresets { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public BuildLoadout[]? BuildLoadouts { get; set; }
     public SortedDictionary<string, int> Mastery { get; set; } = [];
     public SortedDictionary<string, string> SelectedMutations { get; set; } = [];
     public SortedDictionary<string, int> Passives { get; set; } = [];
@@ -342,6 +344,7 @@ public sealed partial class ProgressionSession
         foreach (var item in s.Items) ValidateItem(content, item);
         Check(s.Items.Select(i => i.Id).Distinct().Count() == s.Items.Length && s.Items.All(i => i.Id < s.NextItemId), "Duplicate or invalid item sequence.");
         ValidateEquipmentPresets(content, s);
+        ValidateBuildLoadouts(content, s);
         Check(s.UnlockedDisciplines.Contains(s.Discipline) && s.UnlockedDisciplines.All(id => d.Disciplines.Any(x => x.Id == id)), "Unknown unlocked discipline.");
         Check(s.Equipment.Values.Distinct().Count() == s.Equipment.Count && s.Equipment.All(pair => Enum.IsDefined(pair.Key) && s.Items.Any(i => i.Id == pair.Value)), "Invalid equipment references.");
         foreach (var pair in s.Equipment)

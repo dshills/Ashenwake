@@ -276,6 +276,11 @@ public sealed partial class CampaignRuntimeSession
                 if (command.Production.Action == ProductionAction.Expedition && command.Production.Expedition?.Action is not (ExpeditionAction.Interact or ExpeditionAction.InstallFragment or ExpeditionAction.Manifestation))
                     return Failed("Campaign travel uses the campaign map.");
                 if (command.Production.Expedition?.Id == "dungeon.replay") return Failed("Campaign regions keep their own completion history.");
+                if (command.Production.Action == ProductionAction.ApplyBuildLoadout)
+                {
+                    var buildPreview = PreviewBuildLoadout(command.Production.Id);
+                    if (!buildPreview.Success) return Failed(buildPreview.Reason);
+                }
                 string specialist = command.Production.Action switch
                 {
                     ProductionAction.Equip or ProductionAction.Unequip or ProductionAction.Discard or ProductionAction.Salvage or ProductionAction.SaveEquipmentPreset or

@@ -62,9 +62,14 @@ public sealed partial class ProgressionSession
     {
         var preset = state.EquipmentPresets?.FirstOrDefault(p => p.Id == id);
         if (preset is null) return new(false, "Choose a saved equipment preset.", ReadOnlyEquipment([]), []);
+        return PreviewEquipmentArrangement(state, preset.Equipment);
+    }
+
+    internal EquipmentPresetPreview PreviewEquipmentArrangement(ProgressionState state, SortedDictionary<EquipmentSlot, long> equipment)
+    {
         var issues = new List<EquipmentPresetIssue>();
         var items = state.Items.ToDictionary(i => i.Id);
-        foreach (var (slot, itemId) in preset.Equipment)
+        foreach (var (slot, itemId) in equipment)
         {
             if (!items.TryGetValue(itemId, out var item))
             {
@@ -75,14 +80,14 @@ public sealed partial class ProgressionSession
             if (!definition.Slots.Contains(slot)) issues.Add(new(slot, itemId, $"{slot}: item #{itemId} cannot occupy this slot."));
             if (definition.Disciplines.Length > 0 && !definition.Disciplines.Contains(state.Discipline))
                 issues.Add(new(slot, itemId, $"{slot}: item #{itemId} requires {string.Join(" or ", definition.Disciplines)}; current discipline is {state.Discipline}."));
-            if (definition.Hands == 2 && preset.Equipment.ContainsKey(EquipmentSlot.OffHand))
+            if (definition.Hands == 2 && equipment.ContainsKey(EquipmentSlot.OffHand))
                 issues.Add(new(slot, itemId, "MainHand: this two-handed weapon requires an empty off hand."));
         }
-        var affixes = preset.Equipment.Values.Where(items.ContainsKey).SelectMany(id => items[id].Affixes.Keys).ToHashSet();
-        foreach (var (slot, itemId) in preset.Equipment.Where(p => items.ContainsKey(p.Value)))
+        var affixes = equipment.Values.Where(items.ContainsKey).SelectMany(id => items[id].Affixes.Keys).ToHashSet();
+        foreach (var (slot, itemId) in equipment.Where(p => items.ContainsKey(p.Value)))
             if (Data.Affixes.Any(a => items[itemId].Affixes.ContainsKey(a.Id) && a.Excludes.Any(affixes.Contains)))
                 issues.Add(new(slot, itemId, $"{slot}: item #{itemId} has an affix that conflicts with another item in this preset."));
-        return new(issues.Count == 0, string.Join(" ", issues.Select(i => i.Reason)), ReadOnlyEquipment(preset.Equipment), issues.AsReadOnly());
+        return new(issues.Count == 0, string.Join(" ", issues.Select(i => i.Reason)), ReadOnlyEquipment(equipment), issues.AsReadOnly());
     }
 
     private static IReadOnlyDictionary<EquipmentSlot, long> ReadOnlyEquipment(SortedDictionary<EquipmentSlot, long> equipment)

@@ -62,6 +62,8 @@ The [opening audio pass](docs/opening_audio.md) adds five original regional them
 
 Visit Greyhaven's **Training ground** to practice your current build against one target or a group and inspect damage, effect triggers, and resource usage. Practice grants no XP, mastery, or loot and leaves your character unchanged. At Torren, open **Gear → Equipment presets** to save and switch up to eight named outfits. See [training](docs/training_ground.md) and [equipment presets](docs/equipment_presets.md).
 
+Open **C → Character → Build loadouts** or **Gear → Build loadouts** to save eight complete builds covering equipment, fragments, Manifestations, skill mutations and passives. Switch at Mara after reviewing costs and requirements; the transaction applies everything together or leaves your character unchanged. Training comparisons identify matching named loadouts. See [complete build loadouts](docs/build_loadouts.md).
+
 In **Gear**, favorite or lock an item to protect it from discard, extraction and salvage. Filter the backpack by favorites, locked gear, unused items or saved outfits. Item details and permanent-removal confirmations identify affected outfits. At Torren, **Salvage selected item…** previews an exact material return before permanently consuming eligible unequipped gear. See [loot management](docs/loot_management.md).
 
 After a solo campaign or endgame defeat, the [death recap](docs/death_recap.md) pauses to show the killing blow, recent health loss, harmful conditions and recovery consequences. Continue from the restored campaign checkpoint, retry an expedition with remaining attempts, or return to Greyhaven after the final attempt. Loaded defeated expeditions show recovery controls without inventing missing damage history.

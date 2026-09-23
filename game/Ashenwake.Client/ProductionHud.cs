@@ -123,15 +123,16 @@ public partial class ProductionHud : Control
         _equipmentPresets.Requested += (action, id, value) => EquipmentPresetRequested?.Invoke(action, id, value);
         _equipmentPresets.CloseRequested += () => { _tab = "Gear"; Rebuild(true); _tabs["Gear"].GrabFocus(); };
         _equipmentPresets.MinimumSizeChanged += QueuePanelLayout;
+        InitializeBuildLoadouts(gearColumn);
         BuildDiscardConfirmation();
         BuildSalvageConfirmation();
         var close = new Button { Text = "Close character" }; close.Pressed += Toggle; column.AddChild(close);
         GetViewport().SizeChanged += LayoutPanel;
-        _panel.VisibilityChanged += () => { if (!_panel.Visible) { CancelDiscard(); CancelSalvage(); _equipmentPresets.CancelInteraction(); } UpdateCraftModal(); };
-        VisibilityChanged += () => { if (!IsVisibleInTree()) { CancelDiscard(); CancelSalvage(); _gearInspecting = false; _gearLoadout.CancelDrag(); _craftingWorkbench.CancelInteraction(); _skillsPanel.CancelInteraction(); _equipmentPresets.CancelInteraction(); } UpdateCraftModal(); };
+        _panel.VisibilityChanged += () => { if (!_panel.Visible) { CancelDiscard(); CancelSalvage(); _equipmentPresets.CancelInteraction(); _buildLoadouts.CancelInteraction(); } UpdateCraftModal(); };
+        VisibilityChanged += () => { if (!IsVisibleInTree()) { CancelDiscard(); CancelSalvage(); _gearInspecting = false; _gearLoadout.CancelDrag(); _craftingWorkbench.CancelInteraction(); _skillsPanel.CancelInteraction(); _equipmentPresets.CancelInteraction(); _buildLoadouts.CancelInteraction(); } UpdateCraftModal(); };
     }
 
-    public override void _ExitTree() { CancelDiscard(); CancelSalvage(); _equipmentPresets?.CancelInteraction(); GetViewport().SizeChanged -= LayoutPanel; }
+    public override void _ExitTree() { CancelDiscard(); CancelSalvage(); _equipmentPresets?.CancelInteraction(); _buildLoadouts?.CancelInteraction(); GetViewport().SizeChanged -= LayoutPanel; }
     public void Toggle() { _panel.Visible = !_panel.Visible; if (_panel.Visible) { Rebuild(true); _firstTab.GrabFocus(); } else _gearInspecting = false; }
     public void Close() { _panel.Hide(); _gearInspecting = false; }
     public void ToggleInventory()
@@ -188,6 +189,7 @@ public partial class ProductionHud : Control
         _craftingWorkbench.SynchronizePause();
         _skillsPanel.SynchronizePause();
         _equipmentPresets.SynchronizePause();
+        _buildLoadouts.SynchronizePause();
         Rebuild(false);
     }
     private void Rebuild(bool force)
@@ -203,6 +205,7 @@ public partial class ProductionHud : Control
             case "Skills": _skillsPanel.SetView(_state, _content, _view, _combat, _inTown, _interactions); break;
             case "Gear": Gear(); break;
             case "Presets": RefreshEquipmentPresets(); break;
+            case "Loadouts": RefreshBuildLoadouts(); break;
             case "Craft": Craft(); break;
             case "Town": Town(); break;
             case "Profile": Profile(); break;
@@ -225,8 +228,8 @@ public partial class ProductionHud : Control
     private void LayoutPanel()
     {
         if (_preview is null || !IsInsideTree() || IsQueuedForDeletion()) return;
-        bool gear = _tab == "Gear", craft = _tab == "Craft", skills = _tab == "Skills", presets = _tab == "Presets";
-        bool wide = craft || skills || presets;
+        bool gear = _tab == "Gear", craft = _tab == "Craft", skills = _tab == "Skills", presets = _tab == "Presets", loadouts = _tab == "Loadouts";
+        bool wide = craft || skills || presets || loadouts;
         bool showPreview = _tab == "Character" || gear && GetViewportRect().Size.X >= 1020;
         bool compact = GetViewportRect().Size.X < 820;
         _preview.Visible = showPreview;
@@ -234,6 +237,7 @@ public partial class ProductionHud : Control
         _craftingWorkbench.Visible = craft;
         _skillsPanel.Visible = skills;
         _equipmentPresets.Visible = presets;
+        _buildLoadouts.Visible = loadouts;
         _notice.Visible = !wide;
         _scroll.Visible = !wide;
         _body.Vertical = compact && showPreview;
@@ -255,7 +259,7 @@ public partial class ProductionHud : Control
     private void UpdateCraftModal()
     {
         if (_craftingBackdrop is null || _panel is null || !IsInsideTree()) return;
-        bool open = IsVisibleInTree() && _panel.Visible && (_tab is "Gear" or "Craft" or "Skills" or "Presets");
+        bool open = IsVisibleInTree() && _panel.Visible && (_tab is "Gear" or "Craft" or "Skills" or "Presets" or "Loadouts");
         _craftingBackdrop.Visible = open; _panel.MouseForcePassScrollEvents = !open;
         if (open && _craftingSiblingIndex < 0)
         { _craftingSiblingIndex = GetIndex(); GetParent().MoveChild(this, GetParent().GetChildCount() - 1); }
@@ -275,6 +279,7 @@ public partial class ProductionHud : Control
         if (_view.Level < 5) _rows.AddChild(Label("Retraining unlocks at level 5. Defeat enemies and complete expeditions to earn experience.", 12));
         _rows.AddChild(new HSeparator());
         _rows.AddChild(Label($"{_view.AvailablePassivePoints} unspent passive points · inspect abilities, mastery and mutations in Skills.", 13));
+        AddBuildLoadoutControl();
         Button("Open Skills & Mastery", () => { _tab = "Skills"; Rebuild(true); _tabs["Skills"].GrabFocus(); });
     }
 

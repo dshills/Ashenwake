@@ -140,6 +140,7 @@ public partial class EndgameDirector : Node3D
     }
     private void WireCharacter()
     {
+        _character.ConfigureBuildLoadoutNames(_combat);
         _character.RetrainRequested += id => Permanent(new(ProductionAction.Retrain, Id: id));
         _character.PassiveRequested += id => Permanent(new(ProductionAction.Passive, Id: id));
         _character.RespecRequested += () => Permanent(new(ProductionAction.Respec));
@@ -153,6 +154,7 @@ public partial class EndgameDirector : Node3D
         _character.MutationRequested += (id, value) => Permanent(new(ProductionAction.Mutation, Id: id, Value: value));
         _character.ServiceRequested += Interact;
         _character.EquipmentPresetRequested += (action, id, name) => Permanent(new(action, Id: id, Value: name));
+        _character.BuildLoadoutRequested += (action, id, name) => Permanent(new(action, Id: id, Value: name));
         _character.TrainingRequested += () => { _character.Close(); _sandbox.RequestWorldInteraction(Ashenwake.Core.Training.TrainingSession.InteractionId); };
     }
     private void WireBoard()
@@ -238,8 +240,9 @@ public partial class EndgameDirector : Node3D
             bool reportCraft = command.Production?.Action == ProductionAction.Craft;
             bool reportBuild = command.Production?.Action is ProductionAction.Passive or ProductionAction.Respec or ProductionAction.Mutation;
             bool reportPreset = command.Production?.Action is ProductionAction.SaveEquipmentPreset or ProductionAction.RenameEquipmentPreset or ProductionAction.DeleteEquipmentPreset or ProductionAction.ApplyEquipmentPreset;
+            bool reportLoadout = command.Production?.Action is ProductionAction.SaveBuildLoadout or ProductionAction.RenameBuildLoadout or ProductionAction.DeleteBuildLoadout or ProductionAction.ApplyBuildLoadout;
             bool reportLoot = command.Production?.Action is ProductionAction.SetItemFavorite or ProductionAction.SetItemLocked or ProductionAction.Salvage;
-            var result = ExecuteActive(command); if (!result.Success) { Notice(result.Reason); if (reportCraft) _character.ReportCraftResult(false, result.Reason); if (reportBuild) _character.ReportBuildResult(false, result.Reason); if (reportLoot) _character.ReportLootManagementResult(false, result.Reason); if (reportPreset) _character.ReportEquipmentPresetResult(false, result.Reason); return; }
+            var result = ExecuteActive(command); if (!result.Success) { Notice(result.Reason); if (reportCraft) _character.ReportCraftResult(false, result.Reason); if (reportBuild) _character.ReportBuildResult(false, result.Reason); if (reportLoot) _character.ReportLootManagementResult(false, result.Reason); if (reportPreset) _character.ReportEquipmentPresetResult(false, result.Reason); if (reportLoadout) _character.ReportBuildLoadoutResult(false, result.Reason); return; }
             _revision++; Observe(result);
             if (!ReferenceEquals(_sandbox.Session, _session.Combat)) _sandbox.AdoptSession(_session.Combat);
             Refresh();
@@ -247,6 +250,7 @@ public partial class EndgameDirector : Node3D
             if (reportBuild) _character.ReportBuildResult(true, "");
             if (reportLoot) _character.ReportLootManagementResult(true, "");
             if (reportPreset) _character.ReportEquipmentPresetResult(true, "");
+            if (reportLoadout) _character.ReportBuildLoadoutResult(true, "");
         });
     }
     private IReadOnlyList<CombatEvent> Advance(CombatCommand[] commands)
@@ -360,6 +364,7 @@ public partial class EndgameDirector : Node3D
         _character.SetView(_session.Production.ProgressionView, campaign.Production.Progression, _productionDefinition, combat, interactions, _session.InHub, _revision, _session.Combat.ProgressionBuild.UnlockedMutations,
             combat.Endgame is null && campaign.Campaign.HighestActVisited <= 1);
         _character.ConfigureEquipmentPresets(_session.Production.EquipmentPresets, _session.Production.PreviewEquipmentPreset);
+        _character.ConfigureBuildLoadouts(_session.Production.BuildLoadouts, _session.PreviewBuildLoadout, campaign.Production.Expedition.Adventure.Anatomy, campaign.Production.Expedition.Adventure.Manifestations);
         var view = _session.View;
         var displayKey = (_revision, combat.Loot.Count, AtGate());
         if (_cachedDisplay is null || _displayKey != displayKey)

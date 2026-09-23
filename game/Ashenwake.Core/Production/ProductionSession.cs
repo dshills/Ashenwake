@@ -7,7 +7,7 @@ using Ashenwake.Core.Simulation;
 
 namespace Ashenwake.Core.Production;
 
-public enum ProductionAction { Expedition, Equip, Unequip, Craft, Passive, Respec, Retrain, Mutation, Discard, SaveEquipmentPreset, RenameEquipmentPreset, DeleteEquipmentPreset, ApplyEquipmentPreset, SetItemFavorite, SetItemLocked, Salvage }
+public enum ProductionAction { Expedition, Equip, Unequip, Craft, Passive, Respec, Retrain, Mutation, Discard, SaveEquipmentPreset, RenameEquipmentPreset, DeleteEquipmentPreset, ApplyEquipmentPreset, SetItemFavorite, SetItemLocked, Salvage, SaveBuildLoadout, RenameBuildLoadout, DeleteBuildLoadout, ApplyBuildLoadout }
 public sealed record ProductionCommand(ProductionAction Action, ExpeditionCommand? Expedition = null, long ItemId = 0,
     EquipmentSlot Slot = EquipmentSlot.MainHand, string Id = "", string Value = "", CraftingRequest? Crafting = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool ConfirmPermanent = false);
@@ -72,7 +72,7 @@ public sealed partial class ProductionSession
         var permanent = ProgressionSession.Restore(resolved, snapshot.Progression);
         var expedition = ExpeditionSession.Restore(combatJson, world, snapshot.Expedition);
         var session = new ProductionSession(combatJson, world, resolved, expedition, permanent) { operationSequence = snapshot.OperationSequence };
-        session.ValidateProjection(); session.initial = session.Capture(); return session;
+        session.ValidateProjection(); session.ValidateBuildLoadoutAnatomy(); session.initial = session.Capture(); return session;
     }
     internal static ProductionSession ImportPhaseTwo(string combatJson, AdventureContent adventure, ProgressionContent content, ExpeditionSnapshot legacy)
     {
@@ -165,6 +165,7 @@ public sealed partial class ProductionSession
     private ProductionResult ExecutePermanent(ProductionCommand command)
     {
         if (IsItemOrganizationAction(command.Action)) return ExecuteItemOrganization(command);
+        if (IsBuildLoadoutAction(command.Action)) return ExecuteBuildLoadout(command);
         if (View.RoomId != "room.greyhaven") return new(false, "Change permanent builds at Greyhaven's workshops.", [], []);
         SynchronizeItemSequence();
         string operation = "player." + operationSequence; ProgressionResult result;

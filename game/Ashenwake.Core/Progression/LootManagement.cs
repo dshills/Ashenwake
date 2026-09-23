@@ -31,7 +31,8 @@ public sealed partial class ProgressionSession
 
     public static string[] ItemPresetNames(ProgressionSnapshot state, long itemId) =>
         (state.Character.EquipmentPresets ?? []).Where(preset => preset.Equipment.Values.Contains(itemId))
-            .Select(preset => preset.Name).ToArray();
+            .Select(preset => preset.Name).Concat((state.Character.BuildLoadouts ?? [])
+                .Where(loadout => loadout.Equipment.Values.Contains(itemId)).Select(loadout => "Build: " + loadout.Name)).ToArray();
 
     public static SalvagePreview PreviewSalvage(ProgressionSnapshot state, long itemId)
     {

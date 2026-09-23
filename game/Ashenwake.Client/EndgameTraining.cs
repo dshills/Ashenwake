@@ -38,7 +38,8 @@ public partial class EndgameDirector
             _trainingHidden.Add(child); child.Hide();
         }
         _training = training; _trainingReset = 0; _trainingCompletionShown = false;
-        _trainingBuild = DescribeTrainingBuild(training.Combat);
+        string loadoutName = MatchingBuildLoadoutName();
+        _trainingBuild = (loadoutName.Length == 0 ? "Custom build" : "Loadout: " + loadoutName) + "\n" + DescribeTrainingBuild(training.Combat);
         _stage.Hide(); _effects.Hide(); _memoryPresentation.Hide();
         _trainingScenery = TrainingGroundVisual.Create(_training.Combat.Room); AddChild(_trainingScenery);
         _sandbox.SetTrainingPresentation(true, _training.Mode is TrainingTargetMode.Single or TrainingTargetMode.Group); _sandbox.SetSession(_training.Combat);
@@ -115,6 +116,17 @@ public partial class EndgameDirector
             $"Mutations: {(mutations.Length == 0 ? "None" : string.Join(", ", mutations))}\n" +
             $"Passive ranks: Offense {build.Offense} · Defense {build.Defense}\n" +
             $"Build bonuses: damage {build.FlatDamage} · armor {build.Armor} · resource {build.ResourceBonus}";
+    }
+    private string MatchingBuildLoadoutName()
+    {
+        var snapshot = _session.Capture().Campaign.Production;
+        var character = snapshot.Progression.Character; var anatomy = snapshot.Expedition.Adventure;
+        static bool Same<TKey, TValue>(IReadOnlyDictionary<TKey, TValue> first, IReadOnlyDictionary<TKey, TValue> second) where TKey : notnull
+            => first.Count == second.Count && first.All(pair => second.TryGetValue(pair.Key, out var value) && EqualityComparer<TValue>.Default.Equals(pair.Value, value));
+        return _session.Production.BuildLoadouts.FirstOrDefault(build => build.Discipline == character.Discipline &&
+            Same(build.Equipment, character.Equipment) && Same(build.Passives, character.Passives) &&
+            Same(build.Mutations, character.SelectedMutations) && Same(build.Fragments, anatomy.Anatomy) &&
+            Same(build.Manifestations, anatomy.Manifestations))?.Name ?? "";
     }
     private bool HandleTrainingInput(InputEvent input)
     {

@@ -206,6 +206,13 @@ public sealed partial class AdventureSession
         next.BellPhase = 0; next.DestroyedAnchors.Clear();
     }
 
+    internal AdventureResult ApplyBuildAnatomy(SortedDictionary<string, string> fragments, SortedDictionary<int, string> manifestations)
+        => Change((next, events) =>
+        {
+            if (next.RoomId != Definitions.Hub) return "Change Divine Anatomy in Greyhaven.";
+            next.Anatomy = new(fragments); next.Manifestations = new(manifestations);
+            events.Add("BuildAnatomyApplied"); return null;
+        });
     public AdventureResult InstallFragment(string slot, string? fragmentId) => Change((next, events) =>
         ApplyFragment(next, events, slot, fragmentId, requireHub: true));
     private string? ApplyFragment(AdventureState next, List<string> events, string slot, string? fragmentId, bool requireHub)

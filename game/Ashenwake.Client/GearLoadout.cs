@@ -86,11 +86,13 @@ public partial class GearLoadout : HBoxContainer
     {
         string signature = state.Character.CharacterId + "/" + state.Character.Discipline + "/" +
             string.Join(',', state.Character.Equipment.Select(p => p.Key + ":" + p.Value)) + "/" + string.Join(',', state.Character.Items.Select(i => i.Id + ":" + i.IsFavorite + ":" + i.IsLocked)) + "/" +
-            string.Join(';', (state.Character.EquipmentPresets ?? []).Select(preset => preset.Id + ":" + string.Join(',', preset.Equipment.Values)));
+            string.Join(';', (state.Character.EquipmentPresets ?? []).Select(preset => preset.Id + ":" + string.Join(',', preset.Equipment.Values))) + ":" +
+            string.Join(';', (state.Character.BuildLoadouts ?? []).Select(loadout => loadout.Id + ":" + string.Join(',', loadout.Equipment.Values)));
         bool changed = _state is null || _revision != revision || _signature != signature || _canEdit != canEdit;
         _state = state; _content = content; _revision = revision; _signature = signature; _canEdit = canEdit;
         if (!changed) return;
-        _presetItemIds = (state.Character.EquipmentPresets ?? []).SelectMany(preset => preset.Equipment.Values).ToHashSet();
+        _presetItemIds = (state.Character.EquipmentPresets ?? []).SelectMany(preset => preset.Equipment.Values)
+            .Concat((state.Character.BuildLoadouts ?? []).SelectMany(loadout => loadout.Equipment.Values)).ToHashSet();
         _epoch++; _dirty = true;
         // Keep the source/target controls alive until Godot finishes dispatching the native drop.
         if (!GetViewport().GuiIsDragging()) RefreshCards();
