@@ -37,7 +37,7 @@ public partial class EndgameDirector
         _huntBoard.BoardApproachRequested += () => _sandbox.RequestWorldInteraction(RegionalHuntCatalog.BoardInteraction);
         _huntBoard.VisibilityChangedByPlayer += open =>
         {
-            if (open) { _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _collection?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
+            if (open) { _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
             UpdatePanelVisibility();
         };
         _huntBoard.MenuRequested += action =>

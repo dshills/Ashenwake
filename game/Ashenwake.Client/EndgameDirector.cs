@@ -86,9 +86,9 @@ public partial class EndgameDirector : Node3D
             _sandbox.SaveOverride = () => Safely(Save); _sandbox.LoadOverride = () => Safely(Load); _sandbox.ReplayOverride = () => Safely(VerifyReplay);
             _stage = new CampaignStage(); AddChild(_stage); _effects = new EndgamePresentation(); AddChild(_effects); _effects.AttachOverlay(_sandbox);
             _campaignHud = new CampaignHud(); _sandbox.AddOverlay(_campaignHud);
-            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = () => { _collection?.SetOpen(false); _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); if (_deathRecapHud?.IsOpen == true) return; if (_training is not null) _trainingHud.SetReportOpen(true); else _character.ToggleInventory(); };
+            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = () => { _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); if (_deathRecapHud?.IsOpen == true) return; if (_training is not null) _trainingHud.SetReportOpen(true); else _character.ToggleInventory(); };
             _board = new EndgameHud(); _sandbox.AddOverlay(_board);
-            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeTraining(); InitializeFrontMenu(); InitializeDeathRecap(); InitializeCollection(); InitializeRegionalHunts(); InitializeSecretChambers(); InitializePersonalStash(); InitializeRoamingChampions(); InitializeWorldEncounters(); InitializeOpeningGuidance();
+            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeTraining(); InitializeFrontMenu(); InitializeDeathRecap(); InitializeCollection(); InitializeRegionalHunts(); InitializeSecretChambers(); InitializePersonalStash(); InitializeRoamingChampions(); InitializeWorldEncounters(); InitializeOpeningGuidance(); InitializeWardrobe();
             _sandbox.ConfigureLocalMap(() => _training is null && _hasActiveCharacter && !_frontMenu.IsOpen && !_classSelection.Visible, () => _session.LocalMap);
             if (_hasActiveCharacter) EnableLocalMap();
             Refresh();
@@ -170,7 +170,7 @@ public partial class EndgameDirector : Node3D
         _board.GateApproachRequested += () => { UpdatePanelVisibility(); _sandbox.RequestWorldInteraction("endgame.gate"); };
         _board.SaveRequested += () => Safely(Save); _board.LoadRequested += () => Safely(Load);
         _board.ReplayRequested += () => Safely(VerifyReplay); _board.ImportRequested += () => _importDialog.PopupCentered(new(860, 560));
-        _board.VisibilityChangedByPlayer += open => { if (open) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _collection?.SetOpen(false); _campaignHud.SetOpen(false); _character.Close(); } UpdatePanelVisibility(); };
+        _board.VisibilityChangedByPlayer += open => { if (open) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _campaignHud.SetOpen(false); _character.Close(); } UpdatePanelVisibility(); };
         _board.ModalChanged += open => _sandbox.SetModalPaused("endgame-confirmation", open);
     }
     private void BindBoardInput()
@@ -189,9 +189,10 @@ public partial class EndgameDirector : Node3D
     }
     public override void _UnhandledInput(InputEvent input)
     {
+        if (_wardrobe?.IsOpen == true) return;
         if (HandleExperimentInput(input)) return;
         if (_smoke || _finished || _session is null || _classSelection.Visible) return;
-        if (input.IsActionPressed("aw_character")) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _collection?.SetOpen(false); _character.Toggle(); GetViewport().SetInputAsHandled(); }
+        if (input.IsActionPressed("aw_character")) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _character.Toggle(); GetViewport().SetInputAsHandled(); }
         if (input.IsActionPressed("aw_endgame")) { if (_session.InWorldEncounter) OpenWorldEncounters(); else if (_session.InRoamingChampion) OpenRoamingChampions(); else if (_session.InSecretChamber) OpenSecretChambers(); else if (_session.HasUnresolvedRegionalHunt) OpenRegionalHunts(); else _board.Toggle(); GetViewport().SetInputAsHandled(); }
         if (input.IsActionPressed("aw_journey"))
         {
@@ -382,12 +383,12 @@ public partial class EndgameDirector : Node3D
             _cachedDisplay = Display(view, snapshot); _displayKey = displayKey;
         }
         _board.SetView(_cachedDisplay);
-        RefreshCollection(snapshot); RefreshPersonalStash(snapshot);
+        RefreshCollection(snapshot); RefreshPersonalStash(snapshot); RefreshWardrobe(snapshot);
         // Public-command replay diagnostics observe combat without interactive menus.
         if (_smoke || _echoesSmoke) _board.SetOpen(false);
         var manifestations = _session.Production.View.ActiveManifestations;
-        _character.SetAppearance(CharacterAppearance.FromProgression(campaign.Production.Progression, manifestations,
-            campaign.Production.Expedition.Adventure.Anatomy.Values));
+        _character.SetAppearance(WardrobeAppearance.Project(CharacterAppearance.FromProgression(campaign.Production.Progression, manifestations,
+            campaign.Production.Expedition.Adventure.Anatomy.Values), _wardrobeMemory));
         if (_session.InWorldEncounter && _session.CurrentWorldEncounter is { } worldEncounter)
         {
             var stageState = campaign.Campaign with { InHub = false, CurrentAct = worldEncounter.Act, Exploration = null };
@@ -578,6 +579,7 @@ public partial class EndgameDirector : Node3D
     {
         if (!_hasActiveCharacter) return;
         RefreshCollection(_session.Capture(), persist: true);
+        RefreshWardrobe(_session.Capture());
         PreserveLegacyEchoesLink();
         if (SaveExperiment()) return;
         EndgameRuntimeSaveStore.Write(SavePath, _combatJson, _adventure, _progression, _campaign, _endgame, _session.Capture());
@@ -593,7 +595,7 @@ public partial class EndgameDirector : Node3D
     private void Adopt(EndgameRuntimeSession session, bool retainExperiment = false)
     {
         _worldRewardCues.Reset(session.Tick); RewardAudio.Stop(this);
-        ResetPersonalStash(); ResetCollection(); ClearDeathRecap(); EndTraining(false); ClearTrainingComparison(); ResetOpeningGuidance();
+        ResetPersonalStash(); ResetCollection(); ResetWardrobe(); ClearDeathRecap(); EndTraining(false); ClearTrainingComparison(); ResetOpeningGuidance();
         _worldEncounterPanel?.SessionRestored(); _worldEncounterPresentation?.Reset(); _worldEncounterSelection = _worldEncounterNotice = "";
         _championPanel?.SessionRestored(); _championPresentation?.Reset(); _championSelection = _championNotice = "";
         _secretPanel?.SessionRestored(); _secretPresentation?.Reset(); _secretSelection = _secretClue = _secretNotice = "";

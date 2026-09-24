@@ -457,7 +457,7 @@ public partial class ProductionHud : Control
             };
         }
         _preview.SetAppearance(shown);
-        _preview.SetCaption(inspecting ? $"Previewing {_gearSlot} · not equipped" : "Equipped appearance · drag to rotate");
+        _preview.SetCaption(inspecting ? $"Previewing {_gearSlot} · not equipped" : "Current look · drag to rotate");
     }
 
     private static string ItemTitle(PermanentItem? item) => item is null ? "Empty" : $"#{item.Id} {EquipmentNames.For(item.DefinitionId)} · {item.Rarity}";

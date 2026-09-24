@@ -170,6 +170,12 @@ python3 tools/check-godot-log.py "$opening_audio_output/smoke.log"
 rg -q 'OpeningAudioClientSmokePassed' "$opening_audio_output/smoke.log"
 aw campaign replay "$opening_audio_output/opening-audio.awcampaign"
 
+wardrobe_output="$package_output/wardrobe-client"
+mkdir -p "$wardrobe_output"
+"$binary" --headless --quit-after 24000 --log-file "$wardrobe_output/smoke.log" -- --wardrobe-smoke --discipline=Vanguard --output="$wardrobe_output"
+python3 tools/check-godot-log.py "$wardrobe_output/smoke.log"
+python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["passed"]' "$wardrobe_output/wardrobe-review.json"
+
 equipment_sets_output="$package_output/equipment-sets-client"
 mkdir -p "$equipment_sets_output"
 "$binary" --headless --quit-after 24000 --log-file "$equipment_sets_output/smoke.log" -- --equipment-sets-smoke --discipline=Vanguard --output="$equipment_sets_output"

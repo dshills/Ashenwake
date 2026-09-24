@@ -58,6 +58,8 @@ Open **J → Relics** or **B → Relics** for the [legendary collection journal]
 
 Three [two-piece equipment sets](docs/equipment_sets.md) add barrier counters, poison-fed companions and thorns, and dodge-triggered ember trails. Earn six matching pieces in Acts I–III or repeatable regional Fractures. Inventory comparisons show when a swap completes or breaks a set; **Relics → Sets** shows partners, equipped progress and source tracking.
 
+Open **I → Appearance wardrobe** to use [collected armor appearances](docs/appearance_wardrobe.md), hide your helmet, and save eight named looks. Preview and apply outfits while keeping equipped items, stats and set bonuses. Acquired looks remain unlocked after salvage.
+
 Open **C → Skills** for ability cards, mastery progress and mutation comparisons. Preview Offense, Defense and Resource investments before spending points at Mara; passive refunds show the exact fee and effects removed. The combat bar uses the same ability icons with cooldown progress, resource-shortfall and Heat-cap feedback. See [Skills & Mastery](docs/skills_mastery.md).
 
 The solo combat HUD groups health, barrier, discipline resource, potion charges, dodge readiness and six abilities in a responsive bottom dock. Status icons show remaining duration and stacks; the XP bar tracks the current level. Earned levels, mastery milestones, ability unlocks and collected equipment appear in a compact reward feed. See [combat HUD and rewards](docs/combat_hud.md).

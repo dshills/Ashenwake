@@ -1,10 +1,21 @@
 using Godot;
+using Ashenwake.Core.Progression;
 
 namespace Ashenwake.Client;
 
 public partial class Sandbox
 {
     private CharacterAppearance _playerAppearance = null!;
+    private AppearanceWardrobeMemory? _wardrobeAppearance;
+    public void SetWardrobeAppearance(AppearanceWardrobeMemory? memory)
+    {
+        if (ReferenceEquals(_wardrobeAppearance, memory)) return;
+        _wardrobeAppearance = memory;
+        if (_session is null) return;
+        string previous = _playerAppearance?.Key ?? "";
+        _view = _session.View; RefreshAppearance();
+        if (_playerAppearance is { } appearance && appearance.Key != previous) SynchronizeWorld();
+    }
     private int _manifestationMask;
     private readonly Dictionary<long, LootVisual> _lootVisuals = [];
     private Label3D _nearbyLootLabel = null!;
@@ -14,7 +25,7 @@ public partial class Sandbox
     {
         var build = _session.Build;
         string evolution = build.AshcleaverEvolution.Length > 0 ? build.AshcleaverEvolution : build.AshcleaverAwakened ? "Awakened" : "";
-        _playerAppearance = CharacterAppearance.FromCombat(_view, _manifestations, evolution);
+        _playerAppearance = WardrobeAppearance.Project(CharacterAppearance.FromCombat(_view, _manifestations, evolution), _wardrobeAppearance);
     }
 
     public void SetManifestationPresentation(IReadOnlyList<string> ids, IEnumerable<string>? fragments = null)

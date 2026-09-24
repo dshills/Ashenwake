@@ -7,6 +7,7 @@ public partial class ProductionHud
 {
     public event Action<ProductionAction, string, string>? EquipmentPresetRequested;
     public event Action? TrainingRequested;
+    public event Action? WardrobeRequested;
     private EquipmentPresetsPanel _equipmentPresets = null!;
     private IReadOnlyList<EquipmentPresetView> _savedEquipmentPresets = [];
     private Func<string, EquipmentPresetPreview>? _previewEquipmentPreset;
@@ -33,6 +34,9 @@ public partial class ProductionHud
 
     private void AddEquipmentPresetControls()
     {
+        var wardrobe = Button("Appearance wardrobe · collected looks", () => WardrobeRequested?.Invoke());
+        wardrobe.Name = "OpenAppearanceWardrobe";
+        wardrobe.TooltipText = "Preview collected armor appearances, hide your helmet, and save looks without changing your equipped stats or set bonuses.";
         var presets = Button("Equipment presets · save and switch sets", ShowEquipmentPresets);
         presets.Name = "OpenEquipmentPresets";
         presets.TooltipText = "Inspect eight saved equipment sets. Save, rename, remove, or equip a complete set at Torren.";

@@ -155,6 +155,8 @@ public partial class Sandbox : Node3D
 
     public override void _Input(InputEvent input)
     {
+        // GUI text fields own their keys while players name looks or saved presets.
+        if (input is InputEventKey && GetViewport().GuiGetFocusOwner() is LineEdit) return;
         if (HandleLocalMapInput(input)) return;
         ObserveWorldPointer(input);
         if (!_smoke && (_clickMove?.Destination is not null || PendingWorldActionId is not null) && (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left or MouseButton.Right } ||

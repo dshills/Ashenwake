@@ -22,7 +22,7 @@ public partial class EndgameDirector
         _championPanel.ModalChanged += open => _sandbox.SetModalPaused("champion-confirmation", open);
         _championPanel.VisibilityChangedByPlayer += open =>
         {
-            if (open) { _stashPanel.SetOpen(false); _collection.SetOpen(false); _secretPanel.SetOpen(false); _huntBoard.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
+            if (open) { _stashPanel.SetOpen(false); _collection.SetOpen(false); _wardrobe?.SetOpen(false); _secretPanel.SetOpen(false); _huntBoard.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
             UpdatePanelVisibility();
         };
         _championPanel.MenuRequested += action =>
