@@ -66,7 +66,7 @@ public partial class EndgameDirector
         _echoesBoard.OpenChanged += isOpen =>
         {
             _sandbox.SetModalPaused("echoes", isOpen);
-            if (isOpen) { _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); }
+            if (isOpen) { _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); }
             RefreshExperiment();
         };
         _hasEchoesSelection = TryEchoesSelection() is not null;
@@ -127,6 +127,7 @@ public partial class EndgameDirector
     }
     private EndgameRuntimeResult ExecuteActive(EndgameRuntimeCommand command)
     {
+        BeginBestiaryObservation();
         if (_experiment is null) return _session.Execute(command);
         var result = _experiment.ExecuteEndgame(command); _session = _experiment.Endgame;
         return new(result.Success, result.Reason, result.CombatEvents, result.WorldEvents);
@@ -134,6 +135,7 @@ public partial class EndgameDirector
     private void ApplyExperiment(ExperimentCommand command)
     {
         if (_experiment is null) return;
+        BeginBestiaryObservation();
         var result = _experiment.Execute(command); _session = _experiment.Endgame;
         if (!result.Success) { Notice(result.Reason); return; }
         Observe(new(result.Success, result.Reason, result.CombatEvents, result.WorldEvents)); _revision++;

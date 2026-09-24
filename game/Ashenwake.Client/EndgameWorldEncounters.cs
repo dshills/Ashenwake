@@ -24,7 +24,7 @@ public partial class EndgameDirector
         {
             if (open)
             {
-                _openingGuide?.SetOpen(false); _stashPanel?.SetOpen(false); _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _secretPanel?.SetOpen(false);
+                _openingGuide?.SetOpen(false); _stashPanel?.SetOpen(false); _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _secretPanel?.SetOpen(false);
                 _championPanel?.SetOpen(false); _huntBoard?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel();
             }
             UpdatePanelVisibility();

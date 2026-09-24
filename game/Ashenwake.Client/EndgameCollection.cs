@@ -18,7 +18,7 @@ public partial class EndgameDirector
         _campaignHud.CollectionRequested += OpenCollection; _board.CollectionRequested += OpenCollection;
         _collection.VisibilityChangedByPlayer += open =>
         {
-            if (open) { _wardrobe?.SetOpen(false); _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
+            if (open) { _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
         };
         _collection.TrackRequested += id =>
         {
@@ -31,7 +31,7 @@ public partial class EndgameDirector
         {
             // Explicit transfer prevents H from becoming the in-world Bind Memory action after unpausing.
             if (action == "aw_experiment") { ShowExperimentPanel(); return; }
-            _collection.SetOpen(false); _wardrobe?.SetOpen(false);
+            _collection.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false);
             if (action == "aw_inventory") _character.ToggleInventory();
             else if (action == "aw_character") _character.Toggle();
             else if (_session.InRoamingChampion) OpenRoamingChampions();
@@ -104,7 +104,7 @@ public partial class EndgameDirector
         // Resolve again from live state. Inspection never issues a travel, spend or hunt command.
         var source = LegendaryCollectionSources.For(_session, itemId).FirstOrDefault(s => s.Kind == kind);
         if (source is null || kind == LegendaryCollectionSourceKind.GodHunt && source.HuntId.Length == 0) return;
-        _collection.SetOpen(false); _wardrobe?.SetOpen(false);
+        _collection.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false);
         if (kind == LegendaryCollectionSourceKind.RoamingChampion) { if (source.ChampionId.Length > 0) OpenRoamingChampions(source.ChampionId); }
         else if (kind == LegendaryCollectionSourceKind.SecretChamber) { if (source.ChamberId.Length > 0) OpenSecretChambers(source.ChamberId); }
         else if (kind == LegendaryCollectionSourceKind.Campaign)

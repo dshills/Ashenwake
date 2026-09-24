@@ -19,6 +19,7 @@ public sealed record EndgameDisplay(bool Unlocked, bool InHub, int HighestTier, 
 /// <summary>Read-only expedition presentation. Every spend, attempt and reward remains a Core transaction.</summary>
 public partial class EndgameHud : Control
 {
+    public event Action? BestiaryRequested;
     public event Action<long>? FractureRequested;
     public event Action<long, string, string>? AttuneRequested;
     public event Action<string>? HuntRequested;
@@ -72,6 +73,8 @@ public partial class EndgameHud : Control
         }
         var relics = new Button { Name = "ExpeditionCollection", Text = "Relics", CustomMinimumSize = new(0, 34), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         relics.Pressed += () => CollectionRequested?.Invoke(); tabs.AddChild(relics);
+        var bestiary = new Button { Name = "ExpeditionBestiary", Text = "Bestiary", CustomMinimumSize = new(0, 34), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        bestiary.Pressed += () => BestiaryRequested?.Invoke(); tabs.AddChild(bestiary);
         var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill }; body.AddThemeConstantOverride("separation", 16); column.AddChild(body);
         var left = new VBoxContainer { CustomMinimumSize = new(270, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = .85f }; body.AddChild(left);
         _catalogTitle = Text("", 13); left.AddChild(_catalogTitle);
