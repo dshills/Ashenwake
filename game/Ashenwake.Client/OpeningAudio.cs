@@ -3,7 +3,7 @@ using Godot;
 
 namespace Ashenwake.Client;
 
-/// <summary>Read-only opening-campaign audio director. Cosmetic clocks, synthesis and voices never enter a save or replay.</summary>
+/// <summary>Read-only opening and Verdant audio director. Cosmetic clocks, synthesis and voices never enter a save or replay.</summary>
 internal sealed partial class OpeningAudio : Node3D
 {
     private sealed class Bank(AudioStreamPlayer[] players)
@@ -137,7 +137,9 @@ internal sealed partial class OpeningAudio : Node3D
         _stepDistance += distance;
         if (_stepDistance >= 1.05f && _time - _lastFootstep >= .2)
         {
-            Play(OpeningFoley.FootstepCue(DesiredStyle == "road" ? "dirt" : "stone", FootstepCount), position);
+            string surface = DesiredStyle is "verdant_ruins" or "verdant_hunt" or "verdant_shrine" or "verdant_heart"
+                ? "moss" : DesiredStyle == "road" ? "dirt" : "stone";
+            Play(OpeningFoley.FootstepCue(surface, FootstepCount), position);
             FootstepCount++; _lastFootstep = _time; _stepDistance %= 1.05f;
         }
     }
@@ -154,9 +156,11 @@ internal sealed partial class OpeningAudio : Node3D
         if (metadata.IsWarning)
         {
             int slot = metadata.Category == "enemy_tell" ? 0 : 1;
-            int priority = cue == "saint_tell" ? 2 : 1;
-            // A heartbeat cannot steal the Bell Saint's phase cue. Repeated creature tells cannot stutter each other.
-            if (_warningUntil[slot] > _time && (slot == 0 && priority <= _warningPriority[slot] || cue == "low_health")) return true;
+            int priority = cue == "rootheart_fall" ? 3 : cue is "saint_tell" or "rootheart_tell" or "antler_tell" || metadata.Category == "phase_warning" ? 2 : 1;
+            // Boss tells outrank lesser creatures. Phases outrank heartbeat; final collapse
+            // cannot be cut off by a same-tick phase or status cue. Equal phases may replace.
+            if (_warningUntil[slot] > _time && (priority < _warningPriority[slot] ||
+                slot == 0 && priority == _warningPriority[slot] || cue == "low_health")) return true;
             var voice = _warnings[slot]; voice.Stream = OpeningFoley.GetStream(cue); voice.VolumeDb = metadata.SuggestedGainDb;
             voice.Play(); voice.StreamPaused = Paused;
             _warningUntil[slot] = _time + metadata.DurationSeconds;
@@ -188,19 +192,28 @@ internal sealed partial class OpeningAudio : Node3D
         float dt = (float)Math.Clamp(delta, 0, .1); _time += dt;
         bool alive = hero is { Health: > 0 };
         bool boss = false, combat = false;
+        string bossDefinition = "";
+        int lostRoots = 0;
         if (alive && DesiredStyle.Length > 0)
             for (int i = 0; i < view.Actors.Count; i++)
             {
                 var actor = view.Actors[i];
+                if (actor.DefinitionId == "enemy.feeding_root" && actor.Health <= 0) lostRoots++;
                 if (actor.Health <= 0 || actor.Faction != CombatFaction.Enemy) continue;
-                boss |= actor.DefinitionId is "boss.bell_saint" or "enemy.bell_saint" or "enemy.bell_beast";
+                if (actor.DefinitionId is "boss.bell_saint" or "enemy.bell_saint" or "enemy.bell_beast" or "boss.rootheart" or "boss.antler")
+                { boss = true; bossDefinition = actor.DefinitionId; }
                 if (!combat && DesiredStyle != "greyhaven" && actor.Visible)
                     combat = Ashenwake.Core.Simulation.Position.DistanceSquared(actor.Position, hero!.Position) < 144_000_000;
             }
         _combatHold = combat ? 4 : Math.Max(0, _combatHold - dt);
         Mode = boss ? "boss" : alive && _combatHold > 0 ? "combat" : "exploration";
         CombatGain = Mathf.MoveToward(CombatGain, Mode == "exploration" ? 0 : 1, dt / (Mode == "exploration" ? 3 : .8f));
-        float bossTarget = boss ? view.BossPhase >= 3 ? 1 : view.BossPhase == 2 ? .75f : .4f : 0;
+        float bossTarget = !boss ? 0 : bossDefinition switch
+        {
+            "boss.rootheart" => view.BossPhase >= 2 ? 1 : .4f + Math.Min(3, lostRoots) * .1f,
+            "boss.antler" => .65f,
+            _ => view.BossPhase >= 3 ? 1 : view.BossPhase == 2 ? .75f : .4f
+        };
         BossGain = Mathf.MoveToward(BossGain, bossTarget, dt / 1.2f);
         _duckHold = Math.Max(0, _duckHold - dt);
         DuckGain = Mathf.MoveToward(DuckGain, _duckHold > 0 ? .26f : 1, dt / (_duckHold > 0 ? .06f : 1.2f));

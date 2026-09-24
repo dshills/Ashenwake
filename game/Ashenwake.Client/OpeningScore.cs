@@ -9,7 +9,7 @@ public sealed record OpeningScoreAnalysis(int SampleRate, int Channels, int Fram
     double DurationSeconds, double Peak, double Rms, double MaximumAdjacentJump, double MaximumLoopJump,
     double DcOffset, string PcmSha256);
 
-/// <summary>Original eight-bar opening score. Pure managed rendering is safe on a background
+/// <summary>Original eight-bar opening and Verdant score. Pure managed rendering is safe on a background
 /// worker; stream cache access belongs to the Godot thread. No gameplay RNG or clock is read.</summary>
 public static class OpeningScore
 {
@@ -23,12 +23,13 @@ public static class OpeningScore
     public const int Bars = 8;
     public const double BeatSeconds = .75;
     public const double MaximumSummedStemPeak = .631;
-    public const string Version = "opening-score.1";
+    public const string Version = "opening-score.2";
 
-    public static IReadOnlyList<string> StyleNames { get; } = Array.AsReadOnly<string>(["greyhaven", "road", "monastery", "crypt", "sanctum"]);
+    public static IReadOnlyList<string> StyleNames { get; } = Array.AsReadOnly<string>(["greyhaven", "road", "monastery", "crypt", "sanctum",
+        "verdant_ruins", "verdant_village", "verdant_shrine", "verdant_hunt", "verdant_heart"]);
     public static IReadOnlyList<string> StemNames { get; } = Array.AsReadOnly<string>(["exploration", "combat", "boss"]);
 
-    // Fifteen native PCM buffers at most: 31,752,000 bytes. Pure renders retain no PCM cache.
+    // Thirty native PCM buffers at most: 63,504,000 bytes. Pure renders retain no PCM cache.
     private static readonly Dictionary<(string Style, string Stem), AudioStreamWav> Streams = [];
     private const int TableSize = 4096;
     private static readonly float[] Sine = BuildSine();
@@ -52,7 +53,22 @@ public static class OpeningScore
             [74,72,69,65,74,70,69], [2,7,11,16,21,25,29], true, .01, .53),
         // Sanctum: the flattened second darkens the return of the opening motif.
         new([[38,50,57,62], [39,51,58,63], [43,50,58,62], [45,52,57,62]],
-            [50,57,62,63,60,57,62], [0,6,10,14,18,23,28], true, .005, .55)
+            [50,57,62,63,60,57,62], [0,6,10,14,18,23,28], true, .005, .55),
+        // Verdant ruins: an E-Dorian reed climbs through stone split by growing roots.
+        new([[40,47,54,59], [43,50,57,62], [45,52,59,64], [40,47,55,59]],
+            [64,66,67,71,69,66,64,59,62,64], [1,3,6,9,12,15,18,22,26,29], false, .018, .21),
+        // Village: the same forest tonal center, with halting minor-second questions.
+        new([[40,47,55,59], [41,48,55,60], [45,52,55,60], [40,47,54,59]],
+            [64,65,59,62,60,59,65,64], [0,3.5,7,11,15,19,24,28], false, .013, .29),
+        // Shrine: open fifths and a high answering reed leave the grove breathing room.
+        new([[40,47,59,66], [38,45,57,64], [43,50,62,69], [40,47,59,64]],
+            [71,74,76,69,71,66,64], [2,7,10,16,21,25,29], false, .012, .46),
+        // Antler hunt: a rising three-note call, then a lower response across the trees.
+        new([[40,47,55,59], [43,50,55,62], [45,52,59,64], [42,49,57,61]],
+            [59,62,64,71,67,64,59,62,66,64,61,59], [0,2,4,7,10,12,16,18,20,23,26,29], false, .014, .28),
+        // Rootheart: slow low-register cycles with a chromatic root threatening the cadence.
+        new([[28,40,47,55], [29,41,48,56], [33,45,52,59], [28,40,47,54]],
+            [52,55,59,56,53,52,47,52], [0,4,9,12,17,21,25,29], false, .009, .37)
     ];
 
     public static bool IsPrepared(string style, string stem)
@@ -93,7 +109,8 @@ public static class OpeningScore
         var region = Regions[regionIndex];
         var left = new float[SampleCount]; var right = new float[SampleCount];
         uint seed = unchecked(0x6D2B79F5u ^ (uint)(regionIndex + 1) * 0x9E3779B9u ^ (uint)(layer + 1) * 0x85EBCA6Bu);
-        if (layer == 0) Exploration(region, regionIndex, left, right, seed);
+        if (regionIndex >= 5) Verdant(region, regionIndex - 5, layer, left, right, seed);
+        else if (layer == 0) Exploration(region, regionIndex, left, right, seed);
         else if (layer == 1) Combat(region, regionIndex, left, right, seed);
         else Boss(region, regionIndex, left, right, seed);
         Reverberate(left, right, region.Room * (layer == 1 ? .55 : 1));
@@ -154,6 +171,104 @@ public static class OpeningScore
             AddDrum(left, right, chord * 6 + 5.5 * BeatSeconds, 1.3, .064, .28, false, seed + (uint)(40 + chord), ritual: true);
             if (regionIndex == 4)
                 AddTone(left, right, notes[2] + 11, chord * 6 + 4.8, 2.7, Voice.Choir, .018, .2, seed + (uint)(50 + chord));
+        }
+    }
+
+    private static void Verdant(Region region, int character, int layer, float[] left, float[] right, uint seed)
+    {
+        // Separate orchestration keeps every Act I sample and its seeded texture unchanged.
+        // Reeds, hollow timber and seed-rattle percussion share the established 32-beat grid.
+        if (layer == 0)
+        {
+            for (int chord = 0; chord < region.Chords.Length; chord++)
+            {
+                var notes = region.Chords[chord];
+                AddTone(left, right, notes[0], chord * 6 - .5, 8, Voice.Bow, .048, -.28, seed + (uint)chord);
+                AddReed(left, right, notes[2], chord * 6 - .25, 7.5, .040, .34, breathy: true);
+                AddReed(left, right, notes[3], chord * 6 + .15, 7, .023, -.36, breathy: true);
+            }
+            for (int note = 0; note < region.Melody.Length; note++)
+            {
+                double at = region.Beats[note] * BeatSeconds;
+                double pan = note % 2 == 0 ? -.36 : .39;
+                AddReed(left, right, region.Melody[note], at, character == 2 ? 3.9 : 2.5, .072, pan, breathy: false);
+                // The shrine's delayed answer and the village's wooden knocks are intentionally sparse.
+                if (character == 2 && note % 2 == 0)
+                    AddWood(left, right, region.Melody[note] - 12, at + 1.5, 2.2, .065, -pan);
+                else if (character is 1 or 4 && note % 3 == 0)
+                    AddWood(left, right, region.Melody[note] - 24, at + .375, 1.5, .045, -pan);
+            }
+            AddAir(left, right, region.Air, seed);
+            return;
+        }
+        if (layer == 1)
+        {
+            for (int bar = 0; bar < Bars; bar++)
+            {
+                int root = region.Chords[bar / 2][0];
+                double at = bar * 4 * BeatSeconds;
+                AddWood(left, right, root, at, 1.8, .18, -.18);
+                AddWood(left, right, root + 7, at + 1.5 * BeatSeconds, 1.2, .105, .3);
+                AddDrum(left, right, at + 2.5 * BeatSeconds, .38, .10, -.3, true, seed + (uint)(bar + 20));
+                AddWood(left, right, root + 12, at + 3 * BeatSeconds, .8, .08, .15);
+                if (character is 3 or 4 || bar % 2 == 1)
+                    AddDrum(left, right, at + 3.5 * BeatSeconds, .24, .065, .4, true, seed + (uint)(bar + 50));
+            }
+            return;
+        }
+        for (int chord = 0; chord < region.Chords.Length; chord++)
+        {
+            var notes = region.Chords[chord]; double at = chord * 6;
+            AddReed(left, right, notes[2] - (character == 4 ? 12 : 0), at - .3, 7.4, .073, -.32, breathy: true);
+            AddReed(left, right, notes[3], at + .4, 6.8, .048, .32, breathy: true);
+            AddWood(left, right, notes[0], at, 3.6, .21, -.08);
+            AddWood(left, right, notes[0] + 7, at + 3 * BeatSeconds, 2.5, .13, .24);
+            // Antler replies in fifths; Rootheart's low paired pulses suggest living timber.
+            if (character == 3)
+                AddReed(left, right, notes[2] + 7, at + 4 * BeatSeconds, 2.4, .082, -.38, breathy: false);
+            else
+                AddWood(left, right, notes[0] + (character == 4 ? 1 : 12), at + 4.5 * BeatSeconds, 2.2, .11, -.25);
+        }
+    }
+
+    private static void AddReed(float[] left, float[] right, int midi, double start, double duration,
+        double level, double pan, bool breathy)
+    {
+        double phase = 0, airPhase = .27, vibrato = 0;
+        double step = Frequency(midi) / SampleRate;
+        int at = Wrap((int)Math.Round(start * SampleRate)), frames = (int)(duration * SampleRate);
+        var (gainLeft, gainRight) = Pan(pan, level);
+        for (int i = 0; i < frames; i++)
+        {
+            double t = i / (double)SampleRate, motion = Lookup(Sine, vibrato);
+            double sample = .73 * Lookup(Sine, phase) + .16 * Lookup(Sine, Fraction(phase * 3)) +
+                .045 * Lookup(Sine, Fraction(phase * 5)) + .045 * Lookup(Sine, airPhase);
+            sample *= Smooth(t / (breathy ? .7 : .12)) * Smooth((duration - t) / (breathy ? 1.4 : .65)) * (.94 + .06 * motion);
+            left[at] += (float)(sample * gainLeft); right[at] += (float)(sample * gainRight);
+            phase = Fraction(phase + step * (1 + motion * .0023));
+            airPhase = Fraction(airPhase + step * 2.013); vibrato = Fraction(vibrato + 3.6 / SampleRate);
+            if (++at == SampleCount) at = 0;
+        }
+    }
+
+    private static void AddWood(float[] left, float[] right, int midi, double start, double duration, double level, double pan)
+    {
+        double[] ratios = [1, 2.71, 4.83], phases = new double[3], amplitudes = [1, .24, .09];
+        double[] decays = [Math.Exp(-2.5 / SampleRate), Math.Exp(-5.5 / SampleRate), Math.Exp(-10.0 / SampleRate)];
+        for (int partial = 0; partial < ratios.Length; partial++) ratios[partial] *= Frequency(midi) / SampleRate;
+        int at = Wrap((int)Math.Round(start * SampleRate)), frames = (int)(duration * SampleRate);
+        var (gainLeft, gainRight) = Pan(pan, level);
+        for (int i = 0; i < frames; i++)
+        {
+            double t = i / (double)SampleRate, sample = 0;
+            for (int partial = 0; partial < ratios.Length; partial++)
+            {
+                sample += Lookup(Sine, phases[partial]) * amplitudes[partial];
+                phases[partial] = Fraction(phases[partial] + ratios[partial]); amplitudes[partial] *= decays[partial];
+            }
+            sample *= Smooth(t / .007) * Smooth((duration - t) / .25);
+            left[at] += (float)(sample * gainLeft); right[at] += (float)(sample * gainRight);
+            if (++at == SampleCount) at = 0;
         }
     }
 
@@ -318,7 +433,20 @@ public static class OpeningScore
 
     private static (int Region, int Stem) ValidateNames(string style, string stem)
     {
-        int region = style switch { "greyhaven" => 0, "road" => 1, "monastery" => 2, "crypt" => 3, "sanctum" => 4, _ => -1 };
+        int region = style switch
+        {
+            "greyhaven" => 0,
+            "road" => 1,
+            "monastery" => 2,
+            "crypt" => 3,
+            "sanctum" => 4,
+            "verdant_ruins" => 5,
+            "verdant_village" => 6,
+            "verdant_shrine" => 7,
+            "verdant_hunt" => 8,
+            "verdant_heart" => 9,
+            _ => -1
+        };
         int layer = stem switch { "exploration" => 0, "combat" => 1, "boss" => 2, _ => -1 };
         if (region < 0) throw new ArgumentException("Unknown opening score region.", nameof(style));
         if (layer < 0) throw new ArgumentException("Unknown opening score stem.", nameof(stem));

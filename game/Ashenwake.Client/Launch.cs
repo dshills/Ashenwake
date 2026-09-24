@@ -25,6 +25,7 @@ public partial class Launch : Node
             arguments.Contains("--midgame-combat-smoke") ? "res://MidgameCombatSmoke.tscn" :
             arguments.Contains("--opening-combat-smoke") ? "res://OpeningCombatSmoke.tscn" :
             arguments.Contains("--opening-audio-smoke") ? "res://OpeningAudioSmoke.tscn" :
+            arguments.Contains("--verdant-audio-smoke") ? "res://VerdantAudioSmoke.tscn" :
             arguments.Contains("--hollow-exploration-smoke") ? "res://HollowExplorationSmoke.tscn" :
             arguments.Contains("--spine-exploration-smoke") ? "res://SpineExplorationSmoke.tscn" :
             arguments.Contains("--cinder-exploration-smoke") ? "res://CinderExplorationSmoke.tscn" :

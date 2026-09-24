@@ -138,12 +138,13 @@ public partial class Sandbox
                     target.Body.React("death");
                     bool boss = _view.Actors.Any(a => a.Id == targetId && a.DefinitionId is "boss.bell_saint" or "enemy.bell_saint" or "enemy.bell_beast");
                     _combatEffects.Emit(boss ? "victory" : "death", target.Current, direction, new Color("e6bf7d"), _reduceEffects);
-                    Feedback(targetId, boss ? "SILENCED" : "FALLEN", "death"); PlayTone(boss ? "victory" : "death");
+                    Feedback(targetId, boss ? "SILENCED" : "FALLEN", "death");
+                    if (!PlayVerdantDeath(targetId, target.Current)) PlayTone(boss ? "victory" : "death");
                     _shake = Math.Max(_shake, boss ? .6 : .2); break;
                 case "BossPhaseChanged":
                     if (actor is null) break;
                     _combatEffects.Emit("phase", actor.Current, Vector3.Forward, new Color("cfb1e6"), _reduceEffects);
-                    if (!_openingAudio.Play(e.Amount >= 3 ? "bell_phase3" : "bell_phase2", actor.Current))
+                    if (!PlayRegionalPhase(e, actor.Current))
                         PlayTone(e.Amount >= 3 ? "chain" : "bell"); break;
                 case "LootDropped":
                     var drop = _lootDropCues.Observe(e, _view.Loot);

@@ -9,12 +9,13 @@ public sealed record OpeningFoleyCue(string Id, string Category, double Duration
 public sealed record OpeningFoleyAnalysis(int Frames, double DurationSeconds, double PeakAbsolute, double Rms,
     double MaxAdjacentDelta, short FirstSample, short LastSample, int FullScaleSamples, string Sha256);
 
-/// <summary>Original opening-region foley. Pure deterministic synthesis is independent of gameplay state;
+/// <summary>Original opening-region and Verdant foley. Pure deterministic synthesis is independent of gameplay state;
 /// cached Godot streams are created/accessed on the scene thread. PCM16 mono, no loops or external assets.</summary>
 public static class OpeningFoley
 {
     public const int SampleRate = 22050;
     public const double PeakCeiling = .78;
+    // Catalog-validated, append-only keys bound the native cache to 27 short mono buffers.
     private static readonly Dictionary<string, AudioStreamWav> Streams = new(StringComparer.Ordinal);
     public static IReadOnlyList<OpeningFoleyCue> Cues { get; } = Array.AsReadOnly<OpeningFoleyCue>(
     [
@@ -33,7 +34,19 @@ public static class OpeningFoley
         new("saint_tell", "enemy_tell", 1.30, -10, true, "Bell Saint: a ruined brass throat drawing breath behind moving chains."),
         new("bell_phase2", "phase_warning", 1.85, -9, true, "Two iron-cage blows descend into a low ritual resonance."),
         new("bell_phase3", "phase_warning", 1.95, -9, true, "Three fractured bells answer a released creature's coarse breath."),
-        new("low_health", "status_warning", .72, -14, true, "A restrained double heartbeat with a dry upper warning texture.")
+        new("low_health", "status_warning", .72, -14, true, "A restrained double heartbeat with a dry upper warning texture."),
+        // Append-only: existing cue indices seed their PCM and must remain stable.
+        new("vine_tell", "enemy_tell", 1.02, -10, true, "Vine thrall: fibrous creaking rises into a hollow rooted groan."),
+        new("swarm_tell", "enemy_tell", .83, -11, true, "Spore swarm: a gathering flutter punctuated by three brittle seed clicks."),
+        new("carrier_tell", "enemy_tell", 1.10, -10, true, "Plague carrier: a wet swelling gurgle ends in a pressured exhalation."),
+        new("antler_tell", "enemy_tell", 1.42, -10, true, "Antler: a low wooden horn call answered by a higher rasp."),
+        new("rootheart_tell", "enemy_tell", 1.40, -10, true, "Rootheart: two heavy living-timber pulses draw a deep root creak."),
+        new("rootheart_phase2", "phase_warning", 2.00, -9, true, "Rootheart: three accelerating trunk blows open into a rough canopy roar."),
+        new("root_severed", "impact", .90, -12, false, "A feeding root splits with a fibrous snap, wet recoil and fading timber strain."),
+        new("rootheart_fall", "phase_warning", 2.80, -9, true, "Rootheart: a descending trunk groan breaks into falling branches and settling leaves."),
+        new("step_moss_1", "footstep", .34, -17, false, "A soft moss cushion, damp heel compression and a quiet leaf rub."),
+        new("step_moss_2", "footstep", .36, -17, false, "A lower heel squelch beneath a short leafy toe-off."),
+        new("step_moss_3", "footstep", .33, -17, false, "A firmer root beneath moss, with trailing damp foliage.")
     ]);
     public static IReadOnlyList<string> CueNames { get; } = Array.AsReadOnly(Cues.Select(c => c.Id).ToArray());
     public static int CachedStreamCount => Streams.Count;
@@ -44,7 +57,7 @@ public static class OpeningFoley
     /// <summary>Use a presentation-only step counter. Negative counters are also deterministic.</summary>
     public static string FootstepCue(string surface, long cosmeticStepIndex)
     {
-        if (surface is not ("dirt" or "stone")) throw new ArgumentException("Opening footstep surface must be dirt or stone.", nameof(surface));
+        if (surface is not ("dirt" or "stone" or "moss")) throw new ArgumentException("Footstep surface must be dirt, stone or moss.", nameof(surface));
         int variant = (int)((cosmeticStepIndex % 3 + 3) % 3) + 1;
         return "step_" + surface + "_" + variant;
     }
@@ -102,6 +115,15 @@ public static class OpeningFoley
                 13 => PhaseTwo(time, low, breath, grain),
                 14 => PhaseThree(time, low, breath, grain),
                 15 => LowHealth(time, middle, grain),
+                16 => VineTell(time, low, breath, grain),
+                17 => SwarmTell(time, breath, grain),
+                18 => CarrierTell(time, low, breath),
+                19 => AntlerTell(time, low, breath),
+                20 => RootheartTell(time, low, breath, grain),
+                21 => RootheartPhaseTwo(time, low, breath, grain),
+                22 => RootSevered(time, low, breath, grain),
+                23 => RootheartFall(time, low, breath, grain),
+                24 or 25 or 26 => MossStep(time, kind - 24, low, middle, grain),
                 _ => throw new InvalidOperationException("Opening foley metadata and synthesis differ.")
             };
             // A two-millisecond entrance removes discontinuities; all tails taper to exact silence.
@@ -219,6 +241,64 @@ public static class OpeningFoley
     private static double LowHealth(double t, double mid, double grain)
         => .33 * Heart(t) + .23 * Heart(t - .205) +
             .10 * mid * (Burst(t, .018, 35) + .6 * Burst(t, .221, 38)) + .025 * grain * Swell(t, .015, .55);
+
+    private static double MossStep(double t, int variant, double low, double mid, double grain)
+    {
+        double pitch = 1 + (variant - 1) * .04, toe = .10 + variant * .014;
+        return .33 * Sweep(91 * pitch, 42, t, .28) * Envelope(t, .008, 23) +
+            (.79 * low + .28 * mid) * Swell(t, .008, .29) +
+            .16 * grain * (Burst(t, .025, 54) + .4 * Burst(t, toe, 45)) +
+            .15 * Modal(t - toe, 103 * pitch, 23, 2.71, 4.83);
+    }
+
+    private static double VineTell(double t, double low, double breath, double grain)
+        => (.26 * Throat(t, 72, 2.3) + .62 * low + .43 * breath) * Swell(t, .012, .97) +
+            .16 * Modal(t - .055, 187, 8, 2.71, 4.83) +
+            .12 * grain * (Burst(t, .16, 32) + .7 * Burst(t, .39, 28)) +
+            .11 * Math.Sin(Math.Tau * 233 * t + 2.4 * Wave(9, t)) * Swell(t, .18, .83);
+
+    private static double SwarmTell(double t, double breath, double grain)
+        => (.72 * breath + .10 * grain) * (.56 + .44 * Wave(37, t)) * Swell(t, .008, .79) +
+            .26 * Modal(t - .019, 641, 37, 2.71, 4.83) +
+            .21 * Modal(t - .165, 823, 40, 2.71, 4.83) +
+            .20 * Modal(t - .277, 1057, 42, 2.71, 4.83) +
+            .15 * Wave(182, t) * Swell(t, .12, .64);
+
+    private static double CarrierTell(double t, double low, double breath)
+        => (.24 * Throat(t, 93, 11.7) + .82 * low) * Swell(t, .015, .92) +
+            .20 * Sweep(138, 271, t, .8) * Swell(t, .08, .67) +
+            .16 * Modal(t - .123, 219, 22, 1.52, 2.43) + .14 * Modal(t - .283, 162, 18, 1.61, 2.79) +
+            .92 * breath * Swell(t, .41, 1.04);
+
+    private static double AntlerTell(double t, double low, double breath)
+        => (.26 * Throat(t, 117, 3.7) + .28 * low + .19 * breath) * Swell(t, .018, .85) +
+            (.22 * Throat(t, 175.5, 4.2) + .31 * breath) * Swell(t, .59, 1.36) +
+            .18 * Modal(t - .03, 147, 5, 2.71, 4.83) + .13 * Modal(t - .67, 221, 6, 2.71, 4.83);
+
+    private static double RootheartTell(double t, double low, double breath, double grain)
+        => .42 * Modal(t, 58, 4.5, 2.71, 4.83) + .34 * Modal(t - .29, 67, 4.1, 2.71, 4.83) +
+            (.23 * Throat(t, 43, 2.1) + .85 * low + .38 * breath) * Swell(t, .14, 1.33) +
+            .16 * grain * (Burst(t, .027, 33) + .8 * Burst(t, .322, 29));
+
+    private static double RootheartPhaseTwo(double t, double low, double breath, double grain)
+        => .43 * Modal(t, 62, 3.4, 2.71, 4.83) + .38 * Modal(t - .41, 74, 3.7, 2.71, 4.83) +
+            .35 * Modal(t - .68, 89, 4.0, 2.71, 4.83) +
+            .22 * grain * (Burst(t, .016, 36) + Burst(t, .425, 38) + Burst(t, .696, 40)) +
+            (.24 * Throat(t, 49, 3.1) + .73 * low + .84 * breath) * Swell(t, .36, 1.91);
+
+    private static double RootSevered(double t, double low, double breath, double grain)
+        => .38 * grain * Envelope(t, .002, 37) + .40 * Modal(t - .009, 172, 9, 2.71, 4.83) +
+            .25 * Sweep(151, 48, t, .73) * Swell(t, .012, .78) +
+            (.68 * low + .49 * breath) * Swell(t, .022, .57) +
+            .12 * Modal(t - .148, 283, 20, 2.71, 4.83);
+
+    private static double RootheartFall(double t, double low, double breath, double grain)
+        => .28 * Sweep(89, 27, Math.Min(t, 2.5), 2.5) * Swell(t, .01, 2.55) +
+            (.22 * Throat(t, 47, 2.5) + .73 * low) * Swell(t, .018, 1.73) +
+            .43 * Modal(t - .46, 61, 2.7, 2.71, 4.83) + .31 * Modal(t - 1.09, 43, 3.2, 2.71, 4.83) +
+            .19 * Modal(t - 1.37, 179, 14, 2.71, 4.83) + .14 * Modal(t - 1.61, 247, 17, 2.71, 4.83) +
+            .24 * grain * (Burst(t, .48, 28) + .8 * Burst(t, 1.10, 24) + .4 * Burst(t, 1.62, 36)) +
+            .73 * breath * Swell(t, .74, 2.73);
 
     private static double Heart(double t) => t < 0 ? 0 : Envelope(t, .008, 19) * (Wave(64, t) + .27 * Wave(137, t));
     private static double Throat(double t, double fundamental, double flutter)

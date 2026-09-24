@@ -87,7 +87,7 @@ public partial class OpeningAudioSmoke : Node
             }
             await Frames(1);
         }
-        Check("fifteen_score_stems_are_distinct", fingerprints.Count == 15);
+        Check("all_score_stems_are_distinct", fingerprints.Count == OpeningScore.StyleNames.Count * OpeningScore.StemNames.Count);
         fingerprints.Clear();
         foreach (var cue in OpeningFoley.Cues)
         {
@@ -105,7 +105,7 @@ public partial class OpeningAudioSmoke : Node
             fingerprints.Add(analysis.Sha256); _pcm.Add(new { kind = "foley", cue, analysis, streamCreationMilliseconds });
             WriteWave(cue.Id + ".wav", OpeningFoley.CreateWaveFile(cue.Id), 1, OpeningFoley.SampleRate);
         }
-        Check("sixteen_foley_cues_are_distinct_and_cache_is_bounded", fingerprints.Count == 16 && OpeningFoley.CachedStreamCount == 16);
+        Check("all_foley_cues_are_distinct_and_cache_is_bounded", fingerprints.Count == OpeningFoley.Cues.Count && OpeningFoley.CachedStreamCount == OpeningFoley.Cues.Count);
         foreach (string surface in new[] { "dirt", "stone" })
             Check(surface + "_steps_cycle_three_variants", Enumerable.Range(0, 3).Select(i => OpeningFoley.FootstepCue(surface, i)).Distinct().Count() == 3 &&
                 OpeningFoley.FootstepCue(surface, 0) == OpeningFoley.FootstepCue(surface, 3) && OpeningFoley.FootstepCue(surface, -1) == OpeningFoley.FootstepCue(surface, 2));
@@ -206,7 +206,7 @@ public partial class OpeningAudioSmoke : Node
             Check("reset_silences_transients_without_replaying_warning_or_score", audio.CueCount == cues && audio.BankStarts == starts && audio.DuckGain == 1 &&
                 audio.EffectPlayers.All(p => !p.Playing) && audio.WarningPlayers.All(p => !p.Playing));
             // A cold request superseded before completion must never start in the departed room.
-            audio.SetStyle("crypt"); audio.Advance(1d / 60, hub, false, Basis.Identity); audio.SetStyle("verdant_ruins");
+            audio.SetStyle("crypt"); audio.Advance(1d / 60, hub, false, Basis.Identity); audio.SetStyle("cinder_fields");
             for (int i = 0; i < 1800 && (audio.PreparationPending || audio.ActiveMusicBanks > 0); i++) { audio.Advance(1d / 60, hub, false, Basis.Identity); await Frames(1); }
             Check("departing_opening_drops_late_preparation_and_releases_banks", !audio.PreparationPending && audio.ActiveMusicBanks == 0 && audio.DesiredStyle == "" && audio.BankStarts == starts &&
                 !audio.Play("impact_weapon", Vector3.Zero) && !audio.Play("unknown", Vector3.Zero));
@@ -396,7 +396,7 @@ public partial class OpeningAudioSmoke : Node
         Check("route_earns_all_opening_encounters_and_optional_crypt", final.Campaign.CompletedActs.Contains(1) &&
             new[] { "campaign.road", "campaign.monastery", "campaign.bell_saint" }.All(final.Campaign.CompletedEncounters.Contains) &&
             final.Campaign.CompletedExploration.Contains(CampaignRuntimeSession.CryptEvent));
-        Check("route_witnesses_all_five_opening_scores", OpeningScore.StyleNames.All(_styles.Contains));
+        Check("route_witnesses_all_five_opening_scores", new[] { "greyhaven", "road", "monastery", "crypt", "sanctum" }.All(_styles.Contains));
         Check("route_witnesses_all_bell_phases_and_authored_warnings", new[] { 1, 2, 3 }.All(_bellPhases.Contains) &&
             _heardCues.Contains("bell_phase2") && _heardCues.Contains("bell_phase3") && _heardCues.Contains("guard_tell") && _heardCues.Contains("saint_tell"));
         Check("route_witnesses_impacts_and_both_ground_materials", _heardCues.Contains("impact_weapon") && _heardCues.Any(c => c.StartsWith("step_dirt_", StringComparison.Ordinal)) &&

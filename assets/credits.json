@@ -163,7 +163,7 @@
     },
     {
       "id": "asset.procedural_opening_audio",
-      "name": "Original Greyhaven and Grey March adaptive score, terrain footsteps, combat impacts and Bell Saint warnings",
+      "name": "Original Greyhaven, Grey March and Verdant Maw adaptive scores, terrain footsteps, combat impacts and boss warnings",
       "sourceFiles": [
         "game/Ashenwake.Client/OpeningScore.cs",
         "game/Ashenwake.Client/OpeningFoley.cs"
