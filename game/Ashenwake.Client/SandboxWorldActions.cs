@@ -37,6 +37,22 @@ public partial class Sandbox
     public void SetMechanismVisuals(Func<int, Node3D?> visuals) => _mechanismVisual = visuals;
     public bool RequestWorldInteraction(string id) => BeginWorldAction(new(WorldActionKind.Interaction, id));
 
+    public bool TryInteractNearby()
+    {
+        if (IsPaused || _activateWorldInteraction is null) return false;
+        var player = _session.View.Actors.Single(a => a.Id == 1);
+        if (player.Health <= 0) return false;
+        var target = _worldInteractions
+            .Where(t => DistanceSquared(player.Position, t.Position) <= (long)t.Range * t.Range)
+            .OrderBy(t => DistanceSquared(player.Position, t.Position)).ThenBy(t => t.Id, StringComparer.Ordinal)
+            .FirstOrDefault();
+        if (target is null) return false;
+        // Keyboard interaction uses the same projected targets as mouse input, including
+        // the contextual Way Forward handle. Its callback retains the usual travel guards.
+        _activateWorldInteraction(target.Id);
+        return true;
+    }
+
     private void InitializeWorldPointer()
     {
         _worldPointerWindow = GetWindow();
@@ -82,7 +98,7 @@ public partial class Sandbox
         if (!_clickMove.TrySetApproach(player.Position, resolved.Position, resolved.Range, occupied))
         { NavigationNotice("No clear route within reach of " + resolved.Name + "."); return false; }
         _worldAction = action;
-        NavigationNotice((action.Kind == WorldActionKind.Loot ? "Collecting " : "Approaching ") + resolved.Name + " · X to cancel");
+        NavigationNotice((action.Kind == WorldActionKind.Loot ? "Collecting " : "Approaching ") + resolved.Name + " · " + KeyDisplay(_keys["stop"]) + " to cancel");
         ShowMoveDestination();
         return true;
     }

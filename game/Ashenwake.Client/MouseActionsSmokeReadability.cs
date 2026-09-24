@@ -97,7 +97,10 @@ public partial class MouseActionsSmoke
             Check("readability_combat_branch_replays_exactly", CombatReplayRunner.Run(content, recorder.Capture()).Success);
             if (_writeReport) System.IO.File.WriteAllText(Path.Combine(_output, "mouse-readability-replay.json"), JsonData.Write(recorder.Capture()));
 
-            var shadows = CombatSession.CreateEncounter(content, 42, "campaign.repeating_rooms");
+            // Repeating Rooms now spawns both shadows inside the five-unit reveal radius.
+            // The vault retains an authored distant shadow, so invisibility is exercised
+            // against actual content without overriding actor visibility or positions.
+            var shadows = CombatSession.CreateEncounter(content, 42, "exploration.unremembered_vault");
             _sandbox.AdoptSession(shadows); PaintReadability();
             var hidden = shadows.View.Actors.Where(a => a.Health > 0 && !a.Visible).ToArray();
             Check("readability_authored_hidden_actors_are_present", hidden.Length > 0);

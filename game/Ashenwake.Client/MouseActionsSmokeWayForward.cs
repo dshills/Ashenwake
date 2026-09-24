@@ -23,6 +23,9 @@ public partial class MouseActionsSmoke
         panel.VisibilityChanged += Opened;
         try
         {
+            await KeyPress(Key.F); Ticks(2);
+            Check("distant_keyboard_interact_cannot_activate_way_forward", openings == 0 && !panel.Visible &&
+                Session.Campaign.ActiveEncounterId == encounter && Session.Combat.View.Loot.Select(l => l.Id).ToHashSet().SetEquals(rewards));
             var point = await FindInteractionPoint("journey.next");
             Check("way_forward_hover_identifies_exit_action", _sandbox.HoveredWorldActionId == "journey.next");
             await Capture("mouse-way-forward-hover.png");
@@ -40,6 +43,19 @@ public partial class MouseActionsSmoke
             await Capture("mouse-way-forward-rewards.png");
             await CloseJourney(); Ticks(24);
             Check("completed_exit_intent_does_not_reopen_or_travel", NoIntent && openings == 1 && !panel.Visible && Session.Campaign.ActiveEncounterId == encounter && Session.Combat.View.Loot.Select(l => l.Id).ToHashSet().SetEquals(rewards));
+            await KeyPress(Key.P);
+            string pausedHash = Session.StateHash;
+            await KeyPress(Key.F); Ticks(2);
+            Check("paused_keyboard_interact_cannot_open_way_forward", _sandbox.IsPaused && openings == 1 &&
+                !panel.Visible && Session.StateHash == pausedHash);
+            await KeyPress(Key.P);
+            await KeyPress(Key.F);
+            Check("nearby_keyboard_interact_opens_same_reward_review_once", openings == 2 && panel.IsVisibleInTree() &&
+                Session.Campaign.ActiveEncounterId == encounter && Session.Combat.View.Loot.Select(l => l.Id).ToHashSet().SetEquals(rewards));
+            await Capture("keyboard-way-forward-rewards.png");
+            await CloseJourney(); Ticks(12);
+            Check("keyboard_exit_keeps_rewards_and_does_not_repeat", openings == 2 && !panel.Visible && NoIntent &&
+                Session.Campaign.ActiveEncounterId == encounter && Session.Combat.View.Loot.Select(l => l.Id).ToHashSet().SetEquals(rewards));
         }
         finally { panel.VisibilityChanged -= Opened; }
     }

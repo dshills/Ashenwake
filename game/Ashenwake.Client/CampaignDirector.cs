@@ -119,6 +119,7 @@ public partial class CampaignDirector : Node3D
         if (input.IsActionPressed("aw_journey")) { _campaign.Toggle(); GetViewport().SetInputAsHandled(); }
         if (input.IsActionPressed("aw_interact"))
         {
+            if (_sandbox.IsPaused || _sandbox.TryInteractNearby()) { GetViewport().SetInputAsHandled(); return; }
             var player = _session.Combat.View.Actors.Single(a => a.Id == 1);
             var nearest = _session.Interactions.OrderBy(i => CorePosition.DistanceSquared(i.Position, player.Position)).FirstOrDefault();
             if (nearest is not null) Interact(nearest.ActionId); GetViewport().SetInputAsHandled();

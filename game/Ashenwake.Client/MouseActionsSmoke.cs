@@ -58,7 +58,8 @@ public partial class MouseActionsSmoke : Node
             if (_sandbox.IsPaused) await ClickButton("Resume playing");
             Ticks(2);
             await InventoryRouting();
-            await Ground(new(-5000, 5000)); await WalkUntilStopped();
+            await ReachVisibleGroundCheckpoint(p => CorePosition.DistanceSquared(p, Session.Interactions.Single(i => i.ActionId == "npc.mara").Position),
+                6000, "hub");
             Check("distant_hub_checkpoint_is_reached_by_real_mouse_movement", CorePosition.DistanceSquared(Player, Session.Interactions.Single(i => i.ActionId == "npc.mara").Position) > 6000L * 6000);
             await KeyPress(Key.F5);
             Check("checkpoint_saved_through_shipping_save_handler", System.IO.File.Exists(Path.Combine(_output, "endgame.save.json")));
@@ -138,6 +139,20 @@ public partial class MouseActionsSmoke : Node
         await ResetHub(); await BeginMara();
         int dialogue = DialogueCount; await KeyPress(Key.X); Ticks(24);
         Check("stop_cancels_interaction_without_firing", NoIntent && DialogueCount == dialogue);
+
+        await ResetHub();
+        Key originalStop = Field<Dictionary<string, Key>>(_sandbox, "_keys")["stop"];
+        try
+        {
+            // Settings binding itself is covered by SettingsSmoke. Change the same mapping
+            // without saving a test preference, then exercise the real approach and input.
+            Invoke(_sandbox, "SetKey", "stop", Key.F8);
+            await BeginMara(); dialogue = DialogueCount;
+            Check("approach_prompt_uses_rebound_stop_key", Field<Label>(_sandbox, "_navigationNotice").Text.EndsWith(" · F8 to cancel", StringComparison.Ordinal));
+            await KeyPress(Key.F8); Ticks(24);
+            Check("displayed_rebound_stop_key_cancels_without_interacting", NoIntent && DialogueCount == dialogue);
+        }
+        finally { Invoke(_sandbox, "SetKey", "stop", originalStop); }
 
         await ResetHub(); await BeginMara(); dialogue = DialogueCount;
         Input.ActionPress("aw_down"); Ticks(4); Input.ActionRelease("aw_down"); Ticks(24);
@@ -406,7 +421,6 @@ public partial class MouseActionsSmoke : Node
     private static void Invoke(object owner, string name, params object[] args)
         => (owner.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic) ?? throw new MissingMethodException(name)).Invoke(owner, args);
     private static Vector3 World(CorePosition point) => new(point.X * .001f, 0, point.Z * .001f);
-    private Task Ground(CorePosition point) => Click(_camera.UnprojectPosition(World(point)));
     private async Task Hover(Vector2 position)
     {
         GetViewport().PushInput(new InputEventMouseMotion { Position = position }, true);

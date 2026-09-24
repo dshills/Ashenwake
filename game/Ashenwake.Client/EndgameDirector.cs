@@ -204,11 +204,12 @@ public partial class EndgameDirector : Node3D
         }
         if (input.IsActionPressed("aw_interact"))
         {
+            if (_sandbox.IsPaused) { GetViewport().SetInputAsHandled(); return; }
             var view = _session.Combat.View; var player = view.Actors.Single(a => a.Id == 1);
             var mechanism = view.Endgame?.Mechanisms.Where(m => m.Available).OrderBy(m => CorePosition.DistanceSquared(m.Position, player.Position)).FirstOrDefault();
             if (mechanism is not null)
                 Apply(new(EndgameRuntimeAction.Tick, Commands: [new(CombatCommandKind.InteractMechanism, TargetId: mechanism.Id)]));
-            else
+            else if (!_sandbox.TryInteractNearby())
             {
                 var nearest = _session.Interactions.OrderBy(i => CorePosition.DistanceSquared(i.Position, player.Position)).FirstOrDefault();
                 if (nearest is not null) Interact(nearest.ActionId);
