@@ -31,7 +31,7 @@ public partial class EndgameDirector
             else { _campaignHud.Visible = true; _campaignHud.SetOpen(true); }
         };
     }
-    private bool OpeningHintAllowed() => _hasActiveCharacter && !_smoke && !_echoesSmoke && _training is null &&
+    private bool OpeningHintAllowed() => !_session.InWorldEncounter && _worldEncounterPanel?.IsOpen != true && _hasActiveCharacter && !_smoke && !_echoesSmoke && _training is null &&
         !_sandbox.IsPaused && !_frontMenu.IsOpen && !_campaignHud.IsOpen && !_character.IsOpen && !_board.IsOpen &&
         _collection?.IsOpen != true && _stashPanel?.IsOpen != true && _huntBoard?.IsOpen != true && _secretPanel?.IsOpen != true &&
         _championPanel?.IsOpen != true && _deathRecapHud?.IsOpen != true && _openingGuide?.IsOpen != true;
@@ -39,9 +39,9 @@ public partial class EndgameDirector
     private void OpenOpeningGuide()
     {
         if (!_hasActiveCharacter || _training is not null || _frontMenu.IsOpen || _deathRecapHud?.IsOpen == true ||
-            _session.InRoamingChampion || _session.InSecretChamber || _session.HasUnresolvedRegionalHunt || _session.Combat.View.Endgame is not null) return;
+            _session.InWorldEncounter || _session.InRoamingChampion || _session.InSecretChamber || _session.HasUnresolvedRegionalHunt || _session.Combat.View.Endgame is not null) return;
         _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel();
-        _collection.SetOpen(false); _stashPanel.SetOpen(false); _huntBoard.SetOpen(false); _secretPanel.SetOpen(false); _championPanel.SetOpen(false);
+        _collection.SetOpen(false); _stashPanel.SetOpen(false); _huntBoard.SetOpen(false); _secretPanel.SetOpen(false); _championPanel.SetOpen(false); _worldEncounterPanel?.SetOpen(false);
         RefreshOpeningGuidance(true); _openingGuide.SetOpen(true);
     }
     private void RefreshOpeningGuidance(bool force = false)
@@ -67,7 +67,7 @@ public partial class EndgameDirector
             _openingGuidanceKey = key;
             _openingGuide.SetView(OpeningGuidance.Project(_session, _openingGuidanceMemory), _openingGuidanceMemory.Enabled, _openingGuidanceNotice);
         }
-        _openingGuide.SetHintVisible(true);
+        _openingGuide.SetHintVisible(!_session.InWorldEncounter);
     }
     private void ChangeOpeningGuidance(Func<OpeningGuidanceMemory, OpeningGuidanceMemory> change)
     {
@@ -89,7 +89,7 @@ public partial class EndgameDirector
     private void BeginOpeningGuidanceObservation()
     {
         _openingGuidanceBefore = _openingGuidanceMemory is not null && _hasActiveCharacter && !_smoke && !_echoesSmoke &&
-            !_session.InRoamingChampion && !_session.InSecretChamber && !_session.HasUnresolvedRegionalHunt && _session.Combat.View.Endgame is null
+            !_session.InWorldEncounter && !_session.InRoamingChampion && !_session.InSecretChamber && !_session.HasUnresolvedRegionalHunt && _session.Combat.View.Endgame is null
             ? _session.Combat.View : null;
     }
     private void ObserveOpeningGuidance(EndgameRuntimeResult result)

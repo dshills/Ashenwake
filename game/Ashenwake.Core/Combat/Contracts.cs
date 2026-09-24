@@ -58,6 +58,10 @@ public sealed record CombatView(long Tick, string Preset, IReadOnlyList<CombatAc
     public int Resource => Momentum;
     public int MaxResource => MaxMomentum;
     public CombatLegendaryView? Legendary { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ResonanceStormActive { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ShrineDamagePenalty { get; init; }
 }
 
 public sealed record CombatStatus

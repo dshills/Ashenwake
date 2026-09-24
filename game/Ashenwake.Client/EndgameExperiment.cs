@@ -100,7 +100,7 @@ public partial class EndgameDirector
     }
     private void ShowExperimentPanel()
     {
-        _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false);
+        _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false);
         if (_classSelection.Visible) return;
         _hasEchoesSelection = TryEchoesSelection() is not null;
         _echoesBoard.Notice(""); RefreshExperiment(); _echoesBoard.SetOpen(true);
@@ -108,6 +108,7 @@ public partial class EndgameDirector
     private void CloseExperimentPanel() => _echoesBoard.SetOpen(false);
     private void BeginExperiment(long sigil, ExperimentChoice choice)
     {
+        if (_session.InWorldEncounter) { Notice("Leave the optional encounter before entering an Echoes expedition."); return; }
         if (_session.InRoamingChampion) { Notice("Leave the champion encounter before entering an Echoes expedition."); return; }
         if (_session.InSecretChamber) { Notice("Leave the hidden chamber before entering an Echoes expedition."); return; }
         if (_session.HasUnresolvedRegionalHunt) { Notice("Claim or abandon your regional hunt before entering an Echoes expedition."); return; }
@@ -147,7 +148,7 @@ public partial class EndgameDirector
         var view = _experiment?.View; var memory = view?.Memory;
         var mind = _session.Combat.View.Fragments.FirstOrDefault(f => f.Equipped && f.Slot == AnatomySlot.Mind);
         var progression = _session.Production.ProgressionView;
-        _echoesBoard.SetView(new(_cachedDisplay, view, _experimentRules, _experimentContent.AcceptingEntries && !_session.HasUnresolvedRegionalHunt && !_session.InSecretChamber && !_session.InRoamingChampion,
+        _echoesBoard.SetView(new(_cachedDisplay, view, _experimentRules, _experimentContent.AcceptingEntries && !_session.HasUnresolvedRegionalHunt && !_session.InSecretChamber && !_session.InRoamingChampion && !_session.InWorldEncounter,
             _hasEchoesSelection, mind?.Name ?? "Mind socket empty", mind?.Description ?? "No owned Mind effect is installed.",
             $"{progression.Discipline} · Level {progression.Level}", _revision, _echoesOriginalSaveName.Length > 0));
         _memoryPresentation.Show(memory);

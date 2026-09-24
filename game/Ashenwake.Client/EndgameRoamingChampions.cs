@@ -27,7 +27,7 @@ public partial class EndgameDirector
         };
         _championPanel.MenuRequested += action =>
         {
-            _championPanel.SetOpen(false);
+            _championPanel.SetOpen(false); _worldEncounterPanel?.SetOpen(false);
             if (action == "aw_inventory") _character.ToggleInventory();
             else if (action == "aw_character") _character.Toggle();
             else if (action == "aw_experiment") ShowExperimentPanel();

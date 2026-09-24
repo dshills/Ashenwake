@@ -117,7 +117,9 @@ public sealed partial class CombatSession
         _state.Momentum, 100, Player.Barrier, _state.PotionCharges, Remaining(_state.PotionReadyTick), Remaining(_state.DodgeReadyTick),
         _content.Fragments.Where(f => _state.Fragments.Values.Contains(f.Id)).Sum(f => f.Resonance), _effects.Count, _state.PeakEffects, _state.RejectedEffects, _content.ContentVersion, Discipline, ResourceName, _state.CapturedSkillId, Remaining(_state.CapturedUntil), FalseSilhouettes().ToArray(), _state.FragmentHeat, _state.SeismicCharge, CampaignHazards().ToArray(), CampaignRule, _state.Campaign?.BossPhase ?? 0, _state.Campaign?.SuppressedFragmentId ?? "", EndgameView)
     {
-        Legendary = LegendaryView()
+        Legendary = LegendaryView(),
+        ResonanceStormActive = ResonanceStormActive,
+        ShrineDamagePenalty = ShrineDamagePenalty
     };
     private int Remaining(long until) => (int)Math.Clamp(until - Tick, 0, int.MaxValue);
     private CombatMutation? Mutation(string skill) => _content.Mutations.FirstOrDefault(m => m.Id == _state.Mutations.GetValueOrDefault(skill));
@@ -400,7 +402,7 @@ public sealed partial class CombatSession
         if (source?.Statuses.Any(s => s.Id == "Cursed") == true) increased -= 2000;
         if (target.Statuses.Any(s => s.Id == "Marked") && _content.Skills.FirstOrDefault(s => s.Id == hit.ContentId)?.Behavior == "ConsumeMarked") increased += 10000;
         var damageInput = new DamageInput(hit.Damage, bonus, IncreasedBasisPoints: increased, Critical: critical, Family: hit.Family, DefenseBasisPoints: defense,
-            VulnerabilityBasisPoints: TithekeeperExposed(target) || target.Statuses.Any(s => s.Id == "Vulnerable") ? 2500 : 0, Barrier: target.Barrier, MoreBasisPoints: EndgameFragmentPower(hit, source), MinimumDefenseBasisPoints: EndgameRule("resistance_inversion") ? -1500 : 0, Immune: target.InvulnerableUntil > Tick || IsRituallyShielded(target), DamageOverTime: hit.Dot);
+            VulnerabilityBasisPoints: TithekeeperExposed(target) || target.Statuses.Any(s => s.Id == "Vulnerable") ? 2500 : 0, Barrier: target.Barrier, MoreBasisPoints: (int)((long)EndgameFragmentPower(hit, source) * WorldEncounterDamagePower(hit, source, target) / 10000), MinimumDefenseBasisPoints: EndgameRule("resistance_inversion") ? -1500 : 0, Immune: target.InvulnerableUntil > Tick || IsRituallyShielded(target), DamageOverTime: hit.Dot);
         var result = DamageRules.Resolve(damageInput);
         ObserveEmberwakeDodge(hit, source, target);
         target.Barrier -= result.Absorbed;
@@ -483,7 +485,7 @@ public sealed partial class CombatSession
         if (target.Faction != CombatFaction.Enemy) return;
         CampaignDeath(target);
         EndgameDeath(target);
-        if (!training && !IsRoamingChampionArena && RegionalHuntCombat.Find(_state.EncounterId) is null && SecretChamberCombat.Find(_state.EncounterId) is null && _state.Loot.Count < 512 && !_state.ResurrectedActorIds.Contains(target.Id) && CampaignRewardEligible(target))
+        if (!training && !IsRoamingChampionArena && !IsWorldEncounterArena && RegionalHuntCombat.Find(_state.EncounterId) is null && SecretChamberCombat.Find(_state.EncounterId) is null && _state.Loot.Count < 512 && !_state.ResurrectedActorIds.Contains(target.Id) && CampaignRewardEligible(target))
         {
             var rng = _state.Rng.Loot;
             var eligibleItems = _content.Items.Where(i => i.Id != "item.ashcleaver" && !LegendaryEquipment.IsItem(i.Id)).ToArray();

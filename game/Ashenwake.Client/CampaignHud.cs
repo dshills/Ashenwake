@@ -11,6 +11,7 @@ public partial class CampaignHud : Control
 {
     public event Action? DiscoveriesRequested;
     public event Action? ChampionsRequested;
+    public event Action? WorldEncountersRequested;
     public event Action? OpeningGuideRequested;
     public bool IsOpen => _panel is { Visible: true };
     public event Action<int>? ActRequested;
@@ -73,6 +74,8 @@ public partial class CampaignHud : Control
         discoveries.AddThemeFontSizeOverride("font_size", 12); discoveries.Pressed += () => DiscoveriesRequested?.Invoke(); tabs.AddChild(discoveries);
         var champions = new Button { Name = "JourneyChampions", Text = "Champions", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         champions.AddThemeFontSizeOverride("font_size", 12); champions.Pressed += () => ChampionsRequested?.Invoke(); tabs.AddChild(champions);
+        var encounters = new Button { Name = "JourneyWorldEncounters", Text = "Encounters & Resonance Storms", CustomMinimumSize = new(0, 32) };
+        encounters.AddThemeFontSizeOverride("font_size", 12); encounters.Pressed += () => WorldEncountersRequested?.Invoke(); column.AddChild(encounters);
         BuildJourneyBody(column);
         _anatomyWorkbench = new AnatomyWorkbench { Visible = false }; column.AddChild(_anatomyWorkbench);
         _anatomyWorkbench.ImplantRequested += (slot, id) => ImplantRequested?.Invoke(slot, id);

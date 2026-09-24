@@ -15,7 +15,7 @@ public sealed partial class EndgameRuntimeSession
     private string RoamingSource(RoamingChampionDefinition definition) => RoamingChampionCatalog.SourceEncounter(definition, roamingCharacterSeed);
     private bool NearRoaming(Position position) => Combat.View.Actors.Any(a => a.Id == 1 && a.Health > 0 &&
         Position.DistanceSquared(a.Position, position) <= (long)RoamingChampionCatalog.InteractionRange * RoamingChampionCatalog.InteractionRange);
-    private bool AtRoamingSource(RoamingChampionDefinition definition) => !InRoamingChampion && !InSecretChamber && arena is null && !HasUnresolvedRegionalHunt &&
+    private bool AtRoamingSource(RoamingChampionDefinition definition) => !InWorldEncounter && !InRoamingChampion && !InSecretChamber && arena is null && !HasUnresolvedRegionalHunt &&
         !Campaign.InHub && Campaign.ActiveEncounterId == RoamingSource(definition) && Campaign.EncounterCleared &&
         !Campaign.HasActiveExploration && Combat.View.Actors.Any(a => a.Id == 1 && a.Health > 0);
     private ulong RoamingArenaSeed(string id, long sequence) => unchecked(roamingCharacterSeed ^ (ulong)RoamingChampionCatalog.Find(id)!.Act * 0x4348414D50494F4EUL ^ (ulong)sequence * 0xD1B54A32D192ED03UL);

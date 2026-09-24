@@ -4,7 +4,7 @@ namespace Ashenwake.Core.Combat;
 
 public sealed partial class CombatSession
 {
-    private CampaignCombatEncounter? CampaignEncounter => _content.Campaign?.Encounters.FirstOrDefault(e => e.Id == _state.EncounterId) ?? EndgameCampaignEncounter ?? RegionalHuntCombat.Find(_state.EncounterId) ?? SecretChamberCombat.Find(_state.EncounterId) ?? RoamingChampionCombat.Find(_state.EncounterId);
+    private CampaignCombatEncounter? CampaignEncounter => _content.Campaign?.Encounters.FirstOrDefault(e => e.Id == _state.EncounterId) ?? EndgameCampaignEncounter ?? RegionalHuntCombat.Find(_state.EncounterId) ?? SecretChamberCombat.Find(_state.EncounterId) ?? RoamingChampionCombat.Find(_state.EncounterId) ?? WorldEncounterCombat.Find(_state.EncounterId);
     private string CampaignRule => CampaignEncounter?.Rule ?? "";
     private string CampaignPattern(CombatActor actor) => _content.Campaign?.Behaviors.FirstOrDefault(b => b.EnemyId == actor.DefinitionId)?.Pattern ?? "";
     private bool HasElite(CombatActor actor, string id) => _state.Campaign?.Actors.GetValueOrDefault(actor.Id)?.Modifiers.Contains(id) == true;

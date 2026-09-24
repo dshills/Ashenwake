@@ -30,7 +30,7 @@ internal sealed class WorldRewardCues
         bool Has(string prefix) => result.WorldEvents.Any(e => e.StartsWith(prefix, StringComparison.Ordinal));
         // A treasure claim may also report its item grant: let the treasure cue carry that moment.
         if (Has("SecretTreasureClaimed:")) return "secret_treasure";
-        if (Has("RoamingChampionRewardClaimed:")) return "collect_equipment";
+        if (Has("RoamingChampionRewardClaimed:") || Has("WorldEncounterRewardClaimed:")) return "collect_equipment";
         // These events acknowledge committed materials, not hypothetical currency on the ground.
         if (Has("RegionalHuntRewardClaimed:") || Has("EndgameRewardCommitted:") ||
             result.WorldEvents.Any(e => e.StartsWith("SalvageMaterials:", StringComparison.Ordinal) &&

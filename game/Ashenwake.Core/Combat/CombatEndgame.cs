@@ -21,6 +21,7 @@ public sealed partial class CombatSession
         }
         if (state.Endgame is null && RoamingChampionCombat.Find(state.EncounterId) is { } champion) return champion.Room!;
         if (state.Endgame is null && SecretChamberCombat.Find(state.EncounterId) is { } chamber) return chamber.Room!;
+        if (state.Endgame is null && WorldEncounterCombat.Find(state.EncounterId) is { } world) return world.Room!;
         if (state.Endgame is null && RegionalHuntCombat.Find(state.EncounterId) is { } regional) return regional.Room!;
         if (state.Endgame is null) return content.Campaign?.Encounters.FirstOrDefault(e => e.Id == state.EncounterId)?.Room ?? content.Room;
         var e = state.Endgame;

@@ -13,7 +13,7 @@ public sealed partial class EndgameRuntimeSession
     public SecretChamberDefinition? CurrentSecretChamber => secretChambers?.Active is { } active ? SecretChamberCatalog.Find(active.Id) : null;
     private bool NearSecret(Position position) => Combat.View.Actors.Any(a => a.Id == 1 && a.Health > 0 &&
         Position.DistanceSquared(a.Position, position) <= (long)SecretChamberCatalog.InteractionRange * SecretChamberCatalog.InteractionRange);
-    private bool AtSecretSource(SecretChamberDefinition definition) => !InRoamingChampion && !InSecretChamber && arena is null && !HasUnresolvedRegionalHunt &&
+    private bool AtSecretSource(SecretChamberDefinition definition) => !InWorldEncounter && !InRoamingChampion && !InSecretChamber && arena is null && !HasUnresolvedRegionalHunt &&
         !Campaign.InHub && Campaign.ActiveEncounterId == definition.SourceEncounterId && Campaign.EncounterCleared &&
         !Campaign.HasActiveExploration && Combat.View.Actors.Any(a => a.Id == 1 && a.Health > 0);
     private IReadOnlyList<ExpeditionInteraction> SecretInteractions

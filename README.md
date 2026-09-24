@@ -88,6 +88,8 @@ The [Hollow Night audio pass](docs/hollow_audio.md) completes campaign music wit
 
 [Loot and equipment audio](docs/reward_audio.md) adds material sounds for equipping and removing gear, distinct Rare/Relic drops, collection and secret-treasure feedback. Settings → Audio includes a saved Quiet mode, with peak protection for the combined game mix.
 
+[World encounters and Resonance Storms](docs/world_encounters.md) add three optional Grey March stories and five regional storm fronts. Rescue a traveler, settle a cursed caravan or challenge its escort, accept a shrine’s temporary damage penalty, and fight through regional hazards with amplified fragment effects. Open **J → Encounters & Resonance Storms**; every encounter preserves your campaign return and awards its treasure once per character.
+
 Visit Greyhaven's **Training ground** to practice your current build against one target or a group and inspect damage, effect triggers, and resource usage. Practice grants no XP, mastery, or loot and leaves your character unchanged. At Torren, open **Gear → Equipment presets** to save and switch up to eight named outfits. See [training](docs/training_ground.md) and [equipment presets](docs/equipment_presets.md).
 
 Open **C → Character → Build loadouts** or **Gear → Build loadouts** to save eight complete builds covering equipment, fragments, Manifestations, skill mutations and passives. Switch at Mara after reviewing costs and requirements; the transaction applies everything together or leaves your character unchanged. Training comparisons identify matching named loadouts. See [complete build loadouts](docs/build_loadouts.md).
