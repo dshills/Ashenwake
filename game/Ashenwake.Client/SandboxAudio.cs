@@ -21,6 +21,10 @@ public partial class Sandbox
             "enemy.bloom_carrier" => "carrier_tell",
             "boss.antler" => "antler_tell",
             "boss.rootheart" => "rootheart_tell",
+            "enemy.emberling" => "emberling_tell",
+            "enemy.furnace_brute" => "brute_tell",
+            "enemy.forge_sentinel" => "sentinel_tell",
+            "boss.furnace_spindle" => "furnace_tell",
             _ => "crypt_tell"
         };
         return _openingAudio.Play(cue, position);
@@ -31,6 +35,7 @@ public partial class Sandbox
         var skill = _content.Skills.FirstOrDefault(s => s.Id == e.ContentId);
         bool magic = e.ContentId is "campaign.memoryarrow" or "campaign.chain" or "campaign.sonic" or
             "campaign.venompod" or "campaign.swarm" or "campaign.poisonburst" or "campaign.root_tangle" or "campaign.root_spores" ||
+            e.ContentId is "campaign.heatvent" or "campaign.forgesweep" or "campaign.furnace_vent" or "campaign.slag" or "enemy.detonate" or "rule.storm" ||
             skill?.Family is DamageFamily.Fire or DamageFamily.Frost or DamageFamily.Storm or
                 DamageFamily.Decay or DamageFamily.Venom or DamageFamily.Void;
         return _openingAudio.Play(magic ? "impact_spell" : "impact_weapon", position);
@@ -41,19 +46,21 @@ public partial class Sandbox
         string? cue = e.ContentId switch
         {
             "boss.rootheart" when e.Amount == 2 => "rootheart_phase2",
+            "boss.furnace_spindle" when e.Amount == 2 => "furnace_phase2",
             "boss.bell_saint" or "enemy.bell_saint" or "enemy.bell_beast" => e.Amount >= 3 ? "bell_phase3" : "bell_phase2",
             _ => null
         };
         return cue is not null && _openingAudio.Play(cue, position);
     }
 
-    private bool PlayVerdantDeath(int targetId, Vector3 position)
+    private bool PlayRegionalDeath(int targetId, Vector3 position)
     {
         // Consume real death events only. Reset/load projection never replays these tails.
         string? cue = _view.Actors.FirstOrDefault(a => a.Id == targetId)?.DefinitionId switch
         {
             "enemy.feeding_root" => "root_severed",
             "boss.rootheart" => "rootheart_fall",
+            "boss.furnace_spindle" => "furnace_shutdown",
             _ => null
         };
         return cue is not null && _openingAudio.Play(cue, position);

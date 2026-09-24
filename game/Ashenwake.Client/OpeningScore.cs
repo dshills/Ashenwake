@@ -9,7 +9,7 @@ public sealed record OpeningScoreAnalysis(int SampleRate, int Channels, int Fram
     double DurationSeconds, double Peak, double Rms, double MaximumAdjacentJump, double MaximumLoopJump,
     double DcOffset, string PcmSha256);
 
-/// <summary>Original eight-bar opening and Verdant score. Pure managed rendering is safe on a background
+/// <summary>Original eight-bar opening, Verdant and Cinder score. Pure managed rendering is safe on a background
 /// worker; stream cache access belongs to the Godot thread. No gameplay RNG or clock is read.</summary>
 public static class OpeningScore
 {
@@ -23,13 +23,14 @@ public static class OpeningScore
     public const int Bars = 8;
     public const double BeatSeconds = .75;
     public const double MaximumSummedStemPeak = .631;
-    public const string Version = "opening-score.2";
+    public const string Version = "opening-score.3";
 
     public static IReadOnlyList<string> StyleNames { get; } = Array.AsReadOnly<string>(["greyhaven", "road", "monastery", "crypt", "sanctum",
-        "verdant_ruins", "verdant_village", "verdant_shrine", "verdant_hunt", "verdant_heart"]);
+        "verdant_ruins", "verdant_village", "verdant_shrine", "verdant_hunt", "verdant_heart",
+        "cinder_fields", "cinder_extraction", "cinder_foundry", "cinder_storm", "cinder_furnace"]);
     public static IReadOnlyList<string> StemNames { get; } = Array.AsReadOnly<string>(["exploration", "combat", "boss"]);
 
-    // Thirty native PCM buffers at most: 63,504,000 bytes. Pure renders retain no PCM cache.
+    // Forty-five native PCM buffers at most: 95,256,000 bytes. Pure renders retain no PCM cache.
     private static readonly Dictionary<(string Style, string Stem), AudioStreamWav> Streams = [];
     private const int TableSize = 4096;
     private static readonly float[] Sine = BuildSine();
@@ -68,7 +69,22 @@ public static class OpeningScore
             [59,62,64,71,67,64,59,62,66,64,61,59], [0,2,4,7,10,12,16,18,20,23,26,29], false, .014, .28),
         // Rootheart: slow low-register cycles with a chromatic root threatening the cadence.
         new([[28,40,47,55], [29,41,48,56], [33,45,52,59], [28,40,47,54]],
-            [52,55,59,56,53,52,47,52], [0,4,9,12,17,21,25,29], false, .009, .37)
+            [52,55,59,56,53,52,47,52], [0,4,9,12,17,21,25,29], false, .009, .37),
+        // Ash fields: a suspended C-minor signal drifts over distant rail resonances.
+        new([[36,43,50,55], [32,39,46,51], [34,41,48,53], [36,43,51,55]],
+            [67,62,63,55,58,62,55,60], [1,5,9,12,17,22,25,29], false, .028, .23),
+        // Extraction: a repeating mechanical answer in minor thirds, with an uneven pickup.
+        new([[36,43,48,51], [39,46,51,55], [34,41,48,53], [35,42,47,50]],
+            [60,63,60,55,62,65,62,59], [0,2.5,6,10,16,18.5,22,27], false, .015, .33),
+        // Sealed foundry: low open fifths make room for isolated, long metal strains.
+        new([[24,36,43,50], [27,39,46,53], [25,37,44,51], [24,36,43,48]],
+            [55,62,51,58,50,55], [2,7,12,18,23,28], false, .011, .49),
+        // Burning rain: close intervals sweep across a higher, more restless signal.
+        new([[36,43,49,55], [37,44,50,56], [34,41,48,54], [36,43,50,55]],
+            [72,73,67,70,66,72,74,67,70,72], [0,3,6,9,12,16,19,22,26,29], false, .043, .25),
+        // Furnace: a deep C pedal with a chromatic gear slipping against the upper voice.
+        new([[24,36,43,48], [25,37,44,49], [29,41,48,53], [24,36,43,50]],
+            [48,55,49,48,53,56,50,48], [0,4,8,13,16,20,25,29], false, .019, .39)
     ];
 
     public static bool IsPrepared(string style, string stem)
@@ -109,7 +125,8 @@ public static class OpeningScore
         var region = Regions[regionIndex];
         var left = new float[SampleCount]; var right = new float[SampleCount];
         uint seed = unchecked(0x6D2B79F5u ^ (uint)(regionIndex + 1) * 0x9E3779B9u ^ (uint)(layer + 1) * 0x85EBCA6Bu);
-        if (regionIndex >= 5) Verdant(region, regionIndex - 5, layer, left, right, seed);
+        if (regionIndex >= 10) Cinder(region, regionIndex - 10, layer, left, right, seed);
+        else if (regionIndex >= 5) Verdant(region, regionIndex - 5, layer, left, right, seed);
         else if (layer == 0) Exploration(region, regionIndex, left, right, seed);
         else if (layer == 1) Combat(region, regionIndex, left, right, seed);
         else Boss(region, regionIndex, left, right, seed);
@@ -228,6 +245,103 @@ public static class OpeningScore
                 AddReed(left, right, notes[2] + 7, at + 4 * BeatSeconds, 2.4, .082, -.38, breathy: false);
             else
                 AddWood(left, right, notes[0] + (character == 4 ? 1 : 12), at + 4.5 * BeatSeconds, 2.2, .11, -.25);
+        }
+    }
+
+    private static void Cinder(Region region, int character, int layer, float[] left, float[] right, uint seed)
+    {
+        // Append-only regions and a separate renderer preserve all opening/Verdant PCM.
+        // Tuned steel, slow machinery and filtered ash share the same eight-bar grid.
+        if (layer == 0)
+        {
+            for (int chord = 0; chord < region.Chords.Length; chord++)
+            {
+                var notes = region.Chords[chord]; double at = chord * 6;
+                AddFurnaceDrone(left, right, notes[0], at - .5, 8, .062, -.25);
+                AddFurnaceDrone(left, right, notes[2], at + .1, 7.4, .029, .34);
+                if (character is 2 or 4)
+                    AddSteel(left, right, notes[1], at + 2.5 * BeatSeconds, 4.4, .065, -.38, strain: true);
+            }
+            for (int note = 0; note < region.Melody.Length; note++)
+            {
+                double at = region.Beats[note] * BeatSeconds, pan = note % 2 == 0 ? -.33 : .36;
+                AddSteel(left, right, region.Melody[note], at, character == 2 ? 4.8 : 3.1, .092, pan, strain: character == 2);
+                if (character == 1)
+                    AddSteel(left, right, region.Melody[note] - 12, at + .375, 1.1, .031, -pan, strain: false);
+            }
+            AddAir(left, right, region.Air, seed);
+            return;
+        }
+        if (layer == 1)
+        {
+            for (int bar = 0; bar < Bars; bar++)
+            {
+                int root = region.Chords[bar / 2][0]; double at = bar * 4 * BeatSeconds;
+                // Extraction's staggered piston, foundry's slow hammer and storm's rapid
+                // ash accents give regions distinct rhythms without changing loop alignment.
+                double answer = character == 1 ? 1.5 : character == 2 ? 2.5 : 2;
+                AddSteel(left, right, root + 12, at, 1.6, .17, -.14, strain: false);
+                AddDrum(left, right, at, .75, .075, .05, false, seed + (uint)bar);
+                AddSteel(left, right, root + 19, at + answer * BeatSeconds, 1.1, .094, .28, strain: false);
+                AddDrum(left, right, at + 3.5 * BeatSeconds, .34, .052, -.36, true, seed + (uint)(30 + bar));
+                if (character is 1 or 3 or 4)
+                    AddSteel(left, right, root + 24, at + 3 * BeatSeconds, .6, .043, -.25, strain: false);
+                if (character == 3)
+                    AddDrum(left, right, at + .5 * BeatSeconds, .45, .08, .4, true, seed + (uint)(60 + bar));
+            }
+            return;
+        }
+        for (int chord = 0; chord < region.Chords.Length; chord++)
+        {
+            var notes = region.Chords[chord]; double at = chord * 6;
+            AddFurnaceDrone(left, right, notes[0], at - .4, 8.1, .14, -.18);
+            AddSteel(left, right, notes[2], at, 5.5, .10, .25, strain: true);
+            AddSteel(left, right, notes[0] + 12, at + 3 * BeatSeconds, 2.8, .15, -.24, strain: false);
+            AddSteel(left, right, notes[0] + (character == 4 ? 13 : 19), at + 5.5 * BeatSeconds, 2, .095, .3, strain: false);
+            if (character == 3)
+                AddAir(left, right, .006, seed + (uint)chord);
+        }
+    }
+
+    private static void AddSteel(float[] left, float[] right, int midi, double start, double duration,
+        double level, double pan, bool strain)
+    {
+        double[] ratios = [1, 1.997, 2.413, 4.167], phases = new double[4], amplitudes = [.68, .18, .11, .045];
+        double[] decays = [Math.Exp(-.85 / SampleRate), Math.Exp(-1.5 / SampleRate), Math.Exp(-2.7 / SampleRate), Math.Exp(-5.2 / SampleRate)];
+        for (int p = 0; p < ratios.Length; p++) ratios[p] *= Frequency(midi) / SampleRate;
+        int at = Wrap((int)Math.Round(start * SampleRate)), frames = (int)(duration * SampleRate);
+        var (gainLeft, gainRight) = Pan(pan, level);
+        for (int i = 0; i < frames; i++)
+        {
+            double t = i / (double)SampleRate, sample = 0;
+            double flex = strain ? 1 + .003 * Lookup(Sine, Fraction(t * 2.3)) : 1;
+            for (int p = 0; p < ratios.Length; p++)
+            {
+                sample += Lookup(Sine, phases[p]) * amplitudes[p];
+                phases[p] = Fraction(phases[p] + ratios[p] * flex);
+                amplitudes[p] *= decays[p];
+            }
+            sample *= Smooth(t / (strain ? .25 : .008)) * Smooth((duration - t) / .5);
+            left[at] += (float)(sample * gainLeft); right[at] += (float)(sample * gainRight);
+            if (++at == SampleCount) at = 0;
+        }
+    }
+
+    private static void AddFurnaceDrone(float[] left, float[] right, int midi, double start, double duration,
+        double level, double pan)
+    {
+        double phase = 0, gear = .23, step = Frequency(midi) / SampleRate;
+        int at = Wrap((int)Math.Round(start * SampleRate)), frames = (int)(duration * SampleRate);
+        var (gainLeft, gainRight) = Pan(pan, level);
+        for (int i = 0; i < frames; i++)
+        {
+            double t = i / (double)SampleRate;
+            double sample = .76 * Lookup(Sine, phase) + .14 * Lookup(Sine, Fraction(phase * 2)) +
+                .055 * Lookup(Sine, Fraction(phase * 5)) + .045 * Lookup(Sine, gear);
+            sample *= Smooth(t / .85) * Smooth((duration - t) / 1.5) * (.86 + .14 * Lookup(Sine, Fraction(t / 1.5)));
+            left[at] += (float)(sample * gainLeft); right[at] += (float)(sample * gainRight);
+            phase = Fraction(phase + step); gear = Fraction(gear + step * 1.014);
+            if (++at == SampleCount) at = 0;
         }
     }
 
@@ -445,6 +559,11 @@ public static class OpeningScore
             "verdant_shrine" => 7,
             "verdant_hunt" => 8,
             "verdant_heart" => 9,
+            "cinder_fields" => 10,
+            "cinder_extraction" => 11,
+            "cinder_foundry" => 12,
+            "cinder_storm" => 13,
+            "cinder_furnace" => 14,
             _ => -1
         };
         int layer = stem switch { "exploration" => 0, "combat" => 1, "boss" => 2, _ => -1 };

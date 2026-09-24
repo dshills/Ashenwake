@@ -167,9 +167,9 @@ public partial class Sandbox
         if (_regionalAmbience is not null && _ambienceCue.Length != 0)
         {
             _regionalAmbience.StreamPaused = _clock.Paused;
-            // The forest bed sits behind the new score and follows its warning ducking.
+            // Scored regional beds sit behind the music and follow its warning ducking.
             // Per-player gain leaves the user's Music & ambience preference untouched.
-            _regionalAmbience.VolumeDb = VerdantAmbience.CueForStyle(_environmentStyle).Length != 0
+            _regionalAmbience.VolumeDb = VerdantAmbience.CueForStyle(_environmentStyle).Length != 0 || CinderAmbience.CueForStyle(_environmentStyle).Length != 0
                 ? -29 + Mathf.LinearToDb(Math.Max(.0001f, _openingAudio.DuckGain)) : -25;
         }
         float x = (_authoredBounds.Width > 0 ? _authoredBounds.Width : _content.Room.HalfWidth) * .001f;

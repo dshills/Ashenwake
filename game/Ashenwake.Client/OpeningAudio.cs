@@ -3,7 +3,7 @@ using Godot;
 
 namespace Ashenwake.Client;
 
-/// <summary>Read-only opening and Verdant audio director. Cosmetic clocks, synthesis and voices never enter a save or replay.</summary>
+/// <summary>Read-only regional audio director. Cosmetic clocks, synthesis and voices never enter a save or replay.</summary>
 internal sealed partial class OpeningAudio : Node3D
 {
     private sealed class Bank(AudioStreamPlayer[] players)
@@ -29,6 +29,7 @@ internal sealed partial class OpeningAudio : Node3D
     private float _stepDistance, _combatHold, _duckHold;
     private double _time, _lastFootstep = -1, _lastLowHealth = -10;
     private bool _lowHealthArmed;
+    private (int Id, bool Guarded)? _furnaceState;
 
     internal string DesiredStyle { get; private set; } = "";
     internal string PlayingStyle => _activeBank < 0 ? "" : _banks[_activeBank].Style;
@@ -93,6 +94,7 @@ internal sealed partial class OpeningAudio : Node3D
         if (DesiredStyle == desired) return;
         DesiredStyle = desired;
         _stepDistance = 0; _lastTick = -1; _combatHold = 0;
+        _furnaceState = null;
         // An outgoing arena must not leave a warning or positional effect playing in the next one.
         StopEffects();
     }
@@ -105,6 +107,7 @@ internal sealed partial class OpeningAudio : Node3D
         _lastTick = view.Tick; _lastPosition = WorldPosition(player);
         _lowHealthArmed = player is { Health: > 0 } && player.Health > player.MaxHealth * .25;
         _lastFootstep = _time; _lastLowHealth = _time - 10;
+        ObserveFurnace(view, baseline: true);
     }
 
     private void StopEffects()
@@ -123,6 +126,9 @@ internal sealed partial class OpeningAudio : Node3D
         float distance = position.DistanceTo(_lastPosition);
         bool baseline = _lastTick < 0 || ticks < 0 || ticks > 5;
         _lastTick = view.Tick; _lastPosition = position;
+        // BossCoreWindow is emitted when guarding STARTS. Announce the actual opening
+        // only when the authoritative guard projection falls, independently of footsteps.
+        ObserveFurnace(view, baseline || Paused || ticks == 0 || player is null || player.Health <= 0);
         if (Paused || DesiredStyle.Length == 0 || player is null || player.Health <= 0 || baseline || dodged || distance > 1.8f)
         { _stepDistance = 0; return; }
         if (ticks == 0) return;
@@ -138,10 +144,21 @@ internal sealed partial class OpeningAudio : Node3D
         if (_stepDistance >= 1.05f && _time - _lastFootstep >= .2)
         {
             string surface = DesiredStyle is "verdant_ruins" or "verdant_hunt" or "verdant_shrine" or "verdant_heart"
-                ? "moss" : DesiredStyle == "road" ? "dirt" : "stone";
+                ? "moss" : DesiredStyle is "cinder_extraction" or "cinder_foundry" or "cinder_furnace" ? "metal"
+                : DesiredStyle is "road" or "cinder_fields" or "cinder_storm" ? "dirt" : "stone";
             Play(OpeningFoley.FootstepCue(surface, FootstepCount), position);
             FootstepCount++; _lastFootstep = _time; _stepDistance %= 1.05f;
         }
+    }
+
+    private void ObserveFurnace(CombatView view, bool baseline)
+    {
+        var actor = DesiredStyle == "cinder_furnace"
+            ? view.Actors.FirstOrDefault(a => a.DefinitionId == "boss.furnace_spindle" && a.Health > 0) : null;
+        if (!baseline && actor is not null && _furnaceState is { } previous &&
+            previous.Id == actor.Id && previous.Guarded && !actor.Guarded)
+            Play("furnace_exposed", WorldPosition(actor));
+        _furnaceState = actor is null ? null : (actor.Id, actor.Guarded);
     }
 
     /// <summary>Returns true when opening audio owns the cue, including a coalesced or paused cue.</summary>
@@ -156,7 +173,8 @@ internal sealed partial class OpeningAudio : Node3D
         if (metadata.IsWarning)
         {
             int slot = metadata.Category == "enemy_tell" ? 0 : 1;
-            int priority = cue == "rootheart_fall" ? 3 : cue is "saint_tell" or "rootheart_tell" or "antler_tell" || metadata.Category == "phase_warning" ? 2 : 1;
+            int priority = cue is "rootheart_fall" or "furnace_shutdown" ? 3 :
+                cue is "saint_tell" or "rootheart_tell" or "antler_tell" or "furnace_tell" || metadata.Category == "phase_warning" ? 2 : 1;
             // Boss tells outrank lesser creatures. Phases outrank heartbeat; final collapse
             // cannot be cut off by a same-tick phase or status cue. Equal phases may replace.
             if (_warningUntil[slot] > _time && (priority < _warningPriority[slot] ||
@@ -193,6 +211,7 @@ internal sealed partial class OpeningAudio : Node3D
         bool alive = hero is { Health: > 0 };
         bool boss = false, combat = false;
         string bossDefinition = "";
+        bool furnaceGuarded = false;
         int lostRoots = 0;
         if (alive && DesiredStyle.Length > 0)
             for (int i = 0; i < view.Actors.Count; i++)
@@ -200,8 +219,8 @@ internal sealed partial class OpeningAudio : Node3D
                 var actor = view.Actors[i];
                 if (actor.DefinitionId == "enemy.feeding_root" && actor.Health <= 0) lostRoots++;
                 if (actor.Health <= 0 || actor.Faction != CombatFaction.Enemy) continue;
-                if (actor.DefinitionId is "boss.bell_saint" or "enemy.bell_saint" or "enemy.bell_beast" or "boss.rootheart" or "boss.antler")
-                { boss = true; bossDefinition = actor.DefinitionId; }
+                if (actor.DefinitionId is "boss.bell_saint" or "enemy.bell_saint" or "enemy.bell_beast" or "boss.rootheart" or "boss.antler" or "boss.furnace_spindle")
+                { boss = true; bossDefinition = actor.DefinitionId; furnaceGuarded = actor.Guarded; }
                 if (!combat && DesiredStyle != "greyhaven" && actor.Visible)
                     combat = Ashenwake.Core.Simulation.Position.DistanceSquared(actor.Position, hero!.Position) < 144_000_000;
             }
@@ -212,6 +231,7 @@ internal sealed partial class OpeningAudio : Node3D
         {
             "boss.rootheart" => view.BossPhase >= 2 ? 1 : .4f + Math.Min(3, lostRoots) * .1f,
             "boss.antler" => .65f,
+            "boss.furnace_spindle" => view.BossPhase >= 2 ? furnaceGuarded ? .75f : 1 : furnaceGuarded ? .45f : .7f,
             _ => view.BossPhase >= 3 ? 1 : view.BossPhase == 2 ? .75f : .4f
         };
         BossGain = Mathf.MoveToward(BossGain, bossTarget, dt / 1.2f);

@@ -206,7 +206,7 @@ public partial class OpeningAudioSmoke : Node
             Check("reset_silences_transients_without_replaying_warning_or_score", audio.CueCount == cues && audio.BankStarts == starts && audio.DuckGain == 1 &&
                 audio.EffectPlayers.All(p => !p.Playing) && audio.WarningPlayers.All(p => !p.Playing));
             // A cold request superseded before completion must never start in the departed room.
-            audio.SetStyle("crypt"); audio.Advance(1d / 60, hub, false, Basis.Identity); audio.SetStyle("cinder_fields");
+            audio.SetStyle("crypt"); audio.Advance(1d / 60, hub, false, Basis.Identity); audio.SetStyle("spine_causeway");
             for (int i = 0; i < 1800 && (audio.PreparationPending || audio.ActiveMusicBanks > 0); i++) { audio.Advance(1d / 60, hub, false, Basis.Identity); await Frames(1); }
             Check("departing_opening_drops_late_preparation_and_releases_banks", !audio.PreparationPending && audio.ActiveMusicBanks == 0 && audio.DesiredStyle == "" && audio.BankStarts == starts &&
                 !audio.Play("impact_weapon", Vector3.Zero) && !audio.Play("unknown", Vector3.Zero));

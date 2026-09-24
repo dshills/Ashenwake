@@ -9,13 +9,13 @@ public sealed record OpeningFoleyCue(string Id, string Category, double Duration
 public sealed record OpeningFoleyAnalysis(int Frames, double DurationSeconds, double PeakAbsolute, double Rms,
     double MaxAdjacentDelta, short FirstSample, short LastSample, int FullScaleSamples, string Sha256);
 
-/// <summary>Original opening-region and Verdant foley. Pure deterministic synthesis is independent of gameplay state;
+/// <summary>Original opening-region, Verdant and Cinder foley. Pure deterministic synthesis is independent of gameplay state;
 /// cached Godot streams are created/accessed on the scene thread. PCM16 mono, no loops or external assets.</summary>
 public static class OpeningFoley
 {
     public const int SampleRate = 22050;
     public const double PeakCeiling = .78;
-    // Catalog-validated, append-only keys bound the native cache to 27 short mono buffers.
+    // Catalog-validated, append-only keys bound the native cache to 38 short mono buffers.
     private static readonly Dictionary<string, AudioStreamWav> Streams = new(StringComparer.Ordinal);
     public static IReadOnlyList<OpeningFoleyCue> Cues { get; } = Array.AsReadOnly<OpeningFoleyCue>(
     [
@@ -46,7 +46,18 @@ public static class OpeningFoley
         new("rootheart_fall", "phase_warning", 2.80, -9, true, "Rootheart: a descending trunk groan breaks into falling branches and settling leaves."),
         new("step_moss_1", "footstep", .34, -17, false, "A soft moss cushion, damp heel compression and a quiet leaf rub."),
         new("step_moss_2", "footstep", .36, -17, false, "A lower heel squelch beneath a short leafy toe-off."),
-        new("step_moss_3", "footstep", .33, -17, false, "A firmer root beneath moss, with trailing damp foliage.")
+        new("step_moss_3", "footstep", .33, -17, false, "A firmer root beneath moss, with trailing damp foliage."),
+        new("emberling_tell", "enemy_tell", .94, -11, true, "Emberling: a swelling coal whistle and crackling intake before detonation."),
+        new("brute_tell", "enemy_tell", 1.15, -10, true, "Furnace brute: a dragging iron weight answers a deep abrasive exhalation."),
+        new("sentinel_tell", "enemy_tell", 1.10, -10, true, "Forge sentinel: a ratcheting servo winds into a narrow metal warning tone."),
+        new("furnace_tell", "enemy_tell", 1.44, -10, true, "Furnace Spindle: two locking gears open into a low pressure surge."),
+        new("storm_tell", "enemy_tell", 1.22, -10, true, "Burning Rain: a rising ash hiss crosses a bright, unstable cinder whistle."),
+        new("furnace_phase2", "phase_warning", 2.12, -9, true, "Two heavy safety locks release, followed by a rising turbine and vented pressure."),
+        new("furnace_shutdown", "phase_warning", 3.10, -9, true, "A winding turbine falls through settling gear clanks into a final steam release."),
+        new("furnace_exposed", "window_warning", 1.18, -10, true, "A clean steam release and two tuned steel clanks mark the open furnace window."),
+        new("step_metal_1", "footstep", .39, -18, false, "A heavy heel on grating with a short hollow steel ring."),
+        new("step_metal_2", "footstep", .42, -18, false, "A lower plate strike followed by a loose rivet and toe tap."),
+        new("step_metal_3", "footstep", .38, -18, false, "A firm boot on narrow grating with a bright trailing fastening.")
     ]);
     public static IReadOnlyList<string> CueNames { get; } = Array.AsReadOnly(Cues.Select(c => c.Id).ToArray());
     public static int CachedStreamCount => Streams.Count;
@@ -57,7 +68,7 @@ public static class OpeningFoley
     /// <summary>Use a presentation-only step counter. Negative counters are also deterministic.</summary>
     public static string FootstepCue(string surface, long cosmeticStepIndex)
     {
-        if (surface is not ("dirt" or "stone" or "moss")) throw new ArgumentException("Footstep surface must be dirt, stone or moss.", nameof(surface));
+        if (surface is not ("dirt" or "stone" or "moss" or "metal")) throw new ArgumentException("Footstep surface must be dirt, stone, moss or metal.", nameof(surface));
         int variant = (int)((cosmeticStepIndex % 3 + 3) % 3) + 1;
         return "step_" + surface + "_" + variant;
     }
@@ -124,6 +135,15 @@ public static class OpeningFoley
                 22 => RootSevered(time, low, breath, grain),
                 23 => RootheartFall(time, low, breath, grain),
                 24 or 25 or 26 => MossStep(time, kind - 24, low, middle, grain),
+                27 => EmberlingTell(time, breath, grain),
+                28 => BruteTell(time, low, breath, grain),
+                29 => SentinelTell(time, breath, grain),
+                30 => FurnaceTell(time, low, breath, grain),
+                31 => StormTell(time, breath, grain),
+                32 => FurnacePhaseTwo(time, low, breath, grain),
+                33 => FurnaceShutdown(time, low, breath, grain),
+                34 => FurnaceExposed(time, breath, grain),
+                35 or 36 or 37 => MetalStep(time, kind - 35, low, middle, grain),
                 _ => throw new InvalidOperationException("Opening foley metadata and synthesis differ.")
             };
             // A two-millisecond entrance removes discontinuities; all tails taper to exact silence.
@@ -299,6 +319,66 @@ public static class OpeningFoley
             .19 * Modal(t - 1.37, 179, 14, 2.71, 4.83) + .14 * Modal(t - 1.61, 247, 17, 2.71, 4.83) +
             .24 * grain * (Burst(t, .48, 28) + .8 * Burst(t, 1.10, 24) + .4 * Burst(t, 1.62, 36)) +
             .73 * breath * Swell(t, .74, 2.73);
+
+    // Separate append-only synthesis keeps all earlier region samples and noise seeds unchanged.
+    private static double EmberlingTell(double t, double breath, double grain)
+        => .24 * Sweep(417, 831, t, .94) * Swell(t, .012, .89) +
+            (.92 * breath + .16 * grain) * Swell(t, .005, .90) +
+            .19 * grain * (Burst(t, .07, 66) + Burst(t, .24, 58) + Burst(t, .39, 51)) +
+            .10 * Modal(t - .10, 1019, 18, 1.997, 2.413);
+
+    private static double BruteTell(double t, double low, double breath, double grain)
+        => .32 * Modal(t - .012, 91, 4.7, 1.997, 4.167) +
+            (.25 * Throat(t, 61, 4.3) + .81 * low + .53 * breath) * Swell(t, .025, 1.10) +
+            .14 * Modal(t - .16, 257, 15, 2.413, 4.167) + .10 * Modal(t - .30, 331, 18, 1.997, 4.167) +
+            .18 * grain * Swell(t, .016, .53);
+
+    private static double SentinelTell(double t, double breath, double grain)
+        => .29 * Modal(t, 263, 12, 1.997, 2.413) + .24 * Modal(t - .18, 331, 14, 1.997, 2.413) +
+            .20 * Modal(t - .32, 394, 16, 1.997, 2.413) +
+            .21 * Wave(525, t) * Swell(t, .28, 1.05) +
+            (.47 * breath + .12 * grain) * (.65 + .35 * Wave(31, t)) * Swell(t, .008, .78);
+
+    private static double FurnaceTell(double t, double low, double breath, double grain)
+        => .40 * Modal(t, 73, 4.9, 1.997, 4.167) + .33 * Modal(t - .30, 98, 4.7, 1.997, 4.167) +
+            (.24 * Wave(49, t) + .82 * low + .90 * breath) * Swell(t, .15, 1.37) +
+            .19 * grain * (Burst(t, .017, 47) + .8 * Burst(t, .32, 43)) +
+            .12 * Sweep(183, 247, t, 1.44) * Swell(t, .34, 1.28);
+
+    private static double StormTell(double t, double breath, double grain)
+        => (.99 * breath + .24 * grain) * (.76 + .24 * Wave(13, t)) * Swell(t, .015, 1.16) +
+            .20 * Sweep(698, 1137, t, 1.22) * Swell(t, .16, 1.09) +
+            .14 * Modal(t - .043, 879, 17, 1.997, 2.413) + .13 * Modal(t - .29, 659, 14, 1.997, 2.413);
+
+    private static double FurnacePhaseTwo(double t, double low, double breath, double grain)
+        => .46 * Modal(t, 82, 3.1, 1.997, 4.167) + .41 * Modal(t - .38, 123, 3.6, 1.997, 4.167) +
+            .24 * grain * (Burst(t, .013, 49) + Burst(t, .40, 43)) +
+            .23 * Sweep(98, 294, t, 2.12) * Swell(t, .24, 2.02) +
+            (.66 * low + .95 * breath) * Swell(t, .43, 2.04) +
+            .15 * Modal(t - .73, 392, 6, 1.997, 2.413);
+
+    private static double FurnaceShutdown(double t, double low, double breath, double grain)
+        => .27 * Sweep(196, 29, t, 3.10) * Swell(t, .006, 3.03) +
+            (.63 * low + .19 * Wave(49, t)) * Swell(t, .02, 2.22) +
+            .34 * Modal(t - .27, 147, 3.0, 1.997, 4.167) + .28 * Modal(t - .83, 110, 3.6, 1.997, 4.167) +
+            .23 * Modal(t - 1.57, 73, 4.4, 1.997, 4.167) + .13 * Modal(t - 2.28, 196, 8, 1.997, 2.413) +
+            .20 * grain * (Burst(t, .29, 46) + .8 * Burst(t, .85, 42) + .6 * Burst(t, 1.59, 38)) +
+            .82 * breath * Swell(t, .79, 3.04);
+
+    private static double FurnaceExposed(double t, double breath, double grain)
+        => (.87 * breath + .13 * grain) * Swell(t, .007, .59) +
+            .34 * Modal(t - .033, 523.25, 5.0, 1.997, 2.413) +
+            .29 * Modal(t - .22, 783.99, 5.4, 1.997, 2.413);
+
+    private static double MetalStep(double t, int variant, double low, double mid, double grain)
+    {
+        double pitch = 1 + (variant - 1) * .035, toe = .11 + variant * .012;
+        return .26 * Sweep(121 * pitch, 51, t, .28) * Envelope(t, .002, 22) +
+            .31 * Modal(t, 181 * pitch, 11, 1.997, 4.167) + .19 * grain * Burst(t, .003, 72) +
+            .14 * Modal(t - toe, 362 * pitch, 16, 1.997, 2.413) +
+            .085 * Modal(t - toe - .023, 719, 27, 1.997, 4.167) +
+            (.22 * mid + .20 * low) * Swell(t, .019, .34);
+    }
 
     private static double Heart(double t) => t < 0 ? 0 : Envelope(t, .008, 19) * (Wave(64, t) + .27 * Wave(137, t));
     private static double Throat(double t, double fundamental, double flutter)

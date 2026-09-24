@@ -177,6 +177,13 @@ python3 tools/check-godot-log.py "$verdant_audio_output/smoke.log"
 rg -q 'VerdantAudioClientSmokePassed' "$verdant_audio_output/smoke.log"
 aw campaign replay "$verdant_audio_output/verdant-audio.awcampaign"
 
+cinder_audio_output="$package_output/cinder-audio-client"
+mkdir -p "$cinder_audio_output"
+"$binary" --headless --quit-after 36000 --log-file "$cinder_audio_output/smoke.log" -- --cinder-audio-smoke --output="$cinder_audio_output"
+python3 tools/check-godot-log.py "$cinder_audio_output/smoke.log"
+rg -q 'CinderAudioClientSmokePassed' "$cinder_audio_output/smoke.log"
+aw campaign replay "$cinder_audio_output/cinder-audio.awcampaign"
+
 combat_feedback_output="$package_output/combat-feedback-client"
 mkdir -p "$combat_feedback_output"
 "$binary" --headless --quit-after 1200 --log-file "$combat_feedback_output/smoke.log" -- --combat-feedback-smoke --output="$combat_feedback_output"

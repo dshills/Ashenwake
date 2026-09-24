@@ -52,7 +52,11 @@ public partial class Sandbox
                 "MechanismDestroyed" or "BossPhaseChanged" or "LootDropped" or "EnemyOvercharged" or
                 "LegendaryReadied" or "LegendaryCharged" or "LegendaryTriggered") continue;
             if (e.Kind is "CampaignHazardWarned" or "CampaignHazardResolved" && e.ContentId.StartsWith("rule.", StringComparison.Ordinal))
-            { if (e.Kind == "CampaignHazardWarned") PlayTone("tell"); continue; }
+            {
+                if (e.Kind == "CampaignHazardWarned" && !(e.ContentId == "rule.storm" &&
+                    _environmentStyle == "cinder_storm" && _openingAudio.Play("storm_tell", Vector3.Zero))) PlayTone("tell");
+                continue;
+            }
             // A support chant resolving is not a weapon swing or a hit at the player.
             if ((e.ContentId == "elite.dirgebound" || IsMidgameSupport(e.ContentId)) && e.Kind is "CampaignHazardResolved" or "EliteAbilityResolved") continue;
             _actors.TryGetValue(e.ActorId, out var actor);
@@ -139,7 +143,7 @@ public partial class Sandbox
                     bool boss = _view.Actors.Any(a => a.Id == targetId && a.DefinitionId is "boss.bell_saint" or "enemy.bell_saint" or "enemy.bell_beast");
                     _combatEffects.Emit(boss ? "victory" : "death", target.Current, direction, new Color("e6bf7d"), _reduceEffects);
                     Feedback(targetId, boss ? "SILENCED" : "FALLEN", "death");
-                    if (!PlayVerdantDeath(targetId, target.Current)) PlayTone(boss ? "victory" : "death");
+                    if (!PlayRegionalDeath(targetId, target.Current)) PlayTone(boss ? "victory" : "death");
                     _shake = Math.Max(_shake, boss ? .6 : .2); break;
                 case "BossPhaseChanged":
                     if (actor is null) break;
