@@ -82,6 +82,8 @@ The [Verdant Maw audio pass](docs/verdant_audio.md) extends adaptive music throu
 
 The [Cinder Reach audio pass](docs/cinder_audio.md) adds five industrial scores, metal footsteps, creature and Burning Rain warnings, and Furnace Spindle exposure, phase and shutdown cues.
 
+The [Shattered Spine audio pass](docs/spine_audio.md) adds five regional scores, oathbound creature warnings, sequential fault cues, and Covenant Warden exposure, phase and defeat sounds.
+
 Visit Greyhaven's **Training ground** to practice your current build against one target or a group and inspect damage, effect triggers, and resource usage. Practice grants no XP, mastery, or loot and leaves your character unchanged. At Torren, open **Gear → Equipment presets** to save and switch up to eight named outfits. See [training](docs/training_ground.md) and [equipment presets](docs/equipment_presets.md).
 
 Open **C → Character → Build loadouts** or **Gear → Build loadouts** to save eight complete builds covering equipment, fragments, Manifestations, skill mutations and passives. Switch at Mara after reviewing costs and requirements; the transaction applies everything together or leaves your character unchanged. Training comparisons identify matching named loadouts. See [complete build loadouts](docs/build_loadouts.md).

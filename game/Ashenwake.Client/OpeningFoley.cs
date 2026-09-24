@@ -9,13 +9,13 @@ public sealed record OpeningFoleyCue(string Id, string Category, double Duration
 public sealed record OpeningFoleyAnalysis(int Frames, double DurationSeconds, double PeakAbsolute, double Rms,
     double MaxAdjacentDelta, short FirstSample, short LastSample, int FullScaleSamples, string Sha256);
 
-/// <summary>Original opening-region, Verdant and Cinder foley. Pure deterministic synthesis is independent of gameplay state;
+/// <summary>Original opening-region, Verdant, Cinder and Spine foley. Pure deterministic synthesis is independent of gameplay state;
 /// cached Godot streams are created/accessed on the scene thread. PCM16 mono, no loops or external assets.</summary>
 public static class OpeningFoley
 {
     public const int SampleRate = 22050;
     public const double PeakCeiling = .78;
-    // Catalog-validated, append-only keys bound the native cache to 38 short mono buffers.
+    // Catalog-validated, append-only keys bound the native cache to 47 short mono buffers.
     private static readonly Dictionary<string, AudioStreamWav> Streams = new(StringComparer.Ordinal);
     public static IReadOnlyList<OpeningFoleyCue> Cues { get; } = Array.AsReadOnly<OpeningFoleyCue>(
     [
@@ -57,7 +57,16 @@ public static class OpeningFoley
         new("furnace_exposed", "window_warning", 1.18, -10, true, "A clean steam release and two tuned steel clanks mark the open furnace window."),
         new("step_metal_1", "footstep", .39, -18, false, "A heavy heel on grating with a short hollow steel ring."),
         new("step_metal_2", "footstep", .42, -18, false, "A lower plate strike followed by a loose rivet and toe tap."),
-        new("step_metal_3", "footstep", .38, -18, false, "A firm boot on narrow grating with a bright trailing fastening.")
+        new("step_metal_3", "footstep", .38, -18, false, "A firm boot on narrow grating with a bright trailing fastening."),
+        new("giant_tell", "enemy_tell", 1.18, -10, true, "Oath giant: two stone joints grind into a low, breath-heavy horn call."),
+        new("keeper_tell", "enemy_tell", .98, -10, true, "Contract keeper: a dry parchment rasp rises beneath a tightly voiced choral warning."),
+        new("bone_tell", "enemy_tell", .89, -11, true, "Bone sentinel: three hollow bone knocks gather into a brittle scrape."),
+        new("warden_oath", "enemy_tell", .52, -10, true, "Covenant Warden: a short descending horn and stone seal announce the oath."),
+        new("warden_fault", "enemy_tell", .50, -10, true, "Covenant Warden: a rising stone fracture marks the approaching fault line."),
+        new("spine_fault", "enemy_tell", .55, -10, true, "Sequential fault: three ascending rock clicks cross a rising pressure rumble."),
+        new("warden_phase2", "phase_warning", 2.16, -9, true, "A broken stone seal answers two forceful horns and a restrained choral surge."),
+        new("warden_defeat", "phase_warning", 3.04, -9, true, "The Warden's final horn sinks beneath falling stone as a quiet open fifth remains."),
+        new("warden_exposed", "window_warning", .94, -10, true, "Two clear, ascending stone tones announce the broken oath's vulnerable window.")
     ]);
     public static IReadOnlyList<string> CueNames { get; } = Array.AsReadOnly(Cues.Select(c => c.Id).ToArray());
     public static int CachedStreamCount => Streams.Count;
@@ -144,6 +153,15 @@ public static class OpeningFoley
                 33 => FurnaceShutdown(time, low, breath, grain),
                 34 => FurnaceExposed(time, breath, grain),
                 35 or 36 or 37 => MetalStep(time, kind - 35, low, middle, grain),
+                38 => GiantTell(time, low, breath, grain),
+                39 => KeeperTell(time, breath, grain),
+                40 => BoneTell(time, breath, grain),
+                41 => WardenOath(time, low, breath, grain),
+                42 => WardenFault(time, low, breath, grain),
+                43 => SpineFault(time, low, breath, grain),
+                44 => WardenPhaseTwo(time, low, breath, grain),
+                45 => WardenDefeat(time, low, breath, grain),
+                46 => WardenExposed(time, breath),
                 _ => throw new InvalidOperationException("Opening foley metadata and synthesis differ.")
             };
             // A two-millisecond entrance removes discontinuities; all tails taper to exact silence.
@@ -379,6 +397,60 @@ public static class OpeningFoley
             .085 * Modal(t - toe - .023, 719, 27, 1.997, 4.167) +
             (.22 * mid + .20 * low) * Swell(t, .019, .34);
     }
+
+    // The Warden's two short tells fit the authored oath-to-fault interval. These are
+    // distinct warnings, not two long textures fighting for the same reserved voice.
+    private static double GiantTell(double t, double low, double breath, double grain)
+        => .31 * Modal(t, 93, 8, 2.32, 3.87) + .25 * Modal(t - .18, 117, 10, 2.32, 3.87) +
+            (.31 * Horn(t, 58) + .75 * low + .54 * breath) * Swell(t, .05, 1.12) +
+            .26 * grain * Swell(t, .02, .36);
+
+    private static double KeeperTell(double t, double breath, double grain)
+        => (.68 * breath + .20 * grain) * Swell(t, .008, .38) +
+            (.23 * Horn(t, 174.61) + .13 * Horn(t, 261.63)) * Swell(t, .13, .92) +
+            .18 * Modal(t - .09, 523.25, 14, 2.32, 3.87);
+
+    private static double BoneTell(double t, double breath, double grain)
+        => .34 * Modal(t, 307, 23, 2.32, 3.87) + .28 * Modal(t - .13, 389, 26, 2.32, 3.87) +
+            .23 * Modal(t - .27, 461, 29, 2.32, 3.87) +
+            (.67 * breath + .27 * grain) * (.72 + .28 * Wave(27, t)) * Swell(t, .09, .83);
+
+    private static double WardenOath(double t, double low, double breath, double grain)
+        => (.36 * Horn(t, 87.31) + .17 * Sweep(174.61, 130.81, t, .52) + .51 * low) * Swell(t, .006, .49) +
+            .35 * Modal(t, 131, 13, 2.32, 3.87) + (.45 * breath + .13 * grain) * Swell(t, .015, .37);
+
+    private static double WardenFault(double t, double low, double breath, double grain)
+        => .30 * Modal(t, 196, 18, 2.32, 3.87) + .26 * Modal(t - .11, 294, 21, 2.32, 3.87) +
+            .22 * Sweep(65, 132, t, .50) * Swell(t, .006, .47) +
+            (.65 * low + .74 * breath + .19 * grain) * Swell(t, .015, .45);
+
+    private static double SpineFault(double t, double low, double breath, double grain)
+        => .30 * Modal(t, 147, 22, 2.32, 3.87) + .27 * Modal(t - .10, 220, 25, 2.32, 3.87) +
+            .23 * Modal(t - .21, 330, 29, 2.32, 3.87) +
+            (.70 * low + .66 * breath + .12 * grain) * Swell(t, .007, .50) +
+            .20 * Sweep(49, 103, t, .55) * Swell(t, .053, .497);
+
+    private static double WardenPhaseTwo(double t, double low, double breath, double grain)
+        => .43 * Modal(t, 98, 4.8, 2.32, 3.87) + .36 * Modal(t - .31, 147, 5.6, 2.32, 3.87) +
+            .28 * Horn(t, 87.31) * Swell(t, .12, 1.10) + .25 * Horn(t, 130.81) * Swell(t, .67, 1.93) +
+            .13 * Horn(t, 174.61) * Swell(t, .42, 2.09) +
+            (.66 * low + .69 * breath) * Swell(t, .29, 2.08) +
+            .21 * grain * (Burst(t, .004, 53) + .75 * Burst(t, .32, 47));
+
+    private static double WardenDefeat(double t, double low, double breath, double grain)
+        => .29 * Sweep(130.81, 43.65, t, 3.04) * Swell(t, .015, 2.13) +
+            .34 * Modal(t - .16, 131, 4.9, 2.32, 3.87) + .28 * Modal(t - .69, 98, 5.1, 2.32, 3.87) +
+            .22 * Modal(t - 1.21, 73, 6.4, 2.32, 3.87) +
+            (.56 * low + .64 * breath) * Swell(t, .09, 2.35) +
+            .17 * grain * (Burst(t, .17, 41) + Burst(t, .71, 38) + .7 * Burst(t, 1.23, 36)) +
+            (.13 * Wave(174.61, t) + .09 * Wave(261.63, t)) * Swell(t, 1.02, 2.98);
+
+    private static double WardenExposed(double t, double breath)
+        => .38 * Modal(t - .008, 349.23, 5.8, 2.32, 3.87) +
+            .33 * Modal(t - .18, 523.25, 6.2, 2.32, 3.87) + .43 * breath * Swell(t, .015, .55);
+
+    private static double Horn(double t, double fundamental)
+        => .76 * Wave(fundamental, t) + .19 * Wave(fundamental * 2, t) + .08 * Wave(fundamental * 3, t);
 
     private static double Heart(double t) => t < 0 ? 0 : Envelope(t, .008, 19) * (Wave(64, t) + .27 * Wave(137, t));
     private static double Throat(double t, double fundamental, double flutter)

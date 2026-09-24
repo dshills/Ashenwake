@@ -8,9 +8,9 @@ Exposure follows the living boss's guarded-to-unguarded transition. The simulati
 
 ## Implementation
 
-`OpeningScore`, `OpeningFoley` and `OpeningAudio` share playback across Acts I–III. Cinder assets are appended to the catalogs with separate synthesis; previous asset indices, seeds and rendering paths remain stable. All music and effects are synthesized in repository source, without downloaded recordings or external generation services. `assets/credits.json` records provenance.
+`OpeningScore`, `OpeningFoley` and `OpeningAudio` share playback across Acts I–IV. Cinder assets are appended to the catalogs with separate synthesis; previous asset indices, seeds and rendering paths remain stable. All music and effects are synthesized in repository source, without downloaded recordings or external generation services. `assets/credits.json` records provenance.
 
-The fifteen regional scores each have three aligned 24-second, 80-BPM stereo PCM16 stems at 22,050 Hz. Their combined source peaks remain below 0.631 before mixer gains. The cache holds at most 45 streams, totaling 95,256,000 native PCM bytes. One worker prepares managed samples at a time, while the scene thread installs Godot streams. Playback remains bounded to six music players, six combat foley voices, two footsteps and two warning voices. The foley catalog contains 38 cues. Acts IV and V retain their existing ambience.
+The twenty regional scores each have three aligned 24-second, 80-BPM stereo PCM16 stems at 22,050 Hz. Their combined source peaks remain below 0.631 before mixer gains. The cache holds at most 60 streams, totaling 127,008,000 native PCM bytes. One worker prepares managed samples at a time, while the scene thread installs Godot streams. Playback remains bounded to six music players, six combat foley voices, two footsteps and two warning voices. The foley catalog contains 47 cues. Act V retains its existing ambience.
 
 This is presentation-only work. Core combat, content, commands, RNG, save data and replay formats remain unchanged. Furnace Spindle retains its existing two phases.
 

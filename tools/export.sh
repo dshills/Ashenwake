@@ -184,6 +184,13 @@ python3 tools/check-godot-log.py "$cinder_audio_output/smoke.log"
 rg -q 'CinderAudioClientSmokePassed' "$cinder_audio_output/smoke.log"
 aw campaign replay "$cinder_audio_output/cinder-audio.awcampaign"
 
+spine_audio_output="$package_output/spine-audio-client"
+mkdir -p "$spine_audio_output"
+"$binary" --headless --quit-after 42000 --log-file "$spine_audio_output/smoke.log" -- --spine-audio-smoke --output="$spine_audio_output"
+python3 tools/check-godot-log.py "$spine_audio_output/smoke.log"
+rg -q 'SpineAudioClientSmokePassed' "$spine_audio_output/smoke.log"
+aw campaign replay "$spine_audio_output/spine-audio.awcampaign"
+
 combat_feedback_output="$package_output/combat-feedback-client"
 mkdir -p "$combat_feedback_output"
 "$binary" --headless --quit-after 1200 --log-file "$combat_feedback_output/smoke.log" -- --combat-feedback-smoke --output="$combat_feedback_output"

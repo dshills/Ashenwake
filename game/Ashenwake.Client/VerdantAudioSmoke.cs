@@ -94,7 +94,7 @@ public partial class VerdantAudioSmoke : Node
                 AudioServer.IsBusMute(AudioServer.GetBusIndex(ClientAudio.EffectsBus)) && audio.BankStarts == starts);
             foreach (var pair in levels) ClientAudio.SetVolume(pair.Key, pair.Value);
             count = audio.CueCount;
-            audio.SetStyle("spine_causeway");
+            audio.SetStyle("hollow_rooms");
             Pump(audio, hub, 130);
             Check("departure_releases_verdant_banks_and_transients", audio.ActiveMusicBanks == 0 && audio.DesiredStyle == "" && audio.CueCount == count &&
                 audio.EffectPlayers.All(p => !p.Playing) && audio.WarningPlayers.All(p => !p.Playing));

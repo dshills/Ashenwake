@@ -9,7 +9,7 @@ public sealed record OpeningScoreAnalysis(int SampleRate, int Channels, int Fram
     double DurationSeconds, double Peak, double Rms, double MaximumAdjacentJump, double MaximumLoopJump,
     double DcOffset, string PcmSha256);
 
-/// <summary>Original eight-bar opening, Verdant and Cinder score. Pure managed rendering is safe on a background
+/// <summary>Original eight-bar opening, Verdant, Cinder and Spine score. Pure managed rendering is safe on a background
 /// worker; stream cache access belongs to the Godot thread. No gameplay RNG or clock is read.</summary>
 public static class OpeningScore
 {
@@ -23,14 +23,15 @@ public static class OpeningScore
     public const int Bars = 8;
     public const double BeatSeconds = .75;
     public const double MaximumSummedStemPeak = .631;
-    public const string Version = "opening-score.3";
+    public const string Version = "opening-score.4";
 
     public static IReadOnlyList<string> StyleNames { get; } = Array.AsReadOnly<string>(["greyhaven", "road", "monastery", "crypt", "sanctum",
         "verdant_ruins", "verdant_village", "verdant_shrine", "verdant_hunt", "verdant_heart",
-        "cinder_fields", "cinder_extraction", "cinder_foundry", "cinder_storm", "cinder_furnace"]);
+        "cinder_fields", "cinder_extraction", "cinder_foundry", "cinder_storm", "cinder_furnace",
+        "spine_causeway", "spine_hall", "spine_archive", "spine_memory", "spine_warden"]);
     public static IReadOnlyList<string> StemNames { get; } = Array.AsReadOnly<string>(["exploration", "combat", "boss"]);
 
-    // Forty-five native PCM buffers at most: 95,256,000 bytes. Pure renders retain no PCM cache.
+    // Sixty native PCM buffers at most: 127,008,000 bytes. Pure renders retain no PCM cache.
     private static readonly Dictionary<(string Style, string Stem), AudioStreamWav> Streams = [];
     private const int TableSize = 4096;
     private static readonly float[] Sine = BuildSine();
@@ -84,7 +85,22 @@ public static class OpeningScore
             [72,73,67,70,66,72,74,67,70,72], [0,3,6,9,12,16,19,22,26,29], false, .043, .25),
         // Furnace: a deep C pedal with a chromatic gear slipping against the upper voice.
         new([[24,36,43,48], [25,37,44,49], [29,41,48,53], [24,36,43,50]],
-            [48,55,49,48,53,56,50,48], [0,4,8,13,16,20,25,29], false, .019, .39)
+            [48,55,49,48,53,56,50,48], [0,4,8,13,16,20,25,29], false, .019, .39),
+        // Bone Causeway: a falling F-minor horn call travels between exposed stone pillars.
+        new([[29,41,48,56], [32,44,51,60], [34,46,53,60], [29,41,48,55]],
+            [53,60,56,53,51,48,55,53], [0,4,7,11,16,20,25,29], false, .019, .42),
+        // Contract Hall: severe fourths answer the call in a measured, judicial procession.
+        new([[29,41,48,53], [30,42,49,54], [34,46,53,58], [29,41,48,55]],
+            [53,58,55,48,53,54,55,48], [1,5,8,12,17,21,24,28], false, .007, .53),
+        // Archive: held suspensions and widely spaced higher voices leave long silences.
+        new([[29,41,48,60], [32,44,51,58], [27,39,46,56], [29,41,48,55]],
+            [65,60,63,58,60,55], [2,7,12,18,23,28], false, .005, .61),
+        // Divine Memory: F major opens the same motif into a warmer, breathing resolution.
+        new([[41,48,57,60], [38,45,53,57], [34,41,53,58], [36,43,52,55]],
+            [65,69,67,60,65,62,60,65], [1,5,8,12,17,21,25,29], false, .006, .44),
+        // Warden: a low F pedal, flattened second and rising oath bind the court together.
+        new([[29,41,48,53], [30,42,49,54], [34,46,53,56], [29,41,48,55]],
+            [41,48,53,54,53,48,44,41], [0,4,8,11,16,20,24,28], false, .011, .55)
     ];
 
     public static bool IsPrepared(string style, string stem)
@@ -125,7 +141,8 @@ public static class OpeningScore
         var region = Regions[regionIndex];
         var left = new float[SampleCount]; var right = new float[SampleCount];
         uint seed = unchecked(0x6D2B79F5u ^ (uint)(regionIndex + 1) * 0x9E3779B9u ^ (uint)(layer + 1) * 0x85EBCA6Bu);
-        if (regionIndex >= 10) Cinder(region, regionIndex - 10, layer, left, right, seed);
+        if (regionIndex >= 15) Spine(region, regionIndex - 15, layer, left, right, seed);
+        else if (regionIndex >= 10) Cinder(region, regionIndex - 10, layer, left, right, seed);
         else if (regionIndex >= 5) Verdant(region, regionIndex - 5, layer, left, right, seed);
         else if (layer == 0) Exploration(region, regionIndex, left, right, seed);
         else if (layer == 1) Combat(region, regionIndex, left, right, seed);
@@ -300,6 +317,103 @@ public static class OpeningScore
             AddSteel(left, right, notes[0] + (character == 4 ? 13 : 19), at + 5.5 * BeatSeconds, 2, .095, .3, strain: false);
             if (character == 3)
                 AddAir(left, right, .006, seed + (uint)chord);
+        }
+    }
+
+    private static void Spine(Region region, int character, int layer, float[] left, float[] right, uint seed)
+    {
+        // Append-only orchestration: horn breath, stone body and restrained human vowels.
+        // Every region keeps the same eight-bar grid so all three stems remain aligned.
+        bool memory = character == 3;
+        if (layer == 0)
+        {
+            for (int chord = 0; chord < region.Chords.Length; chord++)
+            {
+                var notes = region.Chords[chord]; double at = chord * 6;
+                AddHorn(left, right, notes[0], at - .4, 7.8, memory ? .035 : .06, -.24, soft: memory);
+                AddTone(left, right, notes[2], at - .2, 7.9, Voice.Choir, .028, .34, seed + (uint)chord);
+                AddTone(left, right, notes[3], at + .3, 7.2, Voice.Choir, memory ? .035 : .018, -.37, seed + (uint)(10 + chord));
+            }
+            for (int note = 0; note < region.Melody.Length; note++)
+            {
+                double at = region.Beats[note] * BeatSeconds, pan = note % 2 == 0 ? -.31 : .32;
+                AddHorn(left, right, region.Melody[note], at, character == 2 ? 4.7 : 3.1, memory ? .066 : .084, pan, soft: memory || character == 2);
+                if (memory && note % 2 == 0)
+                    AddTone(left, right, region.Melody[note] + 12, at + 1.5, 3.2, Voice.Pluck, .034, -pan, seed + (uint)(100 + note));
+                else if (character == 1 && note % 2 == 1)
+                    AddStone(left, right, region.Melody[note] - 12, at + .75, 1.2, .032, -pan, seed + (uint)(100 + note));
+            }
+            AddAir(left, right, region.Air, seed);
+            return;
+        }
+        if (layer == 1)
+        {
+            for (int bar = 0; bar < Bars; bar++)
+            {
+                int root = region.Chords[bar / 2][0]; double at = bar * 4 * BeatSeconds;
+                AddStone(left, right, root + 12, at, 1.8, .19, -.16, seed + (uint)bar);
+                AddStone(left, right, root + 19, at + (character == 1 ? 2 : 2.5) * BeatSeconds, 1.1, .10, .27, seed + (uint)(20 + bar));
+                if (character is 0 or 4 || bar % 2 == 1)
+                    AddStone(left, right, root + 24, at + 3.5 * BeatSeconds, .65, .058, -.34, seed + (uint)(40 + bar));
+                if (bar % 2 == 0)
+                    AddHorn(left, right, root + 12, at + BeatSeconds, 2.3, .06, .15, soft: memory);
+            }
+            return;
+        }
+        for (int chord = 0; chord < region.Chords.Length; chord++)
+        {
+            var notes = region.Chords[chord]; double at = chord * 6;
+            AddHorn(left, right, notes[0], at - .3, 7.4, .14, -.16, soft: memory);
+            AddTone(left, right, notes[2] + 12, at, 7.3, Voice.Choir, .060, -.38, seed + (uint)chord);
+            AddTone(left, right, notes[3] + 12, at + .35, 6.7, Voice.Choir, .041, .38, seed + (uint)(20 + chord));
+            AddStone(left, right, notes[0] + 12, at + 3 * BeatSeconds, 2, .17, -.2, seed + (uint)(40 + chord));
+            AddStone(left, right, notes[0] + 19, at + 5.5 * BeatSeconds, 1.4, .12, .25, seed + (uint)(60 + chord));
+            if (character == 4)
+                AddHorn(left, right, notes[1], at + 4.5 * BeatSeconds, 2.5, .079, .2, soft: false);
+        }
+    }
+
+    private static void AddHorn(float[] left, float[] right, int midi, double start, double duration,
+        double level, double pan, bool soft)
+    {
+        double phase = 0, companion = .19, step = Frequency(midi) / SampleRate;
+        int at = Wrap((int)Math.Round(start * SampleRate)), frames = (int)(duration * SampleRate);
+        var (gainLeft, gainRight) = Pan(pan, level);
+        for (int i = 0; i < frames; i++)
+        {
+            double t = i / (double)SampleRate, breath = Smooth(t / .42) * Smooth((duration - t) / .95);
+            double sample = .68 * Lookup(Sine, phase) + .19 * Lookup(Sine, Fraction(phase * 2)) +
+                (soft ? .045 : .11) * breath * Lookup(Sine, Fraction(phase * 3)) +
+                (soft ? .018 : .045) * breath * Lookup(Sine, Fraction(phase * 5)) + .07 * Lookup(Sine, companion);
+            sample *= breath * (.95 + .05 * Lookup(Sine, Fraction(t * 3.2)));
+            left[at] += (float)(sample * gainLeft); right[at] += (float)(sample * gainRight);
+            phase = Fraction(phase + step); companion = Fraction(companion + step * .9982);
+            if (++at == SampleCount) at = 0;
+        }
+    }
+
+    private static void AddStone(float[] left, float[] right, int midi, double start, double duration,
+        double level, double pan, uint seed)
+    {
+        double[] phases = new double[3], ratios = [1, 2.32, 3.87], amplitudes = [.80, .21, .075];
+        double[] decays = [Math.Exp(-4.4 / SampleRate), Math.Exp(-8.2 / SampleRate), Math.Exp(-15.0 / SampleRate)];
+        for (int p = 0; p < ratios.Length; p++) ratios[p] *= Frequency(midi) / SampleRate;
+        double noiseLow = 0, grit = 1, gritDecay = Math.Exp(-32.0 / SampleRate);
+        int at = Wrap((int)Math.Round(start * SampleRate)), frames = (int)(duration * SampleRate);
+        var (gainLeft, gainRight) = Pan(pan, level);
+        for (int i = 0; i < frames; i++)
+        {
+            double t = i / (double)SampleRate, sample = 0;
+            for (int p = 0; p < ratios.Length; p++)
+            {
+                sample += Lookup(Sine, phases[p]) * amplitudes[p];
+                phases[p] = Fraction(phases[p] + ratios[p]); amplitudes[p] *= decays[p];
+            }
+            noiseLow += (Noise(ref seed) - noiseLow) * .13;
+            sample = (sample + noiseLow * .46 * grit) * Smooth(t / .005) * Smooth((duration - t) / .2);
+            left[at] += (float)(sample * gainLeft); right[at] += (float)(sample * gainRight);
+            grit *= gritDecay;
+            if (++at == SampleCount) at = 0;
         }
     }
 
@@ -564,6 +678,11 @@ public static class OpeningScore
             "cinder_foundry" => 12,
             "cinder_storm" => 13,
             "cinder_furnace" => 14,
+            "spine_causeway" => 15,
+            "spine_hall" => 16,
+            "spine_archive" => 17,
+            "spine_memory" => 18,
+            "spine_warden" => 19,
             _ => -1
         };
         int layer = stem switch { "exploration" => 0, "combat" => 1, "boss" => 2, _ => -1 };

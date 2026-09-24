@@ -51,9 +51,10 @@ public partial class Sandbox
                 "DamageApplied" or "BarrierAbsorbed" or "BarrierGranted" or "Healed" or "EntityKilled" or "EliteCopyKilled" or
                 "MechanismDestroyed" or "BossPhaseChanged" or "LootDropped" or "EnemyOvercharged" or
                 "LegendaryReadied" or "LegendaryCharged" or "LegendaryTriggered") continue;
+            if (e.Kind == "CampaignHazardResolved") PlaySpineFollowup(e);
             if (e.Kind is "CampaignHazardWarned" or "CampaignHazardResolved" && e.ContentId.StartsWith("rule.", StringComparison.Ordinal))
             {
-                if (e.Kind == "CampaignHazardWarned" && !(e.ContentId == "rule.storm" &&
+                if (e.Kind == "CampaignHazardWarned" && !PlaySpineRuleTell(e) && !(e.ContentId == "rule.storm" &&
                     _environmentStyle == "cinder_storm" && _openingAudio.Play("storm_tell", Vector3.Zero))) PlayTone("tell");
                 continue;
             }
