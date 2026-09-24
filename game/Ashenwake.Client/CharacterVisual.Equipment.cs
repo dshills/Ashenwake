@@ -196,6 +196,7 @@ public partial class CharacterVisual
 
     private void EquippedHead(Node3D parent, ItemAppearance item, string kind)
     {
+        if (ItemKind(item) == "lanternkeepers_crown") { EquippedLanternCrown(parent); return; }
         if (ItemKind(item) == "crown_unsworn") { EquippedUnswornCrown(parent, item); return; }
         switch (kind)
         {
@@ -236,6 +237,7 @@ public partial class CharacterVisual
 
     private void EquippedChest(Node3D parent, ItemAppearance item, string kind)
     {
+        if (ItemKind(item) == "vigil_of_the_unburied") { EquippedUnburiedVigil(parent); return; }
         string chest = ItemKind(item);
         bool plate = chest is "march_plate" or "oath_plate" or "oathkeeper_reprisal" || (chest == "starter_chest" && kind == "vanguard");
         bool robe = chest is "ash_weave" or "serath_shroud" || (chest == "starter_chest" && kind is "arcanist" or "gravecaller");

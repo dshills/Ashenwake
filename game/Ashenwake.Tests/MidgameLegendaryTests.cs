@@ -621,8 +621,10 @@ public sealed class MidgameLegendaryTests
         Assert.Single(current.View.Loot, l => l.Item.DefinitionId == item);
         Assert.DoesNotContain(previous.View.Loot, l => l.Item.DefinitionId == item);
         Assert.Equal(previous.Capture().Rng, current.Capture().Rng);
-        Assert.Equal(previous.Capture().NextObjectId, current.Capture().NextObjectId);
-        Assert.Equal(previous.View.Loot.Count, current.View.Loot.Count);
+        var additionalSets = LegendaryCollectionCatalog.Entries.Where(e => EquipmentSets.IsItem(e.ItemId) && e.CampaignEncounterId == encounter).Select(e => e.ItemId).ToArray();
+        Assert.Equal(additionalSets, current.View.Loot.Where(l => EquipmentSets.IsItem(l.Item.DefinitionId)).Select(l => l.Item.DefinitionId));
+        Assert.Equal(previous.Capture().NextObjectId + additionalSets.Length, current.Capture().NextObjectId);
+        Assert.Equal(previous.View.Loot.Count + additionalSets.Length, current.View.Loot.Count);
     }
 
     [Theory]
@@ -691,7 +693,7 @@ public sealed class MidgameLegendaryTests
         Assert.True(events.Count(e => e.Kind == "EntityKilled") > 1);
         Assert.Equal(events.Last(e => e.Kind == "EntityKilled").TargetId, rewardEvent.TargetId);
         Assert.Equal("Legendary", Assert.Single(session.View.Loot, l => l.Item.DefinitionId == item).Item.Rarity);
-        Assert.Single(session.View.Loot, l => LegendaryEquipment.IsItem(l.Item.DefinitionId));
+        Assert.Single(session.View.Loot, l => LegendaryEquipment.IsItem(l.Item.DefinitionId) && !EquipmentSets.IsItem(l.Item.DefinitionId));
         Advance(session, 2); Assert.Single(session.View.Loot, l => l.Item.DefinitionId == item);
     }
 }

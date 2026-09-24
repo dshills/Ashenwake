@@ -35,7 +35,7 @@ public partial class AppearanceSmoke
             Check("evolution_and_engraving_show_trigger_and_effect", comparison.ComparisonText.Contains(EquipmentDetails.Power("rune.guard"), StringComparison.Ordinal) &&
                 comparison.ComparisonText.Contains(EquipmentDetails.Evolution("Serath"), StringComparison.Ordinal) && comparison.ComparisonText.Contains(EquipmentDetails.Evolution("Orrun"), StringComparison.Ordinal));
             Check("equipment_lore_inspection_keeps_saved_state", _session.StateHash == hash);
-            foreach (var definition in content.Items.Where(i => LegendaryEquipment.IsItem(i.Id)))
+            foreach (var definition in content.Items.Where(i => LegendaryEquipment.IsItem(i.Id) || EquipmentSets.IsItem(i.Id)))
             {
                 var legendary = original with
                 {
@@ -54,7 +54,9 @@ public partial class AppearanceSmoke
                 comparison.Size = comparison.GetCombinedMinimumSize(); await Frames(3);
                 Check("legendary_description_fits_720p_" + definition.Id, GetViewport().GetVisibleRect().Encloses(comparison.GetGlobalRect()));
                 Check("legendary_description_explains_power_and_source_" + definition.Id,
-                    comparison.ComparisonText.Contains(EquipmentDetails.Power(definition.Property), StringComparison.Ordinal) &&
+                    (EquipmentSets.FindForItem(definition.Id) is { } set
+                        ? comparison.ComparisonText.Contains(set.Bonus, StringComparison.Ordinal)
+                        : comparison.ComparisonText.Contains(EquipmentDetails.Power(definition.Property), StringComparison.Ordinal)) &&
                     EquipmentDetails.Source(definition.Id).Length > 0 && comparison.ComparisonText.Contains(EquipmentDetails.Source(definition.Id), StringComparison.Ordinal));
                 await Capture("equipment-" + definition.Id[5..] + "-description.png");
             }

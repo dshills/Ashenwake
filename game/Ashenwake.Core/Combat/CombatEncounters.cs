@@ -16,6 +16,7 @@ public sealed partial class CombatSession
         if (state.Experiment?.Status == "Bound") { state.CapturedSkillId = ""; state.CapturedUntil = state.Tick; }
         state.Experiment = null;
         state.Legendary = null;
+        state.EquipmentSets = null;
         var player = state.Actors.Single(a => a.Id == 1);
         if (player.Health <= 0 && encounterId != "hub" && !restoreAtAnchor) throw new InvalidOperationException("A dead character must return to an anchor.");
         if (previous is null)

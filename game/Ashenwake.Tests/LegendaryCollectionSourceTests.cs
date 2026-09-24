@@ -27,8 +27,8 @@ public sealed class LegendaryCollectionSourceTests
     public void DefinitionsMatchAuthoredItemsAndTheirExclusiveSources()
     {
         var content = ProgressionContent.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "progression.json"))).Capture();
-        Assert.Equal(15, LegendaryCollectionCatalog.Entries.Count);
-        Assert.Equal(15, LegendaryCollectionCatalog.Entries.Select(e => e.ItemId).Distinct().Count());
+        Assert.Equal(21, LegendaryCollectionCatalog.Entries.Count);
+        Assert.Equal(21, LegendaryCollectionCatalog.Entries.Select(e => e.ItemId).Distinct().Count());
         foreach (var entry in LegendaryCollectionCatalog.Entries)
         {
             var item = content.Items.Single(i => i.Id == entry.ItemId);
@@ -45,7 +45,7 @@ public sealed class LegendaryCollectionSourceTests
                 Assert.Empty(entry.CampaignEncounterId); Assert.Empty(entry.FractureRegionId); Assert.Empty(entry.HuntId);
                 continue;
             }
-            Assert.Equal(entry.ItemId, LegendaryEquipment.EncounterReward(entry.CampaignEncounterId));
+            if (!EquipmentSets.IsItem(entry.ItemId)) Assert.Equal(entry.ItemId, LegendaryEquipment.EncounterReward(entry.CampaignEncounterId));
             Assert.Contains(entry.FractureRegionId, Endgame.Capture().Regions);
             Assert.InRange(entry.FractureEncounterIndex, -1, 1);
         }

@@ -36,7 +36,7 @@ public static class LegendaryCollection
         return memory with { DiscoveredItems = memory.DiscoveredItems.ToArray(), TrackedItem = itemId };
     }
 
-    public static string ItemForPower(string power) => LegendaryCollectionCatalog.Entries.FirstOrDefault(entry => entry.PowerId == power)?.ItemId ?? "";
+    public static string ItemForPower(string power) => string.IsNullOrEmpty(power) ? "" : LegendaryCollectionCatalog.Entries.FirstOrDefault(entry => entry.PowerId == power)?.ItemId ?? "";
     private static bool IsItem(string id) => LegendaryCollectionCatalog.Entries.Any(entry => entry.ItemId == id);
 
     internal static void Validate(LegendaryCollectionMemory memory)

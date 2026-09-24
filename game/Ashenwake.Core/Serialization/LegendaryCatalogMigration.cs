@@ -17,6 +17,7 @@ internal static class LegendaryCatalogMigration
     private sealed record Generation(string[] Items, string[] Powers);
     private static readonly Generation[] Generations =
     [
+        new([EquipmentSets.VigilHead, EquipmentSets.VigilChest, EquipmentSets.BriarShoulders, EquipmentSets.BriarGloves, EquipmentSets.AshBelt, EquipmentSets.AshBoots], []),
         new([LegendaryEquipment.LastToll, LegendaryEquipment.BroodkeepersKnot, LegendaryEquipment.TithebreakersGrasp], []),
         new([LegendaryEquipment.Grief, LegendaryEquipment.Widowthorn, LegendaryEquipment.Emberwake],
             [LegendaryEquipment.GriefPower, LegendaryEquipment.WidowthornPower, LegendaryEquipment.EmberwakePower]),
@@ -110,6 +111,8 @@ internal static class LegendaryCatalogMigration
             { Combat = state.RegionalHunts.Combat is null ? null : RebindCombat(state.RegionalHunts.Combat, identity) },
             RoamingChampions = state.RoamingChampions is null ? null : state.RoamingChampions with
             { Combat = state.RoamingChampions.Combat is null ? null : RebindCombat(state.RoamingChampions.Combat, identity) },
+            WorldEncounters = state.WorldEncounters is null ? null : state.WorldEncounters with
+            { Combat = state.WorldEncounters.Combat is null ? null : RebindCombat(state.WorldEncounters.Combat, identity) },
             SecretChambers = state.SecretChambers is null ? null : state.SecretChambers with
             { Combat = state.SecretChambers.Combat is null ? null : RebindCombat(state.SecretChambers.Combat, identity) }
         };

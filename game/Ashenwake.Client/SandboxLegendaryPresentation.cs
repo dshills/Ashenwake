@@ -1,5 +1,6 @@
 using System.Globalization;
 using Ashenwake.Core.Combat;
+using Ashenwake.Core.Progression;
 using Godot;
 
 namespace Ashenwake.Client;
@@ -93,9 +94,9 @@ public partial class Sandbox
     {
         var legendary = _view.Legendary;
         PresentLegendaryTrigger();
-        if (legendary is null || !_actors.TryGetValue(1, out var player) || player.Health <= 0)
+        if (!_actors.TryGetValue(1, out var player) || player.Health <= 0)
         { if (_legendaryReadiness is not null) _legendaryReadiness.Visible = false; return; }
-        string text = LegendaryReadiness(legendary, _view.Discipline);
+        string text = CombinedEquipmentReadiness();
         if (text.Length == 0) { if (_legendaryReadiness is not null) _legendaryReadiness.Visible = false; return; }
         if (_legendaryReadiness is null)
         {
@@ -110,7 +111,7 @@ public partial class Sandbox
             _hud.AddChild(_legendaryReadiness);
         }
         _legendaryReadiness.Text = text;
-        _legendaryReadiness.Modulate = legendary.OathCharge > 0 ? new("e0c181") : new("c9b5ef");
+        _legendaryReadiness.Modulate = legendary?.OathCharge > 0 ? new("e0c181") : new("c9b5ef");
         // Keep persistent readiness clear of world-space damage and target labels.
         int lines = text.Count(c => c == '\n') + 1;
         float height = Math.Max(42, lines * 22);
@@ -147,6 +148,9 @@ public partial class Sandbox
         var legendary = _view.Legendary;
         bool equipped = _legendaryTriggerPower switch
         {
+            EquipmentSets.LastVigil => _view.EquipmentSets?.LastVigilActive == true,
+            EquipmentSets.Briarbound => _view.EquipmentSets?.BriarboundActive == true,
+            EquipmentSets.Ashrunner => _view.EquipmentSets?.AshrunnerActive == true,
             LegendaryEquipment.GriefPower => legendary?.GriefEquipped == true,
             LegendaryEquipment.WidowthornPower => legendary?.WidowthornEquipped == true,
             LegendaryEquipment.EmberwakePower => legendary?.EmberwakeEquipped == true,
@@ -170,7 +174,7 @@ public partial class Sandbox
         }
         _legendaryTrigger.Text = _legendaryTriggerText;
         _legendaryTrigger.Modulate = new("e0c181");
-        int lines = legendary is null ? 0 : LegendaryReadiness(legendary, _view.Discipline).Count(c => c == '\n') + 1;
+        int lines = CombinedEquipmentReadiness().Count(c => c == '\n') + 1;
         _legendaryTrigger.Position = _hudDock.Position + new Vector2(12, -100 - Math.Max(42, lines * 22));
         _legendaryTrigger.Size = new(_hudDock.Size.X - 24, 20);
         _legendaryTrigger.Visible = player.AuthoredVisible;
@@ -201,8 +205,14 @@ public partial class Sandbox
     private void PresentCombatArea(CombatAreaView area)
     {
         string key = $"a{area.Id}";
-        bool pyre = area.ContentId == "effect.pyre_trail";
-        PresentEffect(key, area.Position.X, area.Position.Z, area.Radius * .001f, pyre ? new("d96b354d") : new Color(1, .38f, .13f, .24f));
+        bool briar = area.ContentId == "effect.set_briar_thorns";
+        bool pyre = area.ContentId is "effect.pyre_trail" or "effect.set_ashrunner_trail";
+        PresentEffect(key, area.Position.X, area.Position.Z, area.Radius * .001f, briar ? new("83b66560") : pyre ? new("d96b354d") : new Color(1, .38f, .13f, .24f));
+        if (briar)
+        {
+            PresentBriarPatch(_effects[key], area);
+            return;
+        }
         if (!pyre) return;
         var mesh = _effects[key];
         mesh.Name = "PyreTrail_" + area.Id;

@@ -6,7 +6,7 @@ namespace Ashenwake.Client;
 /// <summary>Small equipment silhouettes drawn locally; inspecting an item creates no world or preview resources.</summary>
 public partial class GearItemIcon : Control
 {
-    private enum Silhouette { Sword, Dagger, Axe, Ashcleaver, Hammer, Pike, Staff, BoneStaff, Shield, Focus, Skull, Helmet, Hood, Plate, OathPlate, Robe, Tunic, Shoulders, MourningShoulders, Gloves, WidowGloves, Belt, FurnaceBelt, Legs, Boots, PyreBoots, Ring, RotwakeRing, Amulet, UnswornCrown, WitnessAmulet, HourLegs }
+    private enum Silhouette { Sword, Dagger, Axe, Ashcleaver, Hammer, Pike, Staff, BoneStaff, Shield, Focus, Skull, Helmet, Hood, Plate, OathPlate, Robe, Tunic, Shoulders, MourningShoulders, Gloves, WidowGloves, Belt, FurnaceBelt, Legs, Boots, PyreBoots, Ring, RotwakeRing, Amulet, UnswornCrown, WitnessAmulet, HourLegs, LanternCrown, UnburiedVigil, ThornmotherMantle, GravegardenGrasp, CinderpilgrimGirdle, EndlessEmberBoots }
     private static readonly Color Steel = new("c2d1d3"), SteelShade = new("536e7d"), Ink = new("15252f");
     private static readonly Color Leather = new("886048"), Bone = new("e4d5b1"), Ember = new("ff9166");
     private static readonly Color EmptyFill = new("30465099"), EmptyEdge = new("6c8793aa");
@@ -103,11 +103,18 @@ public partial class GearItemIcon : Control
             case Silhouette.UnswornCrown: UnswornCrown(); break;
             case Silhouette.WitnessAmulet: WitnessAmulet(); break;
             case Silhouette.HourLegs: HourLegs(); break;
+            case Silhouette.LanternCrown: LanternCrown(); break;
+            case Silhouette.UnburiedVigil: UnburiedVigil(); break;
+            case Silhouette.ThornmotherMantle: ThornmotherMantle(); break;
+            case Silhouette.GravegardenGrasp: GravegardenGrasp(); break;
+            case Silhouette.CinderpilgrimGirdle: CinderpilgrimGirdle(); break;
+            case Silhouette.EndlessEmberBoots: EndlessEmberBoots(); break;
         }
     }
 
     private static Silhouette Classify(string id, EquipmentSlot slot, string discipline)
     {
+        if (EquipmentSetSilhouette(id, slot) is { } setIcon) return setIcon;
         if (slot == EquipmentSlot.MainHand)
         {
             return id switch

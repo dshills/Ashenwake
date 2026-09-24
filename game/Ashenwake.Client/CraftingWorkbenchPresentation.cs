@@ -39,6 +39,7 @@ public partial class CraftingWorkbench
         {
             Line($"{EquipmentNames.For(current.DefinitionId)} · {current.Rarity} · #{current.Id}", LootVisual.RarityColor(current.Rarity.ToString()), 13);
             Line(EquipmentDetails.Lore(current.DefinitionId), PreviewMuted);
+            if (EquipmentDetails.Set(current.DefinitionId, before) is { Length: > 0 } set) Line(set, PreviewAccent);
             if (current.IsFavorite || current.IsLocked)
                 Line("Protected: " + string.Join(" · ", new[] { current.IsFavorite ? "Favorite" : "", current.IsLocked ? "Locked" : "" }.Where(value => value.Length > 0)) + ". Extraction is blocked; other crafting remains available.", PreviewAccent);
             var presets = ProgressionSession.ItemPresetNames(preview.Before, current.Id);

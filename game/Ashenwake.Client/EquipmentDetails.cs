@@ -17,9 +17,17 @@ internal static class EquipmentDetails
     public static string Evolution(string? evolution) => string.IsNullOrEmpty(evolution) ? "none" : Power("evolution." + evolution.ToLowerInvariant());
     public static string Awakening(PermanentItem item) => Power(item.Awakened ? "awakening.awakened" : "awakening.dormant");
 
-    public static string Inspect(PermanentItem item, ProgressionDefinition content)
+    public static string Set(string itemId, ProgressionState? character = null)
     {
-        var lines = new List<string> { Lore(item.DefinitionId) };
+        var set = EquipmentSets.FindForItem(itemId);
+        if (set is null) return "";
+        string progress = character is null ? "Two-piece set" : $"{EquipmentSets.CountEquipped(set.Id, character)}/2 equipped";
+        return $"{set.Name} · {progress}\n(2) {set.Bonus}";
+    }
+
+    public static string Inspect(PermanentItem item, ProgressionDefinition content, ProgressionState? character = null)
+    {
+        var lines = new List<string> { Lore(item.DefinitionId), Set(item.DefinitionId, character) };
         if (Source(item.DefinitionId) is { Length: > 0 } source) lines.Add(source);
         string property = content.Items.Single(d => d.Id == item.DefinitionId).Property;
         if (property.Length > 0) lines.Add("Property: " + Power(property));

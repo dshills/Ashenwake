@@ -12,6 +12,12 @@ public static class LegendaryCollectionCatalog
 {
     public static IReadOnlyList<LegendaryCollectionEntry> Entries { get; } = Array.AsReadOnly(new LegendaryCollectionEntry[]
     {
+        new(EquipmentSets.VigilHead, "", EquipmentSlot.Head, "campaign.monastery", "act.grey_march", 0),
+        new(EquipmentSets.VigilChest, "", EquipmentSlot.Chest, "campaign.bell_saint", "act.grey_march", 1),
+        new(EquipmentSets.BriarShoulders, "", EquipmentSlot.Shoulders, "campaign.living_ruins", "act.verdant_maw", 0),
+        new(EquipmentSets.BriarGloves, "", EquipmentSlot.Gloves, "campaign.rootheart", "act.verdant_maw", 1),
+        new(EquipmentSets.AshBelt, "", EquipmentSlot.Belt, "campaign.cinder_pack", "act.cinder_reach", 0),
+        new(EquipmentSets.AshBoots, "", EquipmentSlot.Boots, "campaign.furnace_spindle", "act.cinder_reach", 1),
         new(LegendaryEquipment.Pyre, LegendaryEquipment.PyrePower, EquipmentSlot.Boots, "campaign.road", "act.grey_march", -1),
         new(LegendaryEquipment.Widow, LegendaryEquipment.WidowPower, EquipmentSlot.Gloves, "campaign.rootheart", "act.verdant_maw", -1),
         new(LegendaryEquipment.Rotwake, LegendaryEquipment.RotwakePower, EquipmentSlot.Ring1, "campaign.plague_village", "act.verdant_maw", 0),

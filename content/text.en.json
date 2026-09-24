@@ -148,6 +148,24 @@
     "source.broodkeepers_knot": { "other": "Defeat Widow of the Root on its optional Verdant Maw trail, then claim its one-time reward." },
     "equipment.tithebreakers_grasp": { "other": "Tithebreaker’s Grasp" },
     "lore.tithebreakers_grasp": { "other": "The collector counted every ember as a debt. These scorched gauntlets now return the reckoning in pairs." },
-    "source.tithebreakers_grasp": { "other": "Defeat the Cinder Tithekeeper on its optional Cinder Reach trail, then claim its one-time reward." }
+    "source.tithebreakers_grasp": { "other": "Defeat the Cinder Tithekeeper on its optional Cinder Reach trail, then claim its one-time reward." },
+    "equipment.lanternkeepers_crown": { "other": "Lanternkeeper’s Last Light" },
+    "lore.lanternkeepers_crown": { "other": "When the last lantern guttered, its keeper set the flame behind her eyes and watched until dawn." },
+    "source.lanternkeepers_crown": { "other": "Found: secure Monastery in Act I; also Grey March Fracture room 1. Pair with Vigil of the Unburied for Vestments of the Last Vigil." },
+    "equipment.vigil_of_the_unburied": { "other": "Vigil of the Unburied" },
+    "lore.vigil_of_the_unburied": { "other": "Every name stitched beneath the breastplate belongs to someone who never made it home. None has been forgotten." },
+    "source.vigil_of_the_unburied": { "other": "Found: defeat the Bell Saint in Act I; also Grey March Fracture room 2. Pair with Lanternkeeper’s Last Light for Vestments of the Last Vigil." },
+    "equipment.thornmother_mantle": { "other": "Thornmother’s Embrace" },
+    "lore.thornmother_mantle": { "other": "She covered the graves with her own cloak. Each spring, the roots returned it to her shoulders." },
+    "source.thornmother_mantle": { "other": "Found: secure Living Ruins in Act II; also Verdant Maw Fracture room 1. Pair with Gravegarden’s Grasp for Briarbound Covenant." },
+    "equipment.gravegarden_grasp": { "other": "Gravegarden’s Grasp" },
+    "lore.gravegarden_grasp": { "other": "The gardener could coax a flower from poisoned earth, provided the earth was first given a name." },
+    "source.gravegarden_grasp": { "other": "Found: defeat Rootheart in Act II; also Verdant Maw Fracture room 2. Pair with Thornmother’s Embrace for Briarbound Covenant." },
+    "equipment.cinderpilgrim_girdle": { "other": "Cinderpilgrim’s Promise" },
+    "lore.cinderpilgrim_girdle": { "other": "He swore the fire would never catch him. The buckle still holds the shape of his clenched fist." },
+    "source.cinderpilgrim_girdle": { "other": "Found: secure Cinder Pack in Act III; also Cinder Reach Fracture room 1. Pair with Embers Without End for Ashrunner’s Oath." },
+    "equipment.embers_without_end": { "other": "Embers Without End" },
+    "lore.embers_without_end": { "other": "No ash lies in these footprints. Whatever follows must learn to cross living fire." },
+    "source.embers_without_end": { "other": "Found: defeat the Furnace Spindle in Act III; also Cinder Reach Fracture room 2. Pair with Cinderpilgrim’s Promise for Ashrunner’s Oath." }
   }
 }

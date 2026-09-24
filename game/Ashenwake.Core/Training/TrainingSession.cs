@@ -90,7 +90,7 @@ public sealed class TrainingSession
         if (IsComplete) return [];
         if (commands is null || commands.Length > 64 || commands.Any(c => c is null)) throw new InvalidDataException("Invalid training input batch.");
         var events = Combat.Step(commands).ToArray();
-        foreach (var ev in events.Where(e => e.Kind is "FragmentTriggered" or "LegendaryTriggered" or "LegendaryReadied"))
+        foreach (var ev in events.Where(e => e.Kind is "FragmentTriggered" or "LegendaryTriggered" or "LegendaryReadied" or "EquipmentSetTriggered" or "EquipmentSetReadied"))
         {
             var key = (ev.Kind, ev.ContentId, Combat.TrainingContentName(ev.ContentId)); triggers[key] = triggers.GetValueOrDefault(key) + 1;
         }

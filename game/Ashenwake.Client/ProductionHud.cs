@@ -346,7 +346,7 @@ public partial class ProductionHud : Control
         _rows.AddChild(new HSeparator());
         _rows.AddChild(Label("SLOT COMPARISON · EQUIPPED → SELECTED", 13));
         _rows.AddChild(Label($"{ItemTitle(current)}\n→ {ItemTitle(candidate)}", 12));
-        if (candidate is not null) _rows.AddChild(Label(EquipmentDetails.Inspect(candidate, _content), 12));
+        if (candidate is not null) _rows.AddChild(Label(EquipmentDetails.Inspect(candidate, _content, _state.Character), 12));
         AddComparison("Damage", ItemDamage(current), ItemDamage(candidate));
         AddComparison("Armor", ItemArmor(current), ItemArmor(candidate));
         AddComparison("Critical chance (basis points)", ItemCritical(current), ItemCritical(candidate));
@@ -475,7 +475,7 @@ public partial class ProductionHud : Control
         var entries = item.Affixes.Select(p => $"{Readable(p.Key)} {p.Value} ({p.Value - (equipped?.Affixes.GetValueOrDefault(p.Key) ?? 0):+0;-0;0})");
         return $"Damage {damage} ({damage - oldDamage:+0;-0;0}) · Armor {armor} ({armor - oldArmor:+0;-0;0})\n" +
             string.Join(" · ", entries) +
-            (item.Rarity == ItemRarity.Godwrought ? $"\nBurning kills {item.BurningKills}/{GodwroughtProgress.AwakeningKills}" : "") + "\n\n" + EquipmentDetails.Inspect(item, _content);
+            (item.Rarity == ItemRarity.Godwrought ? $"\nBurning kills {item.BurningKills}/{GodwroughtProgress.AwakeningKills}" : "") + "\n\n" + EquipmentDetails.Inspect(item, _content, _state.Character);
     }
 
     private void Craft()

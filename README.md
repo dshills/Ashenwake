@@ -56,6 +56,8 @@ Three [late-game legendaries](docs/late_legendaries.md) reward deliberate skill 
 
 Open **J → Relics** or **B → Relics** for the [legendary collection journal](docs/legendary_collection.md). Preview revealed items, inspect owned copies and learned powers, and track one item through the Journey map and expedition board. Discoveries survive salvage and extraction; unreached encounter names and secret hunts remain hidden.
 
+Three [two-piece equipment sets](docs/equipment_sets.md) add barrier counters, poison-fed companions and thorns, and dodge-triggered ember trails. Earn six matching pieces in Acts I–III or repeatable regional Fractures. Inventory comparisons show when a swap completes or breaks a set; **Relics → Sets** shows partners, equipped progress and source tracking.
+
 Open **C → Skills** for ability cards, mastery progress and mutation comparisons. Preview Offense, Defense and Resource investments before spending points at Mara; passive refunds show the exact fee and effects removed. The combat bar uses the same ability icons with cooldown progress, resource-shortfall and Heat-cap feedback. See [Skills & Mastery](docs/skills_mastery.md).
 
 The solo combat HUD groups health, barrier, discipline resource, potion charges, dodge readiness and six abilities in a responsive bottom dock. Status icons show remaining duration and stacks; the XP bar tracks the current level. Earned levels, mastery milestones, ability unlocks and collected equipment appear in a compact reward feed. See [combat HUD and rewards](docs/combat_hud.md).

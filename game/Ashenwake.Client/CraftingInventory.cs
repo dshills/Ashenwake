@@ -260,6 +260,7 @@ public partial class CraftingInventory : VBoxContainer
                 card.Text = name + "\n" + item.Rarity + (equipped ? "\nEquipped" : "") + (protection.Length > 0 ? "\n" + protection : "") + (presets.Length > 0 ? "\nSaved outfit" : "");
                 card.DragLabel = name + " · " + item.Rarity + (equipped ? " · Equipped" : "");
                 card.TooltipText = name + " · #" + item.Id + (equipped ? " · Equipped" : "") + "\n" + EquipmentDetails.Lore(item.DefinitionId) +
+                    (EquipmentDetails.Set(item.DefinitionId, _state.Character) is { Length: > 0 } set ? "\n" + set : "") +
                     (protection.Length > 0 ? "\n" + protection + " · protected from extraction." : "") +
                     (presets.Length > 0 ? "\nSaved outfits: " + string.Join(", ", presets) : "") + "\nSelect to inspect crafting options.";
                 card.SetItemVisual(item.DefinitionId, _definitions[item.DefinitionId].Slots[0], _state.Character.Discipline, item.Rarity);

@@ -27,6 +27,7 @@ public partial class CharacterVisual
 
     private void EquippedMantle(Node3D parent, int side, ItemAppearance item, string kind)
     {
+        if (ItemKind(item) == "thornmother_mantle") { EquippedThornmotherMantle(parent, side); return; }
         if (ItemKind(item) == "emberwake_mantle") { EquippedEmberwake(parent, side, item); return; }
         if (ItemKind(item) == "mourning_choir") { EquippedMourningMantle(parent, side, item); return; }
         var palette = ArmorPalette.For(kind);
@@ -55,6 +56,7 @@ public partial class CharacterVisual
 
     private void EquippedGlove(Node3D parent, int side, ItemAppearance item, string kind)
     {
+        if (ItemKind(item) == "gravegarden_grasp") { EquippedGravegardenGrasp(parent, side); return; }
         if (ItemKind(item) == "widows_last_echo") { EquippedWidowGlove(parent, side, item); return; }
         var palette = ArmorPalette.For(kind);
         Material leather = SharedMaterial(ArmorPalette.Leather), trim = SharedMaterial(palette.Trim);
@@ -72,6 +74,7 @@ public partial class CharacterVisual
 
     private void EquippedBelt(Node3D parent, ItemAppearance item, string kind)
     {
+        if (ItemKind(item) == "cinderpilgrim_girdle") { EquippedCinderpilgrimGirdle(parent); return; }
         if (ItemKind(item) == "furnaceheart_cinch") { EquippedFurnaceBelt(parent, item); return; }
         var palette = ArmorPalette.For(kind);
         Material leather = SharedMaterial(ArmorPalette.Leather), trim = SharedMaterial(palette.Trim);
@@ -111,6 +114,7 @@ public partial class CharacterVisual
 
     private void EquippedBoot(Node3D parent, int side, ItemAppearance item, string kind)
     {
+        if (ItemKind(item) == "embers_without_end") { EquippedEndlessEmberBoot(parent, side); return; }
         if (ItemKind(item) == "pyrebound_treads") { EquippedPyreBoot(parent, side, item); return; }
         var palette = ArmorPalette.For(kind);
         Material leather = SharedMaterial(ArmorPalette.Leather), shell = ArmorShell(kind), ember = SharedMaterial(ArmorPalette.Ember);

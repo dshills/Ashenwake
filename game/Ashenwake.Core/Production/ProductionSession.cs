@@ -397,7 +397,10 @@ public sealed partial class ProductionSession
             BorrowedHour = properties.Contains(LegendaryEquipment.HourPower),
             GriefsReprieve = properties.Contains(LegendaryEquipment.GriefPower),
             Widowthorn = properties.Contains(LegendaryEquipment.WidowthornPower),
-            Emberwake = properties.Contains(LegendaryEquipment.EmberwakePower)
+            Emberwake = properties.Contains(LegendaryEquipment.EmberwakePower),
+            LastVigilSet = EquipmentSets.Active(EquipmentSets.LastVigil, state),
+            BriarboundSet = EquipmentSets.Active(EquipmentSets.Briarbound, state),
+            AshrunnerSet = EquipmentSets.Active(EquipmentSets.Ashrunner, state)
         };
     }
     private void SynchronizeItemSequence()

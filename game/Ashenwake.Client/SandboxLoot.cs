@@ -76,6 +76,7 @@ public partial class Sandbox
         _view.Equipment.TryGetValue(item.Slot, out long equippedId); var equipped = _view.Inventory.FirstOrDefault(i => i.Id == equippedId);
         _lootDescription.Text = $"{EquipmentNames.For(item)} · {item.Slot}\nDamage {item.Damage} ({item.Damage - (equipped?.Damage ?? 0):+0;-0;0}) · Armor {item.Armor} ({item.Armor - (equipped?.Armor ?? 0):+0;-0;0})\nCritical {item.CriticalBasisPoints / 100d:F1}% ({(item.CriticalBasisPoints - (equipped?.CriticalBasisPoints ?? 0)) / 100d:+0.0;-0.0;0.0}%)" + "\n\n" + EquipmentDetails.Lore(item.DefinitionId) +
             (EquipmentDetails.Source(item.DefinitionId) is { Length: > 0 } source ? "\n" + source : "") +
+            (EquipmentDetails.Set(item.DefinitionId) is { Length: > 0 } set ? "\n\n" + set : "") +
             (property.Length > 0 ? "\n\nProperty: " + EquipmentDetails.Power(property) : "");
     }
 }

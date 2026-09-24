@@ -6,7 +6,7 @@ namespace Ashenwake.Client;
 public sealed record LegendaryCollectionCard(LegendaryCollectionEntry Entry, bool Collected, int Owned, bool Extracted,
     LegendaryCollectionSourceView[] Sources);
 public sealed record LegendaryCollectionDisplay(LegendaryCollectionCard[] Cards, string TrackedItem,
-    CharacterAppearance Appearance, string Notice = "");
+    CharacterAppearance Appearance, string Notice = "", IReadOnlyDictionary<string, int>? EquippedSets = null);
 
 /// <summary>Cosmetic inspection and navigation requests only; no item grants, travel or equipment changes.</summary>
 public partial class LegendaryCollectionPanel : Control
@@ -59,7 +59,7 @@ public partial class LegendaryCollectionPanel : Control
         var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill }; body.AddThemeConstantOverride("separation", 18); column.AddChild(body);
         var left = Stack(); left.CustomMinimumSize = new(282, 0); body.AddChild(left);
         var filterRow = new HBoxContainer(); left.AddChild(filterRow);
-        foreach (string filter in new[] { "All", "Collected", "Missing" })
+        foreach (string filter in new[] { "All", "Collected", "Missing", "Sets" })
         {
             var button = Button(filter, "CollectionFilter" + filter, () => SetFilter(filter)); button.ToggleMode = true;
             filterRow.AddChild(button); _filters.Add(filter, button);
@@ -132,7 +132,13 @@ public partial class LegendaryCollectionPanel : Control
         _notice.Text = _view.Notice; _notice.Visible = _view.Notice.Length > 0;
         foreach (var filter in _filters) filter.Value.SetPressedNoSignal(filter.Key == _filter);
         Clear(_grid); Clear(_details);
-        var cards = _view.Cards.Where(c => _filter == "All" || (_filter == "Collected" ? c.Collected : !c.Collected)).ToArray();
+        var cards = _view.Cards.Where(c => _filter switch
+        {
+            "Collected" => c.Collected,
+            "Missing" => !c.Collected,
+            "Sets" => EquipmentSets.IsItem(c.Entry.ItemId),
+            _ => true
+        }).ToArray();
         if (!cards.Any(c => c.Entry.ItemId == _selected)) _selected = cards.FirstOrDefault()?.Entry.ItemId ?? "";
         foreach (var card in cards)
         {
@@ -144,15 +150,36 @@ public partial class LegendaryCollectionPanel : Control
             margin.AddThemeConstantOverride("margin_left", 4); margin.AddThemeConstantOverride("margin_right", 4);
             var content = Stack(); content.MouseFilter = MouseFilterEnum.Ignore; margin.AddChild(content);
             var icon = new GearItemIcon { CustomMinimumSize = new(42, 36) }; icon.Configure(id, card.Entry.Slot, _view.Appearance.Discipline, ItemRarity.Legendary); content.AddChild(icon);
-            var title = Text((card.Collected ? "✓ " : "") + name, 11); title.MaxLinesVisible = 3; title.HorizontalAlignment = HorizontalAlignment.Center; title.MouseFilter = MouseFilterEnum.Ignore; content.AddChild(title);
+            var title = Text(name, name.Split(' ').Any(word => word.Length > 12) ? 10 : 11); title.MaxLinesVisible = 3; title.HorizontalAlignment = HorizontalAlignment.Center; title.MouseFilter = MouseFilterEnum.Ignore; content.AddChild(title);
+            if (card.Collected)
+            {
+                var mark = Text("✓", 11); mark.MouseFilter = MouseFilterEnum.Ignore; button.AddChild(mark);
+                mark.SetAnchorsAndOffsetsPreset(LayoutPreset.TopRight);
+                mark.OffsetLeft = -16; mark.OffsetRight = -2; mark.OffsetTop = 2; mark.OffsetBottom = 18;
+                mark.AddThemeColorOverride("font_color", new Color("a5d87b"));
+            }
         }
         var selected = _view.Cards.FirstOrDefault(c => c.Entry.ItemId == _selected);
         _track.Disabled = selected is null;
         if (selected is null) { _details.AddChild(Text("No items in this filter yet.", 18)); _preview.Visible = false; return; }
         _preview.Visible = true;
         _details.AddChild(Text(EquipmentNames.For(_selected), 22));
-        _details.AddChild(Text($"{selected.Entry.Slot} · {(selected.Collected ? "DISCOVERED" : "NOT YET COLLECTED")}\nOwned copies: {selected.Owned} · Power {(selected.Extracted ? "learned" : "not extracted")}", 13));
-        _details.AddChild(Text(EquipmentDetails.Power(selected.Entry.PowerId), 14));
+        var equipmentSet = EquipmentSets.FindForItem(_selected);
+        _details.AddChild(Text($"{selected.Entry.Slot} · {(selected.Collected ? "DISCOVERED" : "NOT YET COLLECTED")}\nOwned copies: {selected.Owned}" +
+            (equipmentSet is null ? $" · Power {(selected.Extracted ? "learned" : "not extracted")}" : ""), 13));
+        if (equipmentSet is not null)
+        {
+            int count = _view.EquippedSets?.GetValueOrDefault(equipmentSet.Id) ?? 0;
+            _details.AddChild(Text($"{equipmentSet.Name} · {count}/2 equipped", 17));
+            _details.AddChild(Text("(2) " + equipmentSet.Bonus, 14));
+            foreach (string piece in equipmentSet.PieceIds)
+            {
+                var card = _view.Cards.FirstOrDefault(c => c.Entry.ItemId == piece);
+                _details.AddChild(Button((card?.Collected == true ? "✓ " : "○ ") + EquipmentNames.For(piece), "CollectionSetPiece_" + piece[5..], () => { _filter = "Sets"; SelectItem(piece); }));
+            }
+            _details.AddChild(Text("Equip both different pieces to activate the bonus. Spare copies and engravings do not count. Set bonuses cannot be extracted or engraved.", 12));
+        }
+        else _details.AddChild(Text(EquipmentDetails.Power(selected.Entry.PowerId), 14));
         _details.AddChild(Text(selected.Collected ? EquipmentDetails.Lore(_selected) : "Its history has not yet been discovered. Collect this relic to read its lore.", 13));
         _details.AddChild(new HSeparator()); _details.AddChild(Text("WHERE TO FIND IT", 16));
         foreach (var source in selected.Sources)
@@ -165,7 +192,9 @@ public partial class LegendaryCollectionPanel : Control
             route.Disabled = kind == LegendaryCollectionSourceKind.RoamingChampion && source.ChampionId.Length == 0 || kind == LegendaryCollectionSourceKind.GodHunt && source.HuntId.Length == 0 || kind == LegendaryCollectionSourceKind.SecretChamber && source.ChamberId.Length == 0;
             _details.AddChild(route); _details.AddChild(new HSeparator());
         }
-        _details.AddChild(Text(selected.Entry.RoamingChampionId.Length > 0
+        _details.AddChild(Text(equipmentSet is not null
+            ? "Collect the ground drop to own it. Fractures provide replacement pieces. Previewing and tracking never change your equipment."
+            : selected.Entry.RoamingChampionId.Length > 0
             ? "Claim the champion’s signature treasure to own it. This character receives one copy; extraction consumes it and teaches its existing power. Previewing and tracking never change your equipment."
             : selected.Entry.SecretChamberId.Length > 0
             ? "Claim the chamber treasure to own it. This character receives one copy; extracting its power consumes the item. Previewing and tracking never change your equipment."

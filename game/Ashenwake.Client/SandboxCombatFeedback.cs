@@ -53,7 +53,7 @@ public partial class Sandbox
                 "AbilityResolved" or "EliteAbilityResolved" or "CampaignHazardResolved" or "Dodged" or
                 "DamageApplied" or "BarrierAbsorbed" or "BarrierGranted" or "Healed" or "EntityKilled" or "EliteCopyKilled" or
                 "MechanismDestroyed" or "BossPhaseChanged" or "LootDropped" or "LootPickedUp" or "EnemyOvercharged" or
-                "LegendaryReadied" or "LegendaryCharged" or "LegendaryTriggered") continue;
+                "LegendaryReadied" or "LegendaryCharged" or "LegendaryTriggered" or "EquipmentSetReadied" or "EquipmentSetTriggered") continue;
             if (e.Kind == "CampaignHazardResolved") { PlaySpineFollowup(e); PlayHollowFollowup(e); }
             if (e.Kind is "CampaignHazardWarned" or "CampaignHazardResolved" && e.ContentId.StartsWith("rule.", StringComparison.Ordinal))
             {
@@ -135,6 +135,9 @@ public partial class Sandbox
                 case "EnemyOvercharged":
                     if (target is not null) _combatEffects.Emit("block", target.Current, Vector3.Up, new("f5b565"), _reduceEffects);
                     PlayTone("armor"); break;
+                case "EquipmentSetReadied":
+                case "EquipmentSetTriggered":
+                    PresentEquipmentSetEvent(e, actor, target, direction); break;
                 case "LegendaryReadied":
                 case "LegendaryCharged":
                 case "LegendaryTriggered":

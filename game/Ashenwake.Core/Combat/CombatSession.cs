@@ -118,6 +118,7 @@ public sealed partial class CombatSession
         _content.Fragments.Where(f => _state.Fragments.Values.Contains(f.Id)).Sum(f => f.Resonance), _effects.Count, _state.PeakEffects, _state.RejectedEffects, _content.ContentVersion, Discipline, ResourceName, _state.CapturedSkillId, Remaining(_state.CapturedUntil), FalseSilhouettes().ToArray(), _state.FragmentHeat, _state.SeismicCharge, CampaignHazards().ToArray(), CampaignRule, _state.Campaign?.BossPhase ?? 0, _state.Campaign?.SuppressedFragmentId ?? "", EndgameView)
     {
         Legendary = LegendaryView(),
+        EquipmentSets = EquipmentSetView(),
         ResonanceStormActive = ResonanceStormActive,
         ShrineDamagePenalty = ShrineDamagePenalty
     };
@@ -191,6 +192,7 @@ public sealed partial class CombatSession
                 if (_state.ProgressionBuild.BarrierOnDodge) { Player.Barrier = Math.Min(200, Player.Barrier + 15); Emit("BarrierGranted", 1, 1, 15, "rune.guard"); }
                 foreach (var dodgeFragment in ActiveFragments().Where(f => f.Trigger == "Dodge")) { Player.Barrier = Math.Min(200, Player.Barrier + FragmentAmount(10)); Emit("FragmentTriggered", 1, 1, FragmentAmount(10), dodgeFragment.Id); }
                 LegendaryDodge(dodgeStart);
+                BeginEquipmentSetDodge();
                 if (_state.ProgressionBuild.Emberwake) (_state.Legendary ??= new()).EmberwakeDodgeUntil = Tick + 7;
                 Emit("Dodged", 1); break;
             case CombatCommandKind.Potion:
@@ -361,7 +363,7 @@ public sealed partial class CombatSession
             if (source is null || area.ExpiresTick <= Tick) { _state.Areas.Remove(area); continue; }
             if (area.NextTick > Tick) continue;
             var status = _content.Skills.FirstOrDefault(s => s.Id == area.SkillId)?.Status ?? (area.SkillId == "boss.chain" ? "Staggered" : area.SkillId is "enemy.detonate" or "effect.pyre_trail" ? "Burning" : "");
-            foreach (var target in Hostiles(source, area.Position, area.Radius)) Enqueue(new(area.SourceId, area.OwnerId, target.Id, area.Damage, area.Family, area.SkillId, area.ActionId, area.Depth, Reflected: LegendaryEquipment.IsEffect(area.SkillId), Status: status));
+            foreach (var target in Hostiles(source, area.Position, area.Radius)) Enqueue(new(area.SourceId, area.OwnerId, target.Id, area.Damage, area.Family, area.SkillId, area.ActionId, area.Depth, Reflected: LegendaryEquipment.IsEffect(area.SkillId) || IsEquipmentSetEffect(area.SkillId), Status: status));
             _state.Areas[_state.Areas.IndexOf(area)] = area with { NextTick = Tick + 20 };
         }
     }
@@ -404,6 +406,7 @@ public sealed partial class CombatSession
         var damageInput = new DamageInput(hit.Damage, bonus, IncreasedBasisPoints: increased, Critical: critical, Family: hit.Family, DefenseBasisPoints: defense,
             VulnerabilityBasisPoints: TithekeeperExposed(target) || target.Statuses.Any(s => s.Id == "Vulnerable") ? 2500 : 0, Barrier: target.Barrier, MoreBasisPoints: (int)((long)EndgameFragmentPower(hit, source) * WorldEncounterDamagePower(hit, source, target) / 10000), MinimumDefenseBasisPoints: EndgameRule("resistance_inversion") ? -1500 : 0, Immune: target.InvulnerableUntil > Tick || IsRituallyShielded(target), DamageOverTime: hit.Dot);
         var result = DamageRules.Resolve(damageInput);
+        ObserveEquipmentSetDefense(hit, source, target, damageInput, result);
         ObserveEmberwakeDodge(hit, source, target);
         target.Barrier -= result.Absorbed;
         ChargeOath(source, target, result.Absorbed);
@@ -416,6 +419,7 @@ public sealed partial class CombatSession
         Emit("DamageApplied", hit.SourceId, hit.TargetId, healthDamage, hit.ContentId, hit.ActionId, hit.Depth);
         if (critical) Emit("CriticalHit", hit.SourceId, hit.TargetId, healthDamage, hit.ContentId, hit.ActionId, hit.Depth);
         if (result.BeforeBarrier <= 0) return;
+        ReleaseEquipmentSetAttack(hit, target);
         ReleaseOath(hit);
         if (hit.OwnerId == 1) _state.LastAggressionTick = Tick;
         if (!hit.Dot && !hit.Reflected && source?.Id == 1)
@@ -498,8 +502,10 @@ public sealed partial class CombatSession
             string rarity = definition.Id == "item.echo_ring" || LegendaryEquipment.IsItem(definition.Id) ? "Legendary" : roll switch { 0 => "Common", 1 or 2 => "Tempered", 3 or 4 => "Rare", _ => "Relic" };
             var item = new CombatItem(_state.NextObjectId++, definition.Id, definition.Name, definition.Slot, rarity, definition.Damage + (definition.Damage > 0 ? roll : 0), definition.Armor + (definition.Armor > 0 ? roll * 50 : 0), definition.CriticalBasisPoints + roll * 30);
             _state.Rng = _state.Rng with { Loot = rng }; _state.Loot.Add(new(item.Id, target.Position, item)); Emit("LootDropped", hit.OwnerId, target.Id, (int)item.Id, definition.Id, hit.ActionId, hit.Depth);
+            RewardEquipmentSet(target, hit);
         }
         if (!CampaignRewardEligible(target)) return;
+        GrowBriarbound(target, hit);
         SpreadVirulentWake(target, hit);
         SnareWidowthorn(target, hit);
         OnProductionKill(target, hit);
@@ -524,7 +530,7 @@ public sealed partial class CombatSession
     {
         var source = _state.Actors.FirstOrDefault(a => a.Id == sourceId);
         if (source is not null && ownerId == sourceId && IsEncounterSkill(skillId)) return true;
-        if (sourceId == 1 && ownerId == 1 && (skillId == "effect.ashcleaver_wave" || LegendaryEquipment.IsEffect(skillId))) return true;
+        if (sourceId == 1 && ownerId == 1 && (skillId == "effect.ashcleaver_wave" || LegendaryEquipment.IsEffect(skillId) || IsEquipmentSetEffect(skillId))) return true;
         return source is not null && ownerId == (source.OwnerId > 0 ? source.OwnerId : source.Id) && (sourceId == 1 ? _content.Skills.Any(s => s.Id == skillId) : source.Faction == CombatFaction.Ally ? skillId is "summon.spirit_bolt" or "summon.companion_bite" : skillId is "enemy.projectile" or "enemy.stormbound");
     }
     private void ValidateSnapshot()
@@ -573,5 +579,6 @@ public sealed partial class CombatSession
         ValidateEndgameSnapshot();
         ValidateBorrowedMemory();
         ValidateLegendaryState();
+        ValidateEquipmentSetState();
     }
 }

@@ -50,6 +50,14 @@ public partial class GearComparison : PanelContainer
             rows.Add(new(AwakeningText(candidate), AwakeningText(equipped), TextColor, TextColor));
             rows.Add(new("Evolution: " + EquipmentDetails.Evolution(candidate.Evolution), "Evolution: " + EquipmentDetails.Evolution(equipped?.Evolution), TextColor, TextColor));
         }
+        foreach (var set in EquipmentSets.Catalog.Where(set => set.PieceIds.Contains(candidate.DefinitionId) || set.PieceIds.Contains(equipped?.DefinitionId ?? "")))
+        {
+            int current = EquipmentSets.CountEquipped(set.Id, state.Character);
+            int after = EquipmentSets.PreviewCountEquipped(set.Id, state.Character, candidate, slot);
+            rows.Add(new($"{set.Name} · {current}/2 → {after}/2", current == 2 ? "Set bonus active" : "Set bonus inactive",
+                after > current ? BetterColor : after < current ? WorseColor : TextColor, MutedColor));
+            rows.Add(new("(2) " + set.Bonus, after == 2 ? "After equipping: ACTIVE" : "After equipping: inactive", TextColor, after == 2 ? BetterColor : MutedColor));
+        }
         var notes = new List<string> { "This slot only; other gear, skills and properties are excluded from numeric deltas." };
         if (definition.Hands == 2 || equippedDefinition?.Hands == 2)
             notes.Add("Two-handed weapon: requires an empty off hand; off-hand changes are excluded.");
@@ -58,6 +66,7 @@ public partial class GearComparison : PanelContainer
         if (restriction.Length > 0) notes.Add(restriction);
         string note = string.Join(" ", notes);
         float width = !string.IsNullOrEmpty(candidate.Evolution) || !string.IsNullOrEmpty(equipped?.Evolution) ||
+            EquipmentSets.IsItem(candidate.DefinitionId) || EquipmentSets.IsItem(equipped?.DefinitionId ?? "") ||
             Ashenwake.Core.Combat.LegendaryEquipment.IsItem(candidate.DefinitionId) || Ashenwake.Core.Combat.LegendaryEquipment.IsItem(equipped?.DefinitionId ?? "") ? 640 : 520;
         string comparison = heading + "\n" + string.Join("\n", rows.Select(row => row.Candidate + " | " + row.Equipped)) + "\n" + note;
         if (ComparisonKey == key && ComparisonText == comparison) return;

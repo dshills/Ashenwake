@@ -1,4 +1,5 @@
 using Ashenwake.Core.Training;
+using Ashenwake.Core.Progression;
 using Ashenwake.Core.Simulation;
 
 namespace Ashenwake.Core.Combat;
@@ -58,7 +59,7 @@ public sealed partial class CombatSession
         string id = hit.FragmentId.Length > 0 ? hit.FragmentId : hit.OriginSkill.Length > 0 ? hit.OriginSkill : hit.ContentId;
         if (source?.FragmentId.Length > 0) id = source.FragmentId;
         if (id == "effect.seismic_release") id = "fragment.orrun_knuckle";
-        string category = id.StartsWith("fragment.", StringComparison.Ordinal) ? "Fragment" : LegendaryEquipment.IsEffect(id) ? "Legendary" :
+        string category = id.StartsWith("fragment.", StringComparison.Ordinal) ? "Fragment" : IsEquipmentSetEffect(id) ? "Equipment set" : LegendaryEquipment.IsEffect(id) ? "Legendary" :
             source?.Faction == CombatFaction.Ally ? "Summon" : id.StartsWith("skill.", StringComparison.Ordinal) ? "Ability" : "Effect";
         TrainingDamage(new(category, id, TrainingContentName(id), hit.Family, amount));
     }
@@ -87,10 +88,14 @@ public sealed partial class CombatSession
         (ev.Kind == "BarrierGranted" && ev.TargetId == 1 ||
          ev.Kind == "FragmentTriggered" && _content.Fragments.Any(f => f.Id == ev.ContentId && f.Effect == "Barrier") ||
          ev.Kind is "LegendaryCharged" or "LegendaryTriggered" && ev.ContentId == LegendaryEquipment.OathPower ||
+         ev.Kind == "EquipmentSetReadied" && ev.ContentId is EquipmentSets.LastVigil or EquipmentSets.Ashrunner ||
          ev.Kind == "ManifestationTriggered" && ev.ContentId == "manifestation.stone_memory");
     internal string TrainingContentName(string id) => _content.Skills.FirstOrDefault(s => s.Id == id)?.Name ??
         _content.Fragments.FirstOrDefault(f => f.Id == id)?.Name ?? id switch
         {
+            VigilStrike or EquipmentSets.LastVigil => "Vestments of the Last Vigil",
+            BriarThorns or EquipmentSets.Briarbound => "Briarbound Covenant",
+            AshrunnerTrail or EquipmentSets.Ashrunner => "Ashrunner’s Oath",
             "enemy.ash_ghoul" => "Ash Ghoul",
             "enemy.cinder_acolyte" => "Cinder Acolyte",
             "enemy.strike" => "Melee strike",

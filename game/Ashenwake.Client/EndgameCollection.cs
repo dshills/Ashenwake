@@ -67,7 +67,7 @@ public partial class EndgameDirector
             (entry.SecretChamberId.Length == 0 || _session.SecretChambers.Entries.Any(e => e.Id == entry.SecretChamberId && e.Revealed)) &&
             (entry.RoamingChampionId.Length == 0 || _session.RoamingChampions.Entries.Any(e => e.Id == entry.RoamingChampionId && e.Discovered))).Select(entry => new LegendaryCollectionCard(entry,
             _collectionMemory.DiscoveredItems.Contains(entry.ItemId), character.Items.Count(i => i.DefinitionId == entry.ItemId),
-            character.PropertyLibrary.Contains(entry.PowerId), LegendaryCollectionSources.Project(_campaignDefinition, campaign, campaignView,
+            entry.PowerId.Length > 0 && character.PropertyLibrary.Contains(entry.PowerId), LegendaryCollectionSources.Project(_campaignDefinition, campaign, campaignView,
                 _session.Campaign.ActiveEncounterId, _endgameDefinition, endgame, entry.ItemId, _session.CurrentRunContentId, _session.SecretChambers, _session.RoamingChampions))).ToArray();
         var tracked = cards.FirstOrDefault(c => c.Entry.ItemId == _collectionMemory.TrackedItem);
         string title = tracked is null ? "" : "TRACKED · " + EquipmentNames.For(tracked.Entry.ItemId);
@@ -78,7 +78,8 @@ public partial class EndgameDirector
         _campaignHud.SetCollectionTracking(target, hint); _board.SetCollectionTracking(target, hint);
         _collection.SetView(new(cards, _collectionMemory.TrackedItem,
             CharacterAppearance.FromProgression(snapshot.Campaign.Production.Progression, _session.Production.View.ActiveManifestations,
-                snapshot.Campaign.Production.Expedition.Adventure.Anatomy.Values), _collectionNotice));
+                snapshot.Campaign.Production.Expedition.Adventure.Anatomy.Values), _collectionNotice,
+            EquipmentSets.Catalog.ToDictionary(set => set.Id, set => EquipmentSets.CountEquipped(set.Id, character))));
     }
 
     private void PersistCollection()
