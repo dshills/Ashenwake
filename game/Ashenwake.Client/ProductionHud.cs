@@ -94,8 +94,8 @@ public partial class ProductionHud : Control
         _gearLoadout = new GearLoadout { Visible = false }; gearColumn.AddChild(_gearLoadout);
         _gearLoadout.EquipBlockedReason = GearRestriction;
         _gearLoadout.InspectRequested += (slot, id) => { _gearSlot = slot; _gearItemId = id; _gearInspecting = true; Rebuild(true); };
-        _gearLoadout.EquipRequested += (id, slot) => { _gearSlot = slot; _gearInspecting = false; EquipRequested?.Invoke(id, slot); };
-        _gearLoadout.UnequipRequested += slot => { _gearSlot = slot; _gearInspecting = false; UnequipRequested?.Invoke(slot); };
+        _gearLoadout.EquipRequested += (id, slot) => { _gearSlot = slot; _gearInspecting = false; RequestEquip(id, slot); };
+        _gearLoadout.UnequipRequested += slot => { _gearSlot = slot; _gearInspecting = false; RequestUnequip(slot); };
         _scroll = new ScrollContainer
         {
             CustomMinimumSize = new(429, 319),
@@ -286,6 +286,30 @@ public partial class ProductionHud : Control
         Button("Open Skills & Mastery", () => { _tab = "Skills"; Rebuild(true); _tabs["Skills"].GrabFocus(); });
     }
 
+    private void RequestEquip(long id, EquipmentSlot slot)
+    {
+        var before = _state.Character;
+        var item = before.Items.FirstOrDefault(item => item.Id == id);
+        long previous = before.Equipment.GetValueOrDefault(slot);
+        EquipRequested?.Invoke(id, slot);
+        // Directors synchronously execute and refresh the authoritative snapshot. An
+        // accepted pointer gesture alone does not confirm an equipment transaction.
+        if (_state.Character.CharacterId != before.CharacterId) return;
+        bool changed = item is not null && previous != id && _state.Character.Equipment.GetValueOrDefault(slot) == id;
+        RewardAudio.Play(this, changed ? RewardAudio.EquipmentCue(item!, _content, true, before.Discipline) : "gear_reject");
+    }
+
+    private void RequestUnequip(EquipmentSlot slot)
+    {
+        var before = _state.Character;
+        long previous = before.Equipment.GetValueOrDefault(slot);
+        var item = before.Items.FirstOrDefault(item => item.Id == previous);
+        UnequipRequested?.Invoke(slot);
+        if (_state.Character.CharacterId != before.CharacterId) return;
+        bool changed = item is not null && previous != 0 && _state.Character.Equipment.GetValueOrDefault(slot) == 0;
+        RewardAudio.Play(this, changed ? RewardAudio.EquipmentCue(item!, _content, false, before.Discipline) : "gear_reject");
+    }
+
     private void Gear()
     {
         _gearLoadout.ComparisonSlot = _gearSlot;
@@ -345,8 +369,8 @@ public partial class ProductionHud : Control
         string conflict = candidate is null ? "" : GearRestriction(candidate.Id, _gearSlot);
         var equip = Button(candidate is null ? $"Unequip {_gearSlot}" : $"Equip selected {_gearSlot}", () =>
         {
-            if (_gearItemId == 0) UnequipRequested?.Invoke(_gearSlot);
-            else EquipRequested?.Invoke(_gearItemId, _gearSlot);
+            if (_gearItemId == 0) RequestUnequip(_gearSlot);
+            else RequestEquip(_gearItemId, _gearSlot);
         });
         equip.Name = candidate is null ? "UnequipItem" : "EquipItem";
         equip.Disabled = !CanChangeGear || _gearItemId == currentId || conflict.Length > 0;

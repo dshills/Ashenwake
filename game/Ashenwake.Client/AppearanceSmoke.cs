@@ -23,7 +23,7 @@ public partial class AppearanceSmoke : Node3D
     private ProductionHud _hud = null!;
     private AdventureStage _stage = null!;
     private RoomDefinition _room = null!;
-    private int _commands, _equips, _unequips;
+    private int _commands, _equips, _unequips, _equipmentFailures;
     private long _initialMainHand;
     private static string Read(string name) => Godot.FileAccess.GetFileAsString($"res://{name}.json");
 
@@ -43,8 +43,8 @@ public partial class AppearanceSmoke : Node3D
             _room = CombatContent.Parse(Read("combat")).Room;
             _stage = new AdventureStage(); AddChild(_stage);
             _hud = new ProductionHud { Catalog = TextCatalog.Parse(Read("text.en")) }; _sandbox.AddOverlay(_hud);
-            _hud.EquipRequested += (id, slot) => { Require(_session.Equip(id, slot)); _equips++; Refresh(); };
-            _hud.UnequipRequested += slot => { Require(_session.Unequip(slot)); _unequips++; Refresh(); };
+            _hud.EquipRequested += (id, slot) => { var result = _session.Equip(id, slot); if (result.Success) _equips++; else _equipmentFailures++; Refresh(); };
+            _hud.UnequipRequested += slot => { var result = _session.Unequip(slot); if (result.Success) _unequips++; else _equipmentFailures++; Refresh(); };
             _hud.DiscardRequested += id => { Require(_session.Discard(id, confirmPermanent: true)); _discards++; Refresh(); };
             _sandbox.SetSession(_session.Combat); _sandbox.SetPaused(true); Refresh();
             await EquipmentFlow();
@@ -86,6 +86,7 @@ public partial class AppearanceSmoke : Node3D
         await Frames();
         var preview = Find<CharacterPreview>("CharacterPreview");
         string initial = _session.StateHash;
+        var initialAudio = RewardAudio.Count(_hud);
         Check("world_and_preview_use_equipped_state", preview.AppearanceKey == _sandbox.CurrentAppearance.Key && preview.Rendering);
         var previewSurface = Descendants(preview).OfType<TextureRect>().Single(n => n.Name == "PreviewSurface");
         var previewViewport = Descendants(preview).OfType<SubViewport>().Single();
@@ -107,9 +108,11 @@ public partial class AppearanceSmoke : Node3D
         var pose = Pose(preview); await Frames(8);
         Check("paused_preview_stays_still", Same(pose, Pose(preview)));
         Find<Button>("ResetRotation").EmitSignal(Button.SignalName.Pressed);
+        Check("equipment_inspect_rotate_and_preview_are_silent", RewardAudio.Count(_hud) == initialAudio);
         var unequip = Find<Button>("UnequipItem"); Check("explicit_unequip_available_at_torren", !unequip.Disabled);
         unequip.EmitSignal(Button.SignalName.Pressed); await Frames();
         Check("unequip_updates_world_and_preview", _unequips == 1 && _sandbox.CurrentAppearance.MainHand.DefinitionId == "" && preview.AppearanceKey == _sandbox.CurrentAppearance.Key);
+        Check("equipment_button_unequip_plays_one_material_acknowledgement", RewardAudio.Count(_hud) == initialAudio + 1 && RewardAudio.LastCue(_hud) == "gear_metal_off");
         var item = _session.Capture().Progression.Character.Items.First(i => i.DefinitionId == "item.ashcleaver");
         SelectItem(item.Id); await Frames();
         Check("ashcleaver_preview_is_distinct", preview.AppearanceKey != _sandbox.CurrentAppearance.Key && _equips == 0);
@@ -117,9 +120,11 @@ public partial class AppearanceSmoke : Node3D
         var equip = Find<Button>("EquipItem"); Check("explicit_equip_available_at_torren", !equip.Disabled);
         equip.EmitSignal(Button.SignalName.Pressed); await Frames();
         Check("equipping_ashcleaver_updates_both_models", _equips == 1 && _sandbox.CurrentAppearance.MainHand.DefinitionId == "item.ashcleaver" && preview.AppearanceKey == _sandbox.CurrentAppearance.Key);
+        Check("equipment_button_equip_plays_one_material_acknowledgement", RewardAudio.Count(_hud) == initialAudio + 2 && RewardAudio.LastCue(_hud) == "gear_metal_on");
         await Capture("equipment-ashcleaver-equipped.png");
         await AnatomyEvolutionPreview();
         await EquipmentDescriptionChecks();
+        await RejectedAuthoritativeEquipmentAudio();
         var window = GetWindow();
         window.ContentScaleSize = new(1280, 720); window.Size = new(1280, 720); await Frames(5);
         var close = Descendants(_hud).OfType<Button>().Single(b => b.Text == "Close character");
@@ -140,6 +145,25 @@ public partial class AppearanceSmoke : Node3D
         _hud.PresentInteraction("ServiceOpened:service.torren"); SelectSlot(EquipmentSlot.MainHand); SelectItem(0); await Frames();
         Check("inspection_away_from_torren_cannot_commit", Find<Button>("UnequipItem").Disabled);
         _hud.Toggle();
+    }
+
+    private async Task RejectedAuthoritativeEquipmentAudio()
+    {
+        // Leave the displayed eligibility unchanged while moving the authoritative
+        // character out of Torren's range. The ordinary button must await that result.
+        SelectSlot(EquipmentSlot.MainHand); SelectItem(0); await Frames();
+        var button = Find<Button>("UnequipItem");
+        Check("equipment_rejection_fixture_starts_with_enabled_button", !button.Disabled);
+        WalkTo("npc.mara");
+        string hash = _session.StateHash;
+        var count = RewardAudio.Count(_hud); int failures = _equipmentFailures;
+        button.EmitSignal(Button.SignalName.Pressed); await Frames();
+        Check("equipment_authoritative_denial_plays_only_rejection", _equipmentFailures == failures + 1 &&
+            _session.StateHash == hash && RewardAudio.Count(_hud) == count + 1 && RewardAudio.LastCue(_hud) == "gear_reject");
+        WalkTo("service.torren"); Refresh(); await Frames();
+        count = RewardAudio.Count(_hud);
+        _sandbox.SetSession(_session.Combat); Refresh(); await Frames();
+        Check("equipment_session_restore_and_refresh_are_silent", RewardAudio.Count(_hud) == count);
     }
 
     private async Task AnatomyEvolutionPreview()

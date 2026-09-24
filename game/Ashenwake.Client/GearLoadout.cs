@@ -22,7 +22,7 @@ public partial class GearLoadout : HBoxContainer
     private bool _canEdit, _dirty;
     private string _signature = "";
     private Sandbox? _sandbox;
-    private bool _dragPaused;
+    private bool _dragPaused, _ownedDrag, _releasedDrag;
     private static readonly string[] MenuActions = ["aw_inventory", "aw_character", "aw_journey", "aw_endgame", "aw_experiment", "aw_save", "aw_load"];
 
     public override void _Ready()
@@ -94,13 +94,14 @@ public partial class GearLoadout : HBoxContainer
         if (!changed) return;
         _presetItemIds = (state.Character.EquipmentPresets ?? []).SelectMany(preset => preset.Equipment.Values)
             .Concat((state.Character.BuildLoadouts ?? []).SelectMany(loadout => loadout.Equipment.Values)).ToHashSet();
-        _epoch++; _dirty = true;
+        _epoch++; _dirty = true; _ownedDrag = _releasedDrag = false;
         // Keep the source/target controls alive until Godot finishes dispatching the native drop.
         if (!GetViewport().GuiIsDragging()) RefreshCards();
     }
 
     public void CancelDrag()
     {
+        _ownedDrag = _releasedDrag = false;
         _epoch++;
         HidePresentation();
         if (!IsInsideTree()) return;
@@ -131,6 +132,8 @@ public partial class GearLoadout : HBoxContainer
         if (input is InputEventMouseMotion motion) _pointer = motion.Position;
         else if (input is InputEventMouseButton button) _pointer = button.Position;
         if (!Owns(GetViewport().GuiGetDragData())) return;
+        if (input is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: false } && _ownedDrag &&
+            ReadDrag(GetViewport().GuiGetDragData(), out _, out _)) _releasedDrag = true;
         if (input.IsActionPressed("ui_cancel")) { CancelDrag(); GetViewport().SetInputAsHandled(); }
         else if (input is InputEventKey or InputEventJoypadButton)
         {
@@ -157,9 +160,14 @@ public partial class GearLoadout : HBoxContainer
     {
         if (what == NotificationApplicationFocusOut && IsInsideTree()) CancelDrag();
         if (what == NotificationDragBegin && IsInsideTree() && Owns(GetViewport().GuiGetDragData()))
-        { HidePresentation(); _dragPaused = true; _sandbox?.SetModalPaused("equipment-drag", true); }
+        { HidePresentation(); _ownedDrag = true; _releasedDrag = false; _dragPaused = true; _sandbox?.SetModalPaused("equipment-drag", true); }
         if (what == NotificationDragEnd)
         {
+            // Godot does not call _DropData for incompatible targets. A released,
+            // still-current owned drag gets one rejection; cancelled drags stay quiet.
+            if (_ownedDrag && _releasedDrag && IsInsideTree() && IsVisibleInTree() && !GetViewport().GuiIsDragSuccessful())
+                RewardAudio.Play(this, "gear_reject");
+            _ownedDrag = _releasedDrag = false;
             ReleaseDragPause();
             if (IsInsideTree()) Callable.From(RefreshCards).CallDeferred();
         }

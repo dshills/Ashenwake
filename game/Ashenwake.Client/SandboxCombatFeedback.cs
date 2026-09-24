@@ -20,6 +20,8 @@ public partial class Sandbox
     private double _cosmeticTime;
     private int _importantVoiceIndex;
     private readonly LootDropCues _lootDropCues = new();
+    private readonly LootCollectionCues _lootCollectionCues = new();
+    internal int EquipmentCollectionCount { get; private set; }
     internal int SpecialLootDropCount { get; private set; }
     internal string LastSpecialLootCue { get; private set; } = "";
     public bool ReducedEffects => _reduceEffects;
@@ -41,6 +43,7 @@ public partial class Sandbox
         _view = _session.View;
         SynchronizeWorld();
         _lootDropCues.Trim(_view.Loot);
+        _lootCollectionCues.Trim(_view.Inventory);
         foreach (var e in events)
         {
             _eventLog.Add(e); if (_eventLog.Count > 8192) _eventLog.RemoveAt(0);
@@ -49,7 +52,7 @@ public partial class Sandbox
             if (replaced && e.Kind is "AbilityStarted" or "EliteAbilityStarted" or "BossPatternStarted" or "CampaignHazardWarned" or
                 "AbilityResolved" or "EliteAbilityResolved" or "CampaignHazardResolved" or "Dodged" or
                 "DamageApplied" or "BarrierAbsorbed" or "BarrierGranted" or "Healed" or "EntityKilled" or "EliteCopyKilled" or
-                "MechanismDestroyed" or "BossPhaseChanged" or "LootDropped" or "EnemyOvercharged" or
+                "MechanismDestroyed" or "BossPhaseChanged" or "LootDropped" or "LootPickedUp" or "EnemyOvercharged" or
                 "LegendaryReadied" or "LegendaryCharged" or "LegendaryTriggered") continue;
             if (e.Kind == "CampaignHazardResolved") { PlaySpineFollowup(e); PlayHollowFollowup(e); }
             if (e.Kind is "CampaignHazardWarned" or "CampaignHazardResolved" && e.ContentId.StartsWith("rule.", StringComparison.Ordinal))
@@ -155,10 +158,18 @@ public partial class Sandbox
                     var drop = _lootDropCues.Observe(e, _view.Loot);
                     if (drop is null || !IsLootVisible(drop)) break;
                     string dropCue = LootDropCues.Cue(drop.Item.Rarity);
-                    _combatEffects.Emit(dropCue, PositionOf(drop.Position.X, drop.Position.Z), Vector3.Forward, LootVisual.RarityColor(drop.Item.Rarity), _reduceEffects);
-                    PlayTone(dropCue); SpecialLootDropCount++; LastSpecialLootCue = dropCue;
-                    Message($"{drop.Item.Rarity} discovered · {EquipmentNames.For(drop.Item)}"); break;
-                case "LootPickedUp": PresentLootReward(e); Message($"Collected {EquipmentNames.For(e.ContentId)}. Open inventory to compare."); PlayTone("loot"); break;
+                    if (drop.Item.Rarity is "Legendary" or "Godwrought")
+                    {
+                        _combatEffects.Emit(dropCue, PositionOf(drop.Position.X, drop.Position.Z), Vector3.Forward, LootVisual.RarityColor(drop.Item.Rarity), _reduceEffects);
+                        PlayTone(dropCue);
+                        Message($"{drop.Item.Rarity} discovered · {EquipmentNames.For(drop.Item)}");
+                    }
+                    else RewardAudio.Play(this, dropCue);
+                    SpecialLootDropCount++; LastSpecialLootCue = dropCue; break;
+                case "LootPickedUp":
+                    if (_lootCollectionCues.Observe(e, _view.Inventory) is null) break;
+                    PresentLootReward(e); Message($"Collected {EquipmentNames.For(e.ContentId)}. Open inventory to compare.");
+                    RewardAudio.Play(this, "collect_equipment"); EquipmentCollectionCount++; break;
                 case "FragmentTriggered": Message($"{Readable(e.ContentId)} triggered · action {e.ActionId} / chain {e.Depth}"); break;
                 case "SummonSpawned": Message("A Serath spirit rises from a damage-over-time death."); break;
                 case "StatusApplied": if (e.ContentId is "Burning" or "Poisoned") Message($"{e.ContentId} → actor {e.TargetId} · owner {e.ActorId}"); break;

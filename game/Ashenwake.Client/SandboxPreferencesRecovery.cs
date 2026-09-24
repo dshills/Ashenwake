@@ -49,7 +49,7 @@ public partial class Sandbox
         }
         if (preferences is null) { ApplySettingsAudio(); return; }
         _masterVolume = preferences.MasterVolume; _musicVolume = preferences.MusicVolume;
-        _effectsVolume = preferences.EffectsVolume; _interfaceVolume = preferences.InterfaceVolume;
+        _effectsVolume = preferences.EffectsVolume; _interfaceVolume = preferences.InterfaceVolume; _quietMode = preferences.QuietMode;
         ApplySettingsAudio();
         _reduceEffects = preferences.ReducedEffects; _reduceShake = preferences.ReducedShake;
         _graphicsQuality = preferences.GraphicsQuality; _renderScale = preferences.RenderScale; _displayMode = preferences.DisplayMode;
@@ -68,7 +68,7 @@ public partial class Sandbox
             }
             AtomicFile.Write(_preferencesPath, JsonData.Write(new Preferences(_reduceEffects, _reduceShake,
                 _keys.ToDictionary(p => p.Key, p => (long)p.Value), _minimumLootRarity, _compatibleLootOnly,
-                _masterVolume, _musicVolume, _effectsVolume, _interfaceVolume, _graphicsQuality, _renderScale, _displayMode)));
+                _masterVolume, _musicVolume, _effectsVolume, _interfaceVolume, _graphicsQuality, _renderScale, _displayMode, _quietMode)));
             _settingsSaveFailed = false; SettingsNotice("Settings saved on this device.");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

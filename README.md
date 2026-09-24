@@ -86,6 +86,8 @@ The [Shattered Spine audio pass](docs/spine_audio.md) adds five regional scores,
 
 The [Hollow Night audio pass](docs/hollow_audio.md) completes campaign music with four spectral themes, shadow and echo warnings, seal-breaking feedback, and Breach Heart phase and containment cues.
 
+[Loot and equipment audio](docs/reward_audio.md) adds material sounds for equipping and removing gear, distinct Rare/Relic drops, collection and secret-treasure feedback. Settings → Audio includes a saved Quiet mode, with peak protection for the combined game mix.
+
 Visit Greyhaven's **Training ground** to practice your current build against one target or a group and inspect damage, effect triggers, and resource usage. Practice grants no XP, mastery, or loot and leaves your character unchanged. At Torren, open **Gear → Equipment presets** to save and switch up to eight named outfits. See [training](docs/training_ground.md) and [equipment presets](docs/equipment_presets.md).
 
 Open **C → Character → Build loadouts** or **Gear → Build loadouts** to save eight complete builds covering equipment, fragments, Manifestations, skill mutations and passives. Switch at Mara after reviewing costs and requirements; the transaction applies everything together or leaves your character unchanged. Training comparisons identify matching named loadouts. See [complete build loadouts](docs/build_loadouts.md).

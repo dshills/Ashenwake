@@ -36,8 +36,10 @@ public partial class AppearanceSmoke
         {
             long id = EquipmentId(slot);
             int unequips = _unequips, equips = _equips;
+            var audio = RewardAudio.Count(_hud);
             await DragCard("GearEquipment" + slot, "GearBackpack");
             Check("drag_unequips_" + slot.ToString().ToLowerInvariant() + "_once", EquipmentId(slot) == 0 && _unequips == unequips + 1 && _equips == equips);
+            Check("drag_unequip_audio_once_" + slot.ToString().ToLowerInvariant(), RewardAudio.Count(_hud) == audio + 1 && RewardAudio.LastCue(_hud).EndsWith("_off", StringComparison.Ordinal));
             Check("drag_removes_world_and_preview_" + slot.ToString().ToLowerInvariant(), !HasEquipmentModule(_sandbox.GetNode("Actor1"), slot) &&
                 !HasEquipmentModule(Find<CharacterPreview>("CharacterPreview"), slot) && ModelsAgree());
             CheckOwnedItems(inventory, "remove_" + slot.ToString().ToLowerInvariant());
@@ -46,6 +48,7 @@ public partial class AppearanceSmoke
 
             await DragCard("GearInventoryItem" + id, "GearEquipment" + slot);
             Check("drag_reequips_" + slot.ToString().ToLowerInvariant() + "_once", EquipmentId(slot) == id && _equips == equips + 1 && _unequips == unequips + 1);
+            Check("drag_equip_audio_once_" + slot.ToString().ToLowerInvariant(), RewardAudio.Count(_hud) == audio + 2 && RewardAudio.LastCue(_hud).EndsWith("_on", StringComparison.Ordinal));
             Check("drag_restores_world_and_preview_" + slot.ToString().ToLowerInvariant(), HasEquipmentModule(_sandbox.GetNode("Actor1"), slot) &&
                 HasEquipmentModule(Find<CharacterPreview>("CharacterPreview"), slot) && ModelsAgree());
             CheckOwnedItems(inventory, "restore_" + slot.ToString().ToLowerInvariant());
@@ -92,6 +95,7 @@ public partial class AppearanceSmoke
 
     private async Task StaleDrag()
     {
+        var audio = RewardAudio.Count(Find<GearLoadout>("GearLoadout"));
         long head = EquipmentId(EquipmentSlot.Head);
         var source = Find<Control>("GearEquipmentHead");
         await RevealDragControl(source);
@@ -102,6 +106,7 @@ public partial class AppearanceSmoke
         string hash = _session.StateHash;
         int operations = _session.CaptureReplay().Frames.Length, unequips = _unequips, equips = _equips;
         await EndDrag(DropPoint(Find<Control>("GearBackpack")));
+        Check("drag_stale_invalidated_payload_is_silent", RewardAudio.Count(Find<GearLoadout>("GearLoadout")) == audio);
         Check("drag_stale_payload_cannot_send_an_extra_transaction", _session.StateHash == hash && _session.CaptureReplay().Frames.Length == operations &&
             _unequips == unequips && _equips == equips && EquipmentId(EquipmentSlot.Head) == 0);
         await DragCard("GearInventoryItem" + head, "GearEquipmentHead");
@@ -178,7 +183,9 @@ public partial class AppearanceSmoke
     {
         string hash = _session.StateHash;
         int equips = _equips, unequips = _unequips, operations = _session.CaptureReplay().Frames.Length;
+        var audio = RewardAudio.Count(Find<GearLoadout>("GearLoadout"));
         await DragCard(sourceName, targetName);
+        Check("drag_rejection_audio_once_" + name, RewardAudio.Count(Find<GearLoadout>("GearLoadout")) == audio + 1 && RewardAudio.LastCue(Find<GearLoadout>("GearLoadout")) == "gear_reject");
         Check("drag_rejects_" + name + "_without_transaction", _session.StateHash == hash && _session.CaptureReplay().Frames.Length == operations && _equips == equips && _unequips == unequips);
         await InventoryRejectedDropFeedback(name, targetName);
     }
@@ -187,6 +194,7 @@ public partial class AppearanceSmoke
     {
         string hash = _session.StateHash;
         int operations = _session.CaptureReplay().Frames.Length, equips = _equips, unequips = _unequips;
+        var audio = RewardAudio.Count(Find<GearLoadout>("GearLoadout"));
         var source = Find<Control>(sourceName); await RevealDragControl(source);
         Check("drag_" + name + "_starts_real_drag", await BeginDrag(source));
         if (escape)
@@ -197,6 +205,7 @@ public partial class AppearanceSmoke
             Check("drag_escape_ends_native_drag_before_release", !GetViewport().GuiIsDragging());
         }
         await EndDrag(new(8, GetViewport().GetVisibleRect().Size.Y - 8));
+        Check("drag_" + name + "_audio_matches_release_or_cancel", RewardAudio.Count(Find<GearLoadout>("GearLoadout")) == audio + (escape ? 0 : 1));
         Check("drag_" + name + "_leaves_equipment_unchanged", !GetViewport().GuiIsDragging() && _session.StateHash == hash &&
             _session.CaptureReplay().Frames.Length == operations && _equips == equips && _unequips == unequips);
         _hud.PresentInteraction("ServiceOpened:service.torren"); await Frames();
@@ -206,11 +215,13 @@ public partial class AppearanceSmoke
     {
         var source = Find<Control>(sourceName); var target = Find<Control>(targetName);
         await RevealDragControl(target); await RevealDragControl(source);
+        var audio = RewardAudio.Count(_hud) + RewardAudio.Count(Find<GearLoadout>("GearLoadout"));
         bool started = await BeginDrag(source);
         if (requireStarted && !started) throw new InvalidDataException("Viewport gesture did not begin dragging " + sourceName);
         Vector2 point = DropPoint(target);
         GetViewport().PushInput(new InputEventMouseMotion { Position = point, Relative = point - source.GetGlobalRect().GetCenter(), ButtonMask = MouseButtonMask.Left }, true);
         await Frames();
+        Check("drag_hover_is_silent_" + _dragGestures, RewardAudio.Count(_hud) + RewardAudio.Count(Find<GearLoadout>("GearLoadout")) == audio);
         if (capture is not null) await Capture(capture);
         await EndDrag(point);
         Check("drag_gesture_" + _dragGestures + "_clears_native_drag_state", !GetViewport().GuiIsDragging());
@@ -220,6 +231,7 @@ public partial class AppearanceSmoke
     {
         string hash = _session.StateHash;
         int operations = _session.CaptureReplay().Frames.Length, equips = _equips, unequips = _unequips;
+        var audio = RewardAudio.Count(Find<GearLoadout>("GearLoadout"));
         var source = Find<Control>("GearEquipmentChest"); await RevealDragControl(source);
         Check("drag_" + reason + "_starts_real_drag", await BeginDrag(source));
         var board = Find<GearLoadout>("GearLoadout");
@@ -262,6 +274,7 @@ public partial class AppearanceSmoke
         Check("drag_" + reason + "_cancels_before_pointer_release", !GetViewport().GuiIsDragging() &&
             !DragPauseOwners.Contains("equipment-drag") && DragPauseOwners.Contains("session") && _sandbox.IsPaused);
         await EndDrag(new(8, GetViewport().GetVisibleRect().Size.Y - 8));
+        Check("drag_" + reason + "_cancellation_is_silent", RewardAudio.Count(board) == audio);
         Check("drag_" + reason + "_preserves_equipment_and_history", _session.StateHash == hash &&
             _session.CaptureReplay().Frames.Length == operations && _equips == equips && _unequips == unequips);
         _hud.PresentInteraction("ServiceOpened:service.torren"); await Frames();
@@ -269,6 +282,7 @@ public partial class AppearanceSmoke
 
     private async Task CancelDragDuringDrop()
     {
+        var audio = RewardAudio.Count(_hud) + RewardAudio.Count(Find<GearLoadout>("GearLoadout"));
         string hash = _session.StateHash;
         int operations = _session.CaptureReplay().Frames.Length, equips = _equips, unequips = _unequips;
         var source = Find<Control>("GearEquipmentHead"); await RevealDragControl(source);
@@ -289,6 +303,7 @@ public partial class AppearanceSmoke
         try { await EndDrag(DropPoint(target)); }
         finally { target.Receive = receive; }
         Check("drag_focus_during_drop_defers_native_preview_teardown", delivered && deferred && !GetViewport().GuiIsDragging());
+        Check("drag_focus_during_drop_cancellation_is_silent", RewardAudio.Count(_hud) + RewardAudio.Count(board) == audio);
         Check("drag_focus_during_drop_immediately_invalidates_transaction", _session.StateHash == hash &&
             _session.CaptureReplay().Frames.Length == operations && _equips == equips && _unequips == unequips);
     }

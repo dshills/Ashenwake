@@ -349,6 +349,7 @@ public partial class EndgameDirector : Node3D
     };
     private void Observe(EndgameRuntimeResult result)
     {
+        PresentWorldRewardAudio(result);
         ObserveOpeningGuidance(result);
         if (result.WorldEvents.Length > 0 || result.CombatEvents.Any(e => e.Kind is "LootPickedUp" or "LootDropped")) _revision++;
         if (result.CombatEvents.Any(e => e.Kind == "LootPickedUp") || result.WorldEvents.Any(e => e.StartsWith("RegionalHuntRewardClaimed:", StringComparison.Ordinal) || e.StartsWith("SecretTreasureClaimed:", StringComparison.Ordinal) || e.StartsWith("RoamingChampionRewardClaimed:", StringComparison.Ordinal))) RefreshCollection(_session.Capture(), persist: true);
@@ -582,6 +583,7 @@ public partial class EndgameDirector : Node3D
     }
     private void Adopt(EndgameRuntimeSession session, bool retainExperiment = false)
     {
+        _worldRewardCues.Reset(session.Tick); RewardAudio.Stop(this);
         ResetPersonalStash(); ResetCollection(); ClearDeathRecap(); EndTraining(false); ClearTrainingComparison(); ResetOpeningGuidance();
         _championPanel?.SessionRestored(); _championPresentation?.Reset(); _championSelection = _championNotice = "";
         _secretPanel?.SessionRestored(); _secretPresentation?.Reset(); _secretSelection = _secretClue = _secretNotice = "";

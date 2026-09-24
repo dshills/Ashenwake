@@ -22,8 +22,15 @@ internal sealed class LootDropCues
         if (e.Kind != "LootDropped") return null;
         var drop = loot.FirstOrDefault(l => l.Id == e.Amount && l.Item.DefinitionId == e.ContentId);
         if (drop is null || !_seen.Add(drop.Id)) return null;
-        return drop.Item.Rarity is "Legendary" or "Godwrought" ? drop : null;
+        return drop.Item.Rarity is "Rare" or "Relic" or "Legendary" or "Godwrought" ? drop : null;
     }
 
-    public static string Cue(string rarity) => rarity == "Godwrought" ? "loot_godwrought" : "loot_legendary";
+    public static string Cue(string rarity) => rarity switch
+    {
+        "Rare" => "drop_rare",
+        "Relic" => "drop_relic",
+        "Legendary" => "loot_legendary",
+        "Godwrought" => "loot_godwrought",
+        _ => ""
+    };
 }

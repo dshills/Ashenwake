@@ -49,14 +49,14 @@ public partial class Sandbox
     private ScrollContainer _settingsScroll = null!;
     private Label _settingsStatus = null!, _settingsDescription = null!;
     private Button _settingsRestore = null!;
-    private CheckButton _settingsEffects = null!, _settingsShake = null!;
+    private CheckButton _settingsEffects = null!, _settingsShake = null!, _settingsQuiet = null!;
     private OptionButton _settingsGraphicsQuality = null!, _settingsRenderScale = null!, _settingsDisplayMode = null!;
     private Label _settingsResolution = null!;
     private Vector2I _settingsResolutionPixels;
     private float _settingsResolutionScale = -1;
     private string _settingsPage = "Controls";
     private Vector2 _settingsViewport = new(-1, -1), _settingsLayoutSize, _settingsLayoutOrigin;
-    private bool _syncingSettings, _settingsSaveFailed;
+    private bool _syncingSettings, _settingsSaveFailed, _quietMode;
     private float _masterVolume = 1, _musicVolume = 1, _effectsVolume = 1, _interfaceVolume = 1;
 
     private void BuildSettings()
@@ -128,11 +128,11 @@ public partial class Sandbox
     private void BuildSettingsAudio(VBoxContainer body)
     {
         body.AddChild(SettingsText("Sound of the world", 22, new("eee1c8")));
-        body.AddChild(SettingsText("Balance the environmental beds, combat sounds and menu feedback. Zero mutes a channel; Master affects them all.", 14));
+        body.AddChild(SettingsText("Balance music, ambience, combat sounds and menu feedback. Zero mutes a channel; Master affects them all.", 14));
         foreach (var entry in new[] { ("Master", "Master volume", "Overall sound level."),
-            ("Music", "Music & ambience", "Regional wind, water and other environmental beds."),
-            ("Effects", "Effects", "Combat impacts, abilities and warning cues."),
-            ("UI", "Interface", "Feedback when using these settings controls.") })
+            ("Music", "Music & ambience", "Regional music, wind, water and atmospheric sounds."),
+            ("Effects", "Effects", "Combat, warnings, loot collection and treasure discoveries."),
+            ("UI", "Interface", "Menu feedback and equipping or removing gear.") })
         {
             string bus = entry.Item1;
             var card = new PanelContainer(); card.AddThemeStyleboxOverride("panel", SettingsBox(new("142631"), new("385563"), 14)); body.AddChild(card);
@@ -168,6 +168,10 @@ public partial class Sandbox
             slider.DragEnded += changed => { if (changed) SavePreferences(); };
             stack.AddChild(SettingsText(entry.Item3, 12));
         }
+        _settingsQuiet = new CheckButton { Name = "SettingsQuietMode", Text = "Quiet mode", ButtonPressed = _quietMode };
+        _settingsQuiet.Toggled += enabled => { if (_syncingSettings) return; _quietMode = enabled; ApplySettingsAudio(); SavePreferences(); };
+        body.AddChild(_settingsQuiet);
+        body.AddChild(SettingsText("Softens loud attacks and overlapping sounds while keeping quieter details and warnings clear. Your volume and mute choices stay in effect.", 13));
         body.AddChild(SettingsButton("SettingsTestSound", "Test interface sound", () => { }));
     }
 
@@ -275,6 +279,7 @@ public partial class Sandbox
                 case "Graphics": SetGraphicsQuality("High"); SetRenderScale(1.25f); SetDisplayMode("Windowed"); break;
                 case "Audio":
                     _masterVolume = _musicVolume = _effectsVolume = _interfaceVolume = 1;
+                    _quietMode = false; _settingsQuiet.SetPressedNoSignal(false);
                     foreach (var slider in _volumeSliders.Values) slider.Value = 100;
                     ApplySettingsAudio(); break;
                 case "Accessibility":
@@ -375,7 +380,11 @@ public partial class Sandbox
         _ => action
     };
     private void SettingsNotice(string text) { if (_settingsStatus is not null) _settingsStatus.Text = text; }
-    private void ApplySettingsAudio() => ClientAudio.ApplyVolumes(_masterVolume, _musicVolume, _effectsVolume, _interfaceVolume);
+    private void ApplySettingsAudio()
+    {
+        ClientAudio.ApplyVolumes(_masterVolume, _musicVolume, _effectsVolume, _interfaceVolume);
+        ClientAudio.ApplyQuietMode(_quietMode);
+    }
     private float ReadSettingsVolume(string bus) => bus switch { "Master" => _masterVolume, "Music" => _musicVolume, "Effects" => _effectsVolume, _ => _interfaceVolume };
     private void SettingsVisibilityChanged()
     {

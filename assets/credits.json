@@ -17,6 +17,7 @@
         "game/Ashenwake.Client/LootVisual.Catalog.cs",
         "game/Ashenwake.Client/CombatEffects.cs",
         "game/Ashenwake.Client/CombatAudio.cs",
+        "game/Ashenwake.Client/RewardAudio.cs",
         "game/Ashenwake.Client/SandboxCombatFeedback.cs",
         "game/Ashenwake.Client/CharacterVisual.MidgameEquipment.cs",
         "game/Ashenwake.Client/CharacterVisual.LateLegendaries.cs",

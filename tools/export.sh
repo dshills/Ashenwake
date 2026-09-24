@@ -170,6 +170,12 @@ python3 tools/check-godot-log.py "$opening_audio_output/smoke.log"
 rg -q 'OpeningAudioClientSmokePassed' "$opening_audio_output/smoke.log"
 aw campaign replay "$opening_audio_output/opening-audio.awcampaign"
 
+reward_audio_output="$package_output/reward-audio-client"
+mkdir -p "$reward_audio_output"
+"$binary" --headless --quit-after 4000 --log-file "$reward_audio_output/smoke.log" -- --reward-audio-smoke --output="$reward_audio_output"
+python3 tools/check-godot-log.py "$reward_audio_output/smoke.log"
+rg -q 'RewardAudioClientSmokePassed' "$reward_audio_output/smoke.log"
+
 verdant_audio_output="$package_output/verdant-audio-client"
 mkdir -p "$verdant_audio_output"
 "$binary" --headless --quit-after 30000 --log-file "$verdant_audio_output/smoke.log" -- --verdant-audio-smoke --output="$verdant_audio_output"

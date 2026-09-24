@@ -13,6 +13,7 @@ public partial class SettingsSmoke : Node3D
     private readonly Dictionary<string, bool> _checks = [];
     private readonly List<string> _captures = [];
     private readonly List<object> _displaySamples = [];
+    private readonly List<AudioMixMeasurement> _audioMixSamples = [];
     private EndgameDirector _director = null!;
     private Sandbox _sandbox = null!;
     private string _output = "";
@@ -38,6 +39,9 @@ public partial class SettingsSmoke : Node3D
                 _output.Length == 0 || Directory.Exists(_output) && Directory.EnumerateFileSystemEntries(_output).Any(p => !p.EndsWith(".log", StringComparison.Ordinal)))
                 throw new InvalidDataException("Settings smoke requires --settings-smoke --output=<fresh-artifact-directory>, without custom preferences or discipline.");
             Directory.CreateDirectory(_output); _writeReport = true; Engine.MaxFps = 60;
+            // Simulate a previous scene's enabled profile: legacy preferences must
+            // actively restore their default rather than inherit global audio state.
+            ClientAudio.ApplyQuietMode(true);
             SeedRecovery(); Resize(1280, 800); await StartDirector();
             if (DisplayServer.GetName() != "headless") GetWindow().GrabFocus();
             await RecoveryAndLayout();
@@ -85,6 +89,7 @@ public partial class SettingsSmoke : Node3D
             Value<bool>(_sandbox, "_reduceEffects") && Value<bool>(_sandbox, "_reduceShake") && Near(Value<float>(_sandbox, "_masterVolume"), .8));
         Check("recovery_preserves_primary_and_backup_until_deliberate_change", ReadSettings() == primary && System.IO.File.ReadAllText(SettingsPath + ".bak") == backup);
         Check("legacy_partial_key_map_keeps_defaults_for_other_actions", Keys["left"] == Key.A && Keys["right"] == Key.D && Keys["interact"] == Key.F);
+        Check("legacy_settings_default_to_quiet_mode_off", !Value<bool>(_sandbox, "_quietMode") && !ClientAudio.QuietModeEnabled && !Find<CheckButton>("SettingsQuietMode").ButtonPressed);
         Check("legacy_settings_default_to_high_graphics", _sandbox.GraphicsQuality == "High" && Find<OptionButton>("SettingsGraphicsQuality").Selected == 0);
         foreach (var size in new[] { (1280, 800), (1000, 720), (780, 720) })
         {
@@ -180,11 +185,33 @@ public partial class SettingsSmoke : Node3D
         Check("hub_without_regional_bed_keeps_selected_music_gain", Field<string>(_sandbox, "_ambienceCue").Length == 0 &&
             !Descendants(_sandbox).OfType<AudioStreamPlayer>().Any(n => n.Name == "RegionalAmbience") && Near(Mathf.DbToLinear(AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex("Music"))), .41));
         Check("interface_actions_have_their_own_audio_channel", Descendants(_director).OfType<AudioStreamPlayer>().Any(n => n.Name == "InterfaceAudio" && n.Bus == "UI"));
+        await Click("SettingsQuietMode");
+        Check("quiet_mode_applies_and_persists_without_changing_levels", ClientAudio.QuietModeEnabled &&
+            Value<bool>(_sandbox, "_quietMode") && JsonNode.Parse(ReadSettings())!["quietMode"]!.GetValue<bool>() &&
+            Channels.All(c => Near(ClientAudio.GetVolume(c), Find<HSlider>("SettingsVolume" + c).Value / 100)));
+        int master = AudioServer.GetBusIndex(ClientAudio.MasterBus);
+        int count = AudioServer.GetBusEffectCount(master);
+        for (int repeat = 0; repeat < 10; repeat++) { ClientAudio.EnsureBuses(); ClientAudio.ApplyQuietMode(true); }
+        Check("repeated_scene_audio_setup_keeps_exactly_one_ordered_master_chain", count == 2 && AudioServer.GetBusEffectCount(master) == count &&
+            AudioServer.GetBusEffect(master, 0) is AudioEffectCompressor && AudioServer.GetBusEffect(master, 1) is AudioEffectHardLimiter &&
+            AudioServer.IsBusEffectEnabled(master, 0) && AudioServer.IsBusEffectEnabled(master, 1));
+        foreach (string channel in Channels)
+        {
+            float volume = ClientAudio.GetVolume(channel);
+            ClientAudio.SetVolume(channel, 0); ClientAudio.ApplyQuietMode(false); ClientAudio.ApplyQuietMode(true);
+            Check("quiet_toggle_preserves_" + channel.ToLowerInvariant() + "_true_mute", AudioServer.IsBusMute(AudioServer.GetBusIndex(channel)) && ClientAudio.GetVolume(channel) == 0);
+            ClientAudio.SetVolume(channel, volume);
+        }
+        if (DisplayServer.GetName() != "headless") _audioMixSamples.AddRange(await AudioMixProbe.Run(this, Check));
         await Capture("settings-audio-adjusted.png");
         await Click("SettingsRestore");
         Check("audio_restore_resets_all_four_buses_and_widgets", Channels.All(c => Near(Find<HSlider>("SettingsVolume" + c).Value, 100) && !AudioServer.IsBusMute(AudioServer.GetBusIndex(c)) && Near(AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex(c)), 0)));
+        Check("audio_restore_disables_quiet_compression_but_preserves_peak_guard", !ClientAudio.QuietModeEnabled &&
+            !Value<bool>(_sandbox, "_quietMode") && !Find<CheckButton>("SettingsQuietMode").ButtonPressed &&
+            !AudioServer.IsBusEffectEnabled(master, 0) && AudioServer.IsBusEffectEnabled(master, 1));
         Check("audio_restore_keeps_rebound_controls_and_accessibility", Keys["left"] == Key.O && Value<bool>(_sandbox, "_reduceEffects"));
         foreach (var pair in new[] { ("Master", 72), ("Music", 41), ("Effects", 63), ("UI", 54) }) await SetSlider("SettingsVolume" + pair.Item1, pair.Item2);
+        await Click("SettingsQuietMode");
         await Click("SettingsTabAccessibility"); await Click("SettingsRestore");
         Check("accessibility_restore_updates_live_effect_flags_and_widgets", !Value<bool>(_sandbox, "_reduceEffects") && !Value<bool>(_sandbox, "_reduceShake") &&
             !Find<CheckButton>("SettingsReducedEffects").ButtonPressed && !Find<CheckButton>("SettingsReducedShake").ButtonPressed);
@@ -298,6 +325,8 @@ public partial class SettingsSmoke : Node3D
         Check("restart_applies_all_persisted_audio_values", Near(Value<float>(_sandbox, "_masterVolume"), .72) && Near(Value<float>(_sandbox, "_musicVolume"), .41) &&
             Near(Value<float>(_sandbox, "_effectsVolume"), .63) && Near(Value<float>(_sandbox, "_interfaceVolume"), .54) &&
             Near(Mathf.DbToLinear(AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex("Music"))), .41));
+        Check("restart_restores_quiet_mode_once_with_saved_volumes", Value<bool>(_sandbox, "_quietMode") && ClientAudio.QuietModeEnabled &&
+            Find<CheckButton>("SettingsQuietMode").ButtonPressed && AudioServer.GetBusEffectCount(AudioServer.GetBusIndex(ClientAudio.MasterBus)) == 2);
         Check("restart_loads_persisted_graphics_quality_and_selector", _sandbox.GraphicsQuality == "Performance" && Find<OptionButton>("SettingsGraphicsQuality").Selected == 1);
         Check("restart_applies_persisted_quality_to_renderer", GetViewport().Msaa3D == Viewport.Msaa.Msaa2X &&
             !Field<WorldEnvironment>(_sandbox, "_worldEnvironment").Environment.SsaoEnabled);
@@ -332,13 +361,14 @@ public partial class SettingsSmoke : Node3D
         System.IO.File.WriteAllText(SettingsPath + ".bak", "{broken");
         string nonfiniteBytes = ReadSettings(); await StartDirector(); _restarts++; await Click("FrontSettings");
         Check("nonfinite_volume_and_invalid_backup_leave_safe_defaults", Near(Value<float>(_sandbox, "_masterVolume"), 1) && Near(Value<float>(_sandbox, "_musicVolume"), 1) &&
-            !Value<bool>(_sandbox, "_reduceEffects") && Keys["left"] == Key.A && ReadSettings() == nonfiniteBytes && Status.Text.Length > 0);
+            !Value<bool>(_sandbox, "_reduceEffects") && !ClientAudio.QuietModeEnabled && Keys["left"] == Key.A && ReadSettings() == nonfiniteBytes && Status.Text.Length > 0);
         await RemoveDirector();
-        var legacy = JsonNode.Parse(saved)!.AsObject(); foreach (string key in VolumeProperties) legacy.Remove(key); legacy.Remove("graphicsQuality"); legacy.Remove("renderScale"); legacy.Remove("displayMode");
+        var legacy = JsonNode.Parse(saved)!.AsObject(); foreach (string key in VolumeProperties) legacy.Remove(key); legacy.Remove("graphicsQuality"); legacy.Remove("renderScale"); legacy.Remove("displayMode"); legacy.Remove("quietMode");
         System.IO.File.WriteAllText(SettingsPath, legacy.ToJsonString());
         string legacyBytes = ReadSettings(); await StartDirector(); _restarts++; await Click("FrontSettings");
         Check("legacy_settings_without_audio_fields_keep_options_and_default_volume", Keys["left"] == Key.O && Value<bool>(_sandbox, "_reduceEffects") &&
             Value<int>(_sandbox, "_minimumLootRarity") == 3 && Channels.All(c => Near(AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex(c)), 0)) && ReadSettings() == legacyBytes);
+        Check("legacy_settings_without_quiet_mode_load_off_read_only", !ClientAudio.QuietModeEnabled && !Value<bool>(_sandbox, "_quietMode") && ReadSettings() == legacyBytes);
         Check("legacy_settings_without_graphics_field_load_high_read_only", _sandbox.GraphicsQuality == "High" && Find<OptionButton>("SettingsGraphicsQuality").Selected == 0 && ReadSettings() == legacyBytes);
         Check("legacy_settings_default_to_enhanced_and_windowed_without_rewrite", Near(_sandbox.RenderScale, 1.25) && _sandbox.DisplayMode == "Windowed" && ReadSettings() == legacyBytes);
         Check("all_settings_restarts_leave_character_archives_absent", !Directory.EnumerateFiles(_output, "*.save.json").Any() && !System.IO.File.Exists(Path.Combine(_output, "current-character.txt")));
@@ -474,9 +504,10 @@ public partial class SettingsSmoke : Node3D
             checks = _checks,
             captures = _captures,
             displaySamples = _displaySamples,
+            audioMixSamples = _audioMixSamples,
             restarts = _restarts,
             error,
-            scope = "Shipping EndgameDirector ordinary startup and native viewport settings clicks/keys at 1280x800, 1000x720 and 780x720; duplicate and cancelled bindings, tab restores, High/Performance selection and persistence, invalid graphics normalization, actual bus gain/mute and existing combat/interface voice routing (regional bed routing is covered by the regional diagnostics), session-only write failure, fresh director preference reloads, invalid-volume backup/default recovery, legacy settings, and in-game/manual pause isolation. The graphics and rarity OptionButtons use their public Select/ItemSelected contract because headless input does not dispatch popup-window keyboard events; sliders and all other changes use viewport input. Graphics preferences are checked for gameplay-state isolation; rendered quality is covered by the graphics diagnostic. Settings fixtures and one new native character are confined to this fresh artifact directory. No existing player saves are edited; audible quality and physical controllers are not certified."
+            scope = "Shipping EndgameDirector ordinary startup and native viewport settings clicks/keys at 1280x800, 1000x720 and 780x720; duplicate and cancelled bindings, tab restores, High/Performance selection and persistence, invalid graphics normalization, saved Quiet mode, single Master compressor/peak guard, native-only captured aggregate and representative audio mix measurements, actual bus gain/mute and existing combat/interface voice routing (regional bed routing is covered by the regional diagnostics), session-only write failure, fresh director preference reloads, invalid-volume backup/default recovery, legacy settings, and in-game/manual pause isolation. The graphics and rarity OptionButtons use their public Select/ItemSelected contract because headless input does not dispatch popup-window keyboard events; sliders and all other changes use viewport input. Graphics preferences are checked for gameplay-state isolation; rendered quality is covered by the graphics diagnostic. Settings fixtures and one new native character are confined to this fresh artifact directory. No existing player saves are edited; audible quality and physical controllers are not certified."
         };
         if (_writeReport) System.IO.File.WriteAllText(Path.Combine(_output, "settings-review.json"), JsonData.Write(report));
         GD.Print(JsonData.Write(report)); GetTree().Quit(passed ? 0 : 1);

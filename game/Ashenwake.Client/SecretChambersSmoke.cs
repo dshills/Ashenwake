@@ -59,6 +59,7 @@ public partial class SecretChambersSmoke : Node
     }
     private async Task Explore(SecretChamberDefinition definition)
     {
+        int treasureSoundsBefore = _director.SecretTreasureAudioCount;
         CloseMenus();
         for (int i = 0; i < CampaignRuntimeSmoke.MaximumCommands &&
             !(Session.Campaign.ActiveEncounterId == definition.SourceEncounterId && Session.Campaign.EncounterCleared && Session.Campaign.Capture().Campaign.Exploration is null); i++)
@@ -94,6 +95,7 @@ public partial class SecretChambersSmoke : Node
             Check(definition.Id + "_clue_" + i + "_progress", Session.SecretChambers.Entries.Single(e => e.Id == definition.Id).PuzzleStep == i + 1);
         }
         Check(definition.Id + "_revealed", Session.SecretChambers.Entries.Single(e => e.Id == definition.Id).Revealed);
+        Check(definition.Id + "_clues_do_not_spoil_treasure_audio", _director.SecretTreasureAudioCount == treasureSoundsBefore);
         RoundTrip(definition.Id + "_puzzle_save");
         Walk(definition.EntrancePosition, SecretChamberCatalog.InteractionRange);
         Call(_director, "Interact", definition.Id + ".enter"); await Frames();
@@ -148,10 +150,18 @@ public partial class SecretChambersSmoke : Node
         RoundTrip(definition.Id + "_victory_save");
         Walk(SecretChamberCatalog.TreasurePosition, SecretChamberCatalog.InteractionRange);
         Call(_director, "Interact", definition.Id + ".treasure"); await Frames(); await Capture(definition.Id + "-treasure.png");
+        Check(definition.Id + "_unclaimed_treasure_stays_quiet", _director.SecretTreasureAudioCount == treasureSoundsBefore);
         await ClickAction(a => a.Action == "claim"); ConfirmIfVisible(true); await Frames();
+        Check(definition.Id + "_earned_treasure_audio_once", _director.SecretTreasureAudioCount == treasureSoundsBefore + 1);
+        var earnedClaim = new EndgameRuntimeResult(true, "", [], Session.WorldEvents.ToArray());
+        Check(definition.Id + "_claim_event_is_authoritative", earnedClaim.WorldEvents.Contains("SecretTreasureClaimed:" + definition.Id));
+        Call(_director, "Observe", earnedClaim);
+        Check(definition.Id + "_duplicate_claim_presentation_quiet", _director.SecretTreasureAudioCount == treasureSoundsBefore + 1);
         Check(definition.Id + "_treasure_once", Session.SecretChambers.Run?.Stage == "Claimed" && Session.Capture().Campaign.Production.Progression.Character.Items.Count(i => i.DefinitionId == definition.RewardItemId) == beforeReward + 1);
         string hash = Session.StateHash; Check(definition.Id + "_duplicate_claim_rejected", !Session.ClaimSecretTreasure().Success && Session.StateHash == hash);
         RoundTrip(definition.Id + "_claimed_save");
+        Call(_director, "Observe", earnedClaim);
+        Check(definition.Id + "_claimed_load_and_refresh_quiet", _director.SecretTreasureAudioCount == treasureSoundsBefore + 1);
         string previewHash = Session.StateHash;
         Call(_director, "OpenCollection"); Collection.SelectItem(definition.RewardItemId); await Frames();
         Check(definition.Id + "_collection_tracks_discoveries", CollectionDisplay.Cards.Count(c => c.Entry.SecretChamberId.Length > 0) == definition.Act);

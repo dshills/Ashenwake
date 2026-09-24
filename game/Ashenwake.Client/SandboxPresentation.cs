@@ -393,6 +393,8 @@ public partial class Sandbox
         _legendaryTriggerText = _legendaryTriggerPower = ""; _legendaryTriggerUntil = 0;
         _lastOathChargeCue = -30;
         _lootDropCues.Reset(_session.View.Loot);
+        _lootCollectionCues.Reset(_session.View.Inventory, _session.Tick);
+        RewardAudio.StopTree(this);
         foreach (var voice in _voices) voice.Stop();
         _openingAudio?.Reset(_session.View);
         _shake = 0;

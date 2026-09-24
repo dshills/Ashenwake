@@ -29,6 +29,7 @@ public partial class Launch : Node
             arguments.Contains("--cinder-audio-smoke") ? "res://CinderAudioSmoke.tscn" :
             arguments.Contains("--spine-audio-smoke") ? "res://SpineAudioSmoke.tscn" :
             arguments.Contains("--hollow-audio-smoke") ? "res://HollowAudioSmoke.tscn" :
+            arguments.Contains("--reward-audio-smoke") ? "res://RewardAudioSmoke.tscn" :
             arguments.Contains("--hollow-exploration-smoke") ? "res://HollowExplorationSmoke.tscn" :
             arguments.Contains("--spine-exploration-smoke") ? "res://SpineExplorationSmoke.tscn" :
             arguments.Contains("--cinder-exploration-smoke") ? "res://CinderExplorationSmoke.tscn" :

@@ -1,6 +1,7 @@
 using Ashenwake.Core.Combat;
 using Ashenwake.Core.Adventure;
 using Ashenwake.Core.Content;
+using Ashenwake.Core.Endgame;
 using Ashenwake.Core.Production;
 using Ashenwake.Core.Progression;
 using Ashenwake.Core.Serialization;
@@ -41,6 +42,28 @@ public partial class CombatFeedbackSmoke
         var restored = CombatSession.Restore(combatJson, combat.Capture());
         sandbox.SetSession(restored); sandbox.PresentCombatEvents(last, restored);
         Check("real_restored_ground_loot_stays_quiet", sandbox.SpecialLootDropCount == discoveries && restored.StateHash == _legendaryHash);
+        sandbox.SetSession(combat);
+        var earnedDrop = combat.View.Loot.Single(l => l.Item.DefinitionId == LegendaryEquipment.Pyre);
+        int collectedBefore = sandbox.EquipmentCollectionCount;
+        for (int tick = 0; tick < 1200 && !combat.View.Inventory.Any(i => i.Id == earnedDrop.Item.Id); tick++)
+        {
+            CombatCommand[] commands;
+            if (combat.View.Actors.Any(a => a.Faction == CombatFaction.Enemy && a.Health > 0)) commands = CampaignCombatSmoke.Commands(combat.View, combat.Room);
+            else
+            {
+                var player = combat.View.Actors.Single(a => a.Id == 1);
+                var direction = CombatProductionSmoke.MovementDirection(player.Position, earnedDrop.Position, combat.Room);
+                commands = [new(CombatCommandKind.Move, X: direction.X, Z: direction.Z), new(CombatCommandKind.Pickup, ItemId: earnedDrop.Id)];
+            }
+            last = recorder.Step(combat, commands); sandbox.PresentCombatEvents(last, combat);
+            if (tick % 60 == 0) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        _legendaryHash = combat.StateHash; _legendaryCommands = recorder.FrameCount;
+        Check("earned_equipment_pickup_plays_once", combat.View.Inventory.Any(i => i.Id == earnedDrop.Item.Id) && sandbox.EquipmentCollectionCount == collectedBefore + 1);
+        sandbox.PresentCombatEvents(last, combat);
+        Check("duplicate_equipment_pickup_stays_quiet", sandbox.EquipmentCollectionCount == collectedBefore + 1 && combat.StateHash == _legendaryHash);
+        restored = CombatSession.Restore(combatJson, combat.Capture()); sandbox.SetSession(restored); sandbox.PresentCombatEvents(last, restored);
+        Check("restored_inventory_and_old_pickup_stay_quiet", sandbox.EquipmentCollectionCount == collectedBefore + 1 && restored.StateHash == _legendaryHash);
         var replay = recorder.Capture(); var result = CombatReplayRunner.Run(combatJson, replay);
         Check("legendary_discovery_combat_replays_exactly", result.Success && result.FinalHash == _legendaryHash);
         System.IO.File.WriteAllText(Path.Combine(_output, "legendary-drop.replay.json"), JsonData.Write(replay));
@@ -70,6 +93,33 @@ public partial class CombatFeedbackSmoke
         }
         Check("loot_discovery_receipts_stay_bounded_to_live_drops", cues.RetainedCount == 1);
         cues.Trim([]); Check("collected_drops_leave_no_discovery_receipt", cues.RetainedCount == 0);
+        var rare = Drop(2000, "Rare"); var relic = Drop(2001, "Relic"); var common = Drop(2002, "Common"); var tempered = Drop(2003, "Tempered");
+        CombatLoot[] tiers = [rare, relic, common, tempered]; cues.Reset([]);
+        Check("rare_and_relic_drop_cues_are_distinct", cues.Observe(Event(rare), tiers) == rare && cues.Observe(Event(relic), tiers) == relic &&
+            LootDropCues.Cue("Rare") == "drop_rare" && LootDropCues.Cue("Relic") == "drop_relic");
+        Check("ordinary_drops_do_not_add_discovery_noise", cues.Observe(Event(common), tiers) is null && cues.Observe(Event(tempered), tiers) is null && LootDropCues.Cue("Common") == "");
+        var collection = new LootCollectionCues(); collection.Reset([], 10);
+        var pickup = Event(rare) with { Kind = "LootPickedUp" };
+        CombatItem[] inventory = [rare.Item];
+        Check("pickup_requires_matching_owned_item", collection.Observe(pickup, []) is null && collection.Observe(pickup with { ContentId = "item.unknown" }, inventory) is null && collection.Observe(pickup with { ActorId = 2 }, inventory) is null);
+        Check("matching_pickup_acknowledged_once", collection.Observe(pickup, inventory) == rare.Item && collection.Observe(pickup, inventory) is null);
+        collection.Reset(inventory, 13);
+        Check("loaded_inventory_and_stale_pickup_are_quiet", collection.Observe(pickup, inventory) is null && collection.Observe(pickup with { Tick = 14 }, inventory) is null);
+        for (int i = 0; i < 1200; i++)
+        {
+            var item = Drop(3000 + i, "Rare").Item; collection.Trim([item]);
+            collection.Observe(new(20 + i, "LootPickedUp", 1, Amount: (int)item.Id, ContentId: item.DefinitionId), [item]);
+        }
+        Check("collection_receipts_bounded_to_inventory", collection.RetainedCount == 1);
+        var world = new WorldRewardCues();
+        EndgameRuntimeResult Result(params string[] events) => new(true, "", [], events);
+        Check("secret_cue_waits_for_earned_claim", world.Observe(Result("SecretClueResolved:fixture"), 1) == "" && world.Observe(Result("SecretEntranceRevealed:fixture"), 2) == "" && world.Observe(Result("SecretChamber:Victory"), 3) == "");
+        var claim = Result("SecretTreasureClaimed:fixture", "ItemGranted:fixture");
+        Check("secret_claim_has_one_distinct_acknowledgement", world.Observe(claim, 4) == "secret_treasure" && world.Observe(claim, 4) == "");
+        world.Reset(4);
+        Check("loaded_and_rejected_world_rewards_are_quiet", world.Observe(claim, 4) == "" && world.Observe(claim with { Success = false }, 5) == "");
+        Check("materials_acknowledge_only_actual_positive_awards", world.Observe(Result("SalvageMaterials:0"), 5) == "" && world.Observe(Result("SalvageMaterials:12"), 6) == "collect_currency" && world.Observe(Result("RegionalHuntRewardClaimed:fixture"), 7) == "collect_currency" && world.Observe(Result("EndgameRewardCommitted:2"), 8) == "collect_currency");
+        Check("distinct_successful_claims_each_acknowledged", world.Observe(Result("RoamingChampionRewardClaimed:fixture"), 9) == "collect_equipment" && world.Observe(claim, 10) == "secret_treasure");
         var effects = new CombatEffects(); AddChild(effects);
         try
         {

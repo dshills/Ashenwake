@@ -12,6 +12,9 @@ public static class ClientAudio
     public const string InterfaceBus = "UI";
     private static readonly string[] CategoryBuses = [MusicBus, EffectsBus, InterfaceBus];
     private static AudioStreamWav? _interfaceCue;
+    internal const string QuietEffectName = "AshenwakeQuietMix";
+    internal const string LimiterEffectName = "AshenwakePeakGuard";
+    public static bool QuietModeEnabled { get; private set; }
 
     /// <summary>Safe to call for every scene: existing levels and mute states are preserved.</summary>
     public static void EnsureBuses()
@@ -33,6 +36,47 @@ public static class ClientAudio
             try { AudioServer.SetBusSend(index, MasterBus); }
             finally { AudioServer.Unlock(); }
         }
+        EnsureMasterEffects();
+    }
+
+    // These resources live on the audio server, not a scene. Re-entering the world
+    // must neither stack compression nor reset the user's chosen levels.
+    private static void EnsureMasterEffects()
+    {
+        int master = AudioServer.GetBusIndex(MasterBus);
+        if (FindMasterEffect(QuietEffectName) < 0)
+        {
+            AudioServer.AddBusEffect(master, new AudioEffectCompressor
+            {
+                ResourceName = QuietEffectName,
+                Threshold = -18,
+                Ratio = 4,
+                Gain = 0,
+                AttackUs = 500,
+                ReleaseMs = 180,
+                Mix = 1
+            }, 0);
+            AudioServer.SetBusEffectEnabled(master, 0, QuietModeEnabled);
+        }
+        if (FindMasterEffect(LimiterEffectName) < 0)
+            AudioServer.AddBusEffect(master, new AudioEffectHardLimiter
+            { ResourceName = LimiterEffectName, PreGainDb = 0, CeilingDb = -1, Release = .1f });
+    }
+
+    internal static int FindMasterEffect(string name)
+    {
+        int master = AudioServer.GetBusIndex(MasterBus);
+        for (int index = 0; index < AudioServer.GetBusEffectCount(master); index++)
+            if (AudioServer.GetBusEffect(master, index).ResourceName == name) return index;
+        return -1;
+    }
+
+    /// <summary>Reduces loud peaks without makeup gain or changes to the volume sliders.</summary>
+    public static void ApplyQuietMode(bool enabled)
+    {
+        QuietModeEnabled = enabled;
+        EnsureBuses();
+        AudioServer.SetBusEffectEnabled(AudioServer.GetBusIndex(MasterBus), FindMasterEffect(QuietEffectName), enabled);
     }
 
     public static void ApplyVolumes(float master, float music, float effects, float ui)
