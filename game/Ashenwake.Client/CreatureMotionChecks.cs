@@ -12,7 +12,11 @@ internal static class CreatureMotionChecks
         ("enemy.needle_swarm", "Melee", "Swarm"),
         ("enemy.bloom_carrier", "Rusher", "Carrier"),
         ("boss.antler", "Beast", "Antler"),
-        ("boss.rootheart", "BellSaint", "Rootheart")
+        ("boss.rootheart", "BellSaint", "Rootheart"),
+        ("enemy.emberling", "Rusher", "Emberling"),
+        ("enemy.furnace_brute", "Armored", "Brute"),
+        ("enemy.forge_sentinel", "Armored", "Sentinel"),
+        ("boss.furnace_spindle", "BellSaint", "Spindle")
     ];
 
     public static void Run(Action<string, bool> check)
@@ -101,9 +105,34 @@ internal static class CreatureMotionChecks
             }
             finally { lowRate.Free(); highRate.Free(); }
         }
+        CheckFurnaceExposure(check);
         var unrelated = CharacterVisual.Create("enemy.ash_ghoul", "Melee");
         try { check("verdant_motion_does_not_select_unrelated_enemies", unrelated.CreatureMotionKind == "None"); }
         finally { unrelated.Free(); }
+    }
+
+    private static void CheckFurnaceExposure(Action<string, bool> check)
+    {
+        var guarded = CharacterVisual.Create("boss.furnace_spindle", "BellSaint");
+        var exposed = CharacterVisual.Create("boss.furnace_spindle", "BellSaint");
+        try
+        {
+            guarded.SetFurnaceExposed(false); exposed.SetFurnaceExposed(true);
+            var materials = Descendants(guarded).OfType<MeshInstance3D>()
+                .SelectMany(m => Enumerable.Range(0, m.Mesh.GetSurfaceCount()).Select(m.GetActiveMaterial))
+                .OfType<StandardMaterial3D>().DistinctBy(m => m.GetInstanceId()).ToArray();
+            var palette = materials.Select(m => (m.AlbedoColor, m.Emission, m.EmissionEnergyMultiplier)).ToArray();
+            var root = exposed.Transform;
+            Advance(guarded, 1); Advance(exposed, 1);
+            check("spindle_guard_and_exposure_have_distinct_actor_poses", !Same(Pose(guarded), Pose(exposed)));
+            var frozen = Pose(exposed);
+            exposed.SetFurnaceExposed(false); exposed.Animate(.1, Vector3.Zero, paused: true);
+            check("spindle_guard_change_does_not_advance_paused_pose", Same(frozen, Pose(exposed)));
+            Advance(exposed, .8);
+            check("spindle_exposure_response_preserves_actor_transform", !Same(frozen, Pose(exposed)) && exposed.Transform.IsEqualApprox(root));
+            check("spindle_exposure_never_mutates_shared_materials", palette.SequenceEqual(materials.Select(m => (m.AlbedoColor, m.Emission, m.EmissionEnergyMultiplier))));
+        }
+        finally { guarded.Free(); exposed.Free(); }
     }
 
     private static void Advance(CharacterVisual visual, double seconds, int frequency = 60, Vector3 movement = default, bool windup = false, string state = "")

@@ -75,7 +75,17 @@ public partial class CharacterVisual
             CombatCue.Dodge => .4f,
             CombatCue.Hit => .22f,
             CombatCue.Death when _creatureMotion == CreatureMotion.Rootheart => 1.3f,
+            CombatCue.Death when _creatureMotion == CreatureMotion.Spindle => 1.65f,
+            CombatCue.Death when _creatureMotion == CreatureMotion.Brute => 1.08f,
+            CombatCue.Death when _creatureMotion == CreatureMotion.Emberling => .6f,
             CombatCue.Death => _motionStyle is MotionStyle.Bell or MotionStyle.Beast ? 1.12f : .86f,
+            CombatCue.Attack when CinderCreature => _creatureMotion switch
+            {
+                CreatureMotion.Emberling => .34f,
+                CreatureMotion.Brute => .72f,
+                CreatureMotion.Sentinel => .48f,
+                _ => .8f
+            },
             CombatCue.Attack when _creatureMotion != CreatureMotion.None => _creatureMotion == CreatureMotion.Swarm ? .32f : .58f,
             _ when _weaponRig => WeaponAttackDuration,
             _ => _motionStyle switch

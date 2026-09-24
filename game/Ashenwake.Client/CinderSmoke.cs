@@ -50,6 +50,8 @@ public partial class CinderSmoke : Node
                 throw new InvalidDataException("Cinder smoke requires --cinder-smoke --output=<isolated-directory>.");
             Directory.CreateDirectory(_output); Engine.MaxFps = 60;
             CinderDepthChecks.Detached(Check);
+            CreatureMotionChecks.Run(Check);
+            FurnaceSpindleMotionChecks.Run(Check);
             _combatJson = CampaignCombatContent.Parse(Read("combat"), Read("campaign-combat")).CombatJson;
             _campaign = CampaignContent.Parse(Read("campaign"));
             _adventure = AdventureContent.Parse(Read("adventure"));
@@ -74,11 +76,20 @@ public partial class CinderSmoke : Node
             }
             var reduced = Descendants(_sandbox).OfType<CheckButton>().Single(b => b.Text == "Reduced visual effects");
             reduced.ButtonPressed = false;
+            int emberlingObservationTicks = 0;
             while (_commands < CampaignRuntimeSmoke.MaximumCommands)
             {
                 var before = _session.Capture().Campaign;
                 if (before.CompletedActs.Contains(3)) break;
                 var command = CampaignRuntimeSmoke.Next(_session);
+                // Give the first emberling time to resolve a real attack before the normal
+                // combat policy kills it. These ordinary idle inputs remain in the replay.
+                if (before.CurrentAct == 3 && _session.ActiveEncounterId == "campaign.cinder_pack" &&
+                    !_creatureAttacks.Contains("enemy.emberling") && emberlingObservationTicks < 180)
+                {
+                    command = new(CampaignRuntimeAction.Tick, Commands: []);
+                    emberlingObservationTicks++;
+                }
                 var result = _session.Execute(command);
                 if (!result.Success) throw new InvalidDataException($"Campaign command {command.Action} failed: {result.Reason}");
                 _commands++;
@@ -93,12 +104,11 @@ public partial class CinderSmoke : Node
                 var boss = _session.Combat.View.Actors.FirstOrDefault(a => a.DefinitionId == "boss.furnace_spindle");
                 var vent = (_session.Combat.View.CampaignHazards ?? []).FirstOrDefault(h => h.ContentId == "campaign.furnace_vent");
                 string signature = $"{_session.ActiveEncounterId}:{state.Exploration?.Id}:{boss?.Guarded}:{boss?.Health <= 0}:{vent?.Id}:{_session.EncounterCleared}:{_stormWarned}";
-                if (signature != _signature)
-                {
-                    _signature = signature; Refresh();
-                    _sandbox.PresentCombatEvents(result.CombatEvents, _session.Combat);
-                    await ObserveState();
-                }
+                bool changed = signature != _signature;
+                if (changed) { _signature = signature; Refresh(); }
+                _sandbox.PresentCombatEvents(result.CombatEvents, _session.Combat);
+                await ObserveCreatureEvents(result.CombatEvents);
+                if (changed) await ObserveState();
             }
             Check("real_route_completed_act_three", _session.Capture().Campaign.CompletedActs.Contains(3));
             Check("all_five_distinct_act_three_contexts_observed", _contexts.SetEquals(new[] { "cinder_fields", "cinder_extraction", "cinder_furnace", "cinder_storm", "cinder_foundry" }));
@@ -109,6 +119,7 @@ public partial class CinderSmoke : Node
             Check("furnace_guarded_and_exposed_states_observed", _guards.SetEquals(new[] { true, false }));
             Check("furnace_both_authoritative_vent_orientations_observed", _orientations.Contains("Horizontal") && _orientations.Contains("Vertical"));
             Check("furnace_victory_observed", _furnaceObserved && _victoryObserved);
+            Check("real_cinder_attacks_reach_creature_rigs", new[] { "enemy.emberling", "enemy.furnace_brute", "enemy.forge_sentinel", "boss.furnace_spindle" }.All(_creatureAttacks.Contains));
             string hash = _session.StateHash; CheckAudioSamples();
             Check("audio_generation_does_not_change_core_state", _session.StateHash == hash);
             var departedAtmosphere = _sandbox.CinderMotion;

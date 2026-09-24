@@ -11,6 +11,7 @@ namespace Ashenwake.Client;
 public partial class FurnaceSpindleVisual : Node3D
 {
     private const float ShutdownDuration = 3.2f;
+    private const float GuardReactionDuration = .62f;
     private static readonly Color HotCore = new("ffd08b");
     private static readonly Color CoolingCore = new("796d61");
     private readonly Node3D _axle = new() { Name = "FurnaceCoreAxle", Position = new(0, 3.2f, .65f) };
@@ -37,6 +38,11 @@ public partial class FurnaceSpindleVisual : Node3D
     private float _shutdownAge = ShutdownDuration;
     private float _shutdownStartAngle;
     private float _shutdownStartEnergy, _shutdownStartRange, _shutdownStartEmission;
+    private Vector3 _shutdownStartAxlePosition;
+    private readonly Vector3[] _shutdownShutterPositions = new Vector3[4];
+    private readonly Vector3[] _shutdownShutterRotations = new Vector3[4];
+    private readonly Vector3[] _shutdownPistonPositions = new Vector3[2];
+    private float _guardReactionAge = GuardReactionDuration;
 
     public bool Guarded { get; private set; }
     public bool Defeated { get; private set; }
@@ -87,8 +93,19 @@ public partial class FurnaceSpindleVisual : Node3D
             _shutdownStartEnergy = _coreLight.LightEnergy;
             _shutdownStartRange = _coreLight.OmniRange;
             _shutdownStartEmission = _coreMaterial.EmissionEnergyMultiplier;
+            _shutdownStartAxlePosition = _axle.Position;
+            for (int i = 0; i < _shutters.Length; i++)
+            {
+                _shutdownShutterPositions[i] = _shutters[i].Position;
+                _shutdownShutterRotations[i] = _shutters[i].RotationDegrees;
+            }
+            for (int i = 0; i < _pistons.Length; i++) _shutdownPistonPositions[i] = _pistons[i].Position;
         }
         else if (!_initialized || !defeated || _reducedEffects) _shutdownAge = ShutdownDuration;
+        // Armor assumes Core's new defense pose immediately. Only the subsequent mechanical
+        // recoil is timed locally, and identical snapshots cannot restart that recoil.
+        if (_initialized && !defeated && !Defeated && Guarded != guarded && !_reducedEffects) _guardReactionAge = 0;
+        else if (!_initialized || defeated || _reducedEffects) _guardReactionAge = GuardReactionDuration;
         Guarded = guarded;
         Defeated = defeated;
         VentOrientation = orientation;
@@ -106,6 +123,7 @@ public partial class FurnaceSpindleVisual : Node3D
             _clock = 0;
             _breathingPhase = 0;
             _shutdownAge = ShutdownDuration;
+            _guardReactionAge = GuardReactionDuration;
             ApplyPose();
             return;
         }
@@ -119,6 +137,7 @@ public partial class FurnaceSpindleVisual : Node3D
             _breathingPhase = (_breathingPhase + step * 1.8) % Math.Tau;
         }
         _shutdownAge = Math.Min(ShutdownDuration, _shutdownAge + step);
+        _guardReactionAge = Math.Min(GuardReactionDuration, _guardReactionAge + step);
         ApplyPose();
     }
 
@@ -126,41 +145,57 @@ public partial class FurnaceSpindleVisual : Node3D
     {
         float victory = VictoryProgress;
         float breath = !Defeated && !_reducedEffects ? (float)Math.Sin(_breathingPhase) : 0;
-        _axle.Position = new(0, 3.2f - victory * .42f, .65f);
-        float rotation = Defeated ? Mathf.RadToDeg(Mathf.LerpAngle(_shutdownStartAngle, Mathf.DegToRad(-24), victory)) : _reducedEffects ? 0 : (float)(_clock * 9);
+        float reactionTime = _guardReactionAge / GuardReactionDuration;
+        float reaction = !Defeated && !_reducedEffects ? Mathf.Sin(reactionTime * Mathf.Pi) * (1 - reactionTime) : 0;
+        float brake = ShutdownStage(0, .85f);
+        float drop = ShutdownStage(.55f, 1.5f);
+        float cooling = ShutdownStage(.2f, ShutdownDuration);
+        _axle.Position = Defeated ? _shutdownStartAxlePosition.Lerp(new(0, 2.78f, .65f), drop) :
+            new(0, 3.2f + breath * (Guarded ? .006f : .025f), .65f + (Guarded ? -.055f : .12f) * reaction);
+        float rotation = Defeated ? Mathf.RadToDeg(Mathf.LerpAngle(_shutdownStartAngle, Mathf.DegToRad(-24), brake)) : _reducedEffects ? 0 : (float)(_clock * 9);
         _axle.RotationDegrees = new(0, 0, rotation);
         _coreMaterial.AlbedoColor = HotCore.Lerp(CoolingCore, victory);
         _coreMaterial.Emission = new Color("ffb568").Lerp(new Color("8a7f73"), victory);
-        _coreMaterial.EmissionEnergyMultiplier = Defeated ? Mathf.Lerp(_shutdownStartEmission, .04f, victory) : (Guarded ? .55f : 1.1f) + breath * .07f;
+        _coreMaterial.EmissionEnergyMultiplier = Defeated ? Mathf.Lerp(_shutdownStartEmission, .04f, cooling) : (Guarded ? .55f : 1.1f) + breath * (Guarded ? .035f : .11f);
         _coreLight.LightColor = new Color("ffc68d").Lerp(new Color("9a8d7d"), victory);
-        _coreLight.LightEnergy = Defeated ? Mathf.Lerp(_shutdownStartEnergy, .08f, victory) : Guarded ? .9f : 1.65f;
-        _coreLight.OmniRange = Defeated ? Mathf.Lerp(_shutdownStartRange, 2.8f, victory) : Guarded ? 4.2f : 5.2f;
+        _coreLight.LightEnergy = Defeated ? Mathf.Lerp(_shutdownStartEnergy, .08f, cooling) : Guarded ? .9f : 1.65f;
+        _coreLight.OmniRange = Defeated ? Mathf.Lerp(_shutdownStartRange, 2.8f, cooling) : Guarded ? 4.2f : 5.2f;
         for (int i = 0; i < _shutters.Length; i++)
         {
             float side = i % 2 == 0 ? -1 : 1;
             float up = i < 2 ? -1 : 1;
             float opening = Guarded ? 0 : 1;
-            _shutters[i].Position = new(side * (.43f + opening * .57f), 3.2f + up * (.43f + opening * .25f) - victory * .2f, 1.37f);
-            _shutters[i].RotationDegrees = new(0, side * (-opening * 24 - victory * 8), -side * up * victory * 8);
+            float release = ShutdownStage(.12f + i * .12f, 1.1f + i * .12f);
+            _shutters[i].Position = Defeated ? _shutdownShutterPositions[i].Lerp(new(side, 3.0f + up * .68f, 1.37f), release) :
+                new(side * (.43f + opening * .57f), 3.2f + up * (.43f + opening * .25f), 1.37f + reaction * .075f);
+            _shutters[i].RotationDegrees = Defeated ? _shutdownShutterRotations[i].Lerp(new(0, -side * 32, -side * up * 8), release) :
+                new(0, side * (-opening * 24 - reaction * 7), -side * up * reaction * 3);
         }
         for (int i = 0; i < _vents.Length; i++)
         {
             bool active = !Defeated && (i < 2 ? VentOrientation == "Horizontal" : VentOrientation == "Vertical");
-            _vents[i].RotationDegrees = new(active ? -38 : Defeated ? -16 * victory : 0, 0, i < 2 ? 90 : 0);
+            // Warning louvers clear immediately on defeat, then droop below the inactive pose.
+            _vents[i].RotationDegrees = new(active ? -38 : Defeated ? -16 * ShutdownStage(.05f + i * .08f, .7f + i * .08f) : 0, 0, i < 2 ? 90 : 0);
             _ventMaterials[i].EmissionEnergyMultiplier = active ? 1.25f + breath * .08f : Mathf.Lerp(.13f, .015f, victory);
         }
         for (int i = 0; i < _pistons.Length; i++)
         {
             float side = i == 0 ? -1 : 1;
-            _pistons[i].Position = new(side * 2.65f, 1.25f + (Guarded ? .28f : 0) - victory * .2f, -.05f);
+            float depressurize = ShutdownStage(1.05f + i * .16f, 2.2f + i * .16f);
+            _pistons[i].Position = Defeated ? _shutdownPistonPositions[i].Lerp(new(side * 2.65f, 1.05f, -.05f), depressurize) :
+                new(side * 2.65f, 1.25f + (Guarded ? .28f : 0) + reaction * (i == 0 ? .08f : -.05f), -.05f);
         }
-        bool cooling = Defeated && _shutdownAge < ShutdownDuration && !_reducedEffects;
+        bool shedding = Defeated && _shutdownAge < ShutdownDuration && !_reducedEffects;
         for (int i = 0; i < _embers.Length; i++)
         {
             var ember = _embers[i];
             float age = _shutdownAge - i * .045f;
-            ember.Visible = cooling && age is >= 0 and < 1.9f;
-            if (!ember.Visible) continue;
+            ember.Visible = shedding && age is >= 0 and < 1.9f;
+            if (!ember.Visible)
+            {
+                ember.Transform = Transform3D.Identity;
+                continue;
+            }
             float life = age / 1.9f;
             float angle = i * 2.399f;
             ember.Position = new(Mathf.Sin(angle) * (.4f + life * .8f), 3.1f + Mathf.Cos(angle) * .48f + life * 1.4f, 1.6f + Mathf.Sin(angle) * .12f);
@@ -168,6 +203,8 @@ public partial class FurnaceSpindleVisual : Node3D
             ember.RotationDegrees = new(0, 0, i * 31 + life * 60);
         }
     }
+
+    private float ShutdownStage(float start, float end) => Defeated ? Mathf.SmoothStep(0, 1, Math.Clamp((_shutdownAge - start) / (end - start), 0, 1)) : 0;
 
     private static StandardMaterial3D HeatedMetal(string color, string glow, float energy)
     {

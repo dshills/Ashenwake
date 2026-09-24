@@ -18,6 +18,8 @@ The [weapon animation pass](../docs/weapon_animation.md) adds equipment-specific
 
 The [Verdant creature animation pass](../docs/verdant_animation.md) adds crawling swarms, rooted plant strikes, heavier carrier and Antler motion, and more expressive Rootheart root-loss and victory transitions.
 
+The [Cinder creature animation pass](../docs/cinder_animation.md) adds emberling lunges, heavy brute strikes, planted sentinel motion and state-driven Furnace Spindle exposure and shutdown reactions.
+
 The [opening environment composition pass](../docs/environment_art.md) adds connected service courts, a bending road, a ruined courtyard, layered peripheral terrain and bounded ambient motion. That presentation pass preserved Core collision. Subsequent exploration milestones add authored connected rooms, persistent backtracking and save migration for the Grey March, [Verdant Maw](../docs/verdant_exploration.md), [Cinder Reach](../docs/cinder_exploration.md), [Shattered Spine](../docs/spine_exploration.md) and [Hollow Night](../docs/hollow_exploration.md), completing authored exploration routes across all five acts.
 
 The [Act I](../docs/opening_combat_depth.md), [Acts II–III](../docs/midgame_combat_depth.md) and [Acts IV–V](../docs/late_campaign_combat_depth.md) combat-depth passes add authored enemy formations, interruptible support roles and clearer boss windows across the campaign. Automated discipline, replay and migration checks are documented separately from the human playtest gates below.

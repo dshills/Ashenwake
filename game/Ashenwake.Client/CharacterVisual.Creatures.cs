@@ -4,7 +4,7 @@ namespace Ashenwake.Client;
 
 public partial class CharacterVisual
 {
-    private enum CreatureMotion { None, Vine, Swarm, Carrier, Antler, Rootheart }
+    private enum CreatureMotion { None, Vine, Swarm, Carrier, Antler, Rootheart, Emberling, Brute, Sentinel, Spindle }
     private enum CreatureJoint { Other, Stem, Head, LeftArm, RightArm, LeftLeg, RightLeg, Root, Petal, Foot }
     private CreatureMotion _creatureMotion;
     internal string CreatureMotionKind => _creatureMotion.ToString();
@@ -20,6 +20,10 @@ public partial class CharacterVisual
             "enemy.bloom_carrier" => CreatureMotion.Carrier,
             "boss.antler" => CreatureMotion.Antler,
             "boss.rootheart" => CreatureMotion.Rootheart,
+            "enemy.emberling" => CreatureMotion.Emberling,
+            "enemy.furnace_brute" => CreatureMotion.Brute,
+            "enemy.forge_sentinel" => CreatureMotion.Sentinel,
+            "boss.furnace_spindle" => CreatureMotion.Spindle,
             _ => CreatureMotion.None
         };
         if (_creatureMotion == CreatureMotion.None) return;
@@ -43,6 +47,7 @@ public partial class CharacterVisual
     private void AnimateCreatureBody()
     {
         if (_creatureMotion == CreatureMotion.None) return;
+        if (CinderCreature) { AnimateCinderBody(); return; }
         float cycle = (float)_gaitPhase * Mathf.Tau;
         float breath = _reducedVisualEffects ? 0 : MathF.Sin((float)_time * 1.7f);
         if (RootedCreature || _creatureMotion == CreatureMotion.Swarm)
@@ -113,6 +118,7 @@ public partial class CharacterVisual
 
     private void AnimateCreatureCue()
     {
+        if (CinderCreature) { AnimateCinderCue(); return; }
         float t = _cueTime / _cueDuration;
         float strength = 1 - Smooth((t - .3f) / .7f);
         bool hit = _cue == CombatCue.Hit;
@@ -171,6 +177,7 @@ public partial class CharacterVisual
 
     private void AnimateCreatureDeath()
     {
+        if (CinderCreature) { AnimateCinderDeath(); return; }
         float fall = Smooth(_cueTime / _cueDuration);
         BodyRoot.Position = _deathBodyPosition.Lerp(Vector3.Zero, fall);
         BodyRoot.Rotation = _deathBodyRotation.Lerp(new Vector3(0, _deathBodyRotation.Y, 0), fall);
