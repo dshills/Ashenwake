@@ -11,6 +11,7 @@ namespace Ashenwake.Client;
 public partial class BreachHeartVisual : Node3D
 {
     private const float ContainmentDuration = 3.4f;
+    private const float ReactionDuration = .72f;
     private static readonly Color FirstPhase = new("a7a2ca");
     private static readonly Color SecondPhase = new("91b8c5");
     private static readonly Color ThirdPhase = new("c0a8c5");
@@ -42,10 +43,13 @@ public partial class BreachHeartVisual : Node3D
     private bool _reducedEffects;
     private int _channelMask;
     private double _clock;
+    private float _shieldReactionAge = ReactionDuration;
+    private readonly float[] _channelReactionAges = [ReactionDuration, ReactionDuration, ReactionDuration];
     private float _containmentAge = ContainmentDuration;
-    private float _initialOpening;
-    private Vector3 _initialHeartRotation, _initialHeartScale;
+    private Vector3 _initialHeartPosition, _initialHeartRotation, _initialHeartScale;
     private readonly Vector3[] _initialRingRotations = new Vector3[3], _initialRingScales = new Vector3[3];
+    private readonly Vector3[] _initialShutterPositions = new Vector3[6], _initialShutterRotations = new Vector3[6];
+    private readonly Vector3[] _initialChannelPositions = new Vector3[3], _initialChannelRotations = new Vector3[3];
     private readonly float[] _initialChannelEmissions = new float[3];
     private float _initialRingEmission, _initialHeartEmission, _initialLightEnergy, _initialLightRange;
     private Color _initialRingColor, _initialLightColor;
@@ -132,7 +136,7 @@ public partial class BreachHeartVisual : Node3D
         if (_initialized && defeated && !Defeated && !_reducedEffects)
         {
             _containmentAge = 0;
-            _initialOpening = Shielded ? 0 : 1;
+            _initialHeartPosition = _heart.Position;
             _initialHeartRotation = _heart.RotationDegrees;
             _initialHeartScale = _heart.Scale;
             for (int i = 0; i < _rings.Length; i++)
@@ -140,6 +144,13 @@ public partial class BreachHeartVisual : Node3D
                 _initialRingRotations[i] = _rings[i].RotationDegrees;
                 _initialRingScales[i] = _rings[i].Scale;
                 _initialChannelEmissions[i] = _channelMaterials[i].EmissionEnergyMultiplier;
+                _initialChannelPositions[i] = _channels[i].Position;
+                _initialChannelRotations[i] = _channels[i].RotationDegrees;
+            }
+            for (int i = 0; i < _shutters.Length; i++)
+            {
+                _initialShutterPositions[i] = _shutters[i].Position;
+                _initialShutterRotations[i] = _shutters[i].RotationDegrees;
             }
             _initialRingEmission = _ringMaterial.EmissionEnergyMultiplier;
             _initialHeartEmission = _heartMaterial.EmissionEnergyMultiplier;
@@ -149,6 +160,19 @@ public partial class BreachHeartVisual : Node3D
             _initialLightColor = _apertureLight.LightColor;
         }
         else if (!_initialized || !defeated || _reducedEffects) _containmentAge = ContainmentDuration;
+        // Signals above remain immediate. Only a real state change starts the secondary recoil;
+        // refreshing the same combat projection must not restart it.
+        if (_initialized && !defeated && !Defeated && !_reducedEffects)
+        {
+            if (Shielded != shielded) _shieldReactionAge = 0;
+            for (int i = 0; i < _channels.Length; i++)
+                if ((_channelMask & (1 << i)) != 0 && (channelMask & (1 << i)) == 0) _channelReactionAges[i] = 0;
+        }
+        if (defeated || Defeated || _reducedEffects)
+        {
+            _shieldReactionAge = ReactionDuration;
+            Array.Fill(_channelReactionAges, ReactionDuration);
+        }
         Phase = combat.BossPhase;
         LivingChannels = living;
         Shielded = shielded;
@@ -170,12 +194,17 @@ public partial class BreachHeartVisual : Node3D
             // Settle immediately, including while paused, so re-enabling motion cannot replay it.
             _clock = 0;
             _containmentAge = ContainmentDuration;
+            _shieldReactionAge = ReactionDuration;
+            Array.Fill(_channelReactionAges, ReactionDuration);
             ApplyPose();
             return;
         }
         if (paused) return;
         float step = double.IsFinite(delta) ? (float)Math.Clamp(delta, 0, .1) : 0;
         if (!Defeated) _clock = (_clock + step) % (Math.Tau / 1.35);
+        _shieldReactionAge = Math.Min(ReactionDuration, _shieldReactionAge + step);
+        for (int i = 0; i < _channelReactionAges.Length; i++)
+            _channelReactionAges[i] = Math.Min(ReactionDuration, _channelReactionAges[i] + step);
         _containmentAge = Math.Min(ContainmentDuration, _containmentAge + step);
         ApplyPose();
     }
@@ -185,7 +214,11 @@ public partial class BreachHeartVisual : Node3D
         float victory = VictoryProgress;
         int phase = Math.Clamp(Phase, 1, 3);
         float breath = !Defeated && !_reducedEffects ? (float)Math.Sin(_clock * 1.35) : 0;
-        float opening = Defeated ? Mathf.Lerp(_initialOpening, 0, victory) : Shielded ? 0 : 1;
+        float opening = Shielded ? 0 : 1;
+        float shieldReaction = Reaction(_shieldReactionAge);
+        float channelReaction = 0;
+        for (int i = 0; i < _channels.Length; i++) channelReaction += Reaction(_channelReactionAges[i]);
+        channelReaction = Math.Min(1, channelReaction);
         Color phaseColor = phase == 3 ? ThirdPhase : phase == 2 ? SecondPhase : FirstPhase;
         _ringMaterial.AlbedoColor = Defeated ? _initialRingColor.Lerp(Contained, victory) : phaseColor;
         _ringMaterial.Emission = _ringMaterial.AlbedoColor;
@@ -195,30 +228,40 @@ public partial class BreachHeartVisual : Node3D
         _apertureLight.LightEnergy = Defeated ? Mathf.Lerp(_initialLightEnergy, .05f, victory) :
             (.5f + phase * .18f) * (Shielded ? .68f : 1) + Math.Clamp(LivingChannels, 0, 3) * .05f;
         _apertureLight.OmniRange = Defeated ? Mathf.Lerp(_initialLightRange, 2.5f, victory) : 3.8f + phase * .3f + (Shielded ? 0 : .4f);
-        _heart.Position = new(0, 3.63f, .5f);
-        _heart.RotationDegrees = Defeated ? _initialHeartRotation.Lerp(Vector3.Zero, victory) : new(0, 0, (phase - 1) * 18 + breath * 2);
-        _heart.Scale = Defeated ? _initialHeartScale.Lerp(new(.22f, .59f, .5f), victory) :
-            new(.67f + phase * .12f + breath * .025f, 1.32f + phase * .025f + breath * .035f, .5f);
+        float heartClose = ContainmentStage(1.15f, 1.9f);
+        _heart.Position = Defeated ? _initialHeartPosition.Lerp(new(0, 3.63f, .5f), heartClose) : new(0, 3.63f, .5f - channelReaction * .12f);
+        _heart.RotationDegrees = Defeated ? LerpRotation(_initialHeartRotation, Vector3.Zero, heartClose) : new(0, 0, (phase - 1) * 18 + breath * 2 - channelReaction * 8);
+        _heart.Scale = Defeated ? _initialHeartScale.Lerp(new(.22f, .59f, .5f), heartClose) :
+            new(.67f + phase * .12f + breath * .025f + shieldReaction * .06f, 1.32f + phase * .025f + breath * .035f - channelReaction * .09f, .5f);
         for (int i = 0; i < _rings.Length; i++)
         {
             float side = i == 1 ? -1 : 1;
             _rings[i].Position = new(0, 3.63f, .36f + i * .11f);
-            _rings[i].RotationDegrees = Defeated ? _initialRingRotations[i].Lerp(new(0, 0, i * 30), victory) :
-                new(side * (phase - 1) * (i + 1) * 9, side * (phase - 1) * 11, i * 30 + side * ((phase - 1) * 17 + breath * (i + 1)));
-            _rings[i].Scale = Defeated ? _initialRingScales[i].Lerp(Vector3.One * .87f, victory) : Vector3.One * (1 + (phase - 1) * .025f);
+            float ringLock = ContainmentStage(i * .2f, 1.15f);
+            _rings[i].RotationDegrees = Defeated ? LerpRotation(_initialRingRotations[i], new(0, 0, i * 30), ringLock) :
+                new(side * (phase - 1) * (i + 1) * 9, side * (phase - 1) * 11 + side * channelReaction * 4,
+                    i * 30 + side * ((phase - 1) * 17 + breath * (i + 1) + shieldReaction * 5));
+            _rings[i].Scale = Defeated ? _initialRingScales[i].Lerp(Vector3.One * .87f, ringLock) : Vector3.One * (1 + (phase - 1) * .025f);
         }
         for (int i = 0; i < _shutters.Length; i++)
         {
             float angle = i * Mathf.Tau / _shutters.Length;
             float radius = 1.25f + opening * .55f;
-            _shutters[i].Position = new(Mathf.Sin(angle) * radius, 3.63f + Mathf.Cos(angle) * radius, 1.05f);
-            _shutters[i].RotationDegrees = new(0, 0, -i * 60 + opening * 24);
+            float shutterClose = ContainmentStage(.55f + i * .12f, 1.25f);
+            var closedPosition = new Vector3(Mathf.Sin(angle) * 1.25f, 3.63f + Mathf.Cos(angle) * 1.25f, 1.05f);
+            _shutters[i].Position = Defeated ? _initialShutterPositions[i].Lerp(closedPosition, shutterClose) :
+                new(Mathf.Sin(angle) * radius, 3.63f + Mathf.Cos(angle) * radius, 1.05f + shieldReaction * (Shielded ? -.08f : .13f));
+            _shutters[i].RotationDegrees = Defeated ? LerpRotation(_initialShutterRotations[i], new(0, 0, -i * 60), shutterClose) :
+                new(0, 0, -i * 60 + opening * 24);
         }
         for (int i = 0; i < _channels.Length; i++)
         {
             bool alive = (_channelMask & (1 << i)) != 0;
-            _channels[i].Position = new((i - 1) * 2.3f, 1.05f, .68f);
-            _channels[i].RotationDegrees = new(0, 0, alive ? 0 : 30);
+            float channelRelease = ContainmentStage(.35f + i * .16f, 1.1f);
+            float recoil = Reaction(_channelReactionAges[i]);
+            _channels[i].Position = Defeated ? _initialChannelPositions[i].Lerp(new((i - 1) * 2.3f, .94f, .68f), channelRelease) :
+                new((i - 1) * 2.3f, 1.05f - recoil * .09f, .68f - recoil * .1f);
+            _channels[i].RotationDegrees = Defeated ? LerpRotation(_initialChannelRotations[i], new(0, 0, 30), channelRelease) : new(recoil * 14, 0, alive ? 0 : 30);
             _channelMaterials[i].AlbedoColor = alive ? ActiveChannel : DormantChannel;
             _channelMaterials[i].EmissionEnergyMultiplier = alive ? Defeated ? Mathf.Lerp(_initialChannelEmissions[i], .12f, victory) : .38f + breath * .025f : 0;
         }
@@ -231,7 +274,7 @@ public partial class BreachHeartVisual : Node3D
             var shard = _shards[i];
             float age = _containmentAge - i * .06f;
             shard.Visible = containing && age is >= 0 and < 2.1f;
-            if (!shard.Visible) continue;
+            if (!shard.Visible) { shard.Transform = Transform3D.Identity; continue; }
             float life = age / 2.1f;
             float angle = i * 2.399f + life * .5f;
             float radius = Mathf.Lerp(2.18f, .27f, life);
@@ -239,6 +282,23 @@ public partial class BreachHeartVisual : Node3D
             shard.RotationDegrees = new(0, 0, i * 47 + life * 90);
             shard.Scale = Vector3.One * (1 - life * .85f);
         }
+    }
+
+    private float ContainmentStage(float delay, float duration) => Mathf.SmoothStep(0, 1, Math.Clamp((_containmentAge - delay) / duration, 0, 1));
+    private static Vector3 LerpRotation(Vector3 from, Vector3 to, float weight)
+    {
+        if (weight <= 0) return from;
+        if (weight >= 1) return to;
+        // Basis round trips can normalize a shutter's authored -300 degrees to +60.
+        // These independent, bounded hinges must retain their short closing arc.
+        return new(Mathf.RadToDeg(Mathf.LerpAngle(Mathf.DegToRad(from.X), Mathf.DegToRad(to.X), weight)),
+            Mathf.RadToDeg(Mathf.LerpAngle(Mathf.DegToRad(from.Y), Mathf.DegToRad(to.Y), weight)),
+            Mathf.RadToDeg(Mathf.LerpAngle(Mathf.DegToRad(from.Z), Mathf.DegToRad(to.Z), weight)));
+    }
+    private static float Reaction(float age)
+    {
+        float progress = Math.Clamp(age / ReactionDuration, 0, 1);
+        return progress >= 1 ? 0 : MathF.Sin(progress * MathF.PI) * (1 - progress);
     }
 
     private static StandardMaterial3D LuminousMetal(string color, string glow, float energy, float roughness = .68f)

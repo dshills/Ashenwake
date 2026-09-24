@@ -37,6 +37,7 @@ public partial class CombatFeedbackSmoke : Node3D
             VerdantHeartMotionChecks.Run(Check);
             FurnaceSpindleMotionChecks.Run(Check);
             CovenantWardenMotionChecks.Run(Check);
+            BreachHeartMotionChecks.Run(Check);
             CheckWeaponEffects();
             CheckBell();
             CheckEffects();
@@ -49,6 +50,7 @@ public partial class CombatFeedbackSmoke : Node3D
             await CreatureGallery();
             await CinderCreatureGallery();
             await SpineCreatureGallery();
+            await HollowCreatureGallery();
             await MonsterGallery();
             await BellGallery();
             await ReleaseGallery();

@@ -20,6 +20,8 @@ The [Cinder creature animation pass](docs/cinder_animation.md) adds emberling lu
 
 The [Shattered Spine creature animation pass](docs/spine_animation.md) adds heavy oath giant strikes, ritual keeper casting, disciplined bone sentinels and state-driven Covenant Warden reactions and seal release.
 
+The [Hollow Night creature animation pass](docs/hollow_animation.md) adds unsettling shadow and echo motion, state-driven Breach Heart posture and a staged final containment.
+
 The [Verdant depth pass](docs/verdant_depth.md) adds curved foliage, tapered trees and roots, connected mossy earth, village boardwalks and leaf roofs, gentle wind, fungal light, and a layered Rootheart bloom. High and Performance settings also control the new foliage and local lights.
 
 The [Cinder depth pass](docs/cinder_depth.md) adds fractured basalt, worn metal paving, round pipes and reinforced machinery, forge and inspection lighting, moving pump wheels, and a more detailed Furnace Spindle with a cooling core light.

@@ -53,6 +53,8 @@ public partial class HollowSmoke : Node
                 throw new InvalidDataException("Hollow smoke requires --hollow-smoke --output=<isolated-directory>.");
             Directory.CreateDirectory(_output); Engine.MaxFps = 60;
             HollowDepthChecks.Detached(Check);
+            CreatureMotionChecks.Run(Check);
+            BreachHeartMotionChecks.Run(Check);
             _combatJson = CampaignCombatContent.Parse(Read("combat"), Read("campaign-combat")).CombatJson;
             _campaign = CampaignContent.Parse(Read("campaign"));
             _adventure = AdventureContent.Parse(Read("adventure"));
@@ -87,12 +89,11 @@ public partial class HollowSmoke : Node
                 if (state.Deaths != 0) throw new InvalidDataException("The deterministic Act V route died.");
                 if (state.CurrentAct != 5 || state.InHub) continue;
                 string signature = Signature();
-                if (signature != _signature)
-                {
-                    _signature = signature; Refresh();
-                    _sandbox.PresentCombatEvents(result.CombatEvents, _session.Combat);
-                    await ObserveState();
-                }
+                bool changed = signature != _signature;
+                if (changed) { _signature = signature; Refresh(); }
+                _sandbox.PresentCombatEvents(result.CombatEvents, _session.Combat);
+                await ObserveCreatureEvents(result.CombatEvents);
+                if (changed) await ObserveState();
             }
             Check("real_route_completes_campaign_and_returns_to_hub", CampaignRuntimeSmoke.Complete(_session));
             Check("final_choice_and_ending_recorded", _session.Capture().Campaign.Choices.ContainsKey("choice.future") && _session.View.Ending is { FracturesUnlocked: true });
@@ -111,6 +112,7 @@ public partial class HollowSmoke : Node
             Check("final_victory_observed", _breachObserved && _victoryObserved);
             Check("actual_ending_story_presented", _endingObserved);
             Check("mirrorborn_copies_distinguished_from_final_boss", _mirrorCopyObserved);
+            Check("real_hollow_attacks_reach_creature_rigs", new[] { "enemy.doubled_shadow", "enemy.breach_echo", "boss.breach_heart" }.All(_creatureAttacks.Contains));
             string hash = _session.StateHash; CheckAudioSamples();
             Check("audio_generation_does_not_change_core_state", _session.StateHash == hash);
             Refresh(); await Settle();

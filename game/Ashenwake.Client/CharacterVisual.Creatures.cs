@@ -4,7 +4,7 @@ namespace Ashenwake.Client;
 
 public partial class CharacterVisual
 {
-    private enum CreatureMotion { None, Vine, Swarm, Carrier, Antler, Rootheart, Emberling, Brute, Sentinel, Spindle, Giant, Keeper, BoneSentinel, Warden }
+    private enum CreatureMotion { None, Vine, Swarm, Carrier, Antler, Rootheart, Emberling, Brute, Sentinel, Spindle, Giant, Keeper, BoneSentinel, Warden, Shadow, Echo, Breach }
     private enum CreatureJoint { Other, Stem, Head, LeftArm, RightArm, LeftLeg, RightLeg, Root, Petal, Foot }
     private CreatureMotion _creatureMotion;
     internal string CreatureMotionKind => _creatureMotion.ToString();
@@ -28,6 +28,9 @@ public partial class CharacterVisual
             "enemy.contract_keeper" => CreatureMotion.Keeper,
             "enemy.bone_sentinel" => CreatureMotion.BoneSentinel,
             "boss.covenant_warden" => CreatureMotion.Warden,
+            "enemy.doubled_shadow" => CreatureMotion.Shadow,
+            "enemy.breach_echo" => CreatureMotion.Echo,
+            "boss.breach_heart" => CreatureMotion.Breach,
             _ => CreatureMotion.None
         };
         if (_creatureMotion == CreatureMotion.None) return;
@@ -53,6 +56,7 @@ public partial class CharacterVisual
         if (_creatureMotion == CreatureMotion.None) return;
         if (CinderCreature) { AnimateCinderBody(); return; }
         if (SpineCreature) { AnimateSpineBody(); return; }
+        if (HollowCreature) { AnimateHollowBody(); return; }
         float cycle = (float)_gaitPhase * Mathf.Tau;
         float breath = _reducedVisualEffects ? 0 : MathF.Sin((float)_time * 1.7f);
         if (RootedCreature || _creatureMotion == CreatureMotion.Swarm)
@@ -125,6 +129,7 @@ public partial class CharacterVisual
     {
         if (CinderCreature) { AnimateCinderCue(); return; }
         if (SpineCreature) { AnimateSpineCue(); return; }
+        if (HollowCreature) { AnimateHollowCue(); return; }
         float t = _cueTime / _cueDuration;
         float strength = 1 - Smooth((t - .3f) / .7f);
         bool hit = _cue == CombatCue.Hit;
@@ -185,6 +190,7 @@ public partial class CharacterVisual
     {
         if (CinderCreature) { AnimateCinderDeath(); return; }
         if (SpineCreature) { AnimateSpineDeath(); return; }
+        if (HollowCreature) { AnimateHollowDeath(); return; }
         float fall = Smooth(_cueTime / _cueDuration);
         BodyRoot.Position = _deathBodyPosition.Lerp(Vector3.Zero, fall);
         BodyRoot.Rotation = _deathBodyRotation.Lerp(new Vector3(0, _deathBodyRotation.Y, 0), fall);

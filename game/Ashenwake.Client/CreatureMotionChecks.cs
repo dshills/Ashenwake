@@ -20,7 +20,10 @@ internal static class CreatureMotionChecks
         ("enemy.oath_giant", "Armored", "Giant"),
         ("enemy.contract_keeper", "Ranged", "Keeper"),
         ("enemy.bone_sentinel", "Armored", "BoneSentinel"),
-        ("boss.covenant_warden", "BellSaint", "Warden")
+        ("boss.covenant_warden", "BellSaint", "Warden"),
+        ("enemy.doubled_shadow", "Melee", "Shadow"),
+        ("enemy.breach_echo", "Ranged", "Echo"),
+        ("boss.breach_heart", "BellSaint", "Breach")
     ];
 
     public static void Run(Action<string, bool> check)
@@ -111,6 +114,7 @@ internal static class CreatureMotionChecks
         }
         CheckBossExposure(check, "boss.furnace_spindle", "spindle", (visual, exposed) => visual.SetFurnaceExposed(exposed));
         CheckBossExposure(check, "boss.covenant_warden", "warden", (visual, exposed) => visual.SetWardenExposed(exposed));
+        CheckBossExposure(check, "boss.breach_heart", "breach", (visual, exposed) => visual.SetBreachExposed(exposed));
         var unrelated = CharacterVisual.Create("enemy.ash_ghoul", "Melee");
         try { check("verdant_motion_does_not_select_unrelated_enemies", unrelated.CreatureMotionKind == "None"); }
         finally { unrelated.Free(); }
