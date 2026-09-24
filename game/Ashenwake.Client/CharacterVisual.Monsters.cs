@@ -466,9 +466,12 @@ public partial class CharacterVisual
                 for (var leg = 0; leg < 3; leg++)
                 {
                     var z = -0.15f + leg * 0.16f;
-                    Rod(body, new(side * 0.12f, 0, z), new(side * 0.31f, -0.1f, z + (leg - 1) * 0.12f), 0.025f, Bone);
-                    Rod(body, new(side * 0.31f, -0.1f, z + (leg - 1) * 0.12f),
-                        new(side * 0.36f, -0.38f, z + (leg - 1) * 0.19f), 0.018f, Dark);
+                    var hip = new Vector3(side * .12f, 0, z);
+                    var knee = new Vector3(side * .31f, -.1f, z + (leg - 1) * .12f);
+                    var foot = new Vector3(side * .36f, -.38f, z + (leg - 1) * .19f);
+                    var joint = Joint(body, hip, "creeper_leg", leg + (side > 0 ? 3 : 0));
+                    Rod(joint, Vector3.Zero, knee - hip, .025f, Bone);
+                    Rod(joint, knee - hip, foot - hip, .018f, Dark);
                 }
                 Cone(body, new(side * 0.1f, -0.02f, -0.48f), 0.065f, 0, 0.31f, Bone, new(-90, 0, side * 15));
             }
@@ -488,8 +491,9 @@ public partial class CharacterVisual
             var angle = i * Mathf.Tau / 5;
             var direction = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle));
             var elbow = direction * 0.56f + new Vector3(0, 0.08f, 0);
-            Rod(body, new(0, 0.5f, 0), elbow, 0.13f, Main);
-            Rod(body, elbow, direction * 0.87f + new Vector3(0, -0.12f, 0), 0.07f, Dark);
+            var tendril = Joint(root, new(0, .2f, 0), "root_tendril", i);
+            Rod(tendril, new(0, .5f, 0), elbow, .13f, Main);
+            Rod(tendril, elbow, direction * .87f + new Vector3(0, -.12f, 0), .07f, Dark);
         }
         Rod(body, Vector3.Zero, new(-0.15f, 0.9f, 0.04f), 0.19f, Main);
         Rod(body, new(-0.15f, 0.9f, 0.04f), new(0.04f, 1.51f, -0.1f), 0.14f, Main);
@@ -500,9 +504,10 @@ public partial class CharacterVisual
         {
             var angle = i * Mathf.Tau / 7;
             var at = new Vector3(Mathf.Cos(angle) * 0.48f, 1.74f + Mathf.Sin(angle) * 0.48f, -0.28f);
-            Orb(body, at, new(0.44f, 0.47f, 0.25f), Accent);
-            var tooth = new Vector3(Mathf.Cos(angle) * 0.27f, 1.74f + Mathf.Sin(angle) * 0.27f, -0.69f);
-            Cone(body, tooth, 0.06f, 0, 0.2f, Bone, new(0, 0, i * 360f / 7 + 90));
+            var petal = Joint(body, at, "petal", i);
+            Orb(petal, Vector3.Zero, new(.44f, .47f, .25f), Accent);
+            var tooth = new Vector3(Mathf.Cos(angle) * .27f, 1.74f + Mathf.Sin(angle) * .27f, -.69f);
+            Cone(petal, tooth - at, .06f, 0, .2f, Bone, new(0, 0, i * 360f / 7 + 90));
         }
         for (var side = -1; side <= 1; side += 2)
         {

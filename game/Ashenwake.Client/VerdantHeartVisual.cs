@@ -9,11 +9,14 @@ namespace Ashenwake.Client;
 public partial class VerdantHeartVisual : Node3D
 {
     private const float BloomDuration = 3.4f;
+    private const float RootReleaseDuration = .85f;
+    private const float ExposureDuration = .6f;
     private readonly Node3D _sculpture = new() { Name = "CorpseFlowerSculpture" };
     private readonly Node3D _heart = new() { Name = "RootheartSeed", Position = new(0, 2.8f, .35f) };
     private readonly Node3D _growth = new() { Name = "QuietNewGrowth" };
     private readonly Node3D[] _petals = new Node3D[8];
     private readonly Node3D[] _feedingRoots = new Node3D[3];
+    private readonly float[] _rootReleaseAge = [RootReleaseDuration, RootReleaseDuration, RootReleaseDuration];
     private readonly StandardMaterial3D _heartMaterial = CreateHeartMaterial();
     private readonly List<(MeshInstance3D Node, Mesh Mesh, Material Material)> _renderParts = [];
     private bool _initialized;
@@ -21,6 +24,8 @@ public partial class VerdantHeartVisual : Node3D
     private bool _reducedEffects;
     private double _clock;
     private float _bloomAge = BloomDuration;
+    private float _exposureFrom;
+    private float _exposureAge = ExposureDuration;
 
     public int LivingRoots { get; private set; }
     public bool Defeated { get; private set; }
@@ -49,6 +54,24 @@ public partial class VerdantHeartVisual : Node3D
     {
         livingRoots = Math.Clamp(livingRoots, 0, _feedingRoots.Length);
         if (_initialized && LivingRoots == livingRoots && Defeated == defeated) return;
+        float exposure = CurrentExposure;
+        bool losingRoots = _initialized && !Defeated && livingRoots < LivingRoots && !_reducedEffects;
+        for (int i = 0; i < _feedingRoots.Length; i++)
+        {
+            if (losingRoots && i >= livingRoots && i < LivingRoots) _rootReleaseAge[i] = 0;
+            else if (!_initialized || _reducedEffects || livingRoots > LivingRoots || Defeated)
+                _rootReleaseAge[i] = RootReleaseDuration;
+        }
+        if (losingRoots)
+        {
+            _exposureFrom = exposure;
+            _exposureAge = 0;
+        }
+        else if (!_initialized || _reducedEffects || livingRoots > LivingRoots || Defeated)
+        {
+            _exposureFrom = (3 - livingRoots) / 3f;
+            _exposureAge = ExposureDuration;
+        }
         if (_initialized && defeated && !Defeated && !_reducedEffects) _bloomAge = 0;
         else if (!_initialized || !defeated || _reducedEffects) _bloomAge = BloomDuration;
         LivingRoots = livingRoots;
@@ -67,6 +90,8 @@ public partial class VerdantHeartVisual : Node3D
             // effects cannot replay a victory, and return breathing to its neutral pose.
             _clock = 0;
             _bloomAge = BloomDuration;
+            _exposureAge = ExposureDuration;
+            Array.Fill(_rootReleaseAge, RootReleaseDuration);
             ApplyPose();
             return;
         }
@@ -74,17 +99,35 @@ public partial class VerdantHeartVisual : Node3D
         float step = double.IsFinite(delta) ? (float)Math.Clamp(delta, 0, .1) : 0;
         _clock = (_clock + step) % (Math.Tau / 1.35);
         _bloomAge = Math.Min(BloomDuration, _bloomAge + step);
+        _exposureAge = Math.Min(ExposureDuration, _exposureAge + step);
+        for (int i = 0; i < _rootReleaseAge.Length; i++)
+            _rootReleaseAge[i] = Math.Min(RootReleaseDuration, _rootReleaseAge[i] + step);
         ApplyPose();
     }
+
+    private float CurrentExposure => Mathf.Lerp(_exposureFrom, (3 - LivingRoots) / 3f,
+        Mathf.SmoothStep(0, 1, _exposureAge / ExposureDuration));
 
     private void ApplyPose()
     {
         float victory = VictoryProgress;
-        float exposure = (3 - LivingRoots) / 3f;
+        float exposure = CurrentExposure;
         float breath = !Defeated && !_reducedEffects ? (float)Math.Sin(_clock * 1.35) : 0;
-        _heart.Scale = Vector3.One * (1 + breath * .016f - victory * .17f);
-        _heart.Position = new(0, 2.8f - victory * .17f, .35f);
-        _heart.RotationDegrees = new(0, 0, -6 * victory);
+        float recoil = 0;
+        if (!Defeated && !_reducedEffects)
+            for (int i = LivingRoots; i < _rootReleaseAge.Length; i++)
+            {
+                float t = _rootReleaseAge[i] / RootReleaseDuration;
+                recoil = Math.Max(recoil, MathF.Sin(t * Mathf.Pi) * (1 - t));
+            }
+        // The exposed seed heaves vertically instead of uniformly inflating. Root loss
+        // produces a brief inward contraction, entirely behind the arena wall.
+        float heave = breath * (.012f + exposure * .018f);
+        float settledScale = 1 - victory * .17f;
+        _heart.Scale = new(settledScale - heave * .45f - recoil * .055f,
+            settledScale + heave - recoil * .09f, settledScale - heave * .3f);
+        _heart.Position = new(0, 2.8f - victory * .17f - recoil * .09f, .35f + exposure * .045f * (1 - victory));
+        _heart.RotationDegrees = new(recoil * -5, 0, -6 * victory + breath * exposure * .7f);
         Color alive = new("a46a65");
         Color settled = new("c3bc83");
         _heartMaterial.AlbedoColor = alive.Lerp(settled, victory);
@@ -94,18 +137,23 @@ public partial class VerdantHeartVisual : Node3D
         {
             float asymmetric = i % 2 == 0 ? 2 : -3;
             // The hinges open away from the seed as real feeding roots are destroyed.
-            float opening = 49 - exposure * 13 - victory * 67 + asymmetric + breath * .55f;
+            float delay = (i % 4) * .13f + (i / 4) * .08f;
+            float petalBloom = Defeated ? Mathf.SmoothStep(0, 1, Math.Clamp((_bloomAge - delay) / (BloomDuration - delay), 0, 1)) : 0;
+            float opening = 49 - exposure * 13 - petalBloom * 67 + asymmetric + breath * (.55f + exposure * .4f) + recoil * 3;
             _petals[i].RotationDegrees = new(opening, 0, i * 45 + 22.5f);
         }
         for (int i = 0; i < _feedingRoots.Length; i++)
         {
             bool severed = i >= LivingRoots;
-            float wilt = severed ? 1 : Defeated ? victory : 0;
+            float release = _rootReleaseAge[i] / RootReleaseDuration;
+            float wilt = severed ? Mathf.SmoothStep(0, 1, release) : Defeated ? victory : 0;
+            float tremor = severed && !_reducedEffects ? MathF.Sin(release * Mathf.Pi * 4) * (1 - release) * .9f : 0;
             _feedingRoots[i].Scale = new(1, 1 - wilt * .58f, 1);
-            _feedingRoots[i].RotationDegrees = new(wilt * -9, 0, (i - 1) * wilt * 8);
+            _feedingRoots[i].RotationDegrees = new(wilt * -9 + tremor, 0, (i - 1) * wilt * 8);
         }
         _growth.Visible = Defeated;
-        _growth.Scale = new(1, .05f + victory * .95f, 1);
+        float growth = Defeated ? Mathf.SmoothStep(0, 1, Math.Clamp((_bloomAge - .65f) / (BloomDuration - .65f), 0, 1)) : 0;
+        _growth.Scale = new(1, .05f + growth * .95f, 1);
     }
 
     private static StandardMaterial3D CreateHeartMaterial()

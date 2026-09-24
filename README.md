@@ -14,6 +14,8 @@ The [graphics smoothing pass](docs/graphics_smoothing.md) adds rounder character
 
 The [weapon animation pass](docs/weapon_animation.md) adds equipment-specific attacks, Act I enemy anticipation, distance-driven footsteps, smoother recovery and effects that follow animated weapons.
 
+The [Verdant creature animation pass](docs/verdant_animation.md) adds crawling swarms, rooted plant strikes, heavier carrier and Antler motion, and more expressive Rootheart root-loss and victory transitions.
+
 The [Verdant depth pass](docs/verdant_depth.md) adds curved foliage, tapered trees and roots, connected mossy earth, village boardwalks and leaf roofs, gentle wind, fungal light, and a layered Rootheart bloom. High and Performance settings also control the new foliage and local lights.
 
 The [Cinder depth pass](docs/cinder_depth.md) adds fractured basalt, worn metal paving, round pipes and reinforced machinery, forge and inspection lighting, moving pump wheels, and a more detailed Furnace Spindle with a cooling core light.

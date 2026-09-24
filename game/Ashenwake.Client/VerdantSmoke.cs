@@ -46,6 +46,8 @@ public partial class VerdantSmoke : Node
                 throw new InvalidDataException("Verdant smoke requires --verdant-smoke --output=<isolated-directory>.");
             Directory.CreateDirectory(_output); Engine.MaxFps = 60;
             VerdantDepthChecks.Detached(Check);
+            CreatureMotionChecks.Run(Check);
+            VerdantHeartMotionChecks.Run(Check);
             _combatJson = CampaignCombatContent.Parse(Read("combat"), Read("campaign-combat")).CombatJson;
             _campaign = CampaignContent.Parse(Read("campaign"));
             _adventure = AdventureContent.Parse(Read("adventure"));
@@ -77,13 +79,15 @@ public partial class VerdantSmoke : Node
                 if (state.CurrentAct != 2) continue;
                 int roots = LivingRoots();
                 string signature = $"{_session.ActiveEncounterId}:{state.Exploration?.Id}:{state.Exploration?.TrackedClues}:{roots}:{_session.Combat.View.BossPhase}:{_session.EncounterCleared}";
-                if (signature != _signature)
+                bool changed = signature != _signature;
+                if (changed)
                 {
                     _signature = signature;
                     Refresh();
-                    _sandbox.PresentCombatEvents(result.CombatEvents, _session.Combat);
-                    await ObserveState();
                 }
+                _sandbox.PresentCombatEvents(result.CombatEvents, _session.Combat);
+                await ObserveCreatureEvents(result.CombatEvents);
+                if (changed) await ObserveState();
             }
             Check("real_route_completed_act_two", _session.Capture().Campaign.CompletedActs.Contains(2));
             Check("all_five_distinct_act_two_contexts_observed", _contexts.SetEquals(new[] { "verdant_ruins", "verdant_village", "verdant_hunt", "verdant_heart", "verdant_shrine" }));
@@ -93,6 +97,7 @@ public partial class VerdantSmoke : Node
             Check("leaving_hunt_cleans_up_all_clues", _huntObserved && _huntCleaned);
             Check("real_root_damage_reaches_heart", _rootCounts.Contains(3) && _rootCounts.Any(count => count < 3));
             Check("rootheart_victory_observed", _heartObserved && _victoryObserved);
+            Check("real_verdant_attacks_reach_creature_rigs", new[] { "enemy.carnivorous_vine", "enemy.needle_swarm", "enemy.bloom_carrier", "boss.rootheart", "boss.antler" }.All(_creatureAttacks.Contains));
             string hash = _session.StateHash;
             CheckAudioSamples();
             Check("audio_generation_does_not_change_core_state", _session.StateHash == hash);

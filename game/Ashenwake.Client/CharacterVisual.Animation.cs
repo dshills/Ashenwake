@@ -50,6 +50,7 @@ public partial class CharacterVisual
             _ => MotionStyle.Melee
         };
         ConfigureWeaponMotion(id, kind, allied);
+        ConfigureCreatureMotion(id, kind, allied);
     }
 
     /// <summary>React to an already-authoritative event. Clips never move the actor or schedule combat.</summary>
@@ -73,7 +74,9 @@ public partial class CharacterVisual
         {
             CombatCue.Dodge => .4f,
             CombatCue.Hit => .22f,
+            CombatCue.Death when _creatureMotion == CreatureMotion.Rootheart => 1.3f,
             CombatCue.Death => _motionStyle is MotionStyle.Bell or MotionStyle.Beast ? 1.12f : .86f,
+            CombatCue.Attack when _creatureMotion != CreatureMotion.None => _creatureMotion == CreatureMotion.Swarm ? .32f : .58f,
             _ when _weaponRig => WeaponAttackDuration,
             _ => _motionStyle switch
             {
@@ -117,6 +120,7 @@ public partial class CharacterVisual
 
     private void AnimateFamilyAnticipation()
     {
+        if (_creatureMotion != CreatureMotion.None) return;
         AnimateWeaponAnticipation();
         if (_motionStyle == MotionStyle.Hound)
         {
@@ -148,6 +152,7 @@ public partial class CharacterVisual
     private void AnimateCue()
     {
         if (_cue == CombatCue.None) return;
+        if (_creatureMotion != CreatureMotion.None) { AnimateCreatureCue(); return; }
         float t = _cueTime / _cueDuration;
         float weight = Smooth(t / .13f) * (1 - Smooth((t - .68f) / .32f));
         // Resolved attacks start at contact; only authoritative windup poses anticipate a hit.
@@ -243,6 +248,7 @@ public partial class CharacterVisual
     {
         if (DeathFinished) return;
         _cueTime = Math.Min(_cueTime + delta, _cueDuration);
+        if (_creatureMotion != CreatureMotion.None) { AnimateCreatureDeath(); return; }
         float t = _cueTime / _cueDuration;
         float fall = Smooth((t - .1f) / .69f);
         float settle = MathF.Sin(Smooth((t - .7f) / .3f) * Mathf.Pi) * .035f;

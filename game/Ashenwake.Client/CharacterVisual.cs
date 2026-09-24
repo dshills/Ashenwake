@@ -5,7 +5,10 @@ namespace Ashenwake.Client;
 /// <summary>Articulated, cosmetic models. No physics bodies, root motion, or gameplay clocks.</summary>
 public partial class CharacterVisual : Node3D
 {
-    private sealed record Limb(Node3D Node, string Motion, float Amplitude, Vector3 Rest, Vector3 Origin);
+    private sealed record Limb(Node3D Node, string Motion, float Amplitude, Vector3 Rest, Vector3 Origin)
+    {
+        public CreatureJoint CreatureKind { get; } = ClassifyCreatureJoint(Motion);
+    }
     private static readonly Dictionary<string, Mesh[]> MeshTemplates = new(StringComparer.Ordinal);
     private static readonly Dictionary<(string Color, SurfaceKind Kind, bool Emissive), StandardMaterial3D> SharedMaterials = [];
     private const int MeshTemplateLimit = 96, MaterialTemplateLimit = 256;
@@ -60,6 +63,7 @@ public partial class CharacterVisual : Node3D
         AdvanceCue(dt, windup);
         _time += dt;
         AnimateLocomotion(dt, movement, windup, state, facing);
+        AnimateCreatureBody();
         AnimateFamilyAnticipation();
         AnimateCue();
         BlendPoseRelease(dt, windup);
