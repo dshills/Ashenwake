@@ -45,6 +45,8 @@
     <None Include="../../fixtures/campaign-spine.json" Link="fixtures/campaign-spine.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/campaign-combat-spine.json" Link="fixtures/campaign-combat-spine.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/experiments.json" Link="experiments.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/pets-legacy-save.json" Link="fixtures/pets-legacy-save.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/pets-legacy-endgame.awendgame" Link="fixtures/pets-legacy-endgame.awendgame" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/endgame.json" Link="endgame.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/endgame-combat.json" Link="endgame-combat.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../fixtures/phase2-expedition-hub.json" Link="fixtures/phase2-expedition-hub.json" CopyToOutputDirectory="PreserveNewest" />

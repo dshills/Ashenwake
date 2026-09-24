@@ -14,6 +14,7 @@ public partial class CampaignHud : Control
     public event Action? WorldEncountersRequested;
     public event Action? OpeningGuideRequested;
     public event Action? BestiaryRequested;
+    public event Action? PetsRequested;
     public bool IsOpen => _panel is { Visible: true };
     public event Action<int>? ActRequested;
     public event Action? HubRequested, ContinueRequested, LeaveExplorationRequested, SaveRequested, LoadRequested;
@@ -79,6 +80,8 @@ public partial class CampaignHud : Control
         encounters.AddThemeFontSizeOverride("font_size", 12); encounters.Pressed += () => WorldEncountersRequested?.Invoke(); column.AddChild(encounters);
         var bestiary = new Button { Name = "OpenBestiary", Text = "Hunter's Bestiary", CustomMinimumSize = new(0, 32) };
         bestiary.AddThemeFontSizeOverride("font_size", 12); bestiary.Pressed += () => BestiaryRequested?.Invoke(); column.AddChild(bestiary);
+        var pets = new Button { Name = "OpenPets", Text = "Companions", CustomMinimumSize = new(0, 32) };
+        pets.AddThemeFontSizeOverride("font_size", 12); pets.Pressed += () => PetsRequested?.Invoke(); column.AddChild(pets);
         BuildJourneyBody(column);
         _anatomyWorkbench = new AnatomyWorkbench { Visible = false }; column.AddChild(_anatomyWorkbench);
         _anatomyWorkbench.ImplantRequested += (slot, id) => ImplantRequested?.Invoke(slot, id);

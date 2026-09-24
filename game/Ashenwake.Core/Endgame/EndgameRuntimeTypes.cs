@@ -13,7 +13,8 @@ public enum EndgameRuntimeAction
     StartRegionalHunt, TrackRegionalHuntClue, ClaimRegionalHuntReward, AbandonRegionalHunt, ReturnRegionalHunt,
     ResolveSecretClue, EnterSecretChamber, ChallengeSecretGuardian, ClaimSecretTreasure, ExitSecretChamber,
     EnterRoamingChampion, ChallengeRoamingChampion, ClaimRoamingChampionReward, ExitRoamingChampion,
-    EnterWorldEncounter, ChooseWorldEncounter, ClaimWorldEncounterReward, ExitWorldEncounter
+    EnterWorldEncounter, ChooseWorldEncounter, ClaimWorldEncounterReward, ExitWorldEncounter,
+    EnablePets, RescuePet, SelectPet, DismissPet, RenamePet, SetPetAppearance, SetPetAutoGather, CollectPetMaterials
 }
 
 public sealed record EndgameRuntimeCommand(EndgameRuntimeAction Action, long SigilId = 0, string Id = "", string Value = "",
@@ -42,6 +43,8 @@ public sealed record EndgameRuntimeSnapshot
     public RoamingChampionState? RoamingChampions { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public WorldEncounterState? WorldEncounters { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PetState? Pets { get; init; }
 }
 public sealed record EndgameRuntimeReplay(int SchemaVersion, EndgameRuntimeSnapshot Initial, EndgameRuntimeFrame[] Frames);
 public sealed record EndgameRunView(long Id, string Kind, string Name, string Region, int Tier, int EncounterIndex,

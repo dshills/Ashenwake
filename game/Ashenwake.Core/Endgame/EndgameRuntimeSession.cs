@@ -41,7 +41,7 @@ public sealed partial class EndgameRuntimeSession
     private int ArenaIndex => Math.Min(State.Run!.EncounterIndex, manifest!.Rooms.Length - 1);
     private bool CampaignComplete => Campaign.View.Ending?.FracturesUnlocked == true;
     private bool CanRecover => InHub && State.Unlocked && State.Run?.Status != "Active" && State.Sigils.All(s => s.Consumed) && State.Sigils.Length < 10000;
-    public IReadOnlyList<ExpeditionInteraction> Interactions => InWorldEncounter ? WorldEncounterInteractions : InRoamingChampion ? RoamingInteractions : InSecretChamber ? SecretInteractions : InRegionalHunt ? RegionalInteractions : arena is not null ? [] : !InHub ? [.. Campaign.Interactions, .. SecretInteractions, .. RoamingInteractions, .. WorldEncounterInteractions] :
+    public IReadOnlyList<ExpeditionInteraction> Interactions => InWorldEncounter ? WorldEncounterInteractions : InRoamingChampion ? RoamingInteractions : InSecretChamber ? SecretInteractions : InRegionalHunt ? RegionalInteractions : arena is not null ? [] : !InHub ? [.. Campaign.Interactions, .. SecretInteractions, .. RoamingInteractions, .. WorldEncounterInteractions, .. PetInteractions] :
         [.. Campaign.Interactions, new(RegionalHuntCatalog.BoardInteraction, "Regional hunts · contracts and rewards", RegionalHuntCatalog.BoardPosition, RegionalHuntCatalog.BoardRange), new(Training.TrainingSession.InteractionId, "Training ground · practice your build", Training.TrainingSession.EntryPosition, Training.TrainingSession.InteractionRange),
             .. State.Unlocked ? new ExpeditionInteraction[] { new("endgame.gate", "Fractures · Sigils and God Hunts", new(6500, 0), 2600) } : []];
     public EndgameRunView? RunView
@@ -108,6 +108,7 @@ public sealed partial class EndgameRuntimeSession
         session.RestoreSecretChambers(snapshot.SecretChambers);
         session.RestoreRoamingChampions(snapshot.RoamingChampions);
         session.RestoreWorldEncounters(snapshot.WorldEncounters);
+        session.RestorePets(snapshot.Pets);
         session.RestoreExplorationMap(snapshot.ExplorationMap);
         session.ValidateState(); session.initial = session.Capture(); return session;
     }
@@ -133,7 +134,8 @@ public sealed partial class EndgameRuntimeSession
         RegionalHunts = CaptureRegionalHunts(),
         SecretChambers = CaptureSecretChambers(),
         RoamingChampions = CaptureRoamingChampions(),
-        WorldEncounters = CaptureWorldEncounters()
+        WorldEncounters = CaptureWorldEncounters(),
+        Pets = CapturePets()
     };
     public EndgameRuntimeReplay CaptureReplay() => JsonData.Copy(new EndgameRuntimeReplay(1, initial, frames.ToArray()));
     public FracturePreview PreviewSigil(long id)
@@ -171,6 +173,8 @@ public sealed partial class EndgameRuntimeSession
             if (result.Success)
             {
                 operationSequence++; RefreshUnlock(); RevealExplorationMap();
+                var gathered = AutoGatherPetMaterials(command);
+                if (gathered.Length > 0) result = result with { WorldEvents = [.. result.WorldEvents, .. gathered] };
                 if (!ReferenceEquals(previousCampaignRecap, Campaign.LastDeathRecap)) LastDeathRecap = Campaign.LastDeathRecap;
             }
             else if (rollback is not null) { RestoreFields(rollback); LastDeathRecap = previousRecap; }
@@ -191,6 +195,7 @@ public sealed partial class EndgameRuntimeSession
         RestoreSecretChambers(state.SecretChambers);
         RestoreRoamingChampions(state.RoamingChampions);
         RestoreWorldEncounters(state.WorldEncounters);
+        RestorePets(state.Pets);
         RestoreExplorationMap(state.ExplorationMap);
         Campaign.PreserveDeathRecapFrom(previousCampaign);
         if (arena is not null && previousArena is not null) arena.PreserveDeathRecapFrom(previousArena);
@@ -238,6 +243,8 @@ public sealed partial class EndgameRuntimeSession
     private EndgameRuntimeResult Change(EndgameRuntimeCommand command)
     {
         var messages = new List<string>();
+        if (command.Action is EndgameRuntimeAction.EnablePets or EndgameRuntimeAction.RescuePet or EndgameRuntimeAction.SelectPet or EndgameRuntimeAction.DismissPet or EndgameRuntimeAction.RenamePet or EndgameRuntimeAction.SetPetAppearance or EndgameRuntimeAction.SetPetAutoGather or EndgameRuntimeAction.CollectPetMaterials)
+            return ChangePets(command);
         if (command.Action is EndgameRuntimeAction.EnterWorldEncounter or EndgameRuntimeAction.ChooseWorldEncounter or EndgameRuntimeAction.ClaimWorldEncounterReward or EndgameRuntimeAction.ExitWorldEncounter)
             return ChangeWorldEncounter(command);
         if (InWorldEncounter && command.Action != EndgameRuntimeAction.EnableExplorationMap) return Fail("Leave the world encounter before changing your campaign or build.");
@@ -350,6 +357,7 @@ public sealed partial class EndgameRuntimeSession
         ValidateRegionalHunts();
         ValidateSecretChambers();
         ValidateWorldEncounters();
+        ValidatePets();
         ValidateRoamingChampions();
         if (arena is null)
         {

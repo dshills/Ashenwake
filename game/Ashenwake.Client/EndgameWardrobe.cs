@@ -56,7 +56,7 @@ public partial class EndgameDirector
             _wardrobeMemory = loaded.Memory with { Unlocks = retained }; _wardrobeCanWrite = loaded.CanWrite; _wardrobeNotice = loaded.Notice;
             _sandbox.SetWardrobeAppearance(_wardrobeMemory);
         }
-        _bestiary?.SetOpen(false); _collection.SetOpen(false); _huntBoard.SetOpen(false); _secretPanel.SetOpen(false); _stashPanel.SetOpen(false);
+        _bestiary?.SetOpen(false); _pets?.SetOpen(false); _collection.SetOpen(false); _huntBoard.SetOpen(false); _secretPanel.SetOpen(false); _stashPanel.SetOpen(false);
         _championPanel.SetOpen(false); _worldEncounterPanel.SetOpen(false); _openingGuide.SetOpen(false);
         _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel();
         _wardrobeDraft = JsonData.Copy(_wardrobeMemory);
@@ -134,7 +134,7 @@ public partial class EndgameDirector
 
     private void ResetWardrobe()
     {
-        _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _wardrobeMemory = _wardrobeDraft = null; _wardrobePath = "";
+        _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _pets?.SetOpen(false); _wardrobeMemory = _wardrobeDraft = null; _wardrobePath = "";
         _wardrobeNotice = ""; _wardrobeRevision = -1; _sandbox.SetWardrobeAppearance(null);
     }
 }

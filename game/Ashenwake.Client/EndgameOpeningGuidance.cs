@@ -33,7 +33,7 @@ public partial class EndgameDirector
     }
     private bool OpeningHintAllowed() => !_session.InWorldEncounter && _worldEncounterPanel?.IsOpen != true && _hasActiveCharacter && !_smoke && !_echoesSmoke && _training is null &&
         !_sandbox.IsPaused && !_frontMenu.IsOpen && !_campaignHud.IsOpen && !_character.IsOpen && !_board.IsOpen &&
-        _bestiary?.IsOpen != true && _wardrobe?.IsOpen != true && _collection?.IsOpen != true && _stashPanel?.IsOpen != true && _huntBoard?.IsOpen != true && _secretPanel?.IsOpen != true &&
+        _bestiary?.IsOpen != true && _pets?.IsOpen != true && _wardrobe?.IsOpen != true && _collection?.IsOpen != true && _stashPanel?.IsOpen != true && _huntBoard?.IsOpen != true && _secretPanel?.IsOpen != true &&
         _championPanel?.IsOpen != true && _deathRecapHud?.IsOpen != true && _openingGuide?.IsOpen != true;
 
     private void OpenOpeningGuide()
@@ -41,7 +41,7 @@ public partial class EndgameDirector
         if (!_hasActiveCharacter || _training is not null || _frontMenu.IsOpen || _deathRecapHud?.IsOpen == true ||
             _session.InWorldEncounter || _session.InRoamingChampion || _session.InSecretChamber || _session.HasUnresolvedRegionalHunt || _session.Combat.View.Endgame is not null) return;
         _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel();
-        _collection.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _stashPanel.SetOpen(false); _huntBoard.SetOpen(false); _secretPanel.SetOpen(false); _championPanel.SetOpen(false); _worldEncounterPanel?.SetOpen(false);
+        _collection.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _pets?.SetOpen(false); _stashPanel.SetOpen(false); _huntBoard.SetOpen(false); _secretPanel.SetOpen(false); _championPanel.SetOpen(false); _worldEncounterPanel?.SetOpen(false);
         RefreshOpeningGuidance(true); _openingGuide.SetOpen(true);
     }
     private void RefreshOpeningGuidance(bool force = false)

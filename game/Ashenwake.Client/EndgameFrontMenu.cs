@@ -36,9 +36,10 @@ public partial class EndgameDirector
         _frontMenu.ImportRequested += () => _importDialog.PopupCentered(new(860, 560));
         _frontMenu.OpenChanged += open =>
         {
-            if (open) { _openingGuide?.SetOpen(false); _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
+            if (open) { _openingGuide?.SetOpen(false); _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _pets?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
             else CancelCatalogRefresh();
             _sandbox.SetModalPaused("front-menu", open);
+            if (_petPresentation is not null) _petPresentation.Visible = !open && _training is null && _hasActiveCharacter;
         };
         _sandbox.ConfigureFrontMenu(() => Safely(ShowFrontMenu), () => Safely(MenuQuit));
         GetTree().AutoAcceptQuit = false;

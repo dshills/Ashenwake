@@ -29,7 +29,7 @@ public partial class EndgameDirector
         {
             if (open)
             {
-                _character.Close(); _collection.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false);
+                _character.Close(); _collection.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _pets?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false);
                 _huntBoard.SetOpen(false); _secretPanel.SetOpen(false); CloseExperimentPanel();
             }
             UpdatePanelVisibility();

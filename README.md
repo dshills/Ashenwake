@@ -62,6 +62,8 @@ Open **I → Appearance wardrobe** to use [collected armor appearances](docs/app
 
 Open **J → Hunter’s Bestiary** or **B → Bestiary** to [catalog encountered creatures](docs/hunters_bestiary.md), rotate their actual models, and record defeats. First victories unlock counterplay, base defenses and known reward sources; unknown creatures remain hidden.
 
+Rescue an Ashen Fox, Gloam Moth or Cinder Beetle and manage them through **J → Companions** or **B → Pets**. [Permanent travel pets](docs/pet_companions.md) have saved names and appearances, follow between scenes, and can optionally gather nearby one-time material caches.
+
 Open **C → Skills** for ability cards, mastery progress and mutation comparisons. Preview Offense, Defense and Resource investments before spending points at Mara; passive refunds show the exact fee and effects removed. The combat bar uses the same ability icons with cooldown progress, resource-shortfall and Heat-cap feedback. See [Skills & Mastery](docs/skills_mastery.md).
 
 The solo combat HUD groups health, barrier, discipline resource, potion charges, dodge readiness and six abilities in a responsive bottom dock. Status icons show remaining duration and stacks; the XP bar tracks the current level. Earned levels, mastery milestones, ability unlocks and collected equipment appear in a compact reward feed. See [combat HUD and rewards](docs/combat_hud.md).

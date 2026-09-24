@@ -170,6 +170,12 @@ python3 tools/check-godot-log.py "$opening_audio_output/smoke.log"
 rg -q 'OpeningAudioClientSmokePassed' "$opening_audio_output/smoke.log"
 aw campaign replay "$opening_audio_output/opening-audio.awcampaign"
 
+pets_output="$package_output/pets-client"
+mkdir -p "$pets_output"
+"$binary" --headless --quit-after 24000 --log-file "$pets_output/smoke.log" -- --pets-smoke --discipline=Vanguard --output="$pets_output"
+python3 tools/check-godot-log.py "$pets_output/smoke.log"
+python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["passed"]' "$pets_output/pets-review.json"
+
 bestiary_output="$package_output/bestiary-client"
 mkdir -p "$bestiary_output"
 "$binary" --headless --quit-after 24000 --log-file "$bestiary_output/smoke.log" -- --bestiary-smoke --discipline=Vanguard --output="$bestiary_output"

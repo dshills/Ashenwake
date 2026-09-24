@@ -86,9 +86,9 @@ public partial class EndgameDirector : Node3D
             _sandbox.SaveOverride = () => Safely(Save); _sandbox.LoadOverride = () => Safely(Load); _sandbox.ReplayOverride = () => Safely(VerifyReplay);
             _stage = new CampaignStage(); AddChild(_stage); _effects = new EndgamePresentation(); AddChild(_effects); _effects.AttachOverlay(_sandbox);
             _campaignHud = new CampaignHud(); _sandbox.AddOverlay(_campaignHud);
-            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = () => { _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); if (_deathRecapHud?.IsOpen == true) return; if (_training is not null) _trainingHud.SetReportOpen(true); else _character.ToggleInventory(); };
+            _character = new ProductionHud { Catalog = _text }; _sandbox.AddOverlay(_character); _sandbox.InventoryOverride = () => { _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _pets?.SetOpen(false); _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); if (_deathRecapHud?.IsOpen == true) return; if (_training is not null) _trainingHud.SetReportOpen(true); else _character.ToggleInventory(); };
             _board = new EndgameHud(); _sandbox.AddOverlay(_board);
-            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeTraining(); InitializeFrontMenu(); InitializeDeathRecap(); InitializeCollection(); InitializeRegionalHunts(); InitializeSecretChambers(); InitializePersonalStash(); InitializeRoamingChampions(); InitializeWorldEncounters(); InitializeOpeningGuidance(); InitializeWardrobe(); InitializeBestiary();
+            WireCampaign(); WireCharacter(); WireBoard(); BuildImportDialog(); BindBoardInput(); InitializeExperiments(); InitializeTraining(); InitializeFrontMenu(); InitializeDeathRecap(); InitializeCollection(); InitializeRegionalHunts(); InitializeSecretChambers(); InitializePersonalStash(); InitializeRoamingChampions(); InitializeWorldEncounters(); InitializeOpeningGuidance(); InitializeWardrobe(); InitializeBestiary(); InitializePets();
             _sandbox.ConfigureLocalMap(() => _training is null && _hasActiveCharacter && !_frontMenu.IsOpen && !_classSelection.Visible, () => _session.LocalMap);
             if (_hasActiveCharacter) EnableLocalMap();
             Refresh();
@@ -170,7 +170,7 @@ public partial class EndgameDirector : Node3D
         _board.GateApproachRequested += () => { UpdatePanelVisibility(); _sandbox.RequestWorldInteraction("endgame.gate"); };
         _board.SaveRequested += () => Safely(Save); _board.LoadRequested += () => Safely(Load);
         _board.ReplayRequested += () => Safely(VerifyReplay); _board.ImportRequested += () => _importDialog.PopupCentered(new(860, 560));
-        _board.VisibilityChangedByPlayer += open => { if (open) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _campaignHud.SetOpen(false); _character.Close(); } UpdatePanelVisibility(); };
+        _board.VisibilityChangedByPlayer += open => { if (open) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _pets?.SetOpen(false); _campaignHud.SetOpen(false); _character.Close(); } UpdatePanelVisibility(); };
         _board.ModalChanged += open => _sandbox.SetModalPaused("endgame-confirmation", open);
     }
     private void BindBoardInput()
@@ -189,10 +189,10 @@ public partial class EndgameDirector : Node3D
     }
     public override void _UnhandledInput(InputEvent input)
     {
-        if (_wardrobe?.IsOpen == true || _bestiary?.IsOpen == true) return;
+        if (_wardrobe?.IsOpen == true || _bestiary?.IsOpen == true || _pets?.IsOpen == true) return;
         if (HandleExperimentInput(input)) return;
         if (_smoke || _finished || _session is null || _classSelection.Visible) return;
-        if (input.IsActionPressed("aw_character")) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _character.Toggle(); GetViewport().SetInputAsHandled(); }
+        if (input.IsActionPressed("aw_character")) { _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _pets?.SetOpen(false); _character.Toggle(); GetViewport().SetInputAsHandled(); }
         if (input.IsActionPressed("aw_endgame")) { if (_session.InWorldEncounter) OpenWorldEncounters(); else if (_session.InRoamingChampion) OpenRoamingChampions(); else if (_session.InSecretChamber) OpenSecretChambers(); else if (_session.HasUnresolvedRegionalHunt) OpenRegionalHunts(); else _board.Toggle(); GetViewport().SetInputAsHandled(); }
         if (input.IsActionPressed("aw_journey"))
         {
@@ -225,7 +225,7 @@ public partial class EndgameDirector : Node3D
     private void Interact(string id)
     {
         if (_training is not null) return;
-        if (InteractWorldEncounter(id) || InteractRoamingChampion(id) || InteractPersonalStash(id) || InteractSecretChamber(id) || InteractRegionalHunt(id)) return;
+        if (InteractPet(id) || InteractWorldEncounter(id) || InteractRoamingChampion(id) || InteractPersonalStash(id) || InteractSecretChamber(id) || InteractRegionalHunt(id)) return;
         if (id == Ashenwake.Core.Training.TrainingSession.InteractionId) { Safely(StartTraining); return; }
         if (id == "journey.next") { _campaignHud.RequestNextStep(); return; }
         if (id.StartsWith("opening.", StringComparison.Ordinal)) { Campaign(new(CampaignRuntimeAction.InteractOpening, Id: id)); return; }
@@ -368,6 +368,7 @@ public partial class EndgameDirector : Node3D
     private void Refresh()
     {
         if (_training is not null) { RefreshTraining(); return; }
+        EnablePets();
         var snapshot = _session.Capture(); var campaign = snapshot.Campaign; var combat = _session.Combat.View; var player = combat.Actors.Single(a => a.Id == 1);
         _sandbox.PresentProgression(_session.Production.ProgressionView, _session.Production.CurrentLevelExperience, combat.Skills, campaign.Production.Progression.Character.UnlockedDisciplines);
         var interactions = _session.Interactions.Select(i => new InteractionDisplay(i.ActionId, i.Name, (int)Math.Sqrt(CorePosition.DistanceSquared(i.Position, player.Position)), i.Range)).ToArray();
@@ -425,7 +426,7 @@ public partial class EndgameDirector : Node3D
         {
             bool bellDefeated = !_session.InHub && _session.Campaign.ActiveEncounterId == "campaign.bell_saint" &&
                 (_session.Campaign.EncounterCleared || combat.Actors.Any(actor => actor.DefinitionId == "boss.bell_saint" && actor.Health <= 0));
-            _stage.Show(campaign.Campaign, _session.Campaign.View, _session.Room, _session.Interactions.Where(i => !IsWorldEncounterInteraction(i.ActionId) && !i.ActionId.StartsWith("secret.", StringComparison.Ordinal) && !i.ActionId.StartsWith("champion.", StringComparison.Ordinal)).ToArray(), manifestations, _session.Production.ProgressionView.HubStage, player.Position, combat.BossPhase, bellDefeated, combat, _session.Campaign.ActiveEncounterId);
+            _stage.Show(campaign.Campaign, _session.Campaign.View, _session.Room, _session.Interactions.Where(i => !IsWorldEncounterInteraction(i.ActionId) && !i.ActionId.StartsWith("secret.", StringComparison.Ordinal) && !i.ActionId.StartsWith("champion.", StringComparison.Ordinal) && !i.ActionId.StartsWith("pet.", StringComparison.Ordinal)).ToArray(), manifestations, _session.Production.ProgressionView.HubStage, player.Position, combat.BossPhase, bellDefeated, combat, _session.Campaign.ActiveEncounterId);
         }
         string context = _session.InWorldEncounter ? $"world:{_session.CurrentWorldEncounter!.Id}:{snapshot.WorldEncounters!.AttemptSequence}" : _session.InRoamingChampion ? $"champion:{_session.CurrentRoamingChampion!.Id}:{snapshot.RoamingChampions!.AttemptSequence}" : _session.InSecretChamber ? $"secret:{_session.CurrentSecretChamber!.Id}:{snapshot.SecretChambers!.AttemptSequence}" : _session.InRegionalHunt ? $"regional:{_session.RegionalHunts.Run!.Id}" : combat.Endgame?.ContextKey ?? $"campaign:{_session.Campaign.ActiveEncounterId}:{campaign.Campaign.Deaths}";
         string style = _session.InWorldEncounter ? WorldEncounterStyle(_session.CurrentWorldEncounter!) : _session.InRoamingChampion ? EnvironmentGround.Style(false, _session.CurrentRoamingChampion!.EncounterId, null, _session.CurrentRoamingChampion.Act) : _session.InSecretChamber ? EnvironmentGround.Style(false, _session.CurrentSecretChamber!.EncounterId, null, _session.CurrentSecretChamber.Act) : _session.InRegionalHunt ? EnvironmentGround.Style(false, _session.CurrentRegionalHunt!.EncounterId, null, _session.CurrentRegionalHunt.Act) : combat.Endgame is null ? EnvironmentGround.Style(_session.InHub, _session.Campaign.ActiveEncounterId, campaign.Campaign.Exploration?.Id, campaign.Campaign.CurrentAct)
@@ -439,8 +440,8 @@ public partial class EndgameDirector : Node3D
             };
         _sandbox.PresentAuthoredRoom(_session.Room, context, style);
         _effects.Show(combat.Endgame, player.Position, _board.IsOpen);
-        RefreshRegionalHunts(); RefreshSecretChambers(); RefreshRoamingChampions(); RefreshWorldEncounters();
-        var mouseTargets = _session.Interactions.Select(i => new WorldInteractionTarget(i.ActionId, i.Name, i.Position, i.Range, _worldEncounterPresentation?.GetInteractionVisual(i.ActionId) ?? _championPresentation?.GetInteractionVisual(i.ActionId) ?? _secretPresentation?.GetInteractionVisual(i.ActionId) ?? _huntPresentation?.GetInteractionVisual(i.ActionId) ?? _stage.GetInteractionVisual(i.ActionId))).ToList();
+        RefreshRegionalHunts(); RefreshSecretChambers(); RefreshRoamingChampions(); RefreshWorldEncounters(); RefreshPets(context);
+        var mouseTargets = _session.Interactions.Select(i => new WorldInteractionTarget(i.ActionId, i.Name, i.Position, i.Range, _petPresentation?.GetInteractionVisual(i.ActionId) ?? _worldEncounterPresentation?.GetInteractionVisual(i.ActionId) ?? _championPresentation?.GetInteractionVisual(i.ActionId) ?? _secretPresentation?.GetInteractionVisual(i.ActionId) ?? _huntPresentation?.GetInteractionVisual(i.ActionId) ?? _stage.GetInteractionVisual(i.ActionId))).ToList();
         var wayForward = _stage.PresentWayForward(_session.Room, !_session.InWorldEncounter && !_session.InRoamingChampion && !_session.InSecretChamber && !_session.InRegionalHunt && !_session.InHub && combat.Endgame is null && campaign.Campaign.Exploration is null &&
             _session.EncounterCleared && _campaignHud.CanRequestNextStep && _campaignHud.CanShowWayForward, _campaignHud.NextStepLabel);
         if (wayForward is not null) mouseTargets.Add(wayForward);
@@ -514,6 +515,7 @@ public partial class EndgameDirector : Node3D
         string[] parts = message.Split(':'); string value = parts.Length > 1 ? parts[1] : "";
         return parts[0] switch
         {
+            "PetMaterialsCollected" => "Collected 5 materials from salvaged supplies.",
             "RoamingChampionDiscovered" => "A named champion has been sighted. Inspect it before accepting its optional challenge.",
             "RoamingChampionRewardClaimed" => "Champion treasure claimed. Its signature equipment is now in your backpack.",
             "RoamingChampion" => value switch { "Foyer" => "The champion waits. Challenge it when ready.", "Combat" => "The champion attacks. You may retreat through the return marker.", "Victory" => "Champion defeated. Claim its signature treasure.", "Exited" => "Returned to your campaign room. Earned discoveries and victories remain recorded.", _ => null },
@@ -596,7 +598,7 @@ public partial class EndgameDirector : Node3D
     private void Adopt(EndgameRuntimeSession session, bool retainExperiment = false)
     {
         _worldRewardCues.Reset(session.Tick); RewardAudio.Stop(this);
-        ResetPersonalStash(); ResetCollection(); ResetWardrobe(); ResetBestiary(); ClearDeathRecap(); EndTraining(false); ClearTrainingComparison(); ResetOpeningGuidance();
+        ResetPersonalStash(); ResetCollection(); ResetWardrobe(); ResetBestiary(); ResetPets(); ClearDeathRecap(); EndTraining(false); ClearTrainingComparison(); ResetOpeningGuidance();
         _worldEncounterPanel?.SessionRestored(); _worldEncounterPresentation?.Reset(); _worldEncounterSelection = _worldEncounterNotice = "";
         _championPanel?.SessionRestored(); _championPresentation?.Reset(); _championSelection = _championNotice = "";
         _secretPanel?.SessionRestored(); _secretPresentation?.Reset(); _secretSelection = _secretClue = _secretNotice = "";

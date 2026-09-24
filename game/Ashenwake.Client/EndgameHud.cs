@@ -20,6 +20,7 @@ public sealed record EndgameDisplay(bool Unlocked, bool InHub, int HighestTier, 
 public partial class EndgameHud : Control
 {
     public event Action? BestiaryRequested;
+    public event Action? PetsRequested;
     public event Action<long>? FractureRequested;
     public event Action<long, string, string>? AttuneRequested;
     public event Action<string>? HuntRequested;
@@ -75,6 +76,8 @@ public partial class EndgameHud : Control
         relics.Pressed += () => CollectionRequested?.Invoke(); tabs.AddChild(relics);
         var bestiary = new Button { Name = "ExpeditionBestiary", Text = "Bestiary", CustomMinimumSize = new(0, 34), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         bestiary.Pressed += () => BestiaryRequested?.Invoke(); tabs.AddChild(bestiary);
+        var pets = new Button { Name = "ExpeditionPets", Text = "Pets", CustomMinimumSize = new(0, 34), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        pets.Pressed += () => PetsRequested?.Invoke(); tabs.AddChild(pets);
         var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill }; body.AddThemeConstantOverride("separation", 16); column.AddChild(body);
         var left = new VBoxContainer { CustomMinimumSize = new(270, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = .85f }; body.AddChild(left);
         _catalogTitle = Text("", 13); left.AddChild(_catalogTitle);

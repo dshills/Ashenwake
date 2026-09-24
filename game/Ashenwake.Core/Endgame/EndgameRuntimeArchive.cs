@@ -22,6 +22,8 @@ public static class EndgameRuntimeSaveStore
         ProgressionContent policy, CampaignContent campaign, EndgameContent endgame)
     {
         ArchiveHeaders.Require(state, 1, "endgame-runtime.1");
+        if (state.TryGetProperty("pets", out var pets) && pets.ValueKind != JsonValueKind.Null)
+            ArchiveHeaders.Require(pets, 1);
         LocalMapAtlas.Inspect(state);
         LocalMapAtlas.Inspect(ArchiveHeaders.Object(state, "campaign"));
         var ledger = ArchiveHeaders.Object(state, "endgame"); ArchiveHeaders.Require(ledger, 1); ArchiveHeaders.Identity(ledger, "contentHash", endgame.Hash);

@@ -21,7 +21,7 @@ public partial class EndgameDirector
         _secretPanel.ActionRequested += SecretAction;
         _secretPanel.VisibilityChangedByPlayer += open =>
         {
-            if (open) { _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _huntBoard?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
+            if (open) { _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _collection?.SetOpen(false); _wardrobe?.SetOpen(false); _bestiary?.SetOpen(false); _pets?.SetOpen(false); _huntBoard?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel(); }
             UpdatePanelVisibility();
         };
         _secretPanel.ModalChanged += open => _sandbox.SetModalPaused("secret-confirmation", open);

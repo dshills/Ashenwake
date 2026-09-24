@@ -47,7 +47,7 @@ public partial class EndgameDirector
     {
         if (!_hasActiveCharacter || _training is not null || _frontMenu.IsOpen || _deathRecapHud?.IsOpen == true) return;
         RefreshBestiary(); PersistBestiary();
-        _collection.SetOpen(false); _wardrobe.SetOpen(false); _huntBoard.SetOpen(false); _secretPanel.SetOpen(false);
+        _pets?.SetOpen(false); _collection.SetOpen(false); _wardrobe.SetOpen(false); _huntBoard.SetOpen(false); _secretPanel.SetOpen(false);
         _stashPanel.SetOpen(false); _championPanel.SetOpen(false); _worldEncounterPanel.SetOpen(false); _openingGuide.SetOpen(false);
         _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel();
         PresentBestiary(); _bestiary.SetOpen(true);
@@ -147,7 +147,7 @@ public partial class EndgameDirector
 
     private void ResetBestiary()
     {
-        _bestiary?.SetOpen(false); _bestiary?.ResetSelection(); _bestiaryMemory = null; _bestiaryBefore = null;
+        _bestiary?.SetOpen(false); _pets?.SetOpen(false); _bestiary?.ResetSelection(); _bestiaryMemory = null; _bestiaryBefore = null;
         _bestiaryPath = _bestiaryNotice = ""; _bestiaryKnown.Clear(); _bestiaryDirty = false;
     }
 }

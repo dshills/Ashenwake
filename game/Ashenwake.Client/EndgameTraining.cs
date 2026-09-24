@@ -28,7 +28,8 @@ public partial class EndgameDirector
     {
         if (_training is not null || !_hasActiveCharacter || _frontMenu.IsOpen || _sandbox.IsPaused) return;
         var training = _session.CreateTrainingSession(_lastTrainingMode);
-        _bestiary?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _openingGuide?.SetOpen(false);
+        if (_petPresentation is not null) _petPresentation.Visible = false;
+        _bestiary?.SetOpen(false); _pets?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _openingGuide?.SetOpen(false);
         _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel();
         // Preserve each overlay's visibility, including the experiment navigation button.
         // Sandbox combat controls remain live, while the permanent journey is untouched.

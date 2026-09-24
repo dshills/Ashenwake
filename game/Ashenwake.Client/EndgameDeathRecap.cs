@@ -50,7 +50,7 @@ public partial class EndgameDirector
         bool restoredDefeat = recap is null && (defeatedRun || defeatedHunt || defeatedSecret || defeatedChampion || defeatedWorld) && recoveryKey != _shownRecovery;
         if (!newDeath && !restoredDefeat) return;
         _shownDeathRecap = recap; _shownRecovery = recoveryKey;
-        _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _bestiary?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel();
+        _huntBoard?.SetOpen(false); _secretPanel?.SetOpen(false); _bestiary?.SetOpen(false); _pets?.SetOpen(false); _stashPanel?.SetOpen(false); _championPanel?.SetOpen(false); _worldEncounterPanel?.SetOpen(false); _campaignHud.SetOpen(false); _board.SetOpen(false); _character.Close(); CloseExperimentPanel();
         _deathRecapHud.SetView(DeathPresentation(recap, defeatedRun ? run : null));
         _deathRecapHud.Open();
     }
