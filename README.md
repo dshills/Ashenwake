@@ -18,6 +18,8 @@ The [Verdant creature animation pass](docs/verdant_animation.md) adds crawling s
 
 The [Cinder creature animation pass](docs/cinder_animation.md) adds emberling lunges, heavy brute strikes, planted sentinel motion and state-driven Furnace Spindle exposure and shutdown reactions.
 
+The [Shattered Spine creature animation pass](docs/spine_animation.md) adds heavy oath giant strikes, ritual keeper casting, disciplined bone sentinels and state-driven Covenant Warden reactions and seal release.
+
 The [Verdant depth pass](docs/verdant_depth.md) adds curved foliage, tapered trees and roots, connected mossy earth, village boardwalks and leaf roofs, gentle wind, fungal light, and a layered Rootheart bloom. High and Performance settings also control the new foliage and local lights.
 
 The [Cinder depth pass](docs/cinder_depth.md) adds fractured basalt, worn metal paving, round pipes and reinforced machinery, forge and inspection lighting, moving pump wheels, and a more detailed Furnace Spindle with a cooling core light.

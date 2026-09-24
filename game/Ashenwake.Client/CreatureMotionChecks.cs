@@ -16,7 +16,11 @@ internal static class CreatureMotionChecks
         ("enemy.emberling", "Rusher", "Emberling"),
         ("enemy.furnace_brute", "Armored", "Brute"),
         ("enemy.forge_sentinel", "Armored", "Sentinel"),
-        ("boss.furnace_spindle", "BellSaint", "Spindle")
+        ("boss.furnace_spindle", "BellSaint", "Spindle"),
+        ("enemy.oath_giant", "Armored", "Giant"),
+        ("enemy.contract_keeper", "Ranged", "Keeper"),
+        ("enemy.bone_sentinel", "Armored", "BoneSentinel"),
+        ("boss.covenant_warden", "BellSaint", "Warden")
     ];
 
     public static void Run(Action<string, bool> check)
@@ -105,32 +109,33 @@ internal static class CreatureMotionChecks
             }
             finally { lowRate.Free(); highRate.Free(); }
         }
-        CheckFurnaceExposure(check);
+        CheckBossExposure(check, "boss.furnace_spindle", "spindle", (visual, exposed) => visual.SetFurnaceExposed(exposed));
+        CheckBossExposure(check, "boss.covenant_warden", "warden", (visual, exposed) => visual.SetWardenExposed(exposed));
         var unrelated = CharacterVisual.Create("enemy.ash_ghoul", "Melee");
         try { check("verdant_motion_does_not_select_unrelated_enemies", unrelated.CreatureMotionKind == "None"); }
         finally { unrelated.Free(); }
     }
 
-    private static void CheckFurnaceExposure(Action<string, bool> check)
+    private static void CheckBossExposure(Action<string, bool> check, string id, string prefix, Action<CharacterVisual, bool> setExposed)
     {
-        var guarded = CharacterVisual.Create("boss.furnace_spindle", "BellSaint");
-        var exposed = CharacterVisual.Create("boss.furnace_spindle", "BellSaint");
+        var guarded = CharacterVisual.Create(id, "BellSaint");
+        var exposed = CharacterVisual.Create(id, "BellSaint");
         try
         {
-            guarded.SetFurnaceExposed(false); exposed.SetFurnaceExposed(true);
+            setExposed(guarded, false); setExposed(exposed, true);
             var materials = Descendants(guarded).OfType<MeshInstance3D>()
                 .SelectMany(m => Enumerable.Range(0, m.Mesh.GetSurfaceCount()).Select(m.GetActiveMaterial))
                 .OfType<StandardMaterial3D>().DistinctBy(m => m.GetInstanceId()).ToArray();
             var palette = materials.Select(m => (m.AlbedoColor, m.Emission, m.EmissionEnergyMultiplier)).ToArray();
             var root = exposed.Transform;
             Advance(guarded, 1); Advance(exposed, 1);
-            check("spindle_guard_and_exposure_have_distinct_actor_poses", !Same(Pose(guarded), Pose(exposed)));
+            check(prefix + "_guard_and_exposure_have_distinct_actor_poses", !Same(Pose(guarded), Pose(exposed)));
             var frozen = Pose(exposed);
-            exposed.SetFurnaceExposed(false); exposed.Animate(.1, Vector3.Zero, paused: true);
-            check("spindle_guard_change_does_not_advance_paused_pose", Same(frozen, Pose(exposed)));
+            setExposed(exposed, false); exposed.Animate(.1, Vector3.Zero, paused: true);
+            check(prefix + "_guard_change_does_not_advance_paused_pose", Same(frozen, Pose(exposed)));
             Advance(exposed, .8);
-            check("spindle_exposure_response_preserves_actor_transform", !Same(frozen, Pose(exposed)) && exposed.Transform.IsEqualApprox(root));
-            check("spindle_exposure_never_mutates_shared_materials", palette.SequenceEqual(materials.Select(m => (m.AlbedoColor, m.Emission, m.EmissionEnergyMultiplier))));
+            check(prefix + "_exposure_response_preserves_actor_transform", !Same(frozen, Pose(exposed)) && exposed.Transform.IsEqualApprox(root));
+            check(prefix + "_exposure_never_mutates_shared_materials", palette.SequenceEqual(materials.Select(m => (m.AlbedoColor, m.Emission, m.EmissionEnergyMultiplier))));
         }
         finally { guarded.Free(); exposed.Free(); }
     }

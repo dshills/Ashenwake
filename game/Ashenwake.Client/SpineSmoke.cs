@@ -52,6 +52,8 @@ public partial class SpineSmoke : Node
                 throw new InvalidDataException("Spine smoke requires --spine-smoke --output=<isolated-directory>.");
             Directory.CreateDirectory(_output); Engine.MaxFps = 60;
             SpineDepthChecks.Detached(Check);
+            CreatureMotionChecks.Run(Check);
+            CovenantWardenMotionChecks.Run(Check);
             _combatJson = CampaignCombatContent.Parse(Read("combat"), Read("campaign-combat")).CombatJson;
             _campaign = CampaignContent.Parse(Read("campaign"));
             _adventure = AdventureContent.Parse(Read("adventure"));
@@ -94,12 +96,11 @@ public partial class SpineSmoke : Node
                 var boss = _session.Combat.View.Actors.FirstOrDefault(a => a.DefinitionId == "boss.covenant_warden");
                 string hazards = string.Join(',', (_session.Combat.View.CampaignHazards ?? []).Where(h => h.RemainingTicks > 0).Select(h => h.Id));
                 string signature = $"{_session.ActiveEncounterId}:{state.Exploration?.Id}:{boss?.Guarded}:{boss?.Health <= 0}:{hazards}:{_session.EncounterCleared}";
-                if (signature != _signature)
-                {
-                    _signature = signature; Refresh();
-                    _sandbox.PresentCombatEvents(result.CombatEvents, _session.Combat);
-                    await ObserveState();
-                }
+                bool changed = signature != _signature;
+                if (changed) { _signature = signature; Refresh(); }
+                _sandbox.PresentCombatEvents(result.CombatEvents, _session.Combat);
+                await ObserveCreatureEvents(result.CombatEvents);
+                if (changed) await ObserveState();
             }
             Check("real_route_completed_act_four", _session.Capture().Campaign.CompletedActs.Contains(4));
             Check("all_five_distinct_act_four_contexts_observed", _contexts.SetEquals(new[] { "spine_causeway", "spine_hall", "spine_warden", "spine_memory", "spine_archive" }));
@@ -114,6 +115,7 @@ public partial class SpineSmoke : Node
             Check("warden_both_authoritative_fault_lanes_observed", _orientations.Contains("North") && _orientations.Contains("South"));
             Check("warden_boss_owned_oath_mark_observed", _oathObserved);
             Check("warden_victory_observed", _wardenObserved && _victoryObserved);
+            Check("real_spine_attacks_reach_creature_rigs", new[] { "enemy.oath_giant", "enemy.contract_keeper", "enemy.bone_sentinel", "boss.covenant_warden" }.All(_creatureAttacks.Contains));
             string hash = _session.StateHash; CheckAudioSamples();
             Check("audio_generation_does_not_change_core_state", _session.StateHash == hash);
             var departedAtmosphere = _sandbox.SpineMotion;

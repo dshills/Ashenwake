@@ -78,6 +78,9 @@ public partial class CharacterVisual
             CombatCue.Death when _creatureMotion == CreatureMotion.Spindle => 1.65f,
             CombatCue.Death when _creatureMotion == CreatureMotion.Brute => 1.08f,
             CombatCue.Death when _creatureMotion == CreatureMotion.Emberling => .6f,
+            CombatCue.Death when _creatureMotion == CreatureMotion.Giant => 1.4f,
+            CombatCue.Death when _creatureMotion == CreatureMotion.Warden => 1.7f,
+            CombatCue.Death when _creatureMotion == CreatureMotion.Keeper => 1.1f,
             CombatCue.Death => _motionStyle is MotionStyle.Bell or MotionStyle.Beast ? 1.12f : .86f,
             CombatCue.Attack when CinderCreature => _creatureMotion switch
             {
@@ -85,6 +88,13 @@ public partial class CharacterVisual
                 CreatureMotion.Brute => .72f,
                 CreatureMotion.Sentinel => .48f,
                 _ => .8f
+            },
+            CombatCue.Attack when SpineCreature => _creatureMotion switch
+            {
+                CreatureMotion.Giant => .78f,
+                CreatureMotion.Keeper => .66f,
+                CreatureMotion.BoneSentinel => .46f,
+                _ => .84f
             },
             CombatCue.Attack when _creatureMotion != CreatureMotion.None => _creatureMotion == CreatureMotion.Swarm ? .32f : .58f,
             _ when _weaponRig => WeaponAttackDuration,

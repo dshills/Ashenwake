@@ -11,6 +11,7 @@ namespace Ashenwake.Client;
 public partial class CovenantWardenVisual : Node3D
 {
     private const float ReleaseDuration = 3.2f;
+    private const float ShieldReactionDuration = .72f;
     private static readonly Color LivingLaw = new("bed3ce");
     private static readonly Color BrokenLaw = new("767e80");
     private static readonly Color FaultWarning = new("f2d49a");
@@ -38,7 +39,10 @@ public partial class CovenantWardenVisual : Node3D
     private bool _reducedEffects;
     private double _clock;
     private float _releaseAge = ReleaseDuration;
-    private float _releaseStartOpening;
+    private float _shieldReactionAge = ShieldReactionDuration;
+    private readonly Vector3[] _releaseTabletPositions = new Vector3[2], _releaseTabletRotations = new Vector3[2];
+    private readonly Vector3[] _releaseShieldPositions = new Vector3[4], _releaseShieldRotations = new Vector3[4];
+    private readonly Vector3[] _releaseSealPositions = new Vector3[6], _releaseSealRotations = new Vector3[6];
     private float _releaseStartLawEmission, _releaseStartSealEmission, _releaseStartLightEnergy, _releaseStartLightRange;
 
     public bool Guarded { get; private set; }
@@ -100,13 +104,17 @@ public partial class CovenantWardenVisual : Node3D
         if (_initialized && defeated && !Defeated && !_reducedEffects)
         {
             _releaseAge = 0;
-            _releaseStartOpening = Guarded ? 0 : 1;
+            CaptureRelease(_tabletHalves, _releaseTabletPositions, _releaseTabletRotations);
+            CaptureRelease(_shields, _releaseShieldPositions, _releaseShieldRotations);
+            CaptureRelease(_seals, _releaseSealPositions, _releaseSealRotations);
             _releaseStartLawEmission = _lawMaterial.EmissionEnergyMultiplier;
             _releaseStartSealEmission = _sealMaterial.EmissionEnergyMultiplier;
             _releaseStartLightEnergy = _lawLight.LightEnergy;
             _releaseStartLightRange = _lawLight.OmniRange;
         }
         else if (!_initialized || !defeated || _reducedEffects) _releaseAge = ReleaseDuration;
+        if (_initialized && !Defeated && !defeated && Guarded != guarded && !_reducedEffects) _shieldReactionAge = 0;
+        else if (!_initialized || defeated || _reducedEffects) _shieldReactionAge = ShieldReactionDuration;
         Guarded = guarded;
         Defeated = defeated;
         FaultLane = faultLane;
@@ -124,6 +132,7 @@ public partial class CovenantWardenVisual : Node3D
             // Consume the release even while paused. Re-enabling effects cannot replay a victory.
             _clock = 0;
             _releaseAge = ReleaseDuration;
+            _shieldReactionAge = ShieldReactionDuration;
             ApplyPose();
             return;
         }
@@ -131,14 +140,29 @@ public partial class CovenantWardenVisual : Node3D
         float step = double.IsFinite(delta) ? (float)Math.Clamp(delta, 0, .1) : 0;
         if (!Defeated) _clock = (_clock + step) % (Math.Tau / 1.5);
         _releaseAge = Math.Min(ReleaseDuration, _releaseAge + step);
+        _shieldReactionAge = Math.Min(ShieldReactionDuration, _shieldReactionAge + step);
         ApplyPose();
+    }
+
+    private static void CaptureRelease(Node3D[] nodes, Vector3[] positions, Vector3[] rotations)
+    {
+        for (int i = 0; i < nodes.Length; i++) { positions[i] = nodes[i].Position; rotations[i] = nodes[i].RotationDegrees; }
+    }
+
+    private float ReleaseStage(float start, float duration) => Mathf.SmoothStep(0, 1, Math.Clamp((_releaseAge - start) / duration, 0, 1));
+
+    private float ShieldReaction(int index)
+    {
+        if (Defeated || _reducedEffects) return 0;
+        float progress = Math.Clamp((_shieldReactionAge - index * .07f) / .5f, 0, 1);
+        return Mathf.Sin(progress * Mathf.Pi) * (1 - progress);
     }
 
     private void ApplyPose()
     {
         float victory = VictoryProgress;
         float breath = !Defeated && !_reducedEffects ? (float)Math.Sin(_clock * 1.5) : 0;
-        float opening = Defeated ? Mathf.Lerp(_releaseStartOpening, 1, victory) : Guarded ? 0 : 1;
+        float opening = Guarded ? 0 : 1;
         _lawMaterial.AlbedoColor = LivingLaw.Lerp(BrokenLaw, victory);
         _lawMaterial.Emission = LivingLaw.Lerp(BrokenLaw, victory);
         _lawMaterial.EmissionEnergyMultiplier = Defeated ? Mathf.Lerp(_releaseStartLawEmission, .015f, victory) : (Guarded ? .28f : .85f) + breath * .04f;
@@ -151,23 +175,29 @@ public partial class CovenantWardenVisual : Node3D
         for (int i = 0; i < _tabletHalves.Length; i++)
         {
             float side = i == 0 ? -1 : 1;
-            _tabletHalves[i].Position = new(side * (.73f + victory * .24f), 3.5f - victory * .38f, .08f);
-            _tabletHalves[i].RotationDegrees = new(0, side * victory * 7, -side * victory * 7);
+            float release = ReleaseStage(.95f + i * .24f, 1.35f);
+            _tabletHalves[i].Position = Defeated ? _releaseTabletPositions[i].Lerp(new(side * .97f, 3.12f, .08f), release) : new(side * .73f, 3.5f, .08f);
+            _tabletHalves[i].RotationDegrees = Defeated ? _releaseTabletRotations[i].Lerp(new(4, side * 7, -side * 7), release) : Vector3.Zero;
         }
         for (int i = 0; i < _shields.Length; i++)
         {
             float side = i % 2 == 0 ? -1 : 1;
             float tier = i < 2 ? -1 : 1;
-            _shields[i].Position = new(side * (.59f + opening * 1.27f), 3.5f + tier * .84f - victory * .4f, .9f);
-            _shields[i].RotationDegrees = new(0, side * opening * 28, -side * (opening * 10 + victory * 13));
+            float reaction = ShieldReaction(i), release = ReleaseStage(.45f + i * .1f, .85f);
+            // Defense opens/closes immediately; staggered recoil only adds depth and a small roll.
+            _shields[i].Position = Defeated ? _releaseShieldPositions[i].Lerp(new(side * 1.86f, 3.1f + tier * .84f, .9f), release) :
+                new(side * (.59f + opening * 1.27f), 3.5f + tier * .84f, .9f + reaction * (Guarded ? -.1f : .18f));
+            _shields[i].RotationDegrees = Defeated ? _releaseShieldRotations[i].Lerp(new(0, side * 28, -side * 23), release) :
+                new(0, side * opening * 28, -side * (opening * 10 + reaction * 8));
         }
         for (int i = 0; i < _seals.Length; i++)
         {
             float angle = i * Mathf.Tau / _seals.Length + Mathf.Pi / 6;
             float x = Mathf.Sin(angle);
             float y = Mathf.Cos(angle);
-            _seals[i].Position = new(x * (1.52f + victory * .62f), 3.5f + y * 1.94f - victory * 1.05f, 1.25f);
-            _seals[i].RotationDegrees = new(victory * 32, 0, -i * 60 + x * victory * 43);
+            float release = ReleaseStage(.1f + i * .1f, .65f);
+            _seals[i].Position = Defeated ? _releaseSealPositions[i].Lerp(new(x * 2.14f, 2.45f + y * 1.94f, 1.25f), release) : new(x * 1.52f, 3.5f + y * 1.94f, 1.25f);
+            _seals[i].RotationDegrees = Defeated ? _releaseSealRotations[i].Lerp(new(32, 0, -i * 60 + x * 43), release) : new(0, 0, -i * 60);
         }
         for (int i = 0; i < _faultPointers.Length; i++)
         {
@@ -181,9 +211,9 @@ public partial class CovenantWardenVisual : Node3D
         for (int i = 0; i < _shards.Length; i++)
         {
             var shard = _shards[i];
-            float age = _releaseAge - i * .05f;
+            float age = _releaseAge - .12f - i * .055f;
             shard.Visible = releasing && age is >= 0 and < 1.8f;
-            if (!shard.Visible) continue;
+            if (!shard.Visible) { shard.Transform = Transform3D.Identity; continue; }
             float life = age / 1.8f;
             float angle = i * 2.399f;
             shard.Position = new(Mathf.Sin(angle) * (1.15f + life * .65f), 3.4f + Mathf.Cos(angle) * 1.55f + life * .5f, 1.5f + Mathf.Sin(angle) * .08f);

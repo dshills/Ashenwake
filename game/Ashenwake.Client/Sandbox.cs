@@ -293,6 +293,7 @@ public partial class Sandbox : Node3D
             var aim = actor.TelegraphPosition ?? (hazard is null ? null : hazard.Kind == "Circle" ? hazard.Position : hazard.End);
             var presentation = _actors[actor.Id];
             presentation.Body.SetFurnaceExposed(!actor.Guarded);
+            presentation.Body.SetWardenExposed(!actor.Guarded);
             if (aim is { } destination) presentation.Facing = PositionOf(destination.X, destination.Z) - presentation.Current;
             else if (presentation.Body.ActiveCue is not ("attack" or "dodge")) presentation.Facing = null;
             if (actor.Id != 1) _actors[actor.Id].Body.SetAccent(actor.State == "MarkedEcho" || _view.Endgame?.BossCue?.PriorityActorIds.Contains(actor.Id) == true ? new Color("ffe297") : actor.State == "FalseEcho" ? new Color("69818f") : _actors[actor.Id].Body.BaseAccentColor);
