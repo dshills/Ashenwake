@@ -9,7 +9,7 @@ public sealed record OpeningScoreAnalysis(int SampleRate, int Channels, int Fram
     double DurationSeconds, double Peak, double Rms, double MaximumAdjacentJump, double MaximumLoopJump,
     double DcOffset, string PcmSha256);
 
-/// <summary>Original eight-bar opening, Verdant, Cinder and Spine score. Pure managed rendering is safe on a background
+/// <summary>Original eight-bar opening, Verdant, Cinder, Spine and Hollow score. Pure managed rendering is safe on a background
 /// worker; stream cache access belongs to the Godot thread. No gameplay RNG or clock is read.</summary>
 public static class OpeningScore
 {
@@ -23,15 +23,16 @@ public static class OpeningScore
     public const int Bars = 8;
     public const double BeatSeconds = .75;
     public const double MaximumSummedStemPeak = .631;
-    public const string Version = "opening-score.4";
+    public const string Version = "opening-score.5";
 
     public static IReadOnlyList<string> StyleNames { get; } = Array.AsReadOnly<string>(["greyhaven", "road", "monastery", "crypt", "sanctum",
         "verdant_ruins", "verdant_village", "verdant_shrine", "verdant_hunt", "verdant_heart",
         "cinder_fields", "cinder_extraction", "cinder_foundry", "cinder_storm", "cinder_furnace",
-        "spine_causeway", "spine_hall", "spine_archive", "spine_memory", "spine_warden"]);
+        "spine_causeway", "spine_hall", "spine_archive", "spine_memory", "spine_warden",
+        "hollow_rooms", "hollow_memory", "hollow_vault", "hollow_breach"]);
     public static IReadOnlyList<string> StemNames { get; } = Array.AsReadOnly<string>(["exploration", "combat", "boss"]);
 
-    // Sixty native PCM buffers at most: 127,008,000 bytes. Pure renders retain no PCM cache.
+    // Seventy-two native PCM buffers at most: 152,409,600 bytes. Pure renders retain no PCM cache.
     private static readonly Dictionary<(string Style, string Stem), AudioStreamWav> Streams = [];
     private const int TableSize = 4096;
     private static readonly float[] Sine = BuildSine();
@@ -100,7 +101,19 @@ public static class OpeningScore
             [65,69,67,60,65,62,60,65], [1,5,8,12,17,21,25,29], false, .006, .44),
         // Warden: a low F pedal, flattened second and rising oath bind the court together.
         new([[29,41,48,53], [30,42,49,54], [34,46,53,56], [29,41,48,55]],
-            [41,48,53,54,53,48,44,41], [0,4,8,11,16,20,24,28], false, .011, .55)
+            [41,48,53,54,53,48,44,41], [0,4,8,11,16,20,24,28], false, .011, .55),
+        // Repeating Rooms: an A-minor fragment returns with one altered note each time.
+        new([[33,45,52,60], [33,45,53,60], [36,48,55,59], [33,45,52,59]],
+            [69,72,71,64,69,72,70,64], [1,3,7,11,17,19,23,27], false, .011, .65),
+        // Identity Memory: an open sixth brings warmth to the incomplete answer.
+        new([[45,52,60,67], [41,48,57,64], [38,45,55,62], [40,47,59,64]],
+            [69,72,76,71,67,64,69], [2,6,9,14,19,24,29], false, .006, .56),
+        // Unremembered Vault: isolated high fragments drift over unresolved fifths.
+        new([[33,45,52,59], [34,46,53,60], [29,41,48,55], [33,45,51,58]],
+            [81,76,82,74,79,76], [2,7,12,18,23,29], false, .009, .71),
+        // Breach Heart: the low A pedal strains against a flattened second and tritone.
+        new([[21,33,40,48], [22,34,41,49], [27,39,46,51], [21,33,39,47]],
+            [45,52,46,45,51,48,46,45], [0,4,8,13,16,20,25,29], false, .014, .62)
     ];
 
     public static bool IsPrepared(string style, string stem)
@@ -141,7 +154,8 @@ public static class OpeningScore
         var region = Regions[regionIndex];
         var left = new float[SampleCount]; var right = new float[SampleCount];
         uint seed = unchecked(0x6D2B79F5u ^ (uint)(regionIndex + 1) * 0x9E3779B9u ^ (uint)(layer + 1) * 0x85EBCA6Bu);
-        if (regionIndex >= 15) Spine(region, regionIndex - 15, layer, left, right, seed);
+        if (regionIndex >= 20) Hollow(region, regionIndex - 20, layer, left, right, seed);
+        else if (regionIndex >= 15) Spine(region, regionIndex - 15, layer, left, right, seed);
         else if (regionIndex >= 10) Cinder(region, regionIndex - 10, layer, left, right, seed);
         else if (regionIndex >= 5) Verdant(region, regionIndex - 5, layer, left, right, seed);
         else if (layer == 0) Exploration(region, regionIndex, left, right, seed);
@@ -370,6 +384,120 @@ public static class OpeningScore
             AddStone(left, right, notes[0] + 19, at + 5.5 * BeatSeconds, 1.4, .12, .25, seed + (uint)(60 + chord));
             if (character == 4)
                 AddHorn(left, right, notes[1], at + 4.5 * BeatSeconds, 2.5, .079, .2, soft: false);
+        }
+    }
+
+    private static void Hollow(Region region, int character, int layer, float[] left, float[] right, uint seed)
+    {
+        // Separate orchestration and append-only indices preserve Acts I-IV byte for byte.
+        // Wordless spectral voices, fractured glass answers and low pulses share the 32-beat grid.
+        bool memory = character == 1;
+        if (layer == 0)
+        {
+            for (int chord = 0; chord < region.Chords.Length; chord++)
+            {
+                var notes = region.Chords[chord]; double at = chord * 6;
+                AddSpectralVoice(left, right, notes[1], at - .7, 9.0, .056, -.35, memory);
+                AddSpectralVoice(left, right, notes[3], at + .3, 8.3, .041, .36, memory);
+                if (character == 3)
+                    AddHollowPulse(left, right, notes[0], at, 3.6, .078, -.05);
+            }
+            for (int note = 0; note < region.Melody.Length; note++)
+            {
+                double at = region.Beats[note] * BeatSeconds, pan = note % 2 == 0 ? -.43 : .43;
+                int pitch = region.Melody[note];
+                AddGlassMemory(left, right, pitch, at, memory ? 3.6 : 2.6, .093, pan, reverse: false);
+                // A quiet missing-beat answer moves across the room without continuous feedback.
+                if (note % 2 == 0)
+                    AddGlassMemory(left, right, pitch - (memory ? 0 : 12), at + 1.5 * BeatSeconds,
+                        2.8, .032, -pan, reverse: character is 0 or 2);
+            }
+            AddAir(left, right, region.Air, seed);
+            return;
+        }
+        if (layer == 1)
+        {
+            for (int bar = 0; bar < Bars; bar++)
+            {
+                int root = region.Chords[bar / 2][0]; double at = bar * 4 * BeatSeconds;
+                AddHollowPulse(left, right, root, at, 1.9, .21, -.10);
+                AddHollowPulse(left, right, root + 12, at + (character == 0 ? 1.5 : 2.5) * BeatSeconds,
+                    1.05, .12, .20);
+                AddGlassMemory(left, right, root + 31, at + 3 * BeatSeconds, .8, .06, -.35, reverse: true);
+                if (character == 3 || bar % 2 == 1)
+                    AddHollowPulse(left, right, root + 7, at + 3.5 * BeatSeconds, .65, .07, .31);
+            }
+            return;
+        }
+        for (int chord = 0; chord < region.Chords.Length; chord++)
+        {
+            var notes = region.Chords[chord]; double at = chord * 6;
+            AddSpectralVoice(left, right, notes[2], at - .4, 8.2, .095, -.33, memory);
+            AddSpectralVoice(left, right, notes[3] + 12, at + .15, 7.7, .071, .33, memory);
+            AddHollowPulse(left, right, notes[0], at, 3.2, .25, -.04);
+            AddHollowPulse(left, right, notes[0] + 12, at + 3 * BeatSeconds, 2.1, .15, -.25);
+            AddHollowPulse(left, right, notes[0] + (character == 3 ? 1 : 7), at + 5.5 * BeatSeconds, 1.6, .11, .25);
+            AddGlassMemory(left, right, notes[2] + 12, at + 4 * BeatSeconds, 2.9, .048, .42, reverse: true);
+        }
+    }
+
+    private static void AddSpectralVoice(float[] left, float[] right, int midi, double start, double duration,
+        double level, double pan, bool warm)
+    {
+        double phase = 0, companion = .31, step = Frequency(midi) / SampleRate;
+        int at = Wrap((int)Math.Round(start * SampleRate)), frames = (int)(duration * SampleRate);
+        var (gainLeft, gainRight) = Pan(pan, level);
+        for (int i = 0; i < frames; i++)
+        {
+            double t = i / (double)SampleRate, vowel = .5 + .5 * Lookup(Sine, Fraction(t * .19));
+            double sample = .60 * Lookup(Sine, phase) + .18 * Lookup(Sine, companion) +
+                (.12 + .09 * vowel) * Lookup(Sine, Fraction(phase * 3)) +
+                (warm ? .022 : .065) * (1 - vowel) * Lookup(Sine, Fraction(phase * 7));
+            sample *= Smooth(t / 1.35) * Smooth((duration - t) / 1.9) *
+                (.91 + .09 * Lookup(Sine, Fraction(t * .43)));
+            left[at] += (float)(sample * gainLeft); right[at] += (float)(sample * gainRight);
+            phase = Fraction(phase + step * (1 + .0018 * Lookup(Sine, Fraction(t * 4.1))));
+            companion = Fraction(companion + step * .9967);
+            if (++at == SampleCount) at = 0;
+        }
+    }
+
+    private static void AddGlassMemory(float[] left, float[] right, int midi, double start, double duration,
+        double level, double pan, bool reverse)
+    {
+        double phase = 0, partial = 0, overtone = 0, step = Frequency(midi) / SampleRate;
+        int at = Wrap((int)Math.Round(start * SampleRate)), frames = (int)(duration * SampleRate);
+        var (gainLeft, gainRight) = Pan(pan, level);
+        for (int i = 0; i < frames; i++)
+        {
+            double t = i / (double)SampleRate;
+            double envelope = reverse ? Smooth(t / (duration * .82)) : Math.Exp(-1.8 * t);
+            double sample = (.76 * Lookup(Sine, phase) + .14 * Lookup(Sine, partial) +
+                .065 * Lookup(Sine, overtone)) * envelope *
+                Smooth(t / .018) * Smooth((duration - t) / (reverse ? .24 : .50));
+            left[at] += (float)(sample * gainLeft); right[at] += (float)(sample * gainRight);
+            phase = Fraction(phase + step);
+            partial = Fraction(partial + step * 2.013); overtone = Fraction(overtone + step * 3.971);
+            if (++at == SampleCount) at = 0;
+        }
+    }
+
+    private static void AddHollowPulse(float[] left, float[] right, int midi, double start, double duration,
+        double level, double pan)
+    {
+        double phase = 0, overtone = 0, step = Frequency(midi) / SampleRate;
+        int at = Wrap((int)Math.Round(start * SampleRate)), frames = (int)(duration * SampleRate);
+        var (gainLeft, gainRight) = Pan(pan, level);
+        for (int i = 0; i < frames; i++)
+        {
+            double t = i / (double)SampleRate;
+            double sample = (.81 * Lookup(Sine, phase) + .13 * Lookup(Sine, Fraction(phase * 2)) +
+                .06 * Lookup(Sine, overtone)) * Math.Exp(-2.6 * t) *
+                Smooth(t / .025) * Smooth((duration - t) / .25);
+            left[at] += (float)(sample * gainLeft); right[at] += (float)(sample * gainRight);
+            double fallingStep = step * (1 + .12 * Math.Exp(-13 * t));
+            phase = Fraction(phase + fallingStep); overtone = Fraction(overtone + fallingStep * 4.03);
+            if (++at == SampleCount) at = 0;
         }
     }
 
@@ -683,6 +811,10 @@ public static class OpeningScore
             "spine_archive" => 17,
             "spine_memory" => 18,
             "spine_warden" => 19,
+            "hollow_rooms" => 20,
+            "hollow_memory" => 21,
+            "hollow_vault" => 22,
+            "hollow_breach" => 23,
             _ => -1
         };
         int layer = stem switch { "exploration" => 0, "combat" => 1, "boss" => 2, _ => -1 };

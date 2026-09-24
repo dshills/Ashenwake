@@ -11,6 +11,13 @@ public partial class Sandbox
     private bool PlayOpeningTell(CombatEvent e, Vector3 position)
     {
         var actor = _view.Actors.FirstOrDefault(a => a.Id == e.ActorId);
+        if (actor?.DefinitionId == "boss.breach_heart")
+        {
+            if (OpeningAudio.PrimaryBreach(_view)?.Id != actor.Id)
+                return _openingAudio.Play("echo_tell", position);
+            if (e.Kind == "BossPatternStarted" || e.ContentId is "campaign.returning_echo" or "campaign.seal_sweep") return true;
+            return e.ContentId == "campaign.breach_echo" && _openingAudio.Play("breach_echo", position);
+        }
         if (actor?.DefinitionId == "boss.covenant_warden")
         {
             // The oath and fault are scheduled together. Announce the fault when
@@ -35,9 +42,32 @@ public partial class Sandbox
             "enemy.oath_giant" => "giant_tell",
             "enemy.contract_keeper" => "keeper_tell",
             "enemy.bone_sentinel" => "bone_tell",
+            "enemy.doubled_shadow" => "shadow_tell",
+            "enemy.breach_echo" => "echo_tell",
             _ => "crypt_tell"
         };
         return _openingAudio.Play(cue, position);
+    }
+
+    private bool PlayHollowRuleTell(CombatEvent e)
+        => e.ContentId == "rule.causalechoes" && HollowAmbience.CueForStyle(_environmentStyle).Length > 0 &&
+            _openingAudio.Play("causal_tell", Vector3.Zero);
+
+    private void PlayHollowFollowup(CombatEvent e)
+    {
+        if (_environmentStyle != "hollow_breach" || !_view.Actors.Any(a => a.Id == 1 && a.Health > 0) ||
+            OpeningAudio.PrimaryBreach(_view) is not { Health: > 0 } boss || boss.Id != e.ActorId) return;
+        bool Pending(string id) => _view.CampaignHazards?.Any(h => h.SourceId == boss.Id &&
+            h.ContentId == id && h.RemainingTicks > 0) == true;
+        // Warn emits the entire sequence together. Advance its audible warning only
+        // after a real resolution and only while the next hazard still exists.
+        if (e.ContentId == "campaign.breach_echo")
+        {
+            if (Pending("campaign.seal_sweep")) _openingAudio.Play("breach_sweep", Vector3.Zero);
+            else if (Pending("campaign.returning_echo")) _openingAudio.Play("breach_return", Vector3.Zero);
+        }
+        else if (e.ContentId == "campaign.seal_sweep" && Pending("campaign.returning_echo"))
+            _openingAudio.Play("breach_return", Vector3.Zero);
     }
 
     private bool PlaySpineRuleTell(CombatEvent e)
@@ -73,6 +103,8 @@ public partial class Sandbox
         bool magic = e.ContentId is "campaign.memoryarrow" or "campaign.chain" or "campaign.sonic" or
             "campaign.venompod" or "campaign.swarm" or "campaign.poisonburst" or "campaign.root_tangle" or "campaign.root_spores" ||
             e.ContentId is "campaign.heatvent" or "campaign.forgesweep" or "campaign.furnace_vent" or "campaign.slag" or "enemy.detonate" or "rule.storm" ||
+            e.ContentId is "campaign.shadowdouble" or "campaign.causalecho" or "campaign.breach_echo" or
+                "campaign.returning_echo" or "campaign.seal_sweep" or "rule.causalechoes" ||
             skill?.Family is DamageFamily.Fire or DamageFamily.Frost or DamageFamily.Storm or
                 DamageFamily.Decay or DamageFamily.Venom or DamageFamily.Void;
         return _openingAudio.Play(magic ? "impact_spell" : "impact_weapon", position);
@@ -85,6 +117,8 @@ public partial class Sandbox
             "boss.rootheart" when e.Amount == 2 => "rootheart_phase2",
             "boss.furnace_spindle" when e.Amount == 2 => "furnace_phase2",
             "boss.covenant_warden" when e.Amount == 2 => "warden_phase2",
+            "boss.breach_heart" when OpeningAudio.PrimaryBreach(_view)?.Id == e.ActorId && e.Amount is 2 or 3
+                => e.Amount == 2 ? "breach_phase2" : "breach_phase3",
             "boss.bell_saint" or "enemy.bell_saint" or "enemy.bell_beast" => e.Amount >= 3 ? "bell_phase3" : "bell_phase2",
             _ => null
         };
@@ -100,6 +134,8 @@ public partial class Sandbox
             "boss.rootheart" => "rootheart_fall",
             "boss.furnace_spindle" => "furnace_shutdown",
             "boss.covenant_warden" => "warden_defeat",
+            "enemy.seal_channel" => "seal_broken",
+            "boss.breach_heart" when OpeningAudio.PrimaryBreach(_view)?.Id == targetId => "breach_containment",
             _ => null
         };
         return cue is not null && _openingAudio.Play(cue, position);

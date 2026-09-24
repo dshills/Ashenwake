@@ -123,7 +123,7 @@ public partial class SpineAudioSmoke : Node
                 AudioServer.IsBusMute(AudioServer.GetBusIndex(ClientAudio.EffectsBus)) && audio.BankStarts == starts);
             foreach (var pair in levels) ClientAudio.SetVolume(pair.Key, pair.Value);
             count = audio.CueCount;
-            audio.SetStyle("hollow_rooms");
+            audio.SetStyle("audio_unscored_fixture");
             Pump(audio, hub, 130);
             Check("departure_releases_spine_banks_and_transients", audio.ActiveMusicBanks == 0 && audio.DesiredStyle == "" && audio.CueCount == count &&
                 audio.EffectPlayers.All(p => !p.Playing) && audio.WarningPlayers.All(p => !p.Playing));
@@ -493,7 +493,7 @@ public partial class SpineAudioSmoke : Node
         audio.Reset(exposed); audio.Observe(exposed); audio.Advance(0, exposed, false, Basis.Identity);
         audio.Observe(exposed with { Tick = exposed.Tick + 1 });
         Check("fixture_paused_load_does_not_replay_exposure_on_resume", audio.CueCount == count);
-        audio.Reset(guard); audio.SetStyle("hollow_rooms"); audio.Observe(exposed);
+        audio.Reset(guard); audio.SetStyle("audio_unscored_fixture"); audio.Observe(exposed);
         count = audio.CueCount; audio.SetStyle("spine_warden"); audio.Observe(exposed with { Tick = exposed.Tick + 1 });
         Check("fixture_room_reset_does_not_replay_exposure", audio.CueCount == count);
         Check("exposure_fixtures_preserve_earned_core", hash == _session.StateHash);

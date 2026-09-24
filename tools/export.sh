@@ -191,6 +191,13 @@ python3 tools/check-godot-log.py "$spine_audio_output/smoke.log"
 rg -q 'SpineAudioClientSmokePassed' "$spine_audio_output/smoke.log"
 aw campaign replay "$spine_audio_output/spine-audio.awcampaign"
 
+hollow_audio_output="$package_output/hollow-audio-client"
+mkdir -p "$hollow_audio_output"
+"$binary" --headless --quit-after 48000 --log-file "$hollow_audio_output/smoke.log" -- --hollow-audio-smoke --output="$hollow_audio_output"
+python3 tools/check-godot-log.py "$hollow_audio_output/smoke.log"
+rg -q 'HollowAudioClientSmokePassed' "$hollow_audio_output/smoke.log"
+aw campaign replay "$hollow_audio_output/hollow-audio.awcampaign"
+
 combat_feedback_output="$package_output/combat-feedback-client"
 mkdir -p "$combat_feedback_output"
 "$binary" --headless --quit-after 1200 --log-file "$combat_feedback_output/smoke.log" -- --combat-feedback-smoke --output="$combat_feedback_output"

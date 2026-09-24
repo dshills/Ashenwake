@@ -9,13 +9,13 @@ public sealed record OpeningFoleyCue(string Id, string Category, double Duration
 public sealed record OpeningFoleyAnalysis(int Frames, double DurationSeconds, double PeakAbsolute, double Rms,
     double MaxAdjacentDelta, short FirstSample, short LastSample, int FullScaleSamples, string Sha256);
 
-/// <summary>Original opening-region, Verdant, Cinder and Spine foley. Pure deterministic synthesis is independent of gameplay state;
+/// <summary>Original opening-region, Verdant, Cinder, Spine and Hollow foley. Pure deterministic synthesis is independent of gameplay state;
 /// cached Godot streams are created/accessed on the scene thread. PCM16 mono, no loops or external assets.</summary>
 public static class OpeningFoley
 {
     public const int SampleRate = 22050;
     public const double PeakCeiling = .78;
-    // Catalog-validated, append-only keys bound the native cache to 47 short mono buffers.
+    // Catalog-validated, append-only keys bound the native cache to 58 short mono buffers.
     private static readonly Dictionary<string, AudioStreamWav> Streams = new(StringComparer.Ordinal);
     public static IReadOnlyList<OpeningFoleyCue> Cues { get; } = Array.AsReadOnly<OpeningFoleyCue>(
     [
@@ -66,7 +66,18 @@ public static class OpeningFoley
         new("spine_fault", "enemy_tell", .55, -10, true, "Sequential fault: three ascending rock clicks cross a rising pressure rumble."),
         new("warden_phase2", "phase_warning", 2.16, -9, true, "A broken stone seal answers two forceful horns and a restrained choral surge."),
         new("warden_defeat", "phase_warning", 3.04, -9, true, "The Warden's final horn sinks beneath falling stone as a quiet open fifth remains."),
-        new("warden_exposed", "window_warning", .94, -10, true, "Two clear, ascending stone tones announce the broken oath's vulnerable window.")
+        new("warden_exposed", "window_warning", .94, -10, true, "Two clear, ascending stone tones announce the broken oath's vulnerable window."),
+        new("shadow_tell", "enemy_tell", .94, -10, true, "Doubled shadow: an inhaled whisper splits into two falling, mistuned voices."),
+        new("echo_tell", "enemy_tell", .88, -10, true, "Breach echo: a narrow glass call returns as a lower, breathier answer."),
+        new("causal_tell", "enemy_tell", .83, -10, true, "Causal wraith: a reversed breath gathers around an unstable rising tone."),
+        new("breach_echo", "enemy_tell", .48, -10, true, "Breach Heart: a short descending spectral pair announces the first echo."),
+        new("breach_return", "enemy_tell", .62, -10, true, "Returning echo: two rising glass pulses identify the return path."),
+        new("breach_sweep", "enemy_tell", .49, -10, true, "Breach sweep: a low pressure intake crosses a bright, widening hiss."),
+        new("breach_phase2", "phase_warning", 2.12, -9, true, "The Heart's second phase opens with two low pulses and a fractured choral surge."),
+        new("breach_phase3", "phase_warning", 2.36, -9, true, "Three tightening pulses fracture into a higher, dissonant spectral choir."),
+        new("breach_containment", "phase_warning", 3.20, -9, true, "A collapsing spectral roar settles through three seals into a quiet open fifth."),
+        new("breach_exposed", "window_warning", .96, -10, true, "Two clear glass tones and released breath mark the unsealed Heart's vulnerable window."),
+        new("seal_broken", "impact", .78, -12, false, "A brittle containment seal cracks into falling glass and an escaping spectral breath.")
     ]);
     public static IReadOnlyList<string> CueNames { get; } = Array.AsReadOnly(Cues.Select(c => c.Id).ToArray());
     public static int CachedStreamCount => Streams.Count;
@@ -162,6 +173,17 @@ public static class OpeningFoley
                 44 => WardenPhaseTwo(time, low, breath, grain),
                 45 => WardenDefeat(time, low, breath, grain),
                 46 => WardenExposed(time, breath),
+                47 => ShadowTell(time, low, breath),
+                48 => EchoTell(time, breath, grain),
+                49 => CausalTell(time, breath, grain),
+                50 => BreachEcho(time, low, breath),
+                51 => BreachReturn(time, breath, grain),
+                52 => BreachSweep(time, low, breath, grain),
+                53 => BreachPhaseTwo(time, low, breath, grain),
+                54 => BreachPhaseThree(time, low, breath, grain),
+                55 => BreachContainment(time, low, breath, grain),
+                56 => BreachExposed(time, breath),
+                57 => SealBroken(time, breath, grain),
                 _ => throw new InvalidOperationException("Opening foley metadata and synthesis differ.")
             };
             // A two-millisecond entrance removes discontinuities; all tails taper to exact silence.
@@ -448,6 +470,79 @@ public static class OpeningFoley
     private static double WardenExposed(double t, double breath)
         => .38 * Modal(t - .008, 349.23, 5.8, 2.32, 3.87) +
             .33 * Modal(t - .18, 523.25, 6.2, 2.32, 3.87) + .43 * breath * Swell(t, .015, .55);
+
+    // Wordless, spectral timbres are isolated from earlier synthesis. The first echo and
+    // sweep end before the authored 20-tick warning interval; the return remains distinct.
+    private static double ShadowTell(double t, double low, double breath)
+        => (.77 * breath + .25 * low) * Swell(t, .005, .38) +
+            .30 * Spectral(t, 174.61) * Swell(t, .10, .88) +
+            .21 * Spectral(t - .16, 164.81) * Swell(t, .27, .91);
+
+    private static double EchoTell(double t, double breath, double grain)
+        => .32 * Modal(t - .015, 659.25, 8, 2.013, 3.971) +
+            .26 * Modal(t - .26, 329.63, 8.6, 2.013, 3.971) +
+            (.76 * breath + .10 * grain) * Swell(t, .18, .83);
+
+    private static double CausalTell(double t, double breath, double grain)
+        => (.90 * breath + .12 * grain) * Swell(t, .007, .75) +
+            .29 * Sweep(311.13, 622.25, t, .83) * Swell(t, .07, .74) +
+            .17 * Spectral(t, 207.65) * Swell(t, .31, .80);
+
+    private static double BreachEcho(double t, double low, double breath)
+        => .33 * Spectral(t, 220) * Swell(t, .003, .30) +
+            .28 * Spectral(t, 164.81) * Swell(t, .13, .45) +
+            (.65 * breath + .33 * low) * Swell(t, .012, .41);
+
+    private static double BreachReturn(double t, double breath, double grain)
+        => .39 * Modal(t, 440, 13, 2.013, 3.971) +
+            .35 * Modal(t - .19, 659.25, 15, 2.013, 3.971) +
+            (.73 * breath + .12 * grain) * Swell(t, .065, .57) +
+            .14 * Sweep(220, 440, t, .62) * Swell(t, .20, .56);
+
+    private static double BreachSweep(double t, double low, double breath, double grain)
+        => .34 * Sweep(82.41, 164.81, t, .49) * Swell(t, .005, .46) +
+            (.64 * low + .99 * breath + .13 * grain) * Swell(t, .006, .43) +
+            .15 * Wave(987.77, t) * Swell(t, .11, .44);
+
+    private static double BreachPhaseTwo(double t, double low, double breath, double grain)
+        => .38 * Modal(t, 82.41, 4.2, 2.013, 3.971) +
+            .32 * Modal(t - .38, 110, 4.6, 2.013, 3.971) +
+            (.23 * Spectral(t, 164.81) + .18 * Spectral(t, 174.61)) * Swell(t, .21, 2.06) +
+            (.67 * low + .84 * breath) * Swell(t, .32, 1.99) +
+            .19 * grain * (Burst(t, .013, 49) + .8 * Burst(t, .39, 43));
+
+    private static double BreachPhaseThree(double t, double low, double breath, double grain)
+        => .35 * Modal(t, 82.41, 4.6, 2.013, 3.971) +
+            .31 * Modal(t - .29, 110, 5.1, 2.013, 3.971) +
+            .28 * Modal(t - .51, 146.83, 5.7, 2.013, 3.971) +
+            (.23 * Spectral(t, 220) + .18 * Spectral(t, 233.08) + .12 * Spectral(t, 311.13)) * Swell(t, .35, 2.29) +
+            (.64 * low + .92 * breath) * Swell(t, .27, 2.22) +
+            .19 * grain * (Burst(t, .012, 47) + Burst(t, .30, 47) + Burst(t, .52, 47));
+
+    private static double BreachContainment(double t, double low, double breath, double grain)
+        => .28 * Sweep(164.81, 27.5, t, 3.20) * Swell(t, .009, 2.39) +
+            (.23 * Spectral(t, 110) + .67 * low + .82 * breath) * Swell(t, .017, 2.34) +
+            .30 * Modal(t - .32, 220, 5.0, 2.013, 3.971) +
+            .25 * Modal(t - .91, 164.81, 5.7, 2.013, 3.971) +
+            .21 * Modal(t - 1.48, 110, 6.4, 2.013, 3.971) +
+            .15 * grain * (Burst(t, .33, 45) + .8 * Burst(t, .92, 43) + .6 * Burst(t, 1.49, 41)) +
+            (.14 * Wave(220, t) + .095 * Wave(330, t)) * Swell(t, 1.17, 3.15);
+
+    private static double BreachExposed(double t, double breath)
+        => .37 * Modal(t - .01, 440, 6.3, 2.013, 3.971) +
+            .33 * Modal(t - .18, 659.25, 6.8, 2.013, 3.971) +
+            .49 * breath * Swell(t, .008, .57);
+
+    private static double SealBroken(double t, double breath, double grain)
+        => .36 * grain * Envelope(t, .001, 43) +
+            .36 * Modal(t - .008, 698.46, 11, 2.013, 3.971) +
+            .25 * Modal(t - .085, 493.88, 14, 2.013, 3.971) +
+            .19 * Modal(t - .19, 349.23, 17, 2.013, 3.971) +
+            .84 * breath * Swell(t, .018, .73);
+
+    private static double Spectral(double t, double fundamental)
+        => .72 * Wave(fundamental, t) + .21 * Wave(fundamental * .993, t) +
+            .13 * Wave(fundamental * 3, t) * (.65 + .35 * Wave(2.7, t)) + .04 * Wave(fundamental * 7, t);
 
     private static double Horn(double t, double fundamental)
         => .76 * Wave(fundamental, t) + .19 * Wave(fundamental * 2, t) + .08 * Wave(fundamental * 3, t);

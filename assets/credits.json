@@ -163,7 +163,7 @@
     },
     {
       "id": "asset.procedural_opening_audio",
-      "name": "Original Greyhaven, Grey March, Verdant Maw, Cinder Reach and Shattered Spine adaptive scores, terrain footsteps, combat impacts and boss warnings",
+      "name": "Original Greyhaven, Grey March, Verdant Maw, Cinder Reach, Shattered Spine and Hollow Night adaptive scores, terrain footsteps, combat impacts and boss warnings",
       "sourceFiles": [
         "game/Ashenwake.Client/OpeningScore.cs",
         "game/Ashenwake.Client/OpeningFoley.cs"

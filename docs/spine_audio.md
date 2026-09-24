@@ -8,9 +8,9 @@ Boss warnings outrank ordinary creature calls. Phase and victory sounds have a s
 
 ## Implementation
 
-The existing `OpeningScore`, `OpeningFoley` and `OpeningAudio` classes now cover Acts I–IV. Append-only catalog entries and separate synthesis preserve earlier PCM. All music and effects are authored synthesis in repository source, without downloaded recordings or external generation services. Provenance remains in `assets/credits.json`.
+The existing `OpeningScore`, `OpeningFoley` and `OpeningAudio` classes now cover Acts I–V. Append-only catalog entries and separate synthesis preserve earlier PCM. All music and effects are authored synthesis in repository source, without downloaded recordings or external generation services. Provenance remains in `assets/credits.json`.
 
-Twenty regions each have three synchronized 24-second, 80-BPM stereo PCM16 stems at 22,050 Hz. Summed source peaks remain below 0.631 before mixer gains. The native cache holds at most 60 score buffers, totaling 127,008,000 PCM bytes. Managed preparation uses one worker at a time, with Godot stream creation on the scene thread. Playback still uses two banks of three music players, six combat foley voices, two footsteps and two warning voices. The foley catalog contains 47 cues. Hollow Night retains its existing ambience.
+Twenty-four regions each have three synchronized 24-second, 80-BPM stereo PCM16 stems at 22,050 Hz. Summed source peaks remain below 0.631 before mixer gains. The native cache holds at most 72 score buffers, totaling 152,409,600 PCM bytes. Managed preparation uses one worker at a time, with Godot stream creation on the scene thread. Playback still uses two banks of three music players, six combat foley voices, two footsteps and two warning voices. The foley catalog contains 58 cues. Hollow Night now has its own adaptive scores in this shared system.
 
 Audio observes Core events, hazards and actor state. It does not alter rules, content, RNG, commands, saves or replay formats. The Covenant Warden retains its two existing phases. Exposure follows an actual living guarded-to-unguarded transition, not an attack-start event or a loaded snapshot.
 
