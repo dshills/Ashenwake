@@ -6,6 +6,24 @@ An isometric action RPG about building power from the remains of dead gods. The 
 
 Choose Vanguard, Veilwalker, Arcanist, Gravecaller, or Warden, each with six skills and its own resource loop. Travel through five regions, rescue Greyhaven's specialists, choose consequential alliances, confront five bosses, and investigate optional exploration encounters. Equipment, anatomy, mastery, Manifestations, crafting, and rewards persist. Godot renders an engine-independent C# simulation.
 
+## Screenshots
+
+Captured from the running **1.0 RC1** client. Select an image to view it at full size.
+
+| The Verdant Maw | Cinder Reach — Furnace Spindle |
+| --- | --- |
+| [![A Vanguard faces plant creatures among the mossy ruins of the Verdant Maw.](docs/screenshots/verdant-maw.png)](docs/screenshots/verdant-maw.png) | [![Fighting the Furnace Spindle amid glowing machinery and marked slag attacks.](docs/screenshots/cinder-reach.png)](docs/screenshots/cinder-reach.png) |
+
+| The Shattered Spine | The Hollow Night |
+| --- | --- |
+| [![Oath giants guard a pale stone causeway in the Shattered Spine.](docs/screenshots/shattered-spine.png)](docs/screenshots/shattered-spine.png) | [![Facing the Breach Heart and its echo warnings in the Hollow Night.](docs/screenshots/hollow-night.png)](docs/screenshots/hollow-night.png) |
+
+| Equipment and character builds | Permanent companions |
+| --- | --- |
+| [![The equipment screen shows equipped armor, inventory and a rotating character preview.](docs/screenshots/equipment.png)](docs/screenshots/equipment.png) | [![The companion screen shows a rescued ashfox with naming and appearance options.](docs/screenshots/companions.png)](docs/screenshots/companions.png) |
+
+## Features and development notes
+
 The [campaign playability audit](docs/playability_audit.md) verifies fresh main-path and full-exploration completion for every discipline, fixes keyboard Way Forward interaction, and makes mouse travel prompts respect the configured Stop key.
 
 Heroes, Greyhaven specialists, and enemies now use articulated low-poly models with distinct heads, clothing, armor, weapons, and monster silhouettes. The [character art notes](docs/character_art.md) describe the character models and their reproducible preview. Greyhaven and Act I have stone streets, workshops, memorial ruins, a funeral cloister, and a chain-hung bell sanctuary; see the [opening environment art notes](docs/environment_art.md). [Act II's Verdant Maw](docs/verdant_maw.md) adds root-invaded temples, a quarantine settlement, a bone-tree hunting grove, physical tracking clues, and a Rootheart corpse-flower that opens after victory, with regional haze and synthesized forest ambience. [Act III's Cinder Reach](docs/cinder_reach.md) adds volcanic cities, extraction machinery, Burning Rain ash and a Furnace Spindle that exposes its core during actual combat windows. [Act IV’s Shattered Spine](docs/shattered_spine.md) adds bone cities, inscribed law halls, an animated Covenant Warden and a warmer Divine Memory with numbered, reversed fault warnings. [Act V’s Hollow Night](docs/hollow_night.md) completes the regional pass with repeating architecture, identity memories, timed echo warnings and a three-phase Breach Heart containment finale.
