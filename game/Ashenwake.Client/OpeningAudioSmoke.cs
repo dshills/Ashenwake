@@ -210,6 +210,15 @@ public partial class OpeningAudioSmoke : Node
             for (int i = 0; i < 1800 && (audio.PreparationPending || audio.ActiveMusicBanks > 0); i++) { audio.Advance(1d / 60, hub, false, Basis.Identity); await Frames(1); }
             Check("departing_opening_drops_late_preparation_and_releases_banks", !audio.PreparationPending && audio.ActiveMusicBanks == 0 && audio.DesiredStyle == "" && audio.BankStarts == starts &&
                 !audio.Play("impact_weapon", Vector3.Zero) && !audio.Play("unknown", Vector3.Zero));
+            await SettleStyle(audio, hub, "road");
+            audio.Play("guard_tell", Vector3.Zero); audio.Play("impact_weapon", Vector3.Zero);
+            Check("exit_fixture_owns_active_music_and_cues", audio.ActiveMusicBanks == 1 &&
+                audio.MusicPlayers.Any(p => p.Stream is not null) && audio.WarningPlayers.Any(p => p.Stream is not null));
+            RemoveChild(audio);
+            Check("world_exit_detaches_all_audio_streams", audio.ActiveMusicBanks == 0 && !audio.PreparationPending &&
+                audio.MusicPlayers.All(p => p.Stream is null) && audio.EffectPlayers.All(p => p.Stream is null) && audio.WarningPlayers.All(p => p.Stream is null));
+            AddChild(audio); await SettleStyle(audio, hub, "road");
+            Check("reattached_world_restarts_one_bounded_music_bank", audio.ActiveMusicBanks == 1 && audio.MusicVoiceCount == 6);
             Check("mixer_and_all_edge_fixtures_are_read_only", _session.StateHash == hash);
         }
         finally { foreach (var pair in levels) ClientAudio.SetVolume(pair.Key, pair.Value); audio.QueueFree(); await Frames(2); }

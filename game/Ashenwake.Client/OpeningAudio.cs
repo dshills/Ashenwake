@@ -89,6 +89,23 @@ internal sealed partial class OpeningAudio : Node3D
         _listener = new AudioListener3D { Name = "PlayerAudioListener" }; AddChild(_listener); _listener.MakeCurrent();
     }
 
+    public override void _ExitTree()
+    {
+        // Detach active playback while its owning world is leaving. Merely stopping
+        // a voice can leave its native stream/playback held until an audio mix tick.
+        foreach (var bank in _banks)
+        {
+            foreach (var player in bank.Players) { player.Stop(); player.Stream = null; }
+            bank.Style = ""; bank.Gain = 0;
+        }
+        foreach (var voice in _effects) { voice.Stop(); voice.Stream = null; }
+        foreach (var warning in _warnings) { warning.Stop(); warning.Stream = null; }
+        _activeBank = -1;
+        // Preparation uses only managed sample buffers and catches its own faults.
+        // A departing world must not adopt that result or start new playback.
+        _preparing = null;
+    }
+
     internal void SetStyle(string style)
     {
         string desired = OpeningScore.StyleNames.Contains(style) ? style : "";

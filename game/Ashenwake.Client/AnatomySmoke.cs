@@ -69,12 +69,12 @@ public partial class AnatomySmoke : Node
                 Field<string>(_director, "_combatJson"), Field<AdventureContent>(_director, "_adventure"), Field<ProgressionContent>(_director, "_progression"),
                 Field<CampaignContent>(_director, "_campaign"), Field<EndgameContent>(_director, "_endgame"), replay).Success));
             System.IO.File.WriteAllText(Path.Combine(_output, "anatomy-replays.json"), JsonData.Write(_replays));
-            Finish(true, "");
+            await Finish(true, "");
         }
         catch (Exception ex)
         {
             try { await Capture("anatomy-failure.png"); } catch (Exception captureError) { GD.PushError(captureError.Message); }
-            GD.PushError(ex.ToString()); Finish(false, ex.Message);
+            GD.PushError(ex.ToString()); await Finish(false, ex.Message);
         }
     }
 
@@ -161,7 +161,7 @@ public partial class AnatomySmoke : Node
     {
         await CloseJourney();
         // A real ground click gives the service button a distant, reachable approach to exercise.
-        await Click(_camera.UnprojectPosition(World(new(-5000, 5000))));
+        await ClickOpenHubGround("mara_approach");
         await WalkUntilStopped();
         var mara = Session.Interactions.Single(i => i.ActionId == "service.mara");
         Check("service_checkpoint_is_outside_mara_range", CorePosition.DistanceSquared(Player, mara.Position) > (long)mara.Range * mara.Range);
@@ -333,6 +333,25 @@ public partial class AnatomySmoke : Node
     }
     private void Refresh() { _sandbox.AdoptSession(Session.Combat); Invoke(_director, "Refresh"); }
     private void Ticks(int count = 1) { for (int i = 0; i < count; i++) _sandbox._Process(FixedStepClock.SecondsPerTick); }
+    private async Task ClickOpenHubGround(string context)
+    {
+        await Frames(6);
+        foreach (var point in new CorePosition[] { new(0, 5500), new(-6500, 1000), new(0, -5000), new(6000, 2000), new(-6500, 6500), new(6000, 6000) })
+        {
+            if (!new SpatialWorld(Session.Room).CanOccupy(point, CombatSession.ActorRadius) ||
+                Session.Interactions.Any(i => CorePosition.DistanceSquared(point, i.Position) <= 2200L * 2200) ||
+                Session.Interactions.Where(i => i.ActionId is "service.torren" or "service.mara").Any(i => CorePosition.DistanceSquared(point, i.Position) <= (long)i.Range * i.Range)) continue;
+            var screen = _camera.UnprojectPosition(World(point));
+            if (!GetViewport().GetVisibleRect().Grow(-24).HasPoint(screen)) continue;
+            GetViewport().PushInput(new InputEventMouseMotion { Position = screen }, true); await Frames(1);
+            if (GetViewport().GuiGetHoveredControl() is not null) continue;
+            await Click(screen);
+            Check("native_clear_ground_move_" + context, _sandbox.ClickMoveDestination is not null && _sandbox.PendingWorldActionId is null);
+            return;
+        }
+        throw new InvalidDataException("No unobstructed hub ground click is available for " + context);
+    }
+
     private async Task WalkUntilStopped()
     {
         for (int i = 0; i < 720 && (_sandbox.ClickMoveDestination is not null || _sandbox.PendingWorldActionId is not null); i++)
@@ -358,8 +377,20 @@ public partial class AnatomySmoke : Node
         var button = NamedButton(name, root);
         if (button.Disabled) throw new InvalidDataException("Disabled anatomy button: " + name);
         await Reveal(button);
-        await Click(button.GetGlobalRect().GetCenter());
+        bool activated = false;
+        void Pressed() => activated = true;
+        button.Pressed += Pressed;
+        try
+        {
+            await Click(button.GetGlobalRect().GetCenter());
+            Check("native_named_click_" + name, activated);
+        }
+        finally
+        {
+            if (GodotObject.IsInstanceValid(button)) button.Pressed -= Pressed;
+        }
     }
+
     private async Task ClickText(string text)
     {
         var button = Descendants(_director).OfType<Button>().Single(b => b.IsVisibleInTree() && b.Text == text);
@@ -372,6 +403,8 @@ public partial class AnatomySmoke : Node
     }
     private async Task Reveal(Control control)
     {
+        // New guidance and objective text need the same deferred layout frames as live play.
+        await Frames(6);
         // Scroll through the real card list with wheel input before clicking a clipped card.
         for (Node? ancestor = control.GetParent(); ancestor is not null; ancestor = ancestor.GetParent())
         {
@@ -429,7 +462,7 @@ public partial class AnatomySmoke : Node
         _checks[name] = passed;
         if (!passed) throw new InvalidDataException("Anatomy check failed: " + name);
     }
-    private void Finish(bool passed, string error)
+    private async Task Finish(bool passed, string error)
     {
         var report = new
         {
@@ -445,7 +478,17 @@ public partial class AnatomySmoke : Node
             error,
             scope = "The shipping EndgameDirector earns the Road's Pyrebound Treads and Bell Saint's Heart through normal campaign commands. Native input collects the boots, inspects their actual power, reviews remaining ground loot before travel, approaches Torren, drags the boots onto their slot, and triggers their moving dodge. The Heart journey receives viewport clicks for six body slots, fragment and Manifestation cards, reset/apply, explicit ground-loot review, Mara approach, rotation and save/load. No state or rewards are fabricated. Preview purity, real removal/suppression/reinstallation, visible world marks, responsive layout and hidden viewport lifecycle are checked. All resulting runtime command branches replay. This is one real Act I upgrade journey, not a full campaign balance or performance benchmark."
         };
+        // Free the live scene while the engine is still running so audio voices and
+        // deferred preview resources finish releasing before shutdown.
+        ulong directorId = _director is not null && GodotObject.IsInstanceValid(_director) ? _director.GetInstanceId() : 0;
+        if (directorId != 0) _director!.QueueFree();
+        _director = null!; _sandbox = null!; _hud = null!; _camera = null!;
+        for (int i = 0; i < 2; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        GC.Collect();
+        for (int i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (directorId != 0) Check("owned_director_released_before_shutdown", GodotObject.InstanceFromId(directorId) is null);
         if (_writeReport) System.IO.File.WriteAllText(Path.Combine(_output, "anatomy-review.json"), JsonData.Write(report));
-        GD.Print(JsonData.Write(report)); GetTree().Quit(passed ? 0 : 1);
+        GD.Print(JsonData.Write(report));
+        GetTree().Quit(passed ? 0 : 1);
     }
 }

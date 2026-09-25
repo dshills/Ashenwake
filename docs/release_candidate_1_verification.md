@@ -15,7 +15,7 @@ This record covers preparation of Ashenwake **1.0.0-rc.1** from the prior pet mi
 
 Raw evidence is retained in `artifacts/rc1/`. The opening audit passed its maintained fixtures, ten-session/9,000-tick checkpoint-and-replay soak, and projectile-ceiling check. These are bounded simulation checks, not rendered performance or a long hardware playtest.
 
-The corrected catalog plus related equipment-set selection passed 27 tests (`artifacts/rc-champion-catalog-tests.log`). Expanded release diagnostics passed eight tests. Full regression, reviewed-source package and final audit results will be recorded after their runs complete.
+The corrected catalog plus related equipment-set selection passed 27 tests (`artifacts/rc-champion-catalog-tests.log`). Expanded release diagnostics passed eight tests. The full Core suite passes **1,769/1,769** with no skips (14 minutes 46 seconds), and the server suite passes **17/17**. Formatting, eight source-identity tests, seven release-pipeline tests, the log-checker test, Go vet and Go tests pass. The final fixture audit passes all **20** entries (`readiness.json`).
 
 ## Remaining acceptance
 
@@ -31,3 +31,23 @@ Prism/Gemini reviewed the complete staged RC changes with default redaction (`51
 No actionable review finding remains.
 
 The accepted native menu run (`front-menu3`) passed **146 checks** and produced **27 captures**, covering new/imported characters, original/Echoes switching, archive preservation, failures/recovery and compact menus. The log passes the engine-error checker; deliberate I/O-failure warnings belong to the diagnostic. The RC version and compact main menu were visually inspected.
+
+## Campaign and persistence measurements
+
+All five fresh disciplines complete the main campaign under the earned-build policy on seed 42, totaling **23,195 public commands**, with no failed route or death (`campaign-main/summary.json`). Each route covers the 15 main encounters and validates replay/restore segments and its final save. This does not measure first-time human difficulty, crafting choices or time spent learning. No balance numbers were changed from this result.
+
+The continuing endgame character completes ten tiers, five God Hunts and one extra tier-ten Fracture: **25,756 commands**, **43 save/load checkpoints and replay checks**, 11 completed Fractures, five hunts and a matching final state (`persistent.log`). Full-command p95 was 25.22 ms on this run; disk, replay verification, rendering and the driver are outside those samples. Managed memory retention is diagnostic evidence, not a leak certification.
+
+## Packaged validation and follow-up fixes
+
+The first complete package attempt used source tree `1d6aabdd8174eb88af41cd726814a7c8b08c9485` (commit `d0a90bd`). Its main campaign/endgame route passed **34,685 commands**, tier ten, five hunts, retry, abandonment, recovery, attunement, death save/reload and legacy import; the recorded replay matched. Release controls and death-recovery checks passed. The fail-closed package gate then stopped at Anatomy inspection, so this attempt did not create an accepted candidate manifest.
+
+The Anatomy failure was diagnostic timing and outdated navigation, not a lost reward or changed character state. A click occurred before deferred overlay layout settled; an old ground coordinate subsequently selected the newer training entrance. The diagnostic now waits for layout, checks native button activation and selects genuinely clear ground. Its reward, equipment, travel and replay assertions remain.
+
+The run also exposed WAV/playback resources still attached during world shutdown. `OpeningAudio` now stops and detaches its owned music/effect/warning streams on exit, and the audio diagnostic checks detach/re-entry behavior. The brief before/after engine reproduction exits cleanly after the fix. The focused Anatomy run passed 140 checks with two matching replay segments, and the audio run passed 867 checks including detach/re-entry assertions with a clean verbose exit. Additional diagnostic shutdown cleanup and the rebuilt package remain under validation.
+
+The continuing package triage found an intermittent visual diagnostic exit crash after its assertions passed. The macOS crash report places it in native C# binding finalization. Visual and Anatomy diagnostics now release their owned scenes and allow engine frames before reporting completion and quitting. Three focused visual runs pass all 171 assertions with clean verbose exits. Three retries of the original binary also passed, so these repetitions alone do not establish that the intermittent engine crash can never recur; the rebuilt package must still pass its process-exit gate.
+
+The final focused Anatomy teardown run passes **141/141 checks**, 1,577 setup commands, 89 native-input commands and two matching replays. Its verbose log contains no warnings, errors or retained-object lines (`anatomy-teardown.log`). Final follow-up formatting passes.
+
+Prism reviewed the follow-up changes (`cb308c7f93562af6d705ffdfd4de9fb0`, `prism-followup.json`) with no high findings. Its two medium suggestions were inspected: audio collections are already initialized at field declaration and banks are added only after their player array is complete, so the alleged uninitialized-collection exception does not apply. The six candidate ground coordinates are intentional bounded test fixtures; each is checked against current collision geometry, interaction/service ranges, viewport visibility and GUI obstruction, and the resulting native movement is asserted. A future layout that invalidates every candidate should stop this regression test for review. No production navigation change or unbounded coordinate search is warranted for the frozen RC.

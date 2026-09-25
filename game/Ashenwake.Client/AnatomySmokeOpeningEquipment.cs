@@ -71,7 +71,7 @@ public partial class AnatomySmoke
         await ClickOpeningConfirmation(departure, departure.GetOkButton());
         Check("confirmed_boot_trip_reaches_hub_without_auto_equipping", Session.InHub && !PyreEquipped);
         await CloseJourney();
-        await Click(_camera.UnprojectPosition(World(new(-5000, 5000)))); await WalkUntilStopped();
+        await ClickOpenHubGround("torren_approach"); await WalkUntilStopped();
         var torren = Session.Interactions.Single(i => i.ActionId == "service.torren");
         Check("boot_visit_starts_outside_torren_range", CorePosition.DistanceSquared(Player, torren.Position) > (long)torren.Range * torren.Range);
         await ClickNamed("CampaignNextStep");
@@ -92,7 +92,7 @@ public partial class AnatomySmoke
         await DragOpeningEquipment("GearInventoryItem" + EarnedPyre.Id, "GearEquipmentBoots", "reequip");
         await ClickText("Close character");
         await CloseJourney();
-        await Click(_camera.UnprojectPosition(World(new(-4500, 4000)))); await WalkUntilStopped();
+        await ClickOpenHubGround("pyre_trial"); await WalkUntilStopped();
         CorePosition before = Player;
         int cues = _sandbox.LegendaryTriggerCueCount;
         foreach (bool pressed in new[] { true, false })

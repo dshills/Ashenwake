@@ -68,9 +68,9 @@ public partial class VisualSmoke : Node3D
                 new("ORIS\nCartography", "npc.oris", Npc: true),
                 new("KESH\nScavenging", "npc.kesh", Npc: true)
             ]);
-            Finish(true, "");
+            await Finish(true, "");
         }
-        catch (Exception ex) { GD.PushError(ex.ToString()); Finish(false, ex.Message); }
+        catch (Exception ex) { GD.PushError(ex.ToString()); await Finish(false, ex.Message); }
     }
 
     private void CheckCatalogs()
@@ -238,7 +238,7 @@ public partial class VisualSmoke : Node3D
     private static Color[] Colors(CharacterVisual visual) => Descendants(visual).OfType<MeshInstance3D>().SelectMany(Materials).OfType<StandardMaterial3D>().SelectMany(m => new[] { m.AlbedoColor, m.Emission }).ToArray();
     private async Task Settle() { for (int i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
     private void Check(string name, bool passed) { _checks[name] = passed; if (!passed) throw new InvalidDataException("Visual check failed: " + name); }
-    private void Finish(bool passed, string error)
+    private async Task Finish(bool passed, string error)
     {
         var report = new
         {
@@ -251,7 +251,16 @@ public partial class VisualSmoke : Node3D
             error,
             scope = "Instantiates every catalog enemy, all player disciplines, and five NPCs; checks finite geometry, bounded mesh/material counts, cosmetic-only nodes, animation, pause, and independent accent materials. Captures use the same rigs as gameplay; visual readability requires inspection."
         };
+        // Finish scene/resource disposal while the engine still processes native
+        // bindings, rather than racing the C# language finalizer during shutdown.
+        foreach (var child in GetChildren()) child.QueueFree();
+        _camera = null!; _lineup = null!; _captions = null!; _title = null!; _subtitle = null!;
+        for (int i = 0; i < 2; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        GC.Collect();
+        for (int i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        Check("owned_gallery_nodes_released_before_exit", GetChildCount() == 0);
         if (_writeReport) System.IO.File.WriteAllText(Path.Combine(_output, "visual-smoke.json"), JsonData.Write(report));
-        GD.Print(JsonData.Write(report)); GetTree().Quit(passed ? 0 : 1);
+        GD.Print(JsonData.Write(report));
+        GetTree().Quit(passed ? 0 : 1);
     }
 }
