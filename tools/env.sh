@@ -4,7 +4,8 @@ AW_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export AW_ROOT
 export DOTNET_ROOT="$AW_ROOT/.tools/dotnet"
 export DOTNET_CLI_HOME="$AW_ROOT/.tools/dotnet-home"
-export NUGET_PACKAGES="$AW_ROOT/.tools/nuget"
+# Keep old editor-bundled Godot packages out of the official NuGet cache.
+export NUGET_PACKAGES="$AW_ROOT/.tools/nuget-official"
 export DOTNET_NOLOGO=1
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
 export DOTNET_CLI_USE_MSBUILD_SERVER=0

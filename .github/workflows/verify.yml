@@ -9,7 +9,7 @@ permissions:
 jobs:
   build-test-export:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -19,7 +19,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .tools
-          key: ashenwake-linux-dotnet-8.0.425-godot-4.6.2-${{ hashFiles('**/packages.lock.json', 'tools/runtime-packs.json', 'tools/package-archives.json', 'tools/bootstrap.sh') }}
+          key: ashenwake-linux-dotnet-8.0.425-godot-4.6.2-${{ hashFiles('**/packages.lock.json', 'tools/runtime-packs.json', 'tools/package-archives.json', 'tools/bootstrap.sh', 'tools/env.sh', 'tools/fetch-locked-packages.py') }}
       - name: Install verified local toolchain and templates
         run: bash tools/bootstrap.sh --templates
       - name: Install local PostgreSQL test binaries

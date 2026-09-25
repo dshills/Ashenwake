@@ -38,12 +38,8 @@ download "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.425/dotnet-sdk-8.0.
 if [[ ! -x "$DOTNET_ROOT/dotnet" ]]; then tar -xzf "$sdk_archive" -C "$DOTNET_ROOT"; fi
 download "https://github.com/godotengine/godot/releases/download/4.6.2-stable/$editor" "$AW_ROOT/.tools/downloads/$editor" sha256 "$editor_hash"
 if [[ ! -x "$GODOT" ]]; then unzip -q "$AW_ROOT/.tools/downloads/$editor" -d "$AW_ROOT/.tools/godot"; fi
-mkdir -p "$AW_ROOT/.tools/feed"
-if [[ "$(uname -s)" == Darwin ]]; then
-    cp "$AW_ROOT/.tools/godot/Godot_mono.app/Contents/Resources/GodotSharp/Tools/nupkgs/"*.nupkg "$AW_ROOT/.tools/feed/"
-else
-    cp "$AW_ROOT/.tools/godot/Godot_v4.6.2-stable_mono_linux_x86_64/GodotSharp/Tools/nupkgs/"*.nupkg "$AW_ROOT/.tools/feed/"
-fi
+# Godot editor archives contain platform-specific NuGet archive metadata.
+# Fetch the same official NuGet packages on every host instead.
 if [[ "${1:-}" == --templates ]]; then
     templates=Godot_v4.6.2-stable_mono_export_templates.tpz
     download "https://github.com/godotengine/godot/releases/download/4.6.2-stable/$templates" "$AW_ROOT/.tools/downloads/$templates" sha256 4ecf72faf76f96e010d166ddbbe3f0fb8e7df9633282666a3a9afd4ee3e00e7d

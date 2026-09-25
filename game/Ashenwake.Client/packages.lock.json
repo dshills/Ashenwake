@@ -6,19 +6,19 @@
         "type": "Direct",
         "requested": "[4.6.2, )",
         "resolved": "4.6.2",
-        "contentHash": "eCfjAN9NlmFesm1ra+6u0Bg59WnRrBpgmn0R+VXx8ORIkXhOcDnpFEEedUN0bLtIfLumPyryVDWGs3U9zUUE4g=="
+        "contentHash": "CqSn9E38CqCvHARIpZXzYw/KkDKkrGjCYjRrKq3kTAIsDGOOZ/W9wiVnfbvmTpER7gbbrFKAd6WA201ELBynQw=="
       },
       "GodotSharp": {
         "type": "Direct",
         "requested": "[4.6.2, )",
         "resolved": "4.6.2",
-        "contentHash": "f4imOkuE9lvZ5rQjvMSt5b0My26jsKpCzrcX7zpP6Bm4jLONKv85ZWwOtCscTMEcvQiZqeyPskOTNl+L6/VQ0Q=="
+        "contentHash": "yWYaxRtawrYOQ6TZqKovkw6IN3jNWLTjfrL+pvoGdprvGT7LOYdBCwy0OU7rSfzTn48Rr4IuyuZoSuC0Cp2JeA=="
       },
       "GodotSharpEditor": {
         "type": "Direct",
         "requested": "[4.6.2, )",
         "resolved": "4.6.2",
-        "contentHash": "vsTBo+Nooqb2i5XmeTIpCpAxSnxaYne7pO6ar9EW2W7RhHHhTINfZSGh8ed8VP8ZUKLtw1WYrobvp9/5tJLEDA==",
+        "contentHash": "WbxolK7BIzSl7d8jhTQQSwZ7JEf+6RHeaZWa6aw7f/qXsN/hXzFSgQvpKxGrLo0icQlowjvF0NomnYO5owMG7w==",
         "dependencies": {
           "GodotSharp": "4.6.2"
         }

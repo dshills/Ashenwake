@@ -24,7 +24,7 @@ records = []
 for pack in json.loads((root / 'tools/runtime-packs.json').read_text()):
     if not any(pack['id'] == 'microsoft.netcore.app.runtime.' + target for target in targets):
         continue
-    package = root / '.tools/nuget' / pack['id'] / pack['version']
+    package = pathlib.Path(os.environ['NUGET_PACKAGES']) / pack['id'] / pack['version']
     for name in ['LICENSE.TXT', 'THIRD-PARTY-NOTICES.TXT']:
         source = package / name
         output_name = pack['id'] + '-' + pack['version'] + '-' + name

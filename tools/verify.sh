@@ -6,6 +6,7 @@ dotnet restore Ashenwake.sln --locked-mode --source "$AW_ROOT/.tools/feed" --dis
 dotnet build Ashenwake.sln --no-restore --disable-build-servers -m:1
 dotnet format Ashenwake.sln --verify-no-changes --no-restore
 dotnet test game/Ashenwake.Tests --no-build --no-restore
+python3 tools/test-locked-packages.py
 python3 tools/test-godot-log.py
 python3 tools/test-release-source.py
 python3 tools/test-release-pipeline.py
