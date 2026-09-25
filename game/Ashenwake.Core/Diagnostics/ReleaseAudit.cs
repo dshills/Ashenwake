@@ -22,7 +22,7 @@ public static class SaveFixtureAudit
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(fixture.Id) || fixture.Kind is not ("Adventure" or "Combat" or "PhaseZero" or "FrozenDocument" or "PhaseTwo" or "PhaseThree" or "PhaseFour" or "PhaseFive") || fixture.Sha256 is not { Length: 64 } || !fixture.Sha256.All(Uri.IsHexDigit)) throw new InvalidDataException("Invalid fixture identity, kind, or expected hash.");
+                if (string.IsNullOrWhiteSpace(fixture.Id) || fixture.Kind is not ("Adventure" or "Combat" or "PhaseZero" or "FrozenDocument" or "PhaseTwo" or "PhaseThree" or "PhaseFour" or "PhaseFive" or "Endgame") || fixture.Sha256 is not { Length: 64 } || !fixture.Sha256.All(Uri.IsHexDigit)) throw new InvalidDataException("Invalid fixture identity, kind, or expected hash.");
                 string path = ReleaseManifests.Resolve(root, fixture.Path); var bytes = File.ReadAllBytes(path);
                 if (bytes.Length > 16 * 1024 * 1024 || Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)) != fixture.Sha256) throw new InvalidDataException("Maintained fixture bytes changed; review and version their inventory explicitly.");
                 string json = System.Text.Encoding.UTF8.GetString(bytes);
@@ -35,6 +35,7 @@ public static class SaveFixtureAudit
                     case "PhaseThree":
                     case "PhaseFour":
                     case "PhaseFive":
+                    case "Endgame":
                         ReleaseUpgradeAudit.Run(root, fixture.Kind, json);
                         break;
                     case "Adventure":
@@ -51,7 +52,7 @@ public static class SaveFixtureAudit
                         if (SaveStore.Read(JsonData.Write(SaveStore.Create(phaseZero, state)), phaseZero).Tick != state.Tick) throw new InvalidDataException("Phase zero fixture round trip failed.");
                         break;
                 }
-                results.Add(new(fixture.Id, true, "Original bytes verified; supported migration/restore and round trip passed."));
+                results.Add(new(fixture.Id, true, fixture.Kind == "FrozenDocument" ? "Original bytes and JSON syntax verified; no executable restore claimed." : "Original bytes verified; supported migration/restore and round trip passed."));
             }
             catch (Exception ex) when (ex is IOException or InvalidDataException or System.Text.Json.JsonException or UnauthorizedAccessException)
             { results.Add(new(fixture.Id, false, ex is SaveCompatibilityException ? "Fixture requires an explicit schema/content migration; its original bytes were preserved." : "Fixture is missing, changed, malformed, or failed logical validation.")); }

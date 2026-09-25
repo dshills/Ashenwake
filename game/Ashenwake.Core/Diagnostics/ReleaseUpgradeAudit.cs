@@ -23,7 +23,7 @@ public static class ReleaseUpgradeAudit
         var endgame = EndgameContent.Parse(Read("content/endgame.json"));
         string currentCombat = EndgameCombatContent.Parse(CampaignCombatContent.Parse(Read("content/combat.json"),
             Read("content/campaign-combat.json")).CombatJson, Read("content/endgame-combat.json"), endgame).CombatJson;
-        if (kind == "PhaseFive")
+        if (kind is "PhaseFive" or "Endgame")
         {
             var originalSave = JsonData.Read<EndgameRuntimeSave>(original);
             var previousSession = EndgameRuntimeSaveStore.Read(currentCombat, adventure, progression, campaign, endgame, original);
@@ -31,7 +31,7 @@ public static class ReleaseUpgradeAudit
             // Compare every logical field after replacing only the catalog identities.
             var rebound = OpeningCatalogMigration.Rebind(originalSave.State, currentCombat, adventure, progression, campaign);
             if (originalSave.StateHash != JsonData.Hash(originalSave.State) || previousSession.StateHash != JsonData.Hash(rebound) ||
-                !previousSession.InHub || previousSession.View.HighestClearedTier != 10 || previousSession.View.CompletedGodHunts != 5)
+                kind == "PhaseFive" && (!previousSession.InHub || previousSession.View.HighestClearedTier != 10 || previousSession.View.CompletedGodHunts != 5))
                 throw new InvalidDataException("Prior exported endgame state changed during upgrade.");
             var restored = EndgameRuntimeSaveStore.Read(currentCombat, adventure, progression, campaign, endgame,
                 JsonData.Write(new EndgameRuntimeSave(1, previousSession.StateHash, previousSession.Capture())));

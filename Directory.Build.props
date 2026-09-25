@@ -8,6 +8,6 @@
     <UseSharedCompilation>false</UseSharedCompilation>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <NuGetLockFilePath Condition="'$(RuntimeIdentifier)' != ''">$(MSBuildProjectDirectory)/obj/$(RuntimeIdentifier).packages.lock.json</NuGetLockFilePath>
-    <Version>0.1.0</Version>
+    <Version>1.0.0-rc.1</Version>
   </PropertyGroup>
 </Project>

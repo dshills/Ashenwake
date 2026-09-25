@@ -173,6 +173,35 @@
       "rightsStatus": "Project-authored source. The repository does not yet declare a distribution license or owner approval.",
       "redistributionApproved": false,
       "requiredCredit": "Ashenwake project contributors; final release credit names and distribution terms await the owner."
+    },
+    {
+      "id": "asset.procedural_companions",
+      "name": "Rescuable fox, moth and beetle companions, rescue landmarks and material caches",
+      "sourceFiles": [
+        "game/Ashenwake.Client/PetVisual.cs",
+        "game/Ashenwake.Client/PetPresentation.cs",
+        "game/Ashenwake.Client/PetPreview.cs"
+      ],
+      "origin": "Authored in the Ashenwake repository using Godot primitive and custom meshes and materials; no downloaded assets.",
+      "rightsStatus": "Project-authored source; final contributor names and distribution terms remain owner decisions.",
+      "redistributionApproved": false,
+      "requiredCredit": "Ashenwake project contributors; final release credits await owner declaration."
+    },
+    {
+      "id": "asset.procedural_optional_rewards",
+      "name": "Secret chambers, roaming champions, signature equipment and equipment-set geometry",
+      "sourceFiles": [
+        "game/Ashenwake.Client/SecretChamberPresentation.cs",
+        "game/Ashenwake.Client/RoamingChampionPresentation.cs",
+        "game/Ashenwake.Client/CharacterVisual.RoamingChampions.cs",
+        "game/Ashenwake.Client/CharacterVisual.SecretLegendaries.cs",
+        "game/Ashenwake.Client/CharacterVisual.EquipmentSets.cs",
+        "game/Ashenwake.Client/GearItemIcon.EquipmentSets.cs"
+      ],
+      "origin": "Authored in the Ashenwake repository using Godot primitive and custom meshes and materials; no downloaded assets.",
+      "rightsStatus": "Project-authored source; final contributor names and distribution terms remain owner decisions.",
+      "redistributionApproved": false,
+      "requiredCredit": "Ashenwake project contributors; final release credits await owner declaration."
     }
   ],
   "thirdPartyRuntimeNotices": [

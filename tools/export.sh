@@ -3,6 +3,8 @@ set -euo pipefail
 source "$(dirname "$0")/env.sh"
 cd "$AW_ROOT"
 mkdir -p artifacts/export
+# An interrupted or failed run must never leave an earlier success marker current.
+rm -f artifacts/export/package-run.json
 aw content compile
 aw sandbox compile
 aw adventure compile
@@ -16,9 +18,15 @@ package_output="$(mktemp -d "$AW_ROOT/artifacts/package/$content_key.XXXXXX")"
 if [[ "$(uname -s)" == Darwin ]]; then
     "$GODOT" --headless --path game/Ashenwake.Client --export-debug macOS "$AW_ROOT/artifacts/export/Ashenwake.zip" --log-file "$AW_ROOT/artifacts/export/export.log"
     python3 tools/check-godot-log.py --export artifacts/export/export.log
-    unzip -oq artifacts/export/Ashenwake.zip -d artifacts/export/macos
-    app="$AW_ROOT/artifacts/export/macos/Ashenwake.app"
-    binary=$(find "$app/Contents/MacOS" -maxdepth 1 -type f -print -quit)
+    # Test only files present in this ZIP; an overlay onto a previous app can
+    # silently retain removed binaries or runtime files. Keep the familiar ZIP path.
+    unzip -oq artifacts/export/Ashenwake.zip -d "$package_output/macos"
+    app="$package_output/macos/Ashenwake.app"
+    binary="$app/Contents/MacOS/Ashenwake"
+    if [[ ! -f "$binary" || ! -x "$binary" ]]; then
+        echo 'Exported macOS app executable is missing or not executable.' >&2
+        exit 1
+    fi
     "$binary" --headless --quit-after 180000 --log-file "$AW_ROOT/artifacts/export/package.log" -- --endgame-smoke --output="$package_output"
 else
     "$GODOT" --headless --path game/Ashenwake.Client --export-debug Linux "$AW_ROOT/artifacts/export/Ashenwake.x86_64" --log-file "$AW_ROOT/artifacts/export/export.log"
@@ -294,3 +302,16 @@ mkdir -p "$settings_output"
 "$binary" --headless --quit-after 18000 --log-file "$settings_output/smoke.log" -- --settings-smoke --output="$settings_output"
 python3 tools/check-godot-log.py "$settings_output/smoke.log"
 rg -q 'SettingsClientSmokePassed' "$settings_output/smoke.log"
+
+# Publish the evidence location only after every packaged diagnostic has passed.
+python3 - "$package_output" <<'PYRUN'
+import json, pathlib, sys
+root = pathlib.Path.cwd().resolve()
+output = pathlib.Path(sys.argv[1]).resolve(strict=True)
+record = {'schemaVersion': 1, 'completed': True,
+          'packageOutput': output.relative_to(root).as_posix()}
+path = root / 'artifacts/export/package-run.json'
+temporary = path.with_suffix('.json.tmp')
+temporary.write_text(json.dumps(record, indent=2) + '\n')
+temporary.replace(path)
+PYRUN

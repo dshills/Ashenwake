@@ -102,6 +102,24 @@
       "path": "fixtures/phase5-release-manifest.json",
       "kind": "FrozenDocument",
       "sha256": "B08C44546C04BCD0942DD28B074DF0E8F7FB73C3CF62D9D49E9DDEC08FD8BCE7"
+    },
+    {
+      "id": "pre-pets-client",
+      "path": "fixtures/pets-legacy-save.json",
+      "kind": "Endgame",
+      "sha256": "534A19B4FE34D4B9E58828AA0590595461FE26BFA9C54D8DB61200C41E634012"
+    },
+    {
+      "id": "pet-companion-client",
+      "path": "fixtures/rc1-pet-companion-save.json",
+      "kind": "Endgame",
+      "sha256": "FDE83844A04930E82D28B9C81AAE998CF78BB19244C0C7A9C31E935BDE115284"
+    },
+    {
+      "id": "pre-pets-replay-bytes",
+      "path": "fixtures/pets-legacy-endgame.awendgame",
+      "kind": "FrozenDocument",
+      "sha256": "31A7133556948D1429E01F4C370EE0E8C44A2719BD9BB5491AE96B3DB5CB3292"
     }
   ]
 }

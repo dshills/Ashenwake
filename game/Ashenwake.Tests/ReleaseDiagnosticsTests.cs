@@ -91,6 +91,10 @@ public sealed class ReleaseDiagnosticsTests
         Assert.True(result.Success, JsonData.Write(result));
         foreach (var pair in before) Assert.Equal(pair.Value, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(root, pair.Key)))));
         Assert.Equal(3, inventory.Fixtures.Count(f => f.Kind is "PhaseTwo" or "PhaseThree" or "PhaseFour"));
+        Assert.Contains(inventory.Fixtures, f => f.Id == "pre-pets-client" && f.Kind == "Endgame");
+        Assert.Contains(inventory.Fixtures, f => f.Id == "pet-companion-client" && f.Kind == "Endgame");
+        foreach (var fixture in inventory.Fixtures.Where(f => f.Kind == "FrozenDocument"))
+            Assert.Contains("no executable restore claimed", result.Fixtures.Single(f => f.Id == fixture.Id).Detail);
     }
     [Fact]
     public void AssetAuditSeparatesMissingSourcesFromUndeclaredDistributionRights()

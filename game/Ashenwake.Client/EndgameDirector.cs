@@ -622,6 +622,8 @@ public partial class EndgameDirector : Node3D
         {
             var mapped = imported.EnableExplorationMap();
             if (!mapped.Success) throw new InvalidDataException(mapped.Reason);
+            var companions = imported.Execute(new(EndgameRuntimeAction.EnablePets));
+            if (!companions.Success) throw new InvalidDataException(companions.Reason);
         }
         EndgameRuntimeSaveStore.Write(destination, _combatJson, _adventure, _progression, _campaign, _endgame, imported.Capture());
         PublishCharacterSelection(destinationName); _saveName = destinationName;

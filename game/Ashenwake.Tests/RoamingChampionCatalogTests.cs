@@ -31,11 +31,20 @@ public sealed class RoamingChampionCatalogTests
     {
         Assert.Equal("F9E105645F29784885DB90498881E0EA8C8590608D9D590C7A7A07E105FB63A3", Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(Base(true)))));
         Assert.Equal("3E45D9913B5C801FE43BA733B3B7CABC30C731C0A3B5D82A90F1610BD0DDC0EB", Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(Read("fixtures/progression-personal-stash.json")))));
-        var old = CombatContent.Parse(Base(true)); var current = CombatContent.Parse(Base(false));
-        Assert.Equal(NewItems, current.Items.Select(i => i.Id).Except(old.Items.Select(i => i.Id)).Order());
-        Assert.Equal(JsonData.Hash(old), JsonData.Hash(current with { Items = current.Items.Where(i => !NewItems.Contains(i.Id)).ToArray() }));
-        var policy = Policy(false).Capture();
-        Assert.Equal(JsonData.Hash(Policy(true).Capture()), JsonData.Hash(policy with { Items = policy.Items.Where(i => !NewItems.Contains(i.Id)).ToArray() }));
+        // This published generation predates equipment sets; the frozen world-encounter
+        // catalogs contain precisely the three champion additions to the stash catalog.
+        var old = CombatContent.Parse(Base(true)); var published = CombatContent.Parse(Read("fixtures/combat-world-encounters.json"));
+        Assert.Equal(NewItems, published.Items.Select(i => i.Id).Except(old.Items.Select(i => i.Id)).Order());
+        Assert.Equal(JsonData.Hash(old), JsonData.Hash(published with { Items = published.Items.Where(i => !NewItems.Contains(i.Id)).ToArray() }));
+        var publishedPolicy = ProgressionContent.Parse(Read("fixtures/progression-world-encounters.json")).Capture();
+        Assert.Equal(JsonData.Hash(Policy(true).Capture()), JsonData.Hash(publishedPolicy with { Items = publishedPolicy.Items.Where(i => !NewItems.Contains(i.Id)).ToArray() }));
+        var current = CombatContent.Parse(Base(false)); var currentPolicy = Policy(false).Capture();
+        Assert.Equal(NewItems, RoamingChampionCatalog.Definitions.Select(d => d.RewardItemId).Order());
+        Assert.All(NewItems, id =>
+        {
+            Assert.Equal(JsonData.Hash(published.Items.Single(i => i.Id == id)), JsonData.Hash(current.Items.Single(i => i.Id == id)));
+            Assert.Equal(JsonData.Hash(publishedPolicy.Items.Single(i => i.Id == id)), JsonData.Hash(currentPolicy.Items.Single(i => i.Id == id)));
+        });
         Assert.All(NewItems, id => Assert.True(LegendaryEquipment.IsItem(id)));
         Assert.DoesNotContain(CombatSession.Create(Base(false), 7).View.Inventory, i => NewItems.Contains(i.DefinitionId));
     }

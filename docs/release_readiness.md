@@ -1,5 +1,7 @@
 # Release hardening and acceptance record
 
+The current local candidate is **1.0.0-rc.1**. Its scope and playtest criteria are in [the RC1 plan](release_candidate_1.md), with measured results in [the RC1 verification record](release_candidate_1_verification.md).
+
 The repository has automated integrity, recovery-fixture, diagnostic, and short-soak checks. **It is not certified as a production single-player release.** These tools report their measured scope and leave unperformed OS/GPU/input, art/content, human playtest, accessibility, localization, signing, and distribution acceptance gates open.
 
 ## Automated commands
@@ -44,6 +46,8 @@ The CLI requires explicit rules, runtime, and platform labels. `tools/release-pa
 When changing saves or content, add a migration and a new fixture entry deliberately. Never regenerate old fixtures during validation to make a failing upgrade pass. The inventory also freezes actual Phase 2, Phase 3, and Phase 4 application saves and their original catalogs. The audit executes Phase 2→3→4→5, Phase 3→4→5, and Phase 4→5 upgrades, preserves owned inventory, XP, materials, story and choices, then round-trips the current archive. It also restores the actual exported Phase 5 completion without changing its exact state hash. Future unsupported versions fail without altering original bytes.
 
 The application save implementation retains the prior valid generation, rejects incompatible newer saves without overwriting or falling back, and commits authoritative domain snapshots together. Patch validation must test the last accepted distribution's save files against the new distribution. Executable rollback does not make a newer save safe for an older build; retain original backups and declare the supported direction of migration.
+
+The RC1 inventory also freezes an actual pre-pet client save and an actual pet-owning client save from the preceding build. Both are loaded through the current endgame archive and compared across a round trip. Frozen JSON/replay documents receive byte-integrity and syntax checks only; the audit labels these separately from executable restores.
 
 ## Local diagnostics and privacy boundaries
 

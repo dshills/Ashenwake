@@ -7,6 +7,8 @@ dotnet build Ashenwake.sln --no-restore --disable-build-servers -m:1
 dotnet format Ashenwake.sln --verify-no-changes --no-restore
 dotnet test game/Ashenwake.Tests --no-build --no-restore
 python3 tools/test-godot-log.py
+python3 tools/test-release-source.py
+python3 tools/test-release-pipeline.py
 test -z "$(gofmt -l tools/aw/*.go)"
 (cd tools/aw && go vet ./... && go test ./... && go build -o ../../.tools/bin/aw .)
 aw content validate

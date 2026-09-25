@@ -1,5 +1,7 @@
 # Ashenwake
 
+The game is entering the **1.0.0-rc.1** release-candidate pass. See the [RC1 scope and playtest plan](docs/release_candidate_1.md) and [validation record](docs/release_candidate_1_verification.md).
+
 An isometric action RPG about building power from the remains of dead gods. The implementation includes an offline five-act greybox campaign, permanent builds, Fractures, God Hunts, release engineering, an optional authoritative two-player slice, and the permanent Borrowed Memory experiment. Phase verification documents record automated evidence, review status, and the remaining production acceptance gates.
 
 Choose Vanguard, Veilwalker, Arcanist, Gravecaller, or Warden, each with six skills and its own resource loop. Travel through five regions, rescue Greyhaven's specialists, choose consequential alliances, confront five bosses, and investigate optional exploration encounters. Equipment, anatomy, mastery, Manifestations, crafting, and rewards persist. Godot renders an engine-independent C# simulation.

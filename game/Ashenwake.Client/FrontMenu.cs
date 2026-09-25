@@ -51,6 +51,8 @@ public partial class FrontMenu : Control
         header.AddChild(seal);
         var headings = Stack(2); headings.SizeFlagsHorizontal = SizeFlags.ExpandFill; header.AddChild(headings);
         var title = Text("ASHENWAKE", 38, Bone); title.Name = "FrontTitle"; headings.AddChild(title);
+        var version = Text(ProjectSettings.GetSetting("application/config/version", "Development build").AsString(), 12, Blue);
+        version.Name = "FrontVersion"; headings.AddChild(version);
         _subtitle = Text("CHOOSE YOUR NEXT JOURNEY", 12, Gold); _subtitle.Name = "FrontSubtitle"; headings.AddChild(_subtitle);
         var rule = new HSeparator(); column.AddChild(rule);
         _catalogStatus = Text("Checking saved characters…", 12, Blue);
