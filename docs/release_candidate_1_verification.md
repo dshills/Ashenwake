@@ -51,3 +51,23 @@ The continuing package triage found an intermittent visual diagnostic exit crash
 The final focused Anatomy teardown run passes **141/141 checks**, 1,577 setup commands, 89 native-input commands and two matching replays. Its verbose log contains no warnings, errors or retained-object lines (`anatomy-teardown.log`). Final follow-up formatting passes.
 
 Prism reviewed the follow-up changes (`cb308c7f93562af6d705ffdfd4de9fb0`, `prism-followup.json`) with no high findings. Its two medium suggestions were inspected: audio collections are already initialized at field declaration and banks are added only after their player array is complete, so the alleged uninitialized-collection exception does not apply. The six candidate ground coordinates are intentional bounded test fixtures; each is checked against current collision geometry, interaction/service ranges, viewport visibility and GUI obstruction, and the resulting native movement is asserted. A future layout that invalidates every candidate should stop this regression test for review. No production navigation change or unbounded coordinate search is warranted for the frozen RC.
+
+## Accepted local test candidate
+
+The full rebuilt package gate exits successfully from reviewed commit **`00c4cbf50fdb9fd0884ccbf7af8e98445781dc83`**. It exports fresh bytes, passes the 34,685-command campaign/endgame route and matching replay, then passes **all 43 packaged feature diagnostics** with their required process exits, engine-error checks and replay checks. The Anatomy, visual and opening-audio packaged logs have no warnings or errors. A separate native-window run of these same exported bytes passes **119 menu/input checks**, including durable new/imported saves, recovery and original/Echoes isolation (`final-native-menu/`).
+
+| Candidate field | Value |
+| --- | --- |
+| Version | `1.0.0-rc.1` |
+| Source commit | `00c4cbf50fdb9fd0884ccbf7af8e98445781dc83` |
+| Local candidate | `artifacts/release/candidate.Lp7b5g/` |
+| App archive | `package/Ashenwake.zip` (139,769,325 bytes) |
+| Archive SHA-256 | `BAB65E75CC66E35DC0929B05BF73EDD1F1306164C48890345742277575C7A519` |
+| Manifest file SHA-256 | `40AE3A4CBD20FA7F41F11D7E325C35C28F59FB840DEEA940BEA693A6452847E7` |
+| Tested extraction | `artifacts/package/e8956a90b8a8.0kG3Tl/` |
+| Platform | macOS universal export, exercised on this Apple Silicon host |
+| Public release accepted | **No** |
+
+The candidate includes runtime notices, source/content/asset identity, a verified 11-file package manifest and the packaged diagnostic evidence. Additional suite, audit, campaign, native-menu and Prism records are retained under its `evidence/rc1/`. The manifest covers `package/`; diagnostic evidence is retained separately. This record is a later documentation commit and does not change the source identity of the tested app.
+
+Known limitations remain visible: 16 older feature diagnostics emit a generic ObjectDB shutdown advisory while passing their assertions and process/error gates; this is not a claim of warning-free shutdown across every diagnostic or a blanket leak certification. The front-menu warnings are deliberate I/O fault injection. Headless audio reports explicitly skip native playhead/pause measurements, and automated routes do not assess perceived audio, human pacing or rendered performance. Independent playtests, longer rendered sessions, remaining lifecycle-warning triage, hardware coverage and owner-approved distribution/signing remain open before public 1.0 acceptance.
